@@ -1,0 +1,1 @@
+# TODO: Implement permissions.py for bookings module\n
