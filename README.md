@@ -46,10 +46,10 @@ cd frontend
 # Install Node modules:
 npm install
 
-# Start the React development server:
-npm start
+# Start the Vite React development server:
+npm run dev
 ```
-The frontend application will start at `http://localhost:3000/`.
+The frontend application will start at `http://localhost:5173/`.
 
 ## Git Strategy
 We follow a standard Git branching strategy:
