@@ -173,3 +173,84 @@ class FlightAPITests(APITestCase):
         url = f"/flights/{non_existent_uuid}/"
         response = self.client.put(url, self.valid_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_patch_flight_success(self):
+        """Test PATCH /flights/{id}/ with valid partial data."""
+        flight = Flight.objects.create(
+            flight_number="FL888",
+            airline="Delta",
+            aircraft="A320",
+            source_airport="ATL",
+            destination_airport="JFK",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("150.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        url = f"/flights/{flight.id}/"
+        
+        # 1. Update only status
+        patch_payload_1 = {"status": "DELAYED"}
+        response = self.client.patch(url, patch_payload_1, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        flight.refresh_from_db()
+        self.assertEqual(flight.status, "DELAYED")
+        self.assertEqual(flight.airline, "Delta")  # remains unchanged
+        
+        # 2. Update only base_fare
+        patch_payload_2 = {"base_fare": "180.00"}
+        response = self.client.patch(url, patch_payload_2, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        flight.refresh_from_db()
+        self.assertEqual(flight.base_fare, Decimal("180.00"))
+
+    def test_patch_flight_invalid_available_seats_fails(self):
+        """Test PATCH /flights/{id}/ fails when available_seats exceeds total_seats."""
+        flight = Flight.objects.create(
+            flight_number="FL888",
+            airline="Delta",
+            aircraft="A320",
+            source_airport="ATL",
+            destination_airport="JFK",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("150.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        url = f"/flights/{flight.id}/"
+        patch_payload = {"available_seats": 120}  # total_seats is 100
+        response = self.client.patch(url, patch_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
+
+    def test_patch_flight_negative_fare_fails(self):
+        """Test PATCH /flights/{id}/ fails when base_fare is negative."""
+        flight = Flight.objects.create(
+            flight_number="FL888",
+            airline="Delta",
+            aircraft="A320",
+            source_airport="ATL",
+            destination_airport="JFK",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("150.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        url = f"/flights/{flight.id}/"
+        patch_payload = {"base_fare": "-10.00"}
+        response = self.client.patch(url, patch_payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("base_fare", response.data)
+
+    def test_patch_non_existent_flight_fails(self):
+        """Test PATCH /flights/{id}/ for non-existent UUID returns 404."""
+        non_existent_uuid = uuid.uuid4()
+        url = f"/flights/{non_existent_uuid}/"
+        response = self.client.patch(url, {"status": "DELAYED"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

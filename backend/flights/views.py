@@ -65,3 +65,22 @@ class FlightUpdateView(APIView):
                 {"non_field_errors": [str(exc)]},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    def patch(self, request, id, *args, **kwargs) -> Response:
+        """
+        Partially update an existing flight.
+        """
+        flight = self.get_object(id)
+        serializer = FlightSerializer(flight, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except (IntegrityError, DjangoValidationError) as exc:
+            # Gracefully handle database constraint exceptions
+            return Response(
+                {"non_field_errors": [str(exc)]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
