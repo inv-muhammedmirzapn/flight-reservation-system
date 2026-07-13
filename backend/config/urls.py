@@ -8,9 +8,7 @@ def hello_world(request):
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/v1/hello/", hello_world),
-
-    # Users API
-    path("api/v1/users/", include("users.urls")),
+    path('admin/', admin.site.urls),
+    path('api/v1/hello/', hello_world),
+    path('flights/', include('flights.urls')),
 ]
