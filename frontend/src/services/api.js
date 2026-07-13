@@ -1,5 +1,57 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
+// Helper to make authenticated requests
+export const fetchWithAuth = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('access_token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  // If unauthorized, attempt token refresh (if a refresh token is present)
+  if (response.status === 401 && localStorage.getItem('refresh_token')) {
+    try {
+      const refreshResponse = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: localStorage.getItem('refresh_token') }),
+      });
+      
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        localStorage.setItem('access_token', refreshData.access);
+        
+        // Retry the original request with the new token
+        headers['Authorization'] = `Bearer ${refreshData.access}`;
+        const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+        });
+        const retryData = await retryResponse.json();
+        if (!retryResponse.ok) throw new Error(JSON.stringify(retryData));
+        return retryData;
+      }
+    } catch (refreshErr) {
+      console.error("Token refresh failed. Logging out.", refreshErr);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/';
+      throw new Error("Session expired. Please log in again.");
+    }
+  }
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(JSON.stringify(data));
+  return data;
+};
+
 export const authAPI = {
   register: async (userData) => {
     const response = await fetch(`${API_BASE_URL}/auth/register/`, {
@@ -21,5 +73,40 @@ export const authAPI = {
     const data = await response.json();
     if (!response.ok) throw new Error(JSON.stringify(data));
     return data;
+  },
+
+  getProfile: async () => {
+    return fetchWithAuth('/auth/profile/');
+  }
+};
+
+export const flightsAPI = {
+  list: async () => {
+    return fetchWithAuth('/flights/');
+  },
+  
+  retrieve: async (id) => {
+    return fetchWithAuth(`/flights/${id}/`);
+  },
+
+  create: async (flightData) => {
+    return fetchWithAuth('/flights/', {
+      method: 'POST',
+      body: JSON.stringify(flightData),
+    });
+  },
+
+  update: async (id, flightData) => {
+    return fetchWithAuth(`/flights/${id}/update/`, {
+      method: 'PUT',
+      body: JSON.stringify(flightData),
+    });
+  },
+
+  patch: async (id, flightData) => {
+    return fetchWithAuth(`/flights/${id}/update/`, {
+      method: 'PATCH',
+      body: JSON.stringify(flightData),
+    });
   }
 };
