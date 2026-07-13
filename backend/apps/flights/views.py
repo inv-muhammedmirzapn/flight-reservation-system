@@ -7,11 +7,19 @@ from rest_framework import status
 from .models import Flight
 from .serializers import FlightSerializer
 
-class FlightCreateView(APIView):
+class FlightListCreateView(APIView):
     """
-    API View to handle creation of new flights.
-    Supports POST requests.
+    API View to handle listing and creation of flights.
+    Supports GET (list) and POST (create) requests.
     """
+
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        List all flights.
+        """
+        flights = Flight.objects.all()
+        serializer = FlightSerializer(flights, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs) -> Response:
         """
@@ -31,10 +39,34 @@ class FlightCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+class FlightDetailView(APIView):
+    """
+    API View to retrieve details of an existing flight.
+    Supports GET requests.
+    """
+
+    def get_object(self, pk: str) -> Flight:
+        """
+        Helper method to retrieve a flight by its primary key.
+        Raises Http404 if not found or if the ID is invalid.
+        """
+        try:
+            return Flight.objects.get(pk=pk)
+        except (Flight.DoesNotExist, ValueError, DjangoValidationError):
+            raise Http404
+
+    def get(self, request, id, *args, **kwargs) -> Response:
+        """
+        Retrieve details of a single flight.
+        """
+        flight = self.get_object(id)
+        serializer = FlightSerializer(flight)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 class FlightUpdateView(APIView):
     """
     API View to handle updates to existing flights.
-    Supports PUT requests.
+    Supports PUT (full update) and PATCH (partial update) requests.
     """
 
     def get_object(self, pk: str) -> Flight:
