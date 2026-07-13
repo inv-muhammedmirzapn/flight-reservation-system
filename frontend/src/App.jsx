@@ -70,11 +70,11 @@ function App() {
         </div>
       </nav>
 
-      <main className="flex-grow flex items-center justify-center py-xl px-md md:px-lg relative z-10">
+      <main className="flex-grow flex items-center justify-center py-8 px-4 md:px-8 relative z-10">
         <div className="w-full max-w-[480px]">
-          <div className="glass-card rounded-[2rem] p-lg w-full flex flex-col gap-lg">
-            <div className="text-center flex flex-col gap-xs">
-              <h1 className="font-headline-xl text-headline-xl text-on-surface">
+          <div className="glass-card rounded-[2rem] p-8 w-full flex flex-col gap-6">
+            <div className="text-center flex flex-col gap-2">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </h1>
               <p className="font-body-md text-body-md text-on-surface-variant">
@@ -88,53 +88,53 @@ function App() {
               </div>
             )}
 
-            <form onSubmit={isLogin ? handleLogin : handleRegister} className="flex flex-col gap-md">
+            <form onSubmit={isLogin ? handleLogin : handleRegister} className="flex flex-col gap-4">
               {!isLogin && (
                 <>
                   <div className="flex gap-4">
-                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors w-1/2">
+                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-4 py-2 focus-within:border-primary/50 transition-colors w-1/2">
                       <input 
                         className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
                         id="first_name" name="first_name" placeholder=" " required value={formData.first_name} onChange={handleChange} type="text"
                       />
-                      <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="first_name">First Name</label>
+                      <label className="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="first_name">First Name</label>
                     </div>
-                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors w-1/2">
+                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-4 py-2 focus-within:border-primary/50 transition-colors w-1/2">
                       <input 
                         className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
                         id="last_name" name="last_name" placeholder=" " required value={formData.last_name} onChange={handleChange} type="text"
                       />
-                      <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="last_name">Last Name</label>
+                      <label className="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="last_name">Last Name</label>
                     </div>
                   </div>
 
-                  <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+                  <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-4 py-2 focus-within:border-primary/50 transition-colors">
                     <input 
                       className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
                       id="email" name="email" placeholder=" " required value={formData.email} onChange={handleChange} type="email"
                     />
-                    <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="email">Email Address</label>
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="email">Email Address</label>
                   </div>
                 </>
               )}
 
-              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-4 py-2 focus-within:border-primary/50 transition-colors">
                 <input 
                   className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
                   id="username" name="username" placeholder=" " required value={formData.username} onChange={handleChange} type="text"
                 />
-                <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="username">Username</label>
+                <label className="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="username">Username</label>
               </div>
 
-              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-4 py-2 focus-within:border-primary/50 transition-colors">
                 <input 
                   className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
                   id="password" name="password" placeholder=" " required value={formData.password} onChange={handleChange} type="password"
                 />
-                <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="password">Password</label>
+                <label className="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="password">Password</label>
               </div>
 
-              <button disabled={loading} className="w-full bg-primary-container text-on-surface font-display-bold text-display-bold py-sm rounded-xl mt-sm hover:bg-[#ffe140] transition-colors duration-300 shadow-[0px_8px_16px_rgba(255,215,0,0.2)] active:scale-95 flex items-center justify-center gap-xs" type="submit">
+              <button disabled={loading} className="w-full bg-primary-container text-on-surface font-display-bold text-display-bold py-3 rounded-xl mt-4 hover:bg-[#ffe140] transition-colors duration-300 shadow-[0px_8px_16px_rgba(255,215,0,0.2)] active:scale-95 flex items-center justify-center gap-xs" type="submit">
                 {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
               </button>
             </form>
