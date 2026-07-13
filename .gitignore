@@ -1,23 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+
 # Virtual Environments
 .venv/
 venv/
 backend/.venv/
 backend/venv/
 
-# Python
-__pycache__/
-*.py[cod]
-
-# Environment Variables
+# Django
+*.sqlite3
 .env
-.env.*
 
-# IDE
-.vscode/
-.idea/
+# React
+node_modules/
+build/
+dist
+dist-ssr
+*.local
 
-# macOS
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Logs
 logs/
