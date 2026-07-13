@@ -1,1 +1,1 @@
-# TODO: Implement __init__.py for users module\n
+default_app_config = 'apps.users.UsersConfig'
