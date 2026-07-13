@@ -43,27 +43,27 @@ class Flight(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(available_seats__lte=models.F("total_seats")),
+                condition=models.Q(available_seats__lte=models.F("total_seats")),
                 name="available_seats_lte_total"
             ),
             models.CheckConstraint(
-                check=models.Q(available_seats__gte=0),
+                condition=models.Q(available_seats__gte=0),
                 name="available_seats_non_negative"
             ),
             models.CheckConstraint(
-                check=models.Q(total_seats__gte=0),
+                condition=models.Q(total_seats__gte=0),
                 name="total_seats_non_negative"
             ),
             models.CheckConstraint(
-                check=models.Q(arrival_time__gt=models.F("departure_time")),
+                condition=models.Q(arrival_time__gt=models.F("departure_time")),
                 name="arrival_time_after_departure_time"
             ),
             models.CheckConstraint(
-                check=~models.Q(source_airport=models.F("destination_airport")),
+                condition=~models.Q(source_airport=models.F("destination_airport")),
                 name="source_dest_not_equal"
             ),
             models.CheckConstraint(
-                check=models.Q(base_fare__gte=0),
+                condition=models.Q(base_fare__gte=0),
                 name="base_fare_non_negative"
             )
         ]

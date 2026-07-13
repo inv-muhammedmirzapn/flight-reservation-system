@@ -33,26 +33,26 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('available_seats__lte', models.F('total_seats'))), name='available_seats_lte_total'),
+            constraint=models.CheckConstraint(condition=models.Q(('available_seats__lte', models.F('total_seats'))), name='available_seats_lte_total'),
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('available_seats__gte', 0)), name='available_seats_non_negative'),
+            constraint=models.CheckConstraint(condition=models.Q(('available_seats__gte', 0)), name='available_seats_non_negative'),
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('total_seats__gte', 0)), name='total_seats_non_negative'),
+            constraint=models.CheckConstraint(condition=models.Q(('total_seats__gte', 0)), name='total_seats_non_negative'),
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('arrival_time__gt', models.F('departure_time'))), name='arrival_time_after_departure_time'),
+            constraint=models.CheckConstraint(condition=models.Q(('arrival_time__gt', models.F('departure_time'))), name='arrival_time_after_departure_time'),
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('source_airport', models.F('destination_airport')), _negated=True), name='source_dest_not_equal'),
+            constraint=models.CheckConstraint(condition=models.Q(('source_airport', models.F('destination_airport')), _negated=True), name='source_dest_not_equal'),
         ),
         migrations.AddConstraint(
             model_name='flight',
-            constraint=models.CheckConstraint(check=models.Q(('base_fare__gte', 0)), name='base_fare_non_negative'),
+            constraint=models.CheckConstraint(condition=models.Q(('base_fare__gte', 0)), name='base_fare_non_negative'),
         ),
     ]

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import './index.css'; // Assume basic reset/styling
+import { authAPI } from './services/api';
+import './index.css';
 
 function App() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,20 +23,11 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/register/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Registration successful! You can now log in.' });
-        setIsLogin(true); // switch to login view
-      } else {
-        setMessage({ type: 'error', text: 'Registration failed: ' + JSON.stringify(data) });
-      }
+      await authAPI.register(formData);
+      setMessage({ type: 'success', text: 'Account created! Please sign in.' });
+      setIsLogin(true);
     } catch (err) {
-      setMessage({ type: 'error', text: 'Error: ' + err.message });
+      setMessage({ type: 'error', text: 'Registration failed: ' + err.message });
     }
     setLoading(false);
   };
@@ -45,115 +37,117 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: formData.username, password: formData.password })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Successfully logged in! Token acquired.' });
-        console.log("Access Token:", data.access);
-      } else {
-        setMessage({ type: 'error', text: 'Login failed: ' + JSON.stringify(data) });
-      }
+      const data = await authAPI.login({ username: formData.username, password: formData.password });
+      setMessage({ type: 'success', text: 'Successfully logged in! Token acquired.' });
+      console.log("Access Token:", data.access);
     } catch (err) {
-      setMessage({ type: 'error', text: 'Error: ' + err.message });
+      setMessage({ type: 'error', text: 'Login failed: ' + err.message });
     }
     setLoading(false);
   };
 
   return (
-    <div className="app-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-          <p>{isLogin ? 'Log in to manage your flights' : 'Join our flight reservation system'}</p>
-        </div>
-
-        {message.text && (
-          <div className={`message ${message.type}`}>
-            {message.text}
-          </div>
-        )}
-
-        <form onSubmit={isLogin ? handleLogin : handleRegister} className="auth-form">
-          {!isLogin && (
-            <div className="name-group">
-              <div className="input-group">
-                <label>First Name</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  placeholder="John"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="input-group">
-                <label>Last Name</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  placeholder="Doe"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="input-group">
-            <label>Username *</label>
-            <input
-              type="text"
-              name="username"
-              placeholder="johndoe123"
-              required
-              value={formData.username}
-              onChange={handleChange}
-            />
-          </div>
-
-          {!isLogin && (
-            <div className="input-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="john@example.com"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-          )}
-
-          <div className="input-group">
-            <label>Password *</label>
-            <input
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              required
-              value={formData.password}
-              onChange={handleChange}
-            />
-          </div>
-
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Processing...' : (isLogin ? 'Log In' : 'Register')}
-          </button>
-        </form>
-
-        <div className="auth-toggle">
-          <p>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <span onClick={() => setIsLogin(!isLogin)} className="toggle-link">
-              {isLogin ? 'Register here' : 'Log in here'}
-            </span>
-          </p>
-        </div>
+    <div className="bg-surface text-on-surface min-h-screen flex flex-col font-body-md antialiased relative z-0">
+      {/* Ambient Background Glow */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vw] rounded-full bg-white blur-[100px] opacity-60 mix-blend-overlay"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[30vw] h-[30vw] rounded-full bg-primary-container blur-[120px] opacity-10"></div>
       </div>
+
+      <nav className="bg-white/70 backdrop-blur-[30px] w-full sticky top-0 z-50 shadow-[0px_20px_40px_rgba(0,0,0,0.04)]">
+        <div className="flex justify-between items-center h-20 px-lg max-w-[1200px] mx-auto">
+          <div className="font-headline-lg text-headline-lg text-on-surface tracking-tighter">
+            AeroGlass
+          </div>
+          <div className="flex gap-sm items-center">
+            <button onClick={() => setIsLogin(true)} className="text-on-surface-variant font-display-bold text-display-bold hover:text-primary transition-all duration-300 hidden md:block">
+              Sign In
+            </button>
+            <button onClick={() => setIsLogin(false)} className="bg-on-surface text-primary-container px-md py-sm rounded-xl font-display-bold text-display-bold hover:bg-surface-variant hover:text-on-surface transition-colors duration-300 active:scale-95">
+              Join Club
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main className="flex-grow flex items-center justify-center py-xl px-md md:px-lg relative z-10">
+        <div className="w-full max-w-[480px]">
+          <div className="glass-card rounded-[2rem] p-lg w-full flex flex-col gap-lg">
+            <div className="text-center flex flex-col gap-xs">
+              <h1 className="font-headline-xl text-headline-xl text-on-surface">
+                {isLogin ? 'Welcome Back' : 'Create Account'}
+              </h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                {isLogin ? 'Sign in to continue your journey.' : 'Join AeroGlass for an elevated travel experience.'}
+              </p>
+            </div>
+
+            {message.text && (
+              <div className={`p-4 rounded-xl text-sm font-body-md border ${message.type === 'error' ? 'bg-error-container text-on-error-container border-[#ffb4ab]' : 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'}`}>
+                {message.text}
+              </div>
+            )}
+
+            <form onSubmit={isLogin ? handleLogin : handleRegister} className="flex flex-col gap-md">
+              {!isLogin && (
+                <>
+                  <div className="flex gap-4">
+                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors w-1/2">
+                      <input 
+                        className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
+                        id="first_name" name="first_name" placeholder=" " required value={formData.first_name} onChange={handleChange} type="text"
+                      />
+                      <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="first_name">First Name</label>
+                    </div>
+                    <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors w-1/2">
+                      <input 
+                        className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
+                        id="last_name" name="last_name" placeholder=" " required value={formData.last_name} onChange={handleChange} type="text"
+                      />
+                      <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="last_name">Last Name</label>
+                    </div>
+                  </div>
+
+                  <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+                    <input 
+                      className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
+                      id="email" name="email" placeholder=" " required value={formData.email} onChange={handleChange} type="email"
+                    />
+                    <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="email">Email Address</label>
+                  </div>
+                </>
+              )}
+
+              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+                <input 
+                  className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
+                  id="username" name="username" placeholder=" " required value={formData.username} onChange={handleChange} type="text"
+                />
+                <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="username">Username</label>
+              </div>
+
+              <div className="relative floating-input bg-white/50 border border-white/60 rounded-xl px-md py-sm focus-within:border-primary/50 transition-colors">
+                <input 
+                  className="w-full bg-transparent border-none outline-none focus:ring-0 font-body-md text-on-surface pt-4 pb-1 z-10 relative peer" 
+                  id="password" name="password" placeholder=" " required value={formData.password} onChange={handleChange} type="password"
+                />
+                <label className="absolute left-md top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant transition-all duration-200 pointer-events-none origin-left" htmlFor="password">Password</label>
+              </div>
+
+              <button disabled={loading} className="w-full bg-primary-container text-on-surface font-display-bold text-display-bold py-sm rounded-xl mt-sm hover:bg-[#ffe140] transition-colors duration-300 shadow-[0px_8px_16px_rgba(255,215,0,0.2)] active:scale-95 flex items-center justify-center gap-xs" type="submit">
+                {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+              </button>
+            </form>
+
+            <div className="text-center font-body-sm text-body-sm text-on-surface-variant">
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-display-bold hover:underline">
+                {isLogin ? 'Join Club' : 'Sign In'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
