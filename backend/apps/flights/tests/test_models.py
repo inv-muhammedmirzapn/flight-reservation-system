@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
-from flights.models import Flight
+from apps.flights.models import Flight
 
 class FlightModelTest(TestCase):
     """

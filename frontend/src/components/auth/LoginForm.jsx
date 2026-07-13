@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { authAPI } from '../../services/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser } from '../../store/authSlice';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 
@@ -15,38 +16,32 @@ function GoogleIcon() {
 }
 
 export function LoginForm() {
+  const dispatch = useDispatch();
+  const { loading, error } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({ username: '', password: '' });
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState('');
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setLocalError('');
+  };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      const data = await authAPI.login(formData);
-      setMessage({ type: 'success', text: 'Signed in successfully!' });
-      console.log('Access Token:', data.access);
-    } catch (err) {
-      let errText = err.message;
-      try {
-        const errObj = JSON.parse(err.message);
-        if (errObj.detail) errText = errObj.detail;
-        else errText = Object.keys(errObj)
-          .map(k => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${Array.isArray(errObj[k]) ? errObj[k][0] : errObj[k]}`)
-          .join(' · ');
-      } catch (_) {}
-      setMessage({ type: 'error', text: errText });
+    if (!formData.username.trim() || !formData.password.trim()) {
+      setLocalError('Please enter both username and password.');
+      return;
     }
-    setLoading(false);
+    dispatch(loginUser(formData));
   };
 
   const handleGoogleLogin = () => {
     // TODO: wire up backend OAuth2 redirect
     console.log('Google OAuth — coming soon');
   };
+
+  const displayError = localError || error;
 
   return (
     <>
@@ -60,10 +55,10 @@ export function LoginForm() {
         <p className="form-subtitle">Sign in to your AeroGlass account</p>
       </div>
 
-      {message.text && (
-        <div className={`alert ${message.type === 'error' ? 'alert-error' : 'alert-success'}`}>
-          <span>{message.type === 'error' ? '⚠️' : '✅'}</span>
-          {message.text}
+      {displayError && (
+        <div className="alert alert-error">
+          <span>⚠️</span>
+          {displayError}
         </div>
       )}
 
@@ -91,14 +86,12 @@ export function LoginForm() {
         </button>
       </form>
 
-      {/* OR divider */}
       <div className="or-divider">
         <span className="or-divider-line" />
         <span className="or-divider-text">or continue with</span>
         <span className="or-divider-line" />
       </div>
 
-      {/* Google Sign-In */}
       <button type="button" className="google-btn" onClick={handleGoogleLogin}>
         <GoogleIcon />
         Continue with Google

@@ -16,13 +16,22 @@ export function RegisterForm({ onSuccess }) {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setMessage({ type: '', text: '' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
-    // 1. Password complexity rules validation
+    // Required-fields check
+    if (!formData.username.trim() || !formData.password.trim() || !formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()) {
+      setMessage({ type: 'error', text: 'All fields are required.' });
+      return;
+    }
+
+    // Password complexity rules
     const rules = getPasswordRules(formData.password);
     const failed = rules.filter(r => !r.pass);
     if (failed.length > 0) {
@@ -30,7 +39,7 @@ export function RegisterForm({ onSuccess }) {
       return;
     }
 
-    // 2. Confirm password match validation
+    // Confirm password match
     if (formData.password !== formData.confirmPassword) {
       setMessage({ type: 'error', text: 'Passwords do not match.' });
       return;
@@ -38,7 +47,6 @@ export function RegisterForm({ onSuccess }) {
 
     setLoading(true);
     try {
-      // Exclude confirmPassword from the API payload
       const { confirmPassword, ...registerPayload } = formData;
       await authAPI.register(registerPayload);
       onSuccess();
@@ -71,7 +79,6 @@ export function RegisterForm({ onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} className="register-form-grid" autoComplete="off">
-        {/* ── Left Column ── */}
         <div className="register-form-col">
           <div className="field-row">
             <Input id="first_name" label="First Name" placeholder="John" required value={formData.first_name} onChange={handleChange} autoComplete="off" />
@@ -81,14 +88,12 @@ export function RegisterForm({ onSuccess }) {
           <Input id="username" label="Username" placeholder="Choose a username" required value={formData.username} onChange={handleChange} autoComplete="off" />
         </div>
 
-        {/* ── Right Column ── */}
         <div className="register-form-col">
           <PasswordInput id="password" label="Password" placeholder="Create a strong password" required value={formData.password} onChange={handleChange} autoComplete="new-password" />
           <PasswordInput id="confirmPassword" label="Confirm Password" placeholder="Repeat your password" required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
           <PasswordStrength password={formData.password} />
         </div>
 
-        {/* ── Full Width Button ── */}
         <button disabled={loading} className="auth-btn submit-btn-grid" type="submit">
           {loading ? <><div className="spinner" /> Creating account...</> : 'Create Account'}
         </button>
