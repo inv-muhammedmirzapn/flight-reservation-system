@@ -22,7 +22,7 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/auth/register/', {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/register/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -45,7 +45,7 @@ function App() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/auth/login/', {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/login/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: formData.username, password: formData.password })
@@ -82,22 +82,22 @@ function App() {
             <div className="name-group">
               <div className="input-group">
                 <label>First Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   name="first_name"
-                  placeholder="John" 
-                  value={formData.first_name} 
-                  onChange={handleChange} 
+                  placeholder="John"
+                  value={formData.first_name}
+                  onChange={handleChange}
                 />
               </div>
               <div className="input-group">
                 <label>Last Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   name="last_name"
-                  placeholder="Doe" 
-                  value={formData.last_name} 
-                  onChange={handleChange} 
+                  placeholder="Doe"
+                  value={formData.last_name}
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -105,38 +105,38 @@ function App() {
 
           <div className="input-group">
             <label>Username *</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               name="username"
-              placeholder="johndoe123" 
+              placeholder="johndoe123"
               required
-              value={formData.username} 
-              onChange={handleChange} 
+              value={formData.username}
+              onChange={handleChange}
             />
           </div>
 
           {!isLogin && (
             <div className="input-group">
               <label>Email Address</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 name="email"
-                placeholder="john@example.com" 
-                value={formData.email} 
-                onChange={handleChange} 
+                placeholder="john@example.com"
+                value={formData.email}
+                onChange={handleChange}
               />
             </div>
           )}
 
           <div className="input-group">
             <label>Password *</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               name="password"
-              placeholder="••••••••" 
+              placeholder="••••••••"
               required
-              value={formData.password} 
-              onChange={handleChange} 
+              value={formData.password}
+              onChange={handleChange}
             />
           </div>
 

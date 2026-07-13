@@ -20,9 +20,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 ] + [
-    'users', 'flights', 'bookings', 'route_optimization', 'pricing',
-    'waitlist', 'analytics', 'delays', 'notifications', 'comparison',
-    'fare_prediction', 'search', 'caching', 'bulk_upload'
+    'apps.users', 'apps.flights', 'apps.bookings', 'apps.route_optimization', 'apps.pricing',
+    'apps.waitlist', 'apps.analytics', 'apps.delays', 'apps.notifications', 'apps.comparison',
+    'apps.fare_prediction', 'apps.search', 'apps.caching', 'apps.bulk_upload'
 ]
 
 MIDDLEWARE = [
