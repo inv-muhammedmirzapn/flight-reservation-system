@@ -277,7 +277,7 @@ body {
 .auth-page-bg {
   position: fixed;
   inset: 0;
-  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC6qN252zUUdWAIHsAn7U-95oK2ZQFg9qMsPh5WazYD4bir5KJ6nYdusKp0YtQng-Z1LAZWwYRIl_2BGUiPiATfH2x088amp97nciJTfY2jjiCVyRUBeBzi3NA9FmNlpRVfdmtR5zBoygxZlivuZxkOb-Ph5jAUQ5qLsXhJcu4IGcY2T_IKdIrI4Hl27TvW4vEOWVPGsQReeNbkbu9jEhNVm3ZIUaQ-IUG-_KhmSddovzd9fiadrwEI5WsLCS_wBncMJSC-Ww76t1SR');
+  background-image: url('/images/hero_sky.png');
   background-size: cover;
   background-position: center;
   opacity: 0.65;
@@ -752,7 +752,7 @@ body {
 .landing-hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC6qN252zUUdWAIHsAn7U-95oK2ZQFg9qMsPh5WazYD4bir5KJ6nYdusKp0YtQng-Z1LAZWwYRIl_2BGUiPiATfH2x088amp97nciJTfY2jjiCVyRUBeBzi3NA9FmNlpRVfdmtR5zBoygxZlivuZxkOb-Ph5jAUQ5qLsXhJcu4IGcY2T_IKdIrI4Hl27TvW4vEOWVPGsQReeNbkbu9jEhNVm3ZIUaQ-IUG-_KhmSddovzd9fiadrwEI5WsLCS_wBncMJSC-Ww76t1SR');
+  background-image: url('/images/hero_sky.png');
   background-size: cover;
   background-position: center;
   opacity: 0.82;

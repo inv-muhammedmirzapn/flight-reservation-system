@@ -93,15 +93,15 @@ export function LandingPage() {
             {[
               {
                 city: 'London', sub: 'Direct flights', price: 'From $540',
-                img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBCsC9o-xdM-KyXbeTDgUb8f10nBEeTTMqI9UKaAdMgyn7WIyXpLND3lQn5sTPnqvyWQbERv7P4wJfw4H9dJYBvSgdef9VzjTPu8eh6JkZYeEjgRQHzFoRnhqlOOsbxhylE3EJFyQSbcHHPJptPThibCBQ2I9uzjsAVHjWa2E0UlsZfa91x-03vIrvQyLKe2F84T6lJx2Yg3s-o2rBk2Rnuw-gnMhl1AeQi_VLYeaVGGO6lMLVVtmUR6qO3-4ZaPs6Ckq70q8iUgw8U',
+                img: '/images/dest_london.png',
               },
               {
                 city: 'Tokyo', sub: 'Non-stop available', price: 'From $890',
-                img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHJiG-qN4ky98f-cCotRwERhcydcTBhGZ6EKWaKLxwfAWR_bGHbv5acsh4hdc1bIyUrWe9PZPNZtqV3l0iEwJZ2ku_aoLsRp0BpCgp5fRn2bQMmOSeoptp0pBCJ3ekh_Ic7GbVI3qHJ1qGKqDsYEiEqZ_H-UFkrSU3qDteN8oBPWeAK2OKlDHI_gleJW0Gcgsh_yhb3Vo-ds2gqRC4Z3Q1GR7lWo3IUwYYqGC19NRDU3APYW0KnM9mkhU_VQYFnLtFUA9XlYbFXfYW',
+                img: '/images/dest_tokyo.png',
               },
               {
                 city: 'Paris', sub: 'Premium economy', price: 'From $620',
-                img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAErEGNXu_K-EGB6PTkCw4AibY7m3dekClqI6H7QTHXbpjI75MbQGMulTeJaJwGAziZ3lSEAOYlwm28w6HbJW7udEJFBBX-DFlXGKXSnmtzX8-bNyIMdDqdYAPXpOwlSaTOeq0gYHWi7r4a8RtTrPPvdWcnIIfh3AnembXIeFFtR5J3p-P51qZOK-0wvlW09bB3lWpuYtEM7Xfur8Y3HciNCiTpAW69rXm2mCp80VUQ4pmW31dSx94KMZXUx13J7Al0C9F-SosxkQ9Y',
+                img: '/images/dest_paris.png',
               },
             ].map(({ city, sub, price, img }) => (
               <div className="landing-dest-card" key={city}>
