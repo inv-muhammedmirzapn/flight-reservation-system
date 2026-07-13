@@ -57,10 +57,10 @@ export function RegisterForm({ onSuccess }) {
   };
 
   return (
-    <div className="register-card glass-card">
-      <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+    <>
+      <div className="form-header">
         <h1 className="form-title">Create account</h1>
-        <p className="form-subtitle" style={{ marginTop: '0.25rem' }}>Fill in your details to get started</p>
+        <p className="form-subtitle">Fill in your details to get started</p>
       </div>
 
       {message.text && (
@@ -93,6 +93,6 @@ export function RegisterForm({ onSuccess }) {
           {loading ? <><div className="spinner" /> Creating account...</> : 'Create Account'}
         </button>
       </form>
-    </div>
+    </>
   );
 }

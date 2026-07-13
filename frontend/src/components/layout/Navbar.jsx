@@ -1,11 +1,13 @@
-export function Navbar({ setIsLogin }) {
+export function Navbar({ onSignIn, onJoin, onHome }) {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-        <span className="navbar-logo">AeroGlass</span>
+        <button className="navbar-logo" onClick={onHome} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          AeroGlass
+        </button>
         <div className="navbar-actions">
-          <button onClick={() => setIsLogin(true)} className="navbar-link">Sign In</button>
-          <button onClick={() => setIsLogin(false)} className="navbar-cta">Join Club</button>
+          <button onClick={onSignIn} className="navbar-link">Sign In</button>
+          <button onClick={onJoin} className="navbar-cta">Join Club</button>
         </div>
       </div>
     </nav>

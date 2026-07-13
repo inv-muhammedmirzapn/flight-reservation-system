@@ -14,7 +14,7 @@ function GoogleIcon() {
   );
 }
 
-export function LoginForm({ clearGlobalSuccess }) {
+export function LoginForm() {
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,6 @@ export function LoginForm({ clearGlobalSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (clearGlobalSuccess) clearGlobalSuccess();
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
