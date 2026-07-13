@@ -1,8 +1,12 @@
 # Python
 __pycache__/
 *.pyc
-env/
+
+# Virtual Environments
+.venv/
 venv/
+backend/.venv/
+backend/venv/
 
 # Django
 *.sqlite3
@@ -35,3 +39,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+prompt.md
