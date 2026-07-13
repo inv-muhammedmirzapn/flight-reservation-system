@@ -41,3 +41,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 prompt.md
+
+# Design assets
+stitch_designs/
+frontend/stitch_designs/
