@@ -11,6 +11,7 @@ import { Footer } from './components/layout/Footer';
 // Public Pages
 import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/auth/LoginPage';
+import { AdminLoginPage } from './components/auth/AdminLoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 
 // Customer Pages
@@ -51,6 +52,7 @@ function App() {
           {/* ── Public (guest only) ── */}
           <Route path="/" element={<ProtectedRoute guestOnly><LandingPage /></ProtectedRoute>} />
           <Route path="/login" element={<ProtectedRoute guestOnly><LoginPage /></ProtectedRoute>} />
+          <Route path="/admin/login" element={<ProtectedRoute guestOnly><AdminLoginPage /></ProtectedRoute>} />
           <Route path="/register" element={<ProtectedRoute guestOnly><RegisterPage /></ProtectedRoute>} />
 
           {/* ── Customer ── */}
