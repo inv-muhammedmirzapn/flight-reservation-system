@@ -3,7 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000
 // Helper to make authenticated requests
 export const fetchWithAuth = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -23,11 +23,11 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: localStorage.getItem('refresh_token') }),
       });
-      
+
       if (refreshResponse.ok) {
         const refreshData = await refreshResponse.json();
         localStorage.setItem('access_token', refreshData.access);
-        
+
         // Retry the original request with the new token
         headers['Authorization'] = `Bearer ${refreshData.access}`;
         const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -84,7 +84,7 @@ export const flightsAPI = {
   list: async () => {
     return fetchWithAuth('/flights/');
   },
-  
+
   retrieve: async (id) => {
     return fetchWithAuth(`/flights/${id}/`);
   },
@@ -114,31 +114,13 @@ export const flightsAPI = {
 
 export const profileAPI = {
   getProfile: async () => {
-    const token = localStorage.getItem('access');
-    const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return fetchWithAuth('/auth/profile/');
   },
 
   updateProfile: async (profileData) => {
-    const token = localStorage.getItem('access');
-    const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+    return fetchWithAuth('/auth/profile/', {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify(profileData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
   },
 };
