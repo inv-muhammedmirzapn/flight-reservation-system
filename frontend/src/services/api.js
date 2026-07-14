@@ -110,3 +110,35 @@ export const flightsAPI = {
     });
   }
 };
+
+
+export const profileAPI = {
+  getProfile: async () => {
+    const token = localStorage.getItem('access');
+    const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
+  },
+
+  updateProfile: async (profileData) => {
+    const token = localStorage.getItem('access');
+    const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(profileData),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
+  },
+};

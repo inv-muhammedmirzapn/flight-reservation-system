@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../../services/api';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../../store/authSlice';
 import { Input } from '../ui/Input';
@@ -20,6 +22,12 @@ export function LoginForm() {
   const { loading, error } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ username: '', password: '' });
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   const [localError, setLocalError] = useState('');
 
   const handleChange = (e) => {
@@ -29,6 +37,32 @@ export function LoginForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const data = await authAPI.login(formData);
+
+      // Store JWT tokens
+      localStorage.setItem("access", data.access);
+      localStorage.setItem("refresh", data.refresh);
+      // Store username for navbar initials
+      localStorage.setItem("username", formData.username);
+
+      // Notify Navbar to re-check auth state
+      window.dispatchEvent(new Event("authChange"));
+
+      // Go to the home page — profile is accessible via navbar avatar
+      navigate("/home");
+
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'Login failed: ' + err.message
+      });
+    }
+
+    setLoading(false);
     if (!formData.username.trim() || !formData.password.trim()) {
       setLocalError('Please enter both username and password.');
       return;
@@ -45,6 +79,51 @@ export function LoginForm() {
 
   return (
     <>
+      <div className="text-center flex flex-col gap-2">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">
+          Welcome Back
+        </h1>
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          Sign in to continue your journey.
+        </p>
+      </div>
+
+      {message.text && (
+        <div
+          className={`p-4 rounded-xl text-sm font-body-md border ${
+            message.type === 'error'
+              ? 'bg-error-container text-on-error-container border-[#ffb4ab]'
+              : 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          id="username"
+          label="Username"
+          required
+          value={formData.username}
+          onChange={handleChange}
+        />
+
+        <Input
+          id="password"
+          label="Password"
+          type="password"
+          required
+          value={formData.password}
+          onChange={handleChange}
+        />
+
+        <button
+          disabled={loading}
+          className="w-full bg-primary-container text-on-surface font-bold py-3 rounded-xl mt-4 hover:bg-[#ffe140] transition-colors duration-300 shadow-[0px_8px_16px_rgba(255,215,0,0.2)] active:scale-95 flex items-center justify-center gap-2"
+          type="submit"
+        >
+          {loading ? 'Processing...' : 'Sign In'}
       <div className="form-header">
         <div className="form-icon">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>

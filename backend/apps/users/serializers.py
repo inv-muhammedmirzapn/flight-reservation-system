@@ -66,14 +66,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
+        # ensure a Profile exists for the new user
+        Profile.objects.get_or_create(user=user)
         return user
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
-    email = serializers.EmailField(source="user.email", read_only=True)
-    first_name = serializers.CharField(source="user.first_name", read_only=True)
-    last_name = serializers.CharField(source="user.last_name", read_only=True)
+    email = serializers.EmailField(source="user.email", required=False)
+    first_name = serializers.CharField(source="user.first_name", required=False, allow_blank=True)
+    last_name = serializers.CharField(source="user.last_name", required=False, allow_blank=True)
 
     class Meta:
         model = Profile
@@ -93,3 +95,19 @@ class ProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+        read_only_fields = ["id", "role", "created_at", "updated_at"]
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+        user = instance.user
+
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
+

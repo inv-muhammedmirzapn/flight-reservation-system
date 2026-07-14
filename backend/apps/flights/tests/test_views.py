@@ -13,6 +13,7 @@ class FlightAPITests(APITestCase):
     """
 
     def setUp(self):
+        self.base_url = "/api/flights/"
         self.departure_time = timezone.now() + timedelta(days=1)
         self.arrival_time = self.departure_time + timedelta(hours=3)
         self.valid_payload = {
