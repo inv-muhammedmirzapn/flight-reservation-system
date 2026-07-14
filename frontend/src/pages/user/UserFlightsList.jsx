@@ -28,11 +28,11 @@ const diffHM = (dep, arr) => {
 /* ── status badge ─────────────────────────────────────────── */
 const STATUS_STYLES = {
   SCHEDULED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
-  DELAYED:   { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+  DELAYED: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
   CANCELLED: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
-  BOARDING:  { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
-  DEPARTED:  { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
-  ARRIVED:   { bg: '#f3e8ff', color: '#7c3aed', border: '#d8b4fe' },
+  BOARDING: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+  DEPARTED: { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
+  ARRIVED: { bg: '#f3e8ff', color: '#7c3aed', border: '#d8b4fe' },
 };
 
 function StatusBadge({ status }) {
@@ -349,7 +349,7 @@ export default function UserFlightsList() {
 
       <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
 
-        {/* Page Header */}
+        {/* Page Header
         <div className="glass-card" style={{
           borderRadius: 28,
           padding: '48px 56px',
@@ -376,7 +376,7 @@ export default function UserFlightsList() {
           <p style={{ fontSize: 15, color: '#5e5e5e', marginTop: 10, maxWidth: 480, margin: '10px auto 0', position: 'relative' }}>
             Search and track flights globally. Experience luxury flight details with AeroGlass.
           </p>
-        </div>
+        </div> */}
 
         {/* Layout: Sidebar + List */}
         <div className="flights-layout" style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>

@@ -1,41 +1,41 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate, useLocation } from "react-router-dom";
+import { logout } from "../../store/authSlice";
+
+// Nav links shown when authenticated (adapted for the app dashboard)
+const APP_NAV_LINKS = [
+  { label: "Flights", href: "/flights" },
+  { label: "Bookings", href: "/bookings" },
+  { label: "Rewards", href: "/rewards" },
+  { label: "Support", href: "/#support" },
+];
+
+const ADMIN_NAV_LINKS = [
+  { label: "Flights", href: "/admin/flights" },
+  { label: "Reports", href: "/admin/reports" },
+  { label: "Users", href: "/admin/users" },
+  { label: "Support", href: "/#support" },
+];
 
 export function Navbar() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [initials, setInitials] = useState("?");
+  const location = useLocation();
+  const { isAuthenticated, isAdmin, profile } = useSelector((state) => state.auth);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Check login state on mount and whenever localStorage changes
-  const checkAuth = () => {
-    const token = localStorage.getItem("access");
-    const firstName = localStorage.getItem("firstName") || "";
-    const lastName = localStorage.getItem("lastName") || "";
-    const username = localStorage.getItem("username") || "";
-    setIsLoggedIn(!!token);
-    if (firstName || lastName) {
-      setInitials(
-        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || username.charAt(0).toUpperCase()
-      );
-    } else if (username) {
-      setInitials(username.charAt(0).toUpperCase());
-    } else {
-      setInitials("U");
-    }
-  };
+  // Build initials from Redux profile
+  const firstName = profile?.first_name || "";
+  const lastName = profile?.last_name || "";
+  const username = profile?.username || "";
+  const initials =
+    firstName || lastName
+      ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+      : username.charAt(0).toUpperCase() || "U";
 
-  useEffect(() => {
-    checkAuth();
-    window.addEventListener("storage", checkAuth);
-    // Also listen for custom event triggered after login
-    window.addEventListener("authChange", checkAuth);
-    return () => {
-      window.removeEventListener("storage", checkAuth);
-      window.removeEventListener("authChange", checkAuth);
-    };
-  }, []);
+  const navLinks = isAdmin ? ADMIN_NAV_LINKS : APP_NAV_LINKS;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -49,129 +49,188 @@ export function Navbar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    localStorage.removeItem("username");
     setDropdownOpen(false);
-    window.dispatchEvent(new Event("authChange"));
-    navigate("/login");
+    dispatch(logout());
+    navigate("/");
   };
 
   return (
-    <nav className="bg-white/70 backdrop-blur-[30px] w-full sticky top-0 z-50 shadow-[0px_20px_40px_rgba(0,0,0,0.04)]">
-      <div className="flex justify-between items-center h-20 px-4 md:px-8 max-w-[1200px] mx-auto">
-        {/* Logo */}
+    <nav className="landing-nav">
+      <div className="landing-nav-inner">
+
+        {/* Logo — same as AuthNavbar / LandingPage */}
         <div
-          className="font-headline-lg text-2xl md:text-3xl text-on-surface tracking-tighter font-bold cursor-pointer"
-          onClick={() => navigate("/")}
+          className="landing-logo"
+          style={{ cursor: "pointer" }}
+          onClick={() => navigate(isAdmin ? "/admin/flights" : "/flights")}
         >
+          <div className="nav-logo-icon">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
           AeroGlass
         </div>
 
+        {/* Centre nav links */}
+        <div className="landing-nav-links">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
+              href={link.href}
+              onClick={(e) => {
+                if (!link.href.includes("#")) {
+                  e.preventDefault();
+                  navigate(link.href);
+                }
+              }}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
         {/* Right side */}
-        <div className="flex gap-4 items-center">
-          {!isLoggedIn ? (
+        <div className="landing-nav-actions">
+          {!isAuthenticated ? (
             <>
-              <button
-                onClick={() => navigate("/login")}
-                className="text-on-surface-variant font-display-bold text-display-bold hover:text-primary transition-all duration-300 hidden md:block font-semibold"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => navigate("/register")}
-                className="bg-on-surface text-primary-container px-6 py-2 rounded-xl font-display-bold text-display-bold hover:bg-surface-variant hover:text-on-surface transition-colors duration-300 active:scale-95 font-semibold"
-              >
-                Join Club
-              </button>
+              <button className="landing-nav-signin" onClick={() => navigate("/login")}>Sign In</button>
+              <button className="landing-nav-join" onClick={() => navigate("/register")}>Join Club</button>
             </>
           ) : (
-            <div className="relative" ref={dropdownRef}>
-              {/* Avatar Button */}
+            <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>
+              {/* Avatar button — same gold colour as Join Club */}
               <button
                 id="profile-avatar-btn"
                 onClick={() => setDropdownOpen((prev) => !prev)}
-                className="w-10 h-10 rounded-full bg-primary-container text-on-surface font-bold text-sm flex items-center justify-center shadow-md hover:scale-105 transition-transform duration-200 border-2 border-white/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label="Profile menu"
+                style={{
+                  width: "2.25rem",
+                  height: "2.25rem",
+                  borderRadius: "50%",
+                  background: "#ffd700",
+                  color: "#1a1c1d",
+                  fontWeight: 700,
+                  fontSize: "0.875rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid rgba(255,255,255,0.7)",
+                  boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
+                  cursor: "pointer",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.08)";
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(255,215,0,0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(255,215,0,0.35)";
+                }}
               >
                 {initials}
               </button>
 
-              {/* Dropdown */}
+              {/* Dropdown — glassmorphism card matching screenshot */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-3 w-52 bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.10)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-4 py-3 border-b border-surface-container">
-                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                      My Account
-                    </p>
+                <div style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 0.75rem)",
+                  width: "13.5rem",
+                  background: "rgba(255,255,255,0.95)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  border: "1px solid rgba(255,255,255,0.6)",
+                  borderRadius: "1rem",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                  overflow: "hidden",
+                  zIndex: 100,
+                  animation: "fadeSlideDown 0.15s ease",
+                }}>
+                  {/* MY ACCOUNT header */}
+                  <div style={{ padding: "0.625rem 1rem 0.5rem", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                    <p style={{
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      color: "#9ca3af",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      margin: 0,
+                    }}>My Account</p>
                   </div>
-                  <div className="py-1">
+
+                  <div style={{ padding: "0.375rem 0" }}>
+                    {/* View Profile */}
                     <button
                       id="nav-view-profile"
                       onClick={() => { setDropdownOpen(false); navigate("/profile"); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors duration-150 flex items-center gap-2.5"
+                      style={{
+                        width: "100%", textAlign: "left", padding: "0.625rem 1rem",
+                        fontSize: "0.9rem", fontWeight: 500, color: "#1a1c1d",
+                        background: "none", border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                     >
-                      <span className="text-base">👤</span> View Profile
+                      {/* Blue person icon */}
+                      <span style={{
+                        width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                        background: "#eff6ff", display: "flex", alignItems: "center",
+                        justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6">
+                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                        </svg>
+                      </span>
+                      View Profile
                     </button>
+
+                    {/* Sign Out */}
                     <button
                       id="nav-logout"
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-error-container/40 transition-colors duration-150 flex items-center gap-2.5"
+                      style={{
+                        width: "100%", textAlign: "left", padding: "0.625rem 1rem",
+                        fontSize: "0.9rem", fontWeight: 500, color: "#b91c1c",
+                        background: "none", border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "#fef2f2"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                     >
-                      <span className="text-base">🚪</span> Sign Out
+                      {/* Brown/red door icon */}
+                      <span style={{
+                        width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                        background: "#fff7ed", display: "flex", alignItems: "center",
+                        justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309">
+                          <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+                        </svg>
+                      </span>
+                      Sign Out
                     </button>
                   </div>
                 </div>
               )}
             </div>
-import { useSelector, useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../../store/authSlice';
-import { Plane, LogOut, ShieldAlert } from 'lucide-react';
-
-export function Navbar() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { isAuthenticated, isAdmin, profile } = useSelector((state) => state.auth);
-
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/');
-  };
-
-  return (
-    <nav className="navbar">
-      <div className="navbar-inner">
-        <Link to={isAdmin ? "/admin/flights" : "/flights"} className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Plane className="w-5 h-5 -rotate-45" />
-          AeroGlass
-        </Link>
-
-        <div className="navbar-actions">
-          {isAuthenticated ? (
-            <>
-              {isAdmin ? (
-                <span className="navbar-badge navbar-badge-admin">
-                  <ShieldAlert className="w-3.5 h-3.5" /> Admin
-                </span>
-              ) : (
-                <span className="navbar-badge">Customer</span>
-              )}
-              <span className="navbar-greeting">Hello, {profile?.username || 'User'}</span>
-              <button onClick={handleLogout} className="navbar-link">
-                <LogOut className="w-4 h-4" /> Sign Out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="navbar-link">Sign In</Link>
-              <Link to="/register" className="navbar-cta">Join Club</Link>
-            </>
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </nav>
   );
 }
