@@ -8,10 +8,9 @@ class EmailOrUsernameModelBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None:
             username = kwargs.get(User.USERNAME_FIELD)
-        try:
-            # Check for either username or email match
-            user = User.objects.get(Q(username=username) | Q(email__iexact=username))
-        except User.DoesNotExist:
+        # Check for either username or email match
+        user = User.objects.filter(Q(username=username) | Q(email__iexact=username)).first()
+        if not user:
             return None
 
         if user.check_password(password) and self.user_can_authenticate(user):
