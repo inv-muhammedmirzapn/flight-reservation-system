@@ -1,68 +1,407 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { profileAPI } from "../services/api";
-import { 
-  User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock, 
-  CheckCircle2, AlertCircle, Edit2, ShieldAlert
+import {
+  User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock,
+  CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X
 } from "lucide-react";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];
 const PROFILE_FIELDS = ["phone_number", "gender", "date_of_birth", "country", "state", "city"];
 const GENDER_OPTIONS = ["", "MALE", "FEMALE", "OTHER"];
 
-const fieldLabel = (key) => key.replace(/_/g, " ");
+const FIELD_LABELS = {
+  username: "Username", email: "Email Address", first_name: "First Name",
+  last_name: "Last Name", phone_number: "Phone Number", gender: "Gender",
+  date_of_birth: "Date of Birth", country: "Country", state: "State", city: "City",
+};
 
 const FIELD_ICONS = {
   username: User, email: Mail, first_name: User, last_name: User,
   phone_number: Phone, gender: User, date_of_birth: Calendar,
-  country: Flag, state: Map, city: MapPin
+  country: Flag, state: Map, city: MapPin,
 };
 
-function ViewField({ label, value, isEmpty, icon: Icon }) {
+/* ── Inline style objects ─────────────────────────── */
+const S = {
+  page: {
+    minHeight: "100vh",
+    paddingTop: "100px",
+    paddingBottom: "3rem",
+    paddingLeft: "1rem",
+    paddingRight: "1rem",
+    fontFamily: "Inter, sans-serif",
+  },
+  container: {
+    width: "100%",
+    maxWidth: "860px",
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.5rem",
+  },
+  // ── Header card ──
+  headerCard: {
+    background: "rgba(255,255,255,0.92)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    border: "1px solid rgba(255,255,255,0.7)",
+    borderRadius: "1.5rem",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.07)",
+    padding: "2rem 2.5rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "2rem",
+    flexWrap: "wrap",
+  },
+  avatar: {
+    width: "80px",
+    height: "80px",
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #ffd700 0%, #ffb300 100%)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "2rem",
+    fontWeight: "800",
+    color: "#1a1c1d",
+    flexShrink: 0,
+    boxShadow: "0 4px 16px rgba(255,215,0,0.4)",
+    letterSpacing: "-0.02em",
+  },
+  headerInfo: {
+    flex: 1,
+    minWidth: "160px",
+  },
+  headerName: {
+    fontSize: "1.625rem",
+    fontWeight: "800",
+    color: "#1a1c1d",
+    letterSpacing: "-0.03em",
+    lineHeight: 1.2,
+    margin: 0,
+  },
+  headerUsername: {
+    fontSize: "0.9rem",
+    color: "#8a7f72",
+    fontWeight: "500",
+    marginTop: "0.25rem",
+  },
+  progressWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+    background: "rgba(0,0,0,0.03)",
+    border: "1px solid rgba(0,0,0,0.06)",
+    borderRadius: "1rem",
+    padding: "1rem 1.25rem",
+    marginLeft: "auto",
+  },
+  progressLabel: {
+    fontSize: "0.7rem",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    color: "#8a7f72",
+  },
+  progressText: {
+    fontSize: "0.8rem",
+    color: "#5a5446",
+    fontWeight: "500",
+    marginTop: "0.2rem",
+    maxWidth: "140px",
+    lineHeight: 1.4,
+  },
+  // ── Alert banner ──
+  alertBase: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.875rem 1.25rem",
+    borderRadius: "0.875rem",
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    border: "1px solid",
+  },
+  // ── Section card ──
+  card: {
+    background: "rgba(255,255,255,0.92)",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+    border: "1px solid rgba(255,255,255,0.7)",
+    borderRadius: "1.5rem",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.07)",
+    overflow: "hidden",
+  },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "1.75rem 2rem 0",
+    marginBottom: "1.5rem",
+    flexWrap: "wrap",
+    gap: "1rem",
+  },
+  cardTitle: {
+    fontSize: "1.125rem",
+    fontWeight: "700",
+    color: "#1a1c1d",
+    letterSpacing: "-0.02em",
+    margin: 0,
+  },
+  cardSubtitle: {
+    fontSize: "0.825rem",
+    color: "#8a7f72",
+    fontWeight: "500",
+    marginTop: "0.2rem",
+  },
+  editBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.6rem 1.25rem",
+    background: "#ffd700",
+    color: "#1a1c1d",
+    fontWeight: "700",
+    fontSize: "0.875rem",
+    border: "none",
+    borderRadius: "0.75rem",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
+    transition: "all 0.2s",
+    fontFamily: "Inter, sans-serif",
+  },
+  // ── Section group ──
+  sectionGroup: {
+    margin: "0 2rem 1.5rem",
+  },
+  sectionGroupLast: {
+    margin: "0 2rem 2rem",
+  },
+  sectionLabel: {
+    fontSize: "0.65rem",
+    fontWeight: "800",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "#b0a896",
+    marginBottom: "0.875rem",
+    paddingBottom: "0.5rem",
+    borderBottom: "1px solid rgba(0,0,0,0.06)",
+  },
+  fieldGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+    gap: "0.25rem",
+  },
+  fieldGrid2col: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "0.25rem",
+  },
+  // ── View field ──
+  viewField: {
+    padding: "0.875rem 0.75rem",
+    borderRadius: "0.75rem",
+    transition: "background 0.15s",
+    cursor: "default",
+  },
+  viewFieldIconRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    marginBottom: "0.25rem",
+  },
+  viewFieldLabel: {
+    fontSize: "0.68rem",
+    fontWeight: "700",
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "#b0a896",
+  },
+  viewFieldValue: {
+    paddingLeft: "1.5rem",
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    color: "#1a1c1d",
+  },
+  viewFieldEmpty: {
+    paddingLeft: "1.5rem",
+    fontSize: "0.875rem",
+    color: "#c9b98a",
+    fontStyle: "italic",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.4rem",
+  },
+  // ── Form input ──
+  formFieldWrap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.4rem",
+  },
+  formLabel: {
+    fontSize: "0.68rem",
+    fontWeight: "700",
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "#8a7f72",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  lockedBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.25rem",
+    fontSize: "0.62rem",
+    fontWeight: "600",
+    color: "#b0a896",
+    background: "rgba(0,0,0,0.04)",
+    padding: "0.15rem 0.5rem",
+    borderRadius: "99px",
+  },
+  inputWrap: {
+    position: "relative",
+  },
+  inputIcon: {
+    position: "absolute",
+    left: "0.875rem",
+    top: "50%",
+    transform: "translateY(-50%)",
+    pointerEvents: "none",
+    color: "#b0a896",
+  },
+  inputBase: {
+    width: "100%",
+    paddingLeft: "2.5rem",
+    paddingRight: "1rem",
+    paddingTop: "0.6rem",
+    paddingBottom: "0.6rem",
+    fontSize: "0.9rem",
+    fontWeight: "500",
+    fontFamily: "Inter, sans-serif",
+    borderRadius: "0.75rem",
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+  },
+  // ── Divider ──
+  divider: {
+    height: "1px",
+    background: "rgba(0,0,0,0.06)",
+    margin: "0 2rem",
+  },
+  // ── Form actions ──
+  formActions: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "0.75rem",
+    padding: "1.5rem 2rem",
+    borderTop: "1px solid rgba(0,0,0,0.06)",
+    flexWrap: "wrap",
+  },
+  cancelBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.6rem 1.25rem",
+    background: "rgba(0,0,0,0.05)",
+    color: "#5a5446",
+    fontWeight: "600",
+    fontSize: "0.875rem",
+    border: "none",
+    borderRadius: "0.75rem",
+    cursor: "pointer",
+    fontFamily: "Inter, sans-serif",
+    transition: "background 0.2s",
+  },
+  saveBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.6rem 1.5rem",
+    background: "#ffd700",
+    color: "#1a1c1d",
+    fontWeight: "700",
+    fontSize: "0.875rem",
+    border: "none",
+    borderRadius: "0.75rem",
+    cursor: "pointer",
+    fontFamily: "Inter, sans-serif",
+    boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
+    transition: "all 0.2s",
+  },
+};
+
+/* ── Sub-components ────────────────────────────────── */
+function ViewField({ fieldKey, value }) {
+  const Icon = FIELD_ICONS[fieldKey];
+  const label = FIELD_LABELS[fieldKey];
+  const isEmpty = !value || value === "";
+  const displayVal =
+    fieldKey === "gender" && value
+      ? value.charAt(0) + value.slice(1).toLowerCase()
+      : value;
+
   return (
-    <div className="flex flex-col p-4 rounded-xl hover:bg-gray-50/50 transition-colors">
-      <div className="flex items-center gap-2 mb-1.5">
-        <Icon className="w-4 h-4 text-gray-400" />
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-          {label}
-        </span>
+    <div
+      style={S.viewField}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.025)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <div style={S.viewFieldIconRow}>
+        <Icon size={13} color="#c0b49e" />
+        <span style={S.viewFieldLabel}>{label}</span>
       </div>
-      <div className="pl-6">
-        {isEmpty ? (
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span className="text-sm font-medium text-gray-400 italic">Not set</span>
-          </div>
-        ) : (
-          <span className="text-sm font-semibold text-gray-900">{value}</span>
-        )}
-      </div>
+      {isEmpty ? (
+        <div style={S.viewFieldEmpty}>
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f0c040", display: "inline-block" }} />
+          Not set
+        </div>
+      ) : (
+        <div style={S.viewFieldValue}>{displayVal}</div>
+      )}
     </div>
   );
 }
 
-function FormInput({ id, label, value, onChange, type = "text", readOnly = false, options = null, icon: Icon }) {
-  const base = "w-full rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium border transition-all duration-200 outline-none";
-  const locked = "bg-gray-50/80 text-gray-500 border-gray-100 cursor-not-allowed";
-  const editable = "bg-white text-gray-900 border-gray-200 focus:border-[#ffcc00] focus:ring-4 focus:ring-[#ffcc00]/20 hover:border-gray-300";
+function FormField({ id, value, onChange, type = "text", readOnly = false, options = null }) {
+  const Icon = FIELD_ICONS[id];
+  const label = FIELD_LABELS[id];
+
+  const lockedStyle = {
+    ...S.inputBase,
+    background: "rgba(0,0,0,0.03)",
+    border: "1.5px solid rgba(0,0,0,0.07)",
+    color: "#a09888",
+    cursor: "not-allowed",
+  };
+  const editableStyle = {
+    ...S.inputBase,
+    background: "rgba(255,255,255,0.8)",
+    border: "1.5px solid rgba(0,0,0,0.12)",
+    color: "#1a1c1d",
+  };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 flex items-center justify-between">
+    <div style={S.formFieldWrap}>
+      <label htmlFor={id} style={S.formLabel}>
         <span>{label}</span>
         {readOnly && (
-          <span className="flex items-center gap-1 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">
-            <Lock className="w-3 h-3" /> Locked
+          <span style={S.lockedBadge}>
+            <Lock size={9} /> Locked
           </span>
         )}
       </label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-          <Icon className="w-4 h-4" />
-        </div>
+      <div style={S.inputWrap}>
+        <span style={S.inputIcon}>
+          <Icon size={15} />
+        </span>
         {options ? (
-          <select id={id} name={id} value={value} onChange={onChange} disabled={readOnly}
-            className={`${base} ${readOnly ? locked : editable} appearance-none`}>
+          <select
+            id={id} name={id} value={value} onChange={onChange} disabled={readOnly}
+            style={readOnly ? lockedStyle : editableStyle}
+          >
             {options.map((opt) => (
               <option key={opt} value={opt}>
                 {opt === "" ? "Select gender" : opt.charAt(0) + opt.slice(1).toLowerCase()}
@@ -70,14 +409,50 @@ function FormInput({ id, label, value, onChange, type = "text", readOnly = false
             ))}
           </select>
         ) : (
-          <input id={id} name={id} type={type} value={value} onChange={onChange} readOnly={readOnly}
-            className={`${base} ${readOnly ? locked : editable}`} />
+          <input
+            id={id} name={id} type={type} value={value} onChange={onChange} readOnly={readOnly}
+            style={readOnly ? lockedStyle : editableStyle}
+            onFocus={(e) => {
+              if (!readOnly) {
+                e.target.style.borderColor = "#ffd700";
+                e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)";
+              }
+            }}
+            onBlur={(e) => {
+              if (!readOnly) {
+                e.target.style.borderColor = "rgba(0,0,0,0.12)";
+                e.target.style.boxShadow = "none";
+              }
+            }}
+          />
         )}
       </div>
     </div>
   );
 }
 
+function CircleProgress({ pct }) {
+  const r = 16;
+  const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44" style={{ flexShrink: 0 }}>
+      <circle cx="22" cy="22" r={r} fill="none" stroke="#e8e0d0" strokeWidth="4" />
+      <circle
+        cx="22" cy="22" r={r} fill="none" stroke="#ffd700" strokeWidth="4"
+        strokeDasharray={`${dash} ${circ - dash}`}
+        strokeDashoffset={circ / 4}
+        strokeLinecap="round"
+        style={{ transition: "stroke-dasharray 0.5s ease" }}
+      />
+      <text x="22" y="26" textAnchor="middle" fontSize="9" fontWeight="800" fill="#1a1c1d" fontFamily="Inter,sans-serif">
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+/* ── Main Page ─────────────────────────────────────── */
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -132,10 +507,8 @@ export default function ProfilePage() {
       localStorage.setItem("firstName", updated.first_name || "");
       localStorage.setItem("lastName", updated.last_name || "");
       window.dispatchEvent(new Event("authChange"));
-      setSaveMsg({ type: "success", text: "Profile updated successfully" });
+      setSaveMsg({ type: "success", text: "Profile updated successfully!" });
       setEditMode(false);
-      
-      // Clear success message after 3 seconds
       setTimeout(() => setSaveMsg({ type: "", text: "" }), 3000);
     } catch (err) {
       setSaveMsg({ type: "error", text: "Failed to save: " + err.message });
@@ -148,167 +521,183 @@ export default function ProfilePage() {
   const completeness = profile
     ? Math.round(((allFields.length - emptyFields.length) / allFields.length) * 100) : 0;
 
+  /* ── Loading ── */
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-10 h-10 border-4 border-gray-100 border-t-[#ffcc00] rounded-full animate-spin" />
-        <p className="text-sm font-medium text-gray-500">Loading profile data…</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", gap: "1rem" }}>
+        <div style={{ width: "40px", height: "40px", border: "4px solid #e8e0d0", borderTopColor: "#ffd700", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ fontSize: "0.9rem", color: "#8a7f72", fontWeight: "500" }}>Loading profile…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  /* ── Error ── */
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <ShieldAlert className="w-12 h-12 text-red-400" />
-        <p className="text-sm font-medium text-red-500">{error}</p>
-        <button onClick={fetchProfile} className="px-6 py-2 bg-[#ffcc00] hover:bg-[#ffdb4d] text-black font-semibold rounded-xl transition-colors">
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", gap: "1rem" }}>
+        <ShieldAlert size={48} color="#e06060" />
+        <p style={{ fontSize: "0.9rem", color: "#b05050", fontWeight: "500" }}>{error}</p>
+        <button onClick={fetchProfile} style={{ ...S.editBtn, marginTop: "0.5rem" }}>
           Retry Connection
         </button>
       </div>
     );
   }
 
-  return (
-    <div style={{ paddingTop: "140px" }} className="min-h-screen pb-16 px-4 font-sans bg-transparent flex flex-col items-center w-full">
-      <div className="w-full max-w-[860px] flex flex-col gap-6">
+  const fullName = profile?.first_name && profile?.last_name
+    ? `${profile.first_name} ${profile.last_name}` : profile?.username;
+  const avatarChar = (profile?.first_name?.charAt(0) || profile?.username?.charAt(0) || "U").toUpperCase();
 
-        {/* ── Header Block ── */}
-        <div className="bg-white rounded-[2rem] p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
-          <div className="w-24 h-24 rounded-full bg-[#ffcc00] flex items-center justify-center text-[36px] font-bold text-black shrink-0">
-            {(profile?.first_name?.charAt(0) || profile?.username?.charAt(0) || "U").toUpperCase()}
+  return (
+    <div style={S.page}>
+      <div style={S.container}>
+
+        {/* ── Header Card ── */}
+        <div style={S.headerCard}>
+          <div style={S.avatar}>{avatarChar}</div>
+
+          <div style={S.headerInfo}>
+            <h1 style={S.headerName}>{fullName}</h1>
+            <p style={S.headerUsername}>@{profile?.username}</p>
           </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {profile?.first_name && profile?.last_name
-                ? `${profile.first_name} ${profile.last_name}` : profile?.username}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1 font-medium">@{profile?.username}</p>
-          </div>
-          
-          <div className="flex flex-col items-center bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="relative w-14 h-14">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.9" fill="none" className="stroke-gray-200" strokeWidth="4" />
-                  <circle cx="18" cy="18" r="15.9" fill="none" className="stroke-[#ffcc00]" strokeWidth="4"
-                    strokeDasharray={`${completeness} ${100 - completeness}`}
-                    strokeDashoffset="0" strokeLinecap="round" />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-900">
-                  {completeness}%
-                </span>
-              </div>
-              <div className="flex flex-col hidden sm:flex max-w-[120px]">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Profile Status</span>
-                <span className="text-[11px] font-medium text-gray-600 leading-tight mt-0.5">
-                  {completeness === 100 ? "All set! Your profile is complete." : "Complete your profile for full access"}
-                </span>
+
+          <div style={S.progressWrap}>
+            <CircleProgress pct={completeness} />
+            <div>
+              <div style={S.progressLabel}>Profile Status</div>
+              <div style={S.progressText}>
+                {completeness === 100
+                  ? "✓ All fields complete"
+                  : `${emptyFields.length} field${emptyFields.length !== 1 ? "s" : ""} remaining`}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Save Message ── */}
+        {/* ── Alert Banner ── */}
         {saveMsg.text && (
-          <div className={`w-full px-5 py-3.5 rounded-[1rem] text-sm font-medium border flex items-center gap-3 shadow-sm ${
-            saveMsg.type === "error" ? "bg-red-50 text-red-600 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
-          }`}>
-            {saveMsg.type === "error" ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          <div style={{
+            ...S.alertBase,
+            background: saveMsg.type === "error" ? "#fff2f2" : "#f0fdf4",
+            color: saveMsg.type === "error" ? "#b91c1c" : "#15803d",
+            borderColor: saveMsg.type === "error" ? "#fecaca" : "#bbf7d0",
+          }}>
+            {saveMsg.type === "error"
+              ? <AlertCircle size={16} />
+              : <CheckCircle2 size={16} />}
             {saveMsg.text}
           </div>
         )}
 
-        {/* ── View Mode ── */}
+        {/* ════════════ VIEW MODE ════════════ */}
         {!editMode && (
-          <div className="bg-white rounded-[2rem] p-6 sm:p-10 flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div style={S.card}>
+            <div style={S.cardHeader}>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Profile Details</h2>
-                {emptyFields.length > 0 ? (
-                  <p className="text-sm font-medium text-amber-600 mt-1 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    {emptyFields.length} of {allFields.length} fields missing
-                  </p>
-                ) : (
-                  <p className="text-sm font-medium text-emerald-600 mt-1 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" /> All fields completed
-                  </p>
-                )}
+                <h2 style={S.cardTitle}>Profile Details</h2>
+                <div style={S.cardSubtitle}>
+                  {emptyFields.length > 0
+                    ? `${emptyFields.length} of ${allFields.length} fields are not yet filled`
+                    : "All fields are complete"}
+                </div>
               </div>
-              <button onClick={() => setEditMode(true)}
-                className="px-6 py-2.5 rounded-[1rem] bg-[#ffcc00] text-black text-sm font-bold hover:bg-[#ffdb4d] transition-colors flex items-center gap-2">
-                <Edit2 className="w-4 h-4" /> Update Profile
+              <button
+                onClick={() => setEditMode(true)}
+                style={S.editBtn}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
+              >
+                <Edit2 size={14} /> Update Profile
               </button>
             </div>
 
-            <div className="bg-gray-50/50 p-6 rounded-[1.5rem] border border-gray-100 mb-8">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4 px-2">Account Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {/* Account Information */}
+            <div style={S.sectionGroup}>
+              <div style={S.sectionLabel}>Account Information</div>
+              <div style={S.fieldGrid2col}>
                 {REGISTRATION_FIELDS.map((key) => (
-                  <ViewField key={key} label={fieldLabel(key)} value={profile[key]} isEmpty={!profile[key]} icon={FIELD_ICONS[key]} />
+                  <ViewField key={key} fieldKey={key} value={profile[key]} />
                 ))}
               </div>
             </div>
 
-            <div className="p-6">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4 px-2">Personal Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div style={S.divider} />
+
+            {/* Personal Details */}
+            <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }}>
+              <div style={S.sectionLabel}>Personal Details</div>
+              <div style={S.fieldGrid}>
                 {PROFILE_FIELDS.map((key) => (
-                  <ViewField key={key} label={fieldLabel(key)} 
-                    value={key === "gender" && profile[key] ? profile[key].charAt(0) + profile[key].slice(1).toLowerCase() : profile[key]} 
-                    isEmpty={!profile[key]} icon={FIELD_ICONS[key]} />
+                  <ViewField key={key} fieldKey={key} value={profile[key]} />
                 ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Edit Mode ── */}
+        {/* ════════════ EDIT MODE ════════════ */}
         {editMode && (
-          <form onSubmit={handleSave} className="bg-white rounded-[2rem] p-6 sm:p-10 flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <form onSubmit={handleSave} style={S.card}>
+            <div style={S.cardHeader}>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Edit Profile</h2>
-                <p className="text-sm font-medium text-gray-500 mt-1">Update your personal information</p>
+                <h2 style={S.cardTitle}>Edit Profile</h2>
+                <div style={S.cardSubtitle}>Update your personal information below</div>
               </div>
             </div>
 
-            <div className="bg-gray-50/50 p-6 rounded-[1.5rem] border border-gray-100 mb-8">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-5 px-2">Account Information</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                <FormInput id="username" label="Username" value={formData.username} onChange={handleChange} readOnly icon={FIELD_ICONS.username} />
-                <FormInput id="email" label="Email" type="email" value={formData.email} onChange={handleChange} readOnly icon={FIELD_ICONS.email} />
-                <FormInput id="first_name" label="First Name" value={formData.first_name} onChange={handleChange} readOnly icon={FIELD_ICONS.first_name} />
-                <FormInput id="last_name" label="Last Name" value={formData.last_name} onChange={handleChange} readOnly icon={FIELD_ICONS.last_name} />
+            {/* Account Information — locked */}
+            <div style={S.sectionGroup}>
+              <div style={S.sectionLabel}>Account Information</div>
+              <div style={S.fieldGrid2col}>
+                <FormField id="username" value={formData.username} onChange={handleChange} readOnly />
+                <FormField id="email" type="email" value={formData.email} onChange={handleChange} readOnly />
+                <FormField id="first_name" value={formData.first_name} onChange={handleChange} readOnly />
+                <FormField id="last_name" value={formData.last_name} onChange={handleChange} readOnly />
               </div>
             </div>
 
-            <div className="p-6">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-5 px-2">Personal Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                <FormInput id="phone_number" label="Phone Number" value={formData.phone_number} onChange={handleChange} icon={FIELD_ICONS.phone_number} />
-                <FormInput id="gender" label="Gender" value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} icon={FIELD_ICONS.gender} />
-                <FormInput id="date_of_birth" label="Date of Birth" type="date" value={formData.date_of_birth} onChange={handleChange} icon={FIELD_ICONS.date_of_birth} />
-                <FormInput id="country" label="Country" value={formData.country} onChange={handleChange} icon={FIELD_ICONS.country} />
-                <FormInput id="state" label="State" value={formData.state} onChange={handleChange} icon={FIELD_ICONS.state} />
-                <FormInput id="city" label="City" value={formData.city} onChange={handleChange} icon={FIELD_ICONS.city} />
+            <div style={S.divider} />
+
+            {/* Personal Details — editable */}
+            <div style={{ ...S.sectionGroup, marginTop: "1.5rem" }}>
+              <div style={S.sectionLabel}>Personal Details</div>
+              <div style={S.fieldGrid}>
+                <FormField id="phone_number" value={formData.phone_number} onChange={handleChange} />
+                <FormField id="gender" value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} />
+                <FormField id="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} />
+                <FormField id="country" value={formData.country} onChange={handleChange} />
+                <FormField id="state" value={formData.state} onChange={handleChange} />
+                <FormField id="city" value={formData.city} onChange={handleChange} />
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
-              <button type="button" disabled={saving} onClick={() => { setEditMode(false); setSaveMsg({ type: "", text: "" }); }}
-                className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
-                Cancel
+            {/* Actions */}
+            <div style={S.formActions}>
+              <button
+                type="button" disabled={saving}
+                onClick={() => { setEditMode(false); setSaveMsg({ type: "", text: "" }); }}
+                style={S.cancelBtn}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+              >
+                <X size={14} /> Cancel
               </button>
-              <button type="submit" disabled={saving}
-                className="w-full sm:w-auto px-8 py-2.5 bg-[#ffcc00] hover:bg-[#ffdb4d] text-black text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
+              <button
+                type="submit" disabled={saving}
+                style={{ ...S.saveBtn, opacity: saving ? 0.7 : 1 }}
+                onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = "#ffe333"; }}
+                onMouseLeave={(e) => { if (!saving) e.currentTarget.style.background = "#ffd700"; }}
+              >
                 {saving ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    <span style={{ width: "14px", height: "14px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
                     Saving…
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                   </>
-                ) : "Save Changes"}
+                ) : (
+                  <><Save size={14} /> Save Changes</>
+                )}
               </button>
             </div>
           </form>
