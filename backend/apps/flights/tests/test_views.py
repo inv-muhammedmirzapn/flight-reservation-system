@@ -8,7 +8,8 @@ from apps.flights.models import Flight
 
 class FlightAPITests(APITestCase):
     """
-    Test suite for Create Flight (POST) and Update Flight (PUT) APIs.
+    Test suite for Create Flight (POST), Update Flight (PUT/PATCH), 
+    List Flights (GET), and Retrieve Flight (GET) APIs.
     """
 
     def setUp(self):
@@ -31,7 +32,7 @@ class FlightAPITests(APITestCase):
 
     def test_create_flight_success(self):
         """Test POST /api/flights/ with valid data creates a new flight."""
-        response = self.client.post(self.base_url, self.valid_payload, format="json")
+        response = self.client.post("/api/flights/", self.valid_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Flight.objects.count(), 1)
         flight = Flight.objects.first()
@@ -56,7 +57,7 @@ class FlightAPITests(APITestCase):
             available_seats=200,
             status="SCHEDULED"
         )
-        response = self.client.post(self.base_url, self.valid_payload, format="json")
+        response = self.client.post("/api/flights/", self.valid_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("flight_number", response.data)
 
@@ -65,7 +66,7 @@ class FlightAPITests(APITestCase):
         payload = self.valid_payload.copy()
         payload["flight_number"] = "FL998"
         payload["arrival_time"] = (self.departure_time - timedelta(hours=2)).isoformat()
-        response = self.client.post(self.base_url, payload, format="json")
+        response = self.client.post("/api/flights/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("non_field_errors", response.data)
 
@@ -74,7 +75,7 @@ class FlightAPITests(APITestCase):
         payload = self.valid_payload.copy()
         payload["flight_number"] = "FL998"
         payload["destination_airport"] = "MIA"
-        response = self.client.post(self.base_url, payload, format="json")
+        response = self.client.post("/api/flights/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("non_field_errors", response.data)
 
@@ -83,7 +84,7 @@ class FlightAPITests(APITestCase):
         payload = self.valid_payload.copy()
         payload["flight_number"] = "FL998"
         payload["available_seats"] = 250  # total is 200
-        response = self.client.post(self.base_url, payload, format="json")
+        response = self.client.post("/api/flights/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("non_field_errors", response.data)
 
@@ -92,12 +93,12 @@ class FlightAPITests(APITestCase):
         payload = self.valid_payload.copy()
         payload["flight_number"] = "FL998"
         payload["base_fare"] = "-50.00"
-        response = self.client.post(self.base_url, payload, format="json")
+        response = self.client.post("/api/flights/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("base_fare", response.data)
 
     def test_update_flight_success(self):
-        """Test PUT /api/flights/{id}/ with valid data updates the flight."""
+        """Test PUT /api/flights/{id}/update/ with valid data updates the flight."""
         flight = Flight.objects.create(
             flight_number="FL999",
             airline="SpaceX Airline",
@@ -124,7 +125,7 @@ class FlightAPITests(APITestCase):
             "available_seats": 210,
             "status": "DELAYED"
         }
-        url = f"{self.base_url}{flight.id}/"
+        url = f"/api/flights/{flight.id}/update/"
         response = self.client.put(url, update_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         flight.refresh_from_db()
@@ -136,7 +137,7 @@ class FlightAPITests(APITestCase):
         self.assertEqual(flight.status, "DELAYED")
 
     def test_update_flight_invalid_payload_fails(self):
-        """Test PUT /api/flights/{id}/ with invalid data fails."""
+        """Test PUT /api/flights/{id}/update/ with invalid data fails."""
         flight = Flight.objects.create(
             flight_number="FL999",
             airline="SpaceX Airline",
@@ -163,20 +164,20 @@ class FlightAPITests(APITestCase):
             "available_seats": 210,  # invalid (exceeds total_seats)
             "status": "DELAYED"
         }
-        url = f"{self.base_url}{flight.id}/"
+        url = f"/api/flights/{flight.id}/update/"
         response = self.client.put(url, update_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("non_field_errors", response.data)
 
     def test_update_non_existent_flight_fails(self):
-        """Test PUT /api/flights/{id}/ for non-existent UUID returns 404."""
+        """Test PUT /api/flights/{id}/update/ for non-existent UUID returns 404."""
         non_existent_uuid = uuid.uuid4()
-        url = f"{self.base_url}{non_existent_uuid}/"
+        url = f"/api/flights/{non_existent_uuid}/update/"
         response = self.client.put(url, self.valid_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_patch_flight_success(self):
-        """Test PATCH /api/flights/{id}/ with valid partial data."""
+        """Test PATCH /api/flights/{id}/update/ with valid partial data."""
         flight = Flight.objects.create(
             flight_number="FL888",
             airline="Delta",
@@ -190,7 +191,7 @@ class FlightAPITests(APITestCase):
             available_seats=100,
             status="SCHEDULED"
         )
-        url = f"{self.base_url}{flight.id}/"
+        url = f"/api/flights/{flight.id}/update/"
         
         # 1. Update only status
         patch_payload_1 = {"status": "DELAYED"}
@@ -208,7 +209,7 @@ class FlightAPITests(APITestCase):
         self.assertEqual(flight.base_fare, Decimal("180.00"))
 
     def test_patch_flight_invalid_available_seats_fails(self):
-        """Test PATCH /api/flights/{id}/ fails when available_seats exceeds total_seats."""
+        """Test PATCH /api/flights/{id}/update/ fails when available_seats exceeds total_seats."""
         flight = Flight.objects.create(
             flight_number="FL888",
             airline="Delta",
@@ -222,14 +223,14 @@ class FlightAPITests(APITestCase):
             available_seats=100,
             status="SCHEDULED"
         )
-        url = f"{self.base_url}{flight.id}/"
+        url = f"/api/flights/{flight.id}/update/"
         patch_payload = {"available_seats": 120}  # total_seats is 100
         response = self.client.patch(url, patch_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("non_field_errors", response.data)
 
     def test_patch_flight_negative_fare_fails(self):
-        """Test PATCH /api/flights/{id}/ fails when base_fare is negative."""
+        """Test PATCH /api/flights/{id}/update/ fails when base_fare is negative."""
         flight = Flight.objects.create(
             flight_number="FL888",
             airline="Delta",
@@ -243,15 +244,78 @@ class FlightAPITests(APITestCase):
             available_seats=100,
             status="SCHEDULED"
         )
-        url = f"{self.base_url}{flight.id}/"
+        url = f"/api/flights/{flight.id}/update/"
         patch_payload = {"base_fare": "-10.00"}
         response = self.client.patch(url, patch_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("base_fare", response.data)
 
     def test_patch_non_existent_flight_fails(self):
-        """Test PATCH /api/flights/{id}/ for non-existent UUID returns 404."""
+        """Test PATCH /api/flights/{id}/update/ for non-existent UUID returns 404."""
         non_existent_uuid = uuid.uuid4()
-        url = f"{self.base_url}{non_existent_uuid}/"
+        url = f"/api/flights/{non_existent_uuid}/update/"
         response = self.client.patch(url, {"status": "DELAYED"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_flights_success(self):
+        """Test GET /api/flights/ returns all flights."""
+        Flight.objects.create(
+            flight_number="FL111",
+            airline="Airline 1",
+            aircraft="Aircraft 1",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        Flight.objects.create(
+            flight_number="FL222",
+            airline="Airline 2",
+            aircraft="Aircraft 2",
+            source_airport="ORD",
+            destination_airport="SFO",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("200.00"),
+            total_seats=150,
+            available_seats=120,
+            status="SCHEDULED"
+        )
+        response = self.client.get("/api/flights/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        flight_numbers = [item["flight_number"] for item in response.data]
+        self.assertIn("FL111", flight_numbers)
+        self.assertIn("FL222", flight_numbers)
+
+    def test_get_flight_detail_success(self):
+        """Test GET /api/flights/{id}/ returns correct flight details."""
+        flight = Flight.objects.create(
+            flight_number="FL111",
+            airline="Airline 1",
+            aircraft="Aircraft 1",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        url = f"/api/flights/{flight.id}/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["flight_number"], "FL111")
+        self.assertEqual(response.data["airline"], "Airline 1")
+
+    def test_get_flight_detail_not_found(self):
+        """Test GET /api/flights/{id}/ for non-existent flight returns 404."""
+        non_existent_uuid = uuid.uuid4()
+        url = f"/api/flights/{non_existent_uuid}/"
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import FlightCreateView, FlightUpdateView
+from .views import FlightListCreateView, FlightDetailView, FlightUpdateView
 
 app_name = "apps/flights"
 
 urlpatterns = [
-    path("", FlightCreateView.as_view(), name="flight-create"),
-    path("<uuid:id>/", FlightUpdateView.as_view(), name="flight-update"),
+    path("", FlightListCreateView.as_view(), name="flight-list-create"),
+    path("<uuid:id>/", FlightDetailView.as_view(), name="flight-detail"),
+    path("<uuid:id>/update/", FlightUpdateView.as_view(), name="flight-update"),
 ]

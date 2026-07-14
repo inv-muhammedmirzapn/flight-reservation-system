@@ -6,8 +6,4 @@ class UsersConfig(AppConfig):
     name = 'apps.users'
 
     def ready(self):
-        # register signal handlers (auto-create Profile on User creation)
-        try:
-            from . import signals  # noqa: F401
-        except Exception:
-            pass
+        import apps.users.signals

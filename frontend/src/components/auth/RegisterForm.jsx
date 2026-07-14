@@ -1,51 +1,101 @@
 import { useState } from 'react';
 import { authAPI } from '../../services/api';
 import { Input } from '../ui/Input';
+import { PasswordInput } from '../ui/PasswordInput';
+import { PasswordStrength, getPasswordRules } from '../ui/PasswordStrength';
 
 export function RegisterForm({ onSuccess }) {
-  const [formData, setFormData] = useState({ username: '', password: '', email: '', first_name: '', last_name: '' });
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    confirmPassword: '',
+    email: '',
+    first_name: '',
+    last_name: ''
+  });
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setMessage({ type: '', text: '' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setMessage({ type: '', text: '' });
+
+    // Required-fields check
+    if (!formData.username.trim() || !formData.password.trim() || !formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()) {
+      setMessage({ type: 'error', text: 'All fields are required.' });
+      return;
+    }
+
+    // Password complexity rules
+    const rules = getPasswordRules(formData.password);
+    const failed = rules.filter(r => !r.pass);
+    if (failed.length > 0) {
+      setMessage({ type: 'error', text: `Password: ${failed[0].label.toLowerCase()}` });
+      return;
+    }
+
+    // Confirm password match
+    if (formData.password !== formData.confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+
+    setLoading(true);
     try {
-      await authAPI.register(formData);
+      const { confirmPassword, ...registerPayload } = formData;
+      await authAPI.register(registerPayload);
       onSuccess();
     } catch (err) {
-      setMessage({ type: 'error', text: 'Registration failed: ' + err.message });
+      let errText = err.message;
+      try {
+        const errObj = JSON.parse(err.message);
+        if (errObj.detail) errText = errObj.detail;
+        else errText = Object.keys(errObj)
+          .map(k => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${Array.isArray(errObj[k]) ? errObj[k][0] : errObj[k]}`)
+          .join(' · ');
+      } catch (_) {}
+      setMessage({ type: 'error', text: errText });
       setLoading(false);
     }
   };
 
   return (
     <>
-      <div className="text-center flex flex-col gap-2">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">Create Account</h1>
-        <p className="font-body-md text-body-md text-on-surface-variant">Join AeroGlass for an elevated travel experience.</p>
+      <div className="form-header">
+        <h1 className="form-title">Create account</h1>
+        <p className="form-subtitle">Fill in your details to get started</p>
       </div>
 
       {message.text && (
-        <div className={`p-4 rounded-xl text-sm font-body-md border ${message.type === 'error' ? 'bg-error-container text-on-error-container border-[#ffb4ab]' : 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'}`}>
+        <div className={`alert ${message.type === 'error' ? 'alert-error' : 'alert-success'}`} style={{ marginBottom: '1.25rem' }}>
+          <span>{message.type === 'error' ? '⚠️' : '✅'}</span>
           {message.text}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex gap-4">
-          <div className="w-1/2"><Input id="first_name" label="First Name" required value={formData.first_name} onChange={handleChange} /></div>
-          <div className="w-1/2"><Input id="last_name" label="Last Name" required value={formData.last_name} onChange={handleChange} /></div>
+      <form onSubmit={handleSubmit} className="register-form-grid" autoComplete="off">
+        <div className="register-form-col">
+          <div className="field-row">
+            <Input id="first_name" label="First Name" placeholder="John" required value={formData.first_name} onChange={handleChange} autoComplete="off" />
+            <Input id="last_name" label="Last Name" placeholder="Doe" required value={formData.last_name} onChange={handleChange} autoComplete="off" />
+          </div>
+          <Input id="email" label="Email Address" type="email" placeholder="you@example.com" required value={formData.email} onChange={handleChange} autoComplete="off" />
+          <Input id="username" label="Username" placeholder="Choose a username" required value={formData.username} onChange={handleChange} autoComplete="off" />
         </div>
-        <Input id="email" label="Email Address" type="email" required value={formData.email} onChange={handleChange} />
-        <Input id="username" label="Username" required value={formData.username} onChange={handleChange} />
-        <Input id="password" label="Password" type="password" required value={formData.password} onChange={handleChange} />
 
-        <button disabled={loading} className="w-full bg-primary-container text-on-surface font-bold py-3 rounded-xl mt-4 hover:bg-[#ffe140] transition-colors duration-300 shadow-[0px_8px_16px_rgba(255,215,0,0.2)] active:scale-95 flex items-center justify-center gap-2" type="submit">
-          {loading ? 'Processing...' : 'Create Account'}
+        <div className="register-form-col">
+          <PasswordInput id="password" label="Password" placeholder="Create a strong password" required value={formData.password} onChange={handleChange} autoComplete="new-password" />
+          <PasswordInput id="confirmPassword" label="Confirm Password" placeholder="Repeat your password" required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
+          <PasswordStrength password={formData.password} />
+        </div>
+
+        <button disabled={loading} className="auth-btn submit-btn-grid" type="submit">
+          {loading ? <><div className="spinner" /> Creating account...</> : 'Create Account'}
         </button>
       </form>
     </>
