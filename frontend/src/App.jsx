@@ -5,7 +5,9 @@ import { fetchProfile } from './store/authSlice';
 
 // Layout
 import { Navbar } from './components/layout/Navbar';
+import { AuthNavbar } from './components/layout/AuthNavbar';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { Footer } from './components/layout/Footer';
 
 // Public Pages
 import { LandingPage } from './components/landing/LandingPage';
@@ -24,7 +26,7 @@ import './index.css';
 
 function App() {
   const dispatch = useDispatch();
-  const { token } = useSelector((state) => state.auth);
+  const { token, isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
     if (token) {
@@ -34,10 +36,22 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Navbar />
+      {/* Background blobs for premium glassmorphism glow */}
+      <div className="page-bg-blob-1" />
+      <div className="page-bg-blob-2" />
+
+      {isAuthenticated ? <Navbar /> : <AuthNavbar />}
+
       <Routes>
         {/* Public */}
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute guestOnly>
+              <LandingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/login"
           element={
@@ -94,6 +108,7 @@ function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Footer />
     </BrowserRouter>
   );
 }

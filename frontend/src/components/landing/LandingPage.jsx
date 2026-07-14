@@ -1,34 +1,6 @@
-import { useNavigate } from 'react-router-dom';
-
 export function LandingPage() {
-  const navigate = useNavigate();
-
   return (
     <div className="landing-wrapper">
-
-      {/* ── Navbar ── */}
-      <nav className="landing-nav">
-        <div className="landing-nav-inner">
-          <a className="landing-logo" href="/">
-            <div className="nav-logo-icon">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </div>
-            AeroGlass
-          </a>
-          <div className="landing-nav-links">
-            <a className="landing-nav-link landing-nav-link-active" href="#">Explore</a>
-            <a className="landing-nav-link" href="#">Bookings</a>
-            <a className="landing-nav-link" href="#">Rewards</a>
-            <a className="landing-nav-link" href="#">Support</a>
-          </div>
-          <div className="landing-nav-actions">
-            <button className="landing-nav-signin" onClick={() => navigate('/login')}>Sign In</button>
-            <button className="landing-nav-join" onClick={() => navigate('/register')}>Join Club</button>
-          </div>
-        </div>
-      </nav>
 
       {/* ── Hero Section ── */}
       <header className="landing-hero">
@@ -121,20 +93,6 @@ export function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* ── Footer ── */}
-      <footer className="landing-footer">
-        <div className="landing-footer-inner">
-          <div className="landing-footer-brand">AeroGlass</div>
-          <div className="landing-footer-links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-            <a href="#">Cookie Settings</a>
-            <a href="#">Contact</a>
-          </div>
-          <div className="landing-footer-copy">© 2025 AeroGlass Luxury Travel. All rights reserved.</div>
-        </div>
-      </footer>
 
     </div>
   );

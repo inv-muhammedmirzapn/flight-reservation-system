@@ -2,66 +2,127 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import { fetchFlightDetail, clearFlightDetail } from '../../store/flightSlice';
-import { Plane, Calendar, DollarSign, Users, ArrowLeft, Clock, ShieldCheck, Tag } from 'lucide-react';
+import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight } from 'lucide-react';
 
+/* ── helpers ─────────────────────────────────────────────── */
+const INR = (amount) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+const fmtTime = (iso) =>
+  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+const fmtDate = (iso) =>
+  new Date(iso).toLocaleDateString('en-IN', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+  });
+
+const diffHM = (dep, arr) => {
+  try {
+    const ms = new Date(arr) - new Date(dep);
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}h ${m}m`;
+  } catch (_) {
+    return 'N/A';
+  }
+};
+
+/* ── status badge ─────────────────────────────────────────── */
+const STATUS_STYLES = {
+  SCHEDULED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
+  DELAYED:   { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+  CANCELLED: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+  BOARDING:  { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+  DEPARTED:  { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
+  ARRIVED:   { bg: '#f3e8ff', color: '#7c3aed', border: '#d8b4fe' },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_STYLES[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+  return (
+    <span style={{
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      borderRadius: 9999, padding: '4px 14px',
+      fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+    }}>
+      {status}
+    </span>
+  );
+}
+
+/* ── Info Tile ───────────────────────────────────────────── */
+function InfoTile({ icon, label, value, sub }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16,
+      background: 'rgba(255,255,255,0.55)',
+      border: '1px solid rgba(255,255,255,0.7)',
+      borderRadius: 16, padding: '18px 22px',
+    }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: 14,
+        background: 'rgba(255,215,0,0.12)',
+        border: '1px solid rgba(255,215,0,0.25)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 2 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1c1d', lineHeight: 1.1 }}>
+          {value}
+        </div>
+        {sub && <div style={{ fontSize: 12, color: '#9e9488', marginTop: 2 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightDetail() {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { detail: flight, detailLoading, error } = useSelector((state) => state.flights);
+  const { detail: flight, detailLoading, error } = useSelector(state => state.flights);
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
-    return () => {
-      dispatch(clearFlightDetail());
-    };
+    return () => { dispatch(clearFlightDetail()); };
   }, [dispatch, id]);
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'SCHEDULED':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'DELAYED':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'CANCELLED':
-        return 'bg-rose-100 text-rose-800 border-rose-200';
-      case 'BOARDING':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'DEPARTED':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      case 'ARRIVED':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getDuration = (dep, arr) => {
-    try {
-      const diff = new Date(arr) - new Date(dep);
-      const hours = Math.floor(diff / 3600000);
-      const minutes = Math.floor((diff % 3600000) / 60000);
-      return `${hours}h ${minutes}m`;
-    } catch (_) {
-      return 'N/A';
-    }
-  };
-
+  /* Loading */
   if (detailLoading) {
     return (
-      <div className="flex justify-center items-center py-20 min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{
+          width: 44, height: 44, border: '3px solid rgba(112,93,0,0.15)',
+          borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite',
+        }} />
       </div>
     );
   }
 
+  /* Error */
   if (error) {
     return (
-      <div className="w-full max-w-[800px] mx-auto px-4 py-8">
-        <div className="glass-card rounded-2xl p-6 border-red-200 bg-red-50 text-red-700 text-center mb-6">
-          <p>{error}</p>
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '88px 24px 48px' }}>
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 16,
+          padding: 24, color: '#b91c1c', textAlign: 'center', marginBottom: 24,
+        }}>
+          {error}
         </div>
-        <Link to="/flights" className="inline-flex items-center gap-2 text-primary font-bold hover:underline">
-          <ArrowLeft className="w-5 h-5" /> Back to Flights
+        <Link to="/flights" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          color: '#705d00', fontWeight: 700, textDecoration: 'none', fontSize: 14,
+        }}>
+          <ArrowLeft size={16} /> Back to Flights
         </Link>
       </div>
     );
@@ -69,109 +130,218 @@ export default function UserFlightDetail() {
 
   if (!flight) return null;
 
+  const duration = diffHM(flight.departure_time, flight.arrival_time);
+
   return (
-    <div className="w-full max-w-[800px] mx-auto px-4 py-8">
-      {/* Back Button */}
-      <Link 
-        to="/flights" 
-        className="inline-flex items-center gap-2 mb-6 font-display-bold text-display-bold text-on-surface hover:text-primary transition-all duration-300 active:scale-95 group font-bold"
-      >
-        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" /> 
-        Back to Listings
-      </Link>
+    <>
+      <style>{`
+        .book-btn:hover { background: #ffe333 !important; }
+        .back-link:hover { color: #705d00 !important; }
+      `}</style>
 
-      {/* Detail Glass Card */}
-      <div className="glass-card rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden flex flex-col gap-8">
-        {/* Glow */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary-container blur-3xl opacity-20 pointer-events-none"></div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '88px 24px 48px' }}>
 
-        {/* Top Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-black/5 dark:border-white/10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Plane className="w-6 h-6 text-primary" />
-              <h1 className="text-2xl md:text-3xl font-black text-on-surface">{flight.flight_number}</h1>
+        {/* Back link */}
+        <Link
+          to="/flights"
+          className="back-link"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            color: '#1a1c1d', fontWeight: 700, textDecoration: 'none',
+            fontSize: 14, marginBottom: 28, transition: 'color 0.2s',
+          }}
+        >
+          <ArrowLeft size={16} /> Back to Listings
+        </Link>
+
+        {/* Main glass card */}
+        <div className="glass-card" style={{
+          borderRadius: 28, padding: '40px 48px',
+          position: 'relative', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', gap: 36,
+        }}>
+          {/* Glow blobs */}
+          <div style={{
+            position: 'absolute', top: -48, right: -48, width: 200, height: 200,
+            borderRadius: '50%', background: '#ffd700', filter: 'blur(90px)',
+            opacity: 0.12, pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: -40, left: -40, width: 160, height: 160,
+            borderRadius: '50%', background: '#bfdbfe', filter: 'blur(80px)',
+            opacity: 0.15, pointerEvents: 'none',
+          }} />
+
+          {/* ── Header ── */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            flexWrap: 'wrap', gap: 16,
+            paddingBottom: 28, borderBottom: '1px solid rgba(0,0,0,0.06)',
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  background: 'rgba(255,215,0,0.15)',
+                  border: '1px solid rgba(255,215,0,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Plane size={18} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
+                </div>
+                <h1 style={{
+                  fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
+                  fontSize: 32, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em',
+                }}>
+                  {flight.flight_number}
+                </h1>
+              </div>
+              <p style={{ fontSize: 14, color: '#5e5e5e', marginLeft: 50 }}>
+                {flight.airline} &bull; {flight.aircraft}
+              </p>
             </div>
-            <p className="text-body-md text-on-surface-variant">{flight.airline} &bull; {flight.aircraft}</p>
+            <StatusBadge status={flight.status} />
           </div>
 
-          <span className={`px-4 py-1.5 rounded-full text-sm font-bold border ${getStatusBadgeClass(flight.status)}`}>
-            {flight.status}
-          </span>
-        </div>
+          {/* ── Route Timeline ── */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            gap: 24,
+            alignItems: 'center',
+          }}>
+            {/* Departure */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#5e5e5e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Departure
+              </div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 52, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>
+                {fmtTime(flight.departure_time)}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1c1d', marginTop: 4 }}>
+                {flight.source_airport}
+              </div>
+              <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 4 }}>
+                {fmtDate(flight.departure_time)}
+              </div>
+            </div>
 
-        {/* Route Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center text-center md:text-left">
-          {/* Source */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase font-extrabold tracking-wider text-on-surface-variant">Departure</span>
-            <span className="text-4xl font-black text-on-surface">{flight.source_airport}</span>
-            <span className="text-sm font-semibold text-on-surface-variant">
-              {new Date(flight.departure_time).toLocaleDateString()}
-            </span>
-            <span className="text-xs text-on-surface-variant">
-              {new Date(flight.departure_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
+            {/* Duration / flight path */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 140 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#5e5e5e', fontWeight: 600 }}>
+                <Clock size={13} color="#705d00" />
+                {duration}
+              </div>
+              <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <div style={{ flex: 1, height: 2, background: '#d0c6ab' }} />
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.9)',
+                  border: '2px solid rgba(112,93,0,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 -1px', flexShrink: 0, zIndex: 1,
+                }}>
+                  <Plane size={16} color="#705d00" />
+                </div>
+                <div style={{ flex: 1, height: 2, background: '#d0c6ab' }} />
+              </div>
+              <div style={{ fontSize: 12, color: '#705d00', fontWeight: 600 }}>Non-stop</div>
+            </div>
 
-          {/* Icon & Duration */}
-          <div className="flex flex-col items-center justify-center gap-2">
-            <span className="text-xs text-on-surface-variant font-semibold flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-primary" />
-              {getDuration(flight.departure_time, flight.arrival_time)}
-            </span>
-            <div className="relative w-full flex items-center justify-center">
-              <div className="absolute w-full h-[2px] bg-primary/20"></div>
-              <div className="bg-white/90 p-2 rounded-full border border-primary/20 z-10">
-                <Plane className="w-5 h-5 text-primary rotate-90 md:rotate-0" />
+            {/* Arrival */}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#5e5e5e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Arrival
+              </div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 52, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>
+                {fmtTime(flight.arrival_time)}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1c1d', marginTop: 4 }}>
+                {flight.destination_airport}
+              </div>
+              <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 4 }}>
+                {fmtDate(flight.arrival_time)}
               </div>
             </div>
           </div>
 
-          {/* Destination */}
-          <div className="flex flex-col gap-1 md:text-right">
-            <span className="text-xs uppercase font-extrabold tracking-wider text-on-surface-variant">Arrival</span>
-            <span className="text-4xl font-black text-on-surface">{flight.destination_airport}</span>
-            <span className="text-sm font-semibold text-on-surface-variant">
-              {new Date(flight.arrival_time).toLocaleDateString()}
-            </span>
-            <span className="text-xs text-on-surface-variant">
-              {new Date(flight.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
+          {/* ── Info Tiles ── */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16,
+            paddingTop: 28, borderTop: '1px solid rgba(0,0,0,0.06)',
+          }}>
+            <InfoTile
+              icon={<span style={{ fontSize: 20 }}>₹</span>}
+              label="Base Fare"
+              value={INR(flight.base_fare)}
+              sub="Per person · Economy"
+            />
+            <InfoTile
+              icon={<Users size={20} color="#705d00" />}
+              label="Available Seats"
+              value={`${flight.available_seats} / ${flight.total_seats}`}
+              sub="Economy class"
+            />
+            <InfoTile
+              icon={<Clock size={20} color="#705d00" />}
+              label="Flight Duration"
+              value={duration}
+              sub="Estimated"
+            />
           </div>
-        </div>
 
-        {/* Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-6 border-t border-black/5 dark:border-white/10">
-          <div className="flex items-center gap-4 bg-white/40 border border-white/60 p-4 rounded-2xl">
-            <DollarSign className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs font-bold uppercase text-on-surface-variant">Base Fare</p>
-              <p className="text-xl font-extrabold text-on-surface">${flight.base_fare}</p>
+          {/* ── Perks / Badges ── */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {[
+              { icon: <ShieldCheck size={14} />, label: 'Refundable Ticket' },
+              { icon: <Tag size={14} />, label: 'Best Price Guarantee' },
+              { icon: <Plane size={14} style={{ transform: 'rotate(-45deg)' }} />, label: 'Direct Flight' },
+            ].map(({ icon, label }) => (
+              <div key={label} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px',
+                background: 'rgba(112,93,0,0.08)',
+                border: '1px solid rgba(112,93,0,0.18)',
+                borderRadius: 10,
+                fontSize: 12, fontWeight: 700, color: '#705d00',
+              }}>
+                {icon} {label}
+              </div>
+            ))}
+          </div>
+
+          {/* ── CTA ── */}
+          <div style={{
+            display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+            paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.06)',
+            gap: 16, flexWrap: 'wrap',
+          }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Total per person
+              </div>
+              <div style={{
+                fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
+                fontSize: 36, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em', lineHeight: 1,
+              }}>
+                {INR(flight.base_fare)}
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-4 bg-white/40 border border-white/60 p-4 rounded-2xl">
-            <Users className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs font-bold uppercase text-on-surface-variant">Available Seats</p>
-              <p className="text-xl font-extrabold text-on-surface">
-                {flight.available_seats} <span className="text-sm font-normal text-on-surface-variant">/ {flight.total_seats}</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Extras / Badges */}
-        <div className="flex flex-wrap gap-3 mt-4">
-          <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs font-bold text-primary">
-            <ShieldCheck className="w-4 h-4" /> Refundable Ticket
-          </div>
-          <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs font-bold text-primary">
-            <Tag className="w-4 h-4" /> Best Price Guarantee
+            <button
+              className="book-btn"
+              style={{
+                background: '#ffd700', color: '#1a1c1d',
+                fontWeight: 700, fontSize: 15,
+                padding: '14px 36px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                boxShadow: '0 4px 18px rgba(255,215,0,0.4)',
+                transition: 'background 0.2s',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
+            >
+              Book Now <ArrowRight size={16} />
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

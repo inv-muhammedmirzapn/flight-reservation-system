@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthNavbar } from '../layout/AuthNavbar';
 import { RegisterForm } from './RegisterForm';
 
 const stats = [
@@ -19,7 +18,6 @@ export function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-page-bg" />
-      <AuthNavbar />
 
       <main className="auth-page-main">
         <div className="auth-split-card auth-split-card--wide">

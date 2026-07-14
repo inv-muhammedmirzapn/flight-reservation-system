@@ -1,184 +1,177 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { fetchFlightDetail, patchFlight, clearFlightDetail } from '../../store/flightSlice';
-import { Plane, Calendar, DollarSign, Users, ArrowLeft, Edit2, ShieldAlert, Award, Clock } from 'lucide-react';
 import { Select } from '../../components/ui/Select';
+import { Plane, ArrowLeft, Clock, Users, ShieldAlert } from 'lucide-react';
 
-const statusOptions = [
-  { value: 'SCHEDULED', label: 'Scheduled' },
-  { value: 'DELAYED', label: 'Delayed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'BOARDING', label: 'Boarding' },
-  { value: 'DEPARTED', label: 'Departed' },
-  { value: 'ARRIVED', label: 'Arrived' }
+/* ── helpers ─────────────────────────────────────────────── */
+const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:false });
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+const diffHM = (dep, arr) => { try { const ms=new Date(arr)-new Date(dep); return `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`; } catch(_){ return 'N/A'; } };
+
+const STATUS_OPTS = [
+  { value:'SCHEDULED', label:'Scheduled' }, { value:'DELAYED',  label:'Delayed'   },
+  { value:'CANCELLED', label:'Cancelled' }, { value:'BOARDING', label:'Boarding'  },
+  { value:'DEPARTED',  label:'Departed'  }, { value:'ARRIVED',  label:'Arrived'   },
 ];
+
+const STATUS_STYLE = {
+  SCHEDULED:{ bg:'#d1fae5', color:'#065f46', border:'#6ee7b7' },
+  DELAYED:  { bg:'#fef3c7', color:'#92400e', border:'#fcd34d' },
+  CANCELLED:{ bg:'#fee2e2', color:'#991b1b', border:'#fca5a5' },
+  BOARDING: { bg:'#dbeafe', color:'#1e40af', border:'#93c5fd' },
+  DEPARTED: { bg:'#ede9fe', color:'#5b21b6', border:'#c4b5fd' },
+  ARRIVED:  { bg:'#f3e8ff', color:'#7c3aed', border:'#d8b4fe' },
+};
+
+function Badge({ status }) {
+  const s = STATUS_STYLE[status] || { bg:'#f3f4f6', color:'#374151', border:'#d1d5db' };
+  return <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.border}`, borderRadius:9999, padding:'5px 14px', fontSize:12, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>{status}</span>;
+}
+
+function InfoTile({ icon, label, value, sub }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:16, background:'rgba(255,255,255,0.55)', border:'1px solid rgba(255,255,255,0.7)', borderRadius:16, padding:'18px 22px' }}>
+      <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,215,0,0.12)', border:'1px solid rgba(255,215,0,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.06em', color:'#5e5e5e', textTransform:'uppercase', marginBottom:2 }}>{label}</div>
+        <div style={{ fontSize:20, fontWeight:800, color:'#1a1c1d', lineHeight:1.1 }}>{value}</div>
+        {sub && <div style={{ fontSize:12, color:'#9e9488', marginTop:2 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminFlightDetail() {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { detail: flight, detailLoading, actionLoading, error } = useSelector((state) => state.flights);
-
+  const { detail:flight, detailLoading, actionLoading, error } = useSelector(s => s.flights);
   const [statusVal, setStatusVal] = useState('SCHEDULED');
 
-  useEffect(() => {
-    dispatch(fetchFlightDetail(id));
-    return () => {
-      dispatch(clearFlightDetail());
-    };
-  }, [dispatch, id]);
-
-  useEffect(() => {
-    if (flight) {
-      setStatusVal(flight.status);
-    }
-  }, [flight]);
+  useEffect(() => { dispatch(fetchFlightDetail(id)); return () => { dispatch(clearFlightDetail()); }; }, [dispatch, id]);
+  useEffect(() => { if (flight) setStatusVal(flight.status); }, [flight]);
 
   const handleStatusChange = async (e) => {
-    const nextStatus = e.target.value;
-    setStatusVal(nextStatus);
-    await dispatch(patchFlight({ id, flightData: { status: nextStatus } }));
+    const next = e.target.value;
+    setStatusVal(next);
+    await dispatch(patchFlight({ id, flightData:{ status:next } }));
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'SCHEDULED': return 'text-emerald-700 bg-emerald-50 border-emerald-200';
-      case 'DELAYED': return 'text-amber-700 bg-amber-50 border-amber-200';
-      case 'CANCELLED': return 'text-rose-700 bg-rose-50 border-rose-200';
-      default: return 'text-blue-700 bg-blue-50 border-blue-200';
-    }
-  };
+  if (detailLoading) return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:'60vh' }}>
+      <div style={{ width:44, height:44, border:'3px solid rgba(112,93,0,0.15)', borderTopColor:'#705d00', borderRadius:'50%', animation:'spin 0.75s linear infinite' }} />
+    </div>
+  );
 
-  if (detailLoading) {
-    return (
-      <div className="flex justify-center items-center py-20 min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full max-w-[800px] mx-auto px-4 py-8">
-        <div className="bg-rose-50 text-rose-700 p-4 border border-rose-200 rounded-xl mb-6">
-          {error}
-        </div>
-        <Link to="/admin/flights" className="inline-flex items-center gap-2 text-on-surface font-bold hover:underline">
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
-      </div>
-    );
-  }
+  if (error) return (
+    <div style={{ maxWidth:900, margin:'0 auto', padding:'88px 24px 48px' }}>
+      <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:16, padding:24, color:'#b91c1c', textAlign:'center', marginBottom:24 }}>{error}</div>
+      <Link to="/admin/flights" style={{ display:'inline-flex', alignItems:'center', gap:8, color:'#1a1c1d', fontWeight:700, textDecoration:'none', fontSize:14 }}>
+        <ArrowLeft size={16}/> Back to Console
+      </Link>
+    </div>
+  );
 
   if (!flight) return null;
 
+  const duration = diffHM(flight.departure_time, flight.arrival_time);
+
   return (
-    <div className="w-full max-w-[800px] mx-auto px-4 py-8">
-      {/* Back Button */}
-      <Link 
-        to="/admin/flights" 
-        className="inline-flex items-center gap-2 mb-6 font-bold text-on-surface hover:text-[#555] transition-all"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Console
-      </Link>
+    <>
+      <style>{`.back-lnk:hover{color:#705d00!important}`}</style>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'88px 24px 48px' }}>
 
-      {/* Main Admin Card */}
-      <div className="bg-white rounded-3xl border border-black/5 p-8 shadow-sm flex flex-col gap-6">
-        
-        {/* Title / Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-black/5">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gray-100 rounded-2xl">
-              <Plane className="w-6 h-6 text-on-surface" />
-            </div>
+        {/* Back */}
+        <Link to="/admin/flights" className="back-lnk" style={{ display:'inline-flex', alignItems:'center', gap:8, color:'#1a1c1d', fontWeight:700, textDecoration:'none', fontSize:14, marginBottom:28, transition:'color 0.2s' }}>
+          <ArrowLeft size={16}/> Back to Console
+        </Link>
+
+        {/* Main card */}
+        <div className="glass-card" style={{ borderRadius:28, padding:'40px 48px', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', gap:32 }}>
+          {/* Glows */}
+          <div style={{ position:'absolute', top:-48, right:-48, width:200, height:200, borderRadius:'50%', background:'#ba1a1a', filter:'blur(90px)', opacity:0.07, pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', bottom:-40, left:-40, width:160, height:160, borderRadius:'50%', background:'#ffd700', filter:'blur(80px)', opacity:0.1, pointerEvents:'none' }}/>
+
+          {/* Header */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:20, paddingBottom:28, borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
             <div>
-              <h1 className="text-2xl font-black text-on-surface">{flight.flight_number}</h1>
-              <p className="text-sm text-on-surface-variant">{flight.airline} &bull; {flight.aircraft}</p>
-            </div>
-          </div>
-
-          <div className="w-48">
-            <Select 
-              id="detail-status" 
-              label="Quick Status Edit" 
-              options={statusOptions} 
-              value={statusVal}
-              onChange={handleStatusChange} 
-              disabled={actionLoading}
-            />
-          </div>
-        </div>
-
-        {/* Route / Path Display */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-b border-black/5 pb-6">
-          <div className="text-center md:text-left">
-            <p className="text-xs uppercase font-bold text-on-surface-variant">Departure (IATA)</p>
-            <p className="text-3xl font-black text-on-surface">{flight.source_airport}</p>
-            <p className="text-sm text-on-surface-variant font-medium mt-1">
-              {new Date(flight.departure_time).toLocaleString()}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-full relative flex items-center justify-center">
-              <div className="absolute w-full h-[1px] bg-black/10"></div>
-              <div className="bg-gray-50 border border-black/5 px-4 py-1.5 rounded-full text-xs font-bold text-on-surface-variant z-10">
-                Non-stop
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:'rgba(186,26,26,0.1)', border:'1px solid rgba(186,26,26,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <ShieldAlert size={18} color="#ba1a1a"/>
+                </div>
+                <h1 style={{ fontFamily:"'Plus Jakarta Sans',Inter,sans-serif", fontSize:30, fontWeight:800, color:'#1a1c1d', letterSpacing:'-0.02em' }}>{flight.flight_number}</h1>
+                <Badge status={flight.status}/>
               </div>
+              <p style={{ fontSize:14, color:'#5e5e5e', marginLeft:50 }}>{flight.airline} &bull; {flight.aircraft}</p>
+            </div>
+
+            {/* Quick status editor */}
+            <div style={{ minWidth:180 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#5e5e5e', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Quick Status Edit</div>
+              <Select id="detail-status" label="" options={STATUS_OPTS} value={statusVal} onChange={handleStatusChange} disabled={actionLoading}/>
+              {actionLoading && <p style={{ fontSize:11, color:'#5e5e5e', marginTop:4 }}>Updating…</p>}
             </div>
           </div>
 
-          <div className="text-center md:text-right">
-            <p className="text-xs uppercase font-bold text-on-surface-variant">Arrival (IATA)</p>
-            <p className="text-3xl font-black text-on-surface">{flight.destination_airport}</p>
-            <p className="text-sm text-on-surface-variant font-medium mt-1">
-              {new Date(flight.arrival_time).toLocaleString()}
-            </p>
+          {/* Route timeline */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:24, alignItems:'center' }}>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#5e5e5e', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6 }}>Departure</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',Inter,sans-serif", fontSize:52, fontWeight:800, color:'#1a1c1d', lineHeight:1 }}>{fmtTime(flight.departure_time)}</div>
+              <div style={{ fontSize:22, fontWeight:700, color:'#1a1c1d', marginTop:4 }}>{flight.source_airport}</div>
+              <div style={{ fontSize:13, color:'#5e5e5e', marginTop:4 }}>{fmtDate(flight.departure_time)}</div>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, minWidth:140 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:12, color:'#5e5e5e', fontWeight:600 }}>
+                <Clock size={13} color="#705d00"/>{duration}
+              </div>
+              <div style={{ width:'100%', position:'relative', display:'flex', alignItems:'center' }}>
+                <div style={{ flex:1, height:2, background:'#d0c6ab' }}/>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.9)', border:'2px solid rgba(112,93,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 -1px', flexShrink:0, zIndex:1 }}>
+                  <Plane size={16} color="#705d00"/>
+                </div>
+                <div style={{ flex:1, height:2, background:'#d0c6ab' }}/>
+              </div>
+              <div style={{ fontSize:12, color:'#705d00', fontWeight:600 }}>Non-stop</div>
+            </div>
+
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#5e5e5e', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6 }}>Arrival</div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',Inter,sans-serif", fontSize:52, fontWeight:800, color:'#1a1c1d', lineHeight:1 }}>{fmtTime(flight.arrival_time)}</div>
+              <div style={{ fontSize:22, fontWeight:700, color:'#1a1c1d', marginTop:4 }}>{flight.destination_airport}</div>
+              <div style={{ fontSize:13, color:'#5e5e5e', marginTop:4 }}>{fmtDate(flight.arrival_time)}</div>
+            </div>
+          </div>
+
+          {/* Info tiles */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:16, paddingTop:28, borderTop:'1px solid rgba(0,0,0,0.06)' }}>
+            <InfoTile icon={<span style={{ fontSize:20 }}>₹</span>} label="Base Fare" value={INR(flight.base_fare)} sub="Per seat · Economy"/>
+            <InfoTile icon={<Users size={20} color="#705d00"/>} label="Available Seats" value={`${flight.available_seats} / ${flight.total_seats}`} sub="Economy class"/>
+            <InfoTile icon={<Clock size={20} color="#705d00"/>} label="Flight Duration" value={duration} sub="Estimated"/>
+          </div>
+
+          {/* System metadata */}
+          <div style={{ background:'rgba(255,255,255,0.4)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:16, padding:'18px 22px', paddingTop:28, borderTop:'1px solid rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1a1c1d', marginBottom:12 }}>System Metadata</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[
+                ['External Sync ID', flight.external_id || 'N/A'],
+                ['Sync Source', flight.sync_source || 'Local Database'],
+              ].map(([k,v]) => (
+                <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#5e5e5e' }}>
+                  <span>{k}</span>
+                  <span style={{ fontWeight:600, color:'#1a1c1d' }}>{v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 border border-black/5 p-5 rounded-2xl flex items-center gap-4">
-            <DollarSign className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs font-bold uppercase text-on-surface-variant">Base Fare</p>
-              <p className="text-xl font-extrabold text-on-surface">${flight.base_fare}</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border border-black/5 p-5 rounded-2xl flex items-center gap-4">
-            <Users className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs font-bold uppercase text-on-surface-variant">Available Seats</p>
-              <p className="text-xl font-extrabold text-on-surface">{flight.available_seats}</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border border-black/5 p-5 rounded-2xl flex items-center gap-4">
-            <Users className="w-8 h-8 text-primary" />
-            <div>
-              <p className="text-xs font-bold uppercase text-on-surface-variant">Total Seats</p>
-              <p className="text-xl font-extrabold text-on-surface">{flight.total_seats}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* System Meta Info */}
-        <div className="mt-4 bg-gray-50 border border-black/5 rounded-2xl p-5 flex flex-col gap-3 text-xs text-on-surface-variant">
-          <p className="font-bold text-sm text-on-surface mb-1">System Metadata</p>
-          <div className="flex justify-between">
-            <span>External Sync ID:</span>
-            <span className="font-semibold text-on-surface">{flight.external_id || 'N/A'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Sync Source:</span>
-            <span className="font-semibold text-on-surface">{flight.sync_source || 'Local Database'}</span>
-          </div>
-        </div>
-
       </div>
-    </div>
+    </>
   );
 }

@@ -16,7 +16,7 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-        <Link to="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <Link to={isAdmin ? "/admin/flights" : "/flights"} className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <Plane className="w-5 h-5 -rotate-45" />
           AeroGlass
         </Link>
