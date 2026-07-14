@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthNavbar } from '../layout/AuthNavbar';
 import { LoginForm } from './LoginForm';
 
 const features = [
@@ -20,7 +19,6 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-page-bg" />
-      <AuthNavbar />
 
       <main className="auth-page-main">
         <div className="auth-split-card">
