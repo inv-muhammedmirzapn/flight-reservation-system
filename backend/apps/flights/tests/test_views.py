@@ -4,6 +4,8 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 import uuid
+from django.contrib.auth.models import User
+from apps.users.models import Profile
 from apps.flights.models import Flight
 
 class FlightAPITests(APITestCase):
@@ -319,3 +321,94 @@ class FlightAPITests(APITestCase):
         url = f"/api/flights/{non_existent_uuid}/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_flight_anonymous_fails(self):
+        """Test DELETE /api/flights/{id}/ without authentication fails with 403."""
+        flight = Flight.objects.create(
+            flight_number="FL777",
+            airline="Test Airline",
+            aircraft="A350",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        url = f"/api/flights/{flight.id}/"
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Flight.objects.filter(id=flight.id).exists())
+
+    def test_delete_flight_customer_fails(self):
+        """Test DELETE /api/flights/{id}/ with non-admin customer account fails with 403."""
+        flight = Flight.objects.create(
+            flight_number="FL777",
+            airline="Test Airline",
+            aircraft="A350",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        user = User.objects.create_user(username="customer_user", password="password123")
+        self.client.force_authenticate(user=user)
+        url = f"/api/flights/{flight.id}/"
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Flight.objects.filter(id=flight.id).exists())
+
+    def test_delete_flight_admin_success(self):
+        """Test DELETE /api/flights/{id}/ with admin account deletes the flight successfully."""
+        flight = Flight.objects.create(
+            flight_number="FL777",
+            airline="Test Airline",
+            aircraft="A350",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        user = User.objects.create_user(username="admin_user", password="password123")
+        profile = user.profile
+        profile.role = Profile.Role.ADMIN
+        profile.save()
+        
+        self.client.force_authenticate(user=user)
+        url = f"/api/flights/{flight.id}/"
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Flight.objects.filter(id=flight.id).exists())
+
+    def test_delete_flight_superuser_success(self):
+        """Test DELETE /api/flights/{id}/ with superuser account deletes the flight successfully."""
+        flight = Flight.objects.create(
+            flight_number="FL777",
+            airline="Test Airline",
+            aircraft="A350",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("100.00"),
+            total_seats=100,
+            available_seats=100,
+            status="SCHEDULED"
+        )
+        user = User.objects.create_superuser(username="super_user", password="password123")
+        
+        self.client.force_authenticate(user=user)
+        url = f"/api/flights/{flight.id}/"
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Flight.objects.filter(id=flight.id).exists())

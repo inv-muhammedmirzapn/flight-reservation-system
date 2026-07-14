@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchFlightDetail, clearFlightDetail } from '../../store/flightSlice';
 import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight } from 'lucide-react';
 
@@ -26,7 +26,7 @@ const diffHM = (dep, arr) => {
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     return `${h}h ${m}m`;
-  } catch (_) {
+  } catch {
     return 'N/A';
   }
 };
@@ -89,12 +89,22 @@ function InfoTile({ icon, label, value, sub }) {
 export default function UserFlightDetail() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { detail: flight, detailLoading, error } = useSelector(state => state.flights);
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
     return () => { dispatch(clearFlightDetail()); };
   }, [dispatch, id]);
+
+  const handleBack = (e) => {
+    e.preventDefault();
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/flights');
+    }
+  };
 
   /* Loading */
   if (detailLoading) {
@@ -118,12 +128,12 @@ export default function UserFlightDetail() {
         }}>
           {error}
         </div>
-        <Link to="/flights" style={{
+        <a href="/flights" onClick={handleBack} style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           color: '#705d00', fontWeight: 700, textDecoration: 'none', fontSize: 14,
         }}>
           <ArrowLeft size={16} /> Back to Flights
-        </Link>
+        </a>
       </div>
     );
   }
@@ -142,8 +152,9 @@ export default function UserFlightDetail() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '88px 24px 48px' }}>
 
         {/* Back link */}
-        <Link
-          to="/flights"
+        <a
+          href="/flights"
+          onClick={handleBack}
           className="back-link"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -152,7 +163,7 @@ export default function UserFlightDetail() {
           }}
         >
           <ArrowLeft size={16} /> Back to Listings
-        </Link>
+        </a>
 
         {/* Main glass card */}
         <div className="glass-card" style={{

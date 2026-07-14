@@ -108,6 +108,12 @@ export const flightsAPI = {
       method: 'PATCH',
       body: JSON.stringify(flightData),
     });
+  },
+
+  delete: async (id) => {
+    return fetchWithAuth(`/flights/${id}/`, {
+      method: 'DELETE',
+    });
   }
 };
 

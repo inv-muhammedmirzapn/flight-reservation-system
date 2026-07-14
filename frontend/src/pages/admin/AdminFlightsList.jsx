@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchFlights, addFlight, updateFlight, clearFlightErrors } from '../../store/flightSlice';
+import { fetchFlights, addFlight, updateFlight, clearFlightErrors, deleteFlight } from '../../store/flightSlice';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Plus, Edit2, Eye, Plane, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Plus, Edit2, Eye, Plane, RefreshCw, AlertCircle, ShieldAlert, Trash2 } from 'lucide-react';
 
 const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -46,19 +46,31 @@ function Err({ msg }) { return msg ? <p style={{ fontSize: 12, color: '#b91c1c',
 
 export default function AdminFlightsList() {
   const dispatch = useDispatch();
-  const { list: flights, loading, actionLoading, validationErrors } = useSelector(s => s.flights);
+  const { list: flights, loading, actionLoading, validationErrors, error } = useSelector(s => s.flights);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [errs, setErrs] = useState({});
 
-  useEffect(() => { dispatch(fetchFlights()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(clearFlightErrors());
+    dispatch(fetchFlights());
+    return () => {
+      dispatch(clearFlightErrors());
+    };
+  }, [dispatch]);
 
   const openAdd = () => { dispatch(clearFlightErrors()); setErrs({}); setForm(EMPTY); setEditId(null); setOpen(true); };
   const openEdit = (f) => {
     dispatch(clearFlightErrors()); setErrs({});
     setForm({ flight_number: f.flight_number, airline: f.airline, aircraft: f.aircraft, source_airport: f.source_airport, destination_airport: f.destination_airport, departure_time: f.departure_time.substring(0, 16), arrival_time: f.arrival_time.substring(0, 16), base_fare: f.base_fare, total_seats: f.total_seats, available_seats: f.available_seats, status: f.status });
     setEditId(f.id); setOpen(true);
+  };
+
+  const handleDelete = (id, flightNumber) => {
+    if (window.confirm(`Are you sure you want to delete flight ${flightNumber}?`)) {
+      dispatch(deleteFlight(id));
+    }
   };
 
   const onChange = (e) => { const { name, value } = e.target; setForm({ ...form, [name]: value }); if (errs[name]) setErrs({ ...errs, [name]: null }); };
@@ -117,6 +129,13 @@ export default function AdminFlightsList() {
           <Stat label="Cancelled" value={flights.filter(f => f.status === 'CANCELLED').length} icon={<AlertCircle size={48} color="#dc2626" />} accent="#dc2626" />
         </div>
 
+        {/* Error Notification */}
+        {error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#b91c1c', fontSize: 13, marginBottom: 20 }}>
+            <AlertCircle size={16} />{error}
+          </div>
+        )}
+
         {/* Table */}
         <div className="glass-card" style={{ borderRadius: 20, overflow: 'hidden' }}>
           {loading ? (
@@ -166,6 +185,9 @@ export default function AdminFlightsList() {
                           </Link>
                           <button className="act" onClick={() => openEdit(f)} title="Edit" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}>
                             <Edit2 size={16} />
+                          </button>
+                          <button className="act" onClick={() => handleDelete(f.id, f.flight_number)} title="Delete" style={{ padding: 8, borderRadius: 8, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}>
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
