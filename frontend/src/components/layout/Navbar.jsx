@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../../store/authSlice";
+import { LogoutConfirmDialog } from "../ui/LogoutConfirmDialog";
+import toast from "react-hot-toast";
 
 // Nav links shown when authenticated (adapted for the app dashboard)
 const APP_NAV_LINKS = [
@@ -24,6 +26,7 @@ export function Navbar() {
   const location = useLocation();
   const { isAuthenticated, isAdmin, profile } = useSelector((state) => state.auth);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   // Build initials from Redux profile
@@ -48,10 +51,20 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogoutRequest = () => {
     setDropdownOpen(false);
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setLogoutDialogOpen(false);
+    toast.success('Signed out successfully.');
     dispatch(logout());
-    navigate("/");
+    navigate('/');
+  };
+
+  const handleLogoutCancel = () => {
+    setLogoutDialogOpen(false);
   };
 
   return (
@@ -194,7 +207,7 @@ export function Navbar() {
                     {/* Sign Out */}
                     <button
                       id="nav-logout"
-                      onClick={handleLogout}
+                      onClick={handleLogoutRequest}
                       style={{
                         width: "100%", textAlign: "left", padding: "0.625rem 1rem",
                         fontSize: "0.9rem", fontWeight: 500, color: "#b91c1c",
@@ -231,6 +244,13 @@ export function Navbar() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      {/* Logout confirmation dialog (portal, rendered outside nav) */}
+      <LogoutConfirmDialog
+        open={logoutDialogOpen}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
     </nav>
   );
 }
