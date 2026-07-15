@@ -8,7 +8,8 @@ export function Footer() {
       marginTop: 'auto',
     }}>
       <div style={{
-        maxWidth: 1200,
+        width: '95%',
+        maxWidth: 1800,
         margin: '0 auto',
         padding: '0.75rem 1.5rem',
         display: 'flex',

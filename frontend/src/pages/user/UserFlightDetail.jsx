@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchFlightDetail, clearFlightDetail } from '../../store/flightSlice';
 import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (amount) =>
@@ -91,6 +92,7 @@ export default function UserFlightDetail() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { detail: flight, detailLoading, error } = useSelector(state => state.flights);
+  const { isAuthenticated } = useSelector(state => state.auth);
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
@@ -104,6 +106,16 @@ export default function UserFlightDetail() {
     } else {
       navigate('/flights');
     }
+  };
+
+  const handleBookNow = (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('You need to login for booking');
+      navigate('/login');
+      return;
+    }
+    // Proceed to booking (e.g. redirect to payment or booking confirmation)
   };
 
   /* Loading */
@@ -339,6 +351,7 @@ export default function UserFlightDetail() {
             </div>
             <button
               className="book-btn"
+              onClick={handleBookNow}
               style={{
                 background: '#ffd700', color: '#1a1c1d',
                 fontWeight: 700, fontSize: 15,

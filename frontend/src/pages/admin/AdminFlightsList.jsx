@@ -134,7 +134,7 @@ export default function AdminFlightsList() {
   return (
     <>
       <style>{`.admin-row:hover{background:rgba(255,255,255,0.5)!important}.add-btn:hover{background:#ffe333!important}.act:hover{background:rgba(0,0,0,0.06)!important}`}</style>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
