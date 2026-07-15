@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '../../store/authSlice';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
+import toast from 'react-hot-toast';
 
 function GoogleIcon() {
   return (
@@ -18,10 +19,20 @@ function GoogleIcon() {
 
 export function LoginForm() {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const { loading, error, isAuthenticated, profile } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [localError, setLocalError] = useState('');
+
+  // Redirect + success toast after login
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      const name = profile.first_name || profile.username || 'back';
+      toast.success(`Welcome back, ${name}!`);
+      navigate('/flights');
+    }
+  }, [isAuthenticated, profile, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,18 +42,18 @@ export function LoginForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.username.trim() || !formData.password.trim()) {
-      setLocalError('Please enter both username and password.');
+      const msg = 'Please enter both username and password.';
+      setLocalError(msg);
+      toast.error(msg);
       return;
     }
     dispatch(loginUser(formData));
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: wire up backend OAuth2 redirect
-    console.log('Google OAuth — coming soon');
-  };
-
-  const displayError = localError || error;
+  // Fire error toast when Redux reports an error
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
 
   return (
     <>
@@ -56,12 +67,6 @@ export function LoginForm() {
         <p className="form-subtitle">Sign in to your AeroGlass account</p>
       </div>
 
-      {displayError && (
-        <div className="alert alert-error">
-          <span>⚠️</span>
-          {displayError}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="form-fields">
         <Input

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser, logout } from '../../store/authSlice';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import { ShieldAlert } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export function AdminLoginForm() {
   const dispatch = useDispatch();
@@ -22,7 +23,9 @@ export function AdminLoginForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.username.trim() || !formData.password.trim()) {
-      setLocalError('Please enter both username and password.');
+      const msg = 'Please enter both username and password.';
+      setLocalError(msg);
+      toast.error(msg);
       return;
     }
     
@@ -43,10 +46,20 @@ export function AdminLoginForm() {
 
       if (!isAdmin) {
         dispatch(logout());
-        setLocalError('Access Denied: Administrator privileges required.');
+        const msg = 'Access Denied: Administrator privileges required.';
+        setLocalError(msg);
+        toast.error(msg);
+      } else {
+        toast.success('Welcome back, Admin. Access granted.');
+        navigate('/admin/flights');
       }
     }
   };
+
+  // Redux error toast
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
 
   const displayError = localError || error;
 

@@ -3,6 +3,7 @@ import { authAPI } from '../../services/api';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import { PasswordStrength, getPasswordRules } from '../ui/PasswordStrength';
+import toast from 'react-hot-toast';
 
 export function RegisterForm({ onSuccess }) {
   const [formData, setFormData] = useState({
@@ -27,7 +28,9 @@ export function RegisterForm({ onSuccess }) {
 
     // Required-fields check
     if (!formData.username.trim() || !formData.password.trim() || !formData.email.trim() || !formData.first_name.trim() || !formData.last_name.trim()) {
-      setMessage({ type: 'error', text: 'All fields are required.' });
+      const msg = 'All fields are required.';
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
       return;
     }
 
@@ -35,13 +38,17 @@ export function RegisterForm({ onSuccess }) {
     const rules = getPasswordRules(formData.password);
     const failed = rules.filter(r => !r.pass);
     if (failed.length > 0) {
-      setMessage({ type: 'error', text: `Password: ${failed[0].label.toLowerCase()}` });
+      const msg = `Password: ${failed[0].label.toLowerCase()}`;
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
       return;
     }
 
     // Confirm password match
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match.' });
+      const msg = 'Passwords do not match.';
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
       return;
     }
 
@@ -49,6 +56,7 @@ export function RegisterForm({ onSuccess }) {
     try {
       const { confirmPassword, ...registerPayload } = formData;
       await authAPI.register(registerPayload);
+      toast.success('Account created. You can now sign in.');
       onSuccess();
     } catch (err) {
       let errText = err.message;
@@ -60,6 +68,7 @@ export function RegisterForm({ onSuccess }) {
           .join(' · ');
       } catch (_) {}
       setMessage({ type: 'error', text: errText });
+      toast.error(errText);
       setLoading(false);
     }
   };
