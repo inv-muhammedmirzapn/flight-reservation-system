@@ -4,22 +4,35 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from .models import Flight
 from .serializers import FlightSerializer
+
+
+class FlightPagination(PageNumberPagination):
+    """Return 10 flights per page. Clients pass ?page=N."""
+    page_size = 10
+    page_size_query_param = 'page_size'   # allow override via ?page_size=N
+    max_page_size = 100
+    page_query_param = 'page'
+
 
 class FlightListCreateView(APIView):
     """
     API View to handle listing and creation of flights.
-    Supports GET (list) and POST (create) requests.
+    Supports GET (list, paginated) and POST (create) requests.
     """
 
     def get(self, request, *args, **kwargs) -> Response:
         """
-        List all flights.
+        List flights — 10 per page by default.
+        Query params: ?page=N  ?page_size=N
         """
-        flights = Flight.objects.all()
-        serializer = FlightSerializer(flights, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        flights = Flight.objects.all().order_by('-departure_time')
+        paginator = FlightPagination()
+        page = paginator.paginate_queryset(flights, request)
+        serializer = FlightSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, *args, **kwargs) -> Response:
         """

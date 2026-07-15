@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
-import { fetchFlights } from '../../store/flightSlice';
+import { fetchFlights, setCurrentPage } from '../../store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
 import DatePicker from '../../components/ui/DatePicker';
 import DateSwitcher from '../../components/ui/DateSwitcher';
 import PassengerSelector from '../../components/ui/PassengerSelector';
+import { Pagination } from '../../components/ui/Pagination';
 
 /* ── helpers ──────────────────────────────────────────────── */
 const INR = (amount) =>
@@ -414,7 +415,7 @@ function Sidebar({
 /* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightsList() {
   const dispatch = useDispatch();
-  const { list: flights, loading, error } = useSelector(state => state.flights);
+  const { list: flights, count, currentPage, totalPages, loading, error } = useSelector(state => state.flights);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const source = searchParams.get('from') || '';
@@ -533,8 +534,13 @@ export default function UserFlightsList() {
   };
 
   useEffect(() => {
-    dispatch(fetchFlights());
-  }, [dispatch]);
+    dispatch(fetchFlights(currentPage));
+  }, [dispatch, currentPage]);
+
+  const handlePageChange = (page) => {
+    dispatch(setCurrentPage(page));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Initialize min/max bounds from data
   const { absMin, absMax } = useMemo(() => {
@@ -701,6 +707,19 @@ export default function UserFlightsList() {
                 {filteredFlights.map(flight => (
                   <FlightCard key={flight.id} flight={flight} />
                 ))}
+
+                {/* Pagination bar */}
+                {!loading && flights.length > 0 && (
+                  <div style={{ paddingTop: 24 }}>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalCount={count}
+                      pageSize={10}
+                      onPageChange={handlePageChange}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </section>

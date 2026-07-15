@@ -81,8 +81,8 @@ export const authAPI = {
 };
 
 export const flightsAPI = {
-  list: async () => {
-    return fetchWithAuth('/flights/');
+  list: async (page = 1) => {
+    return fetchWithAuth(`/flights/?page=${page}`);
   },
 
   retrieve: async (id) => {

@@ -25,21 +25,12 @@ export function LoginForm() {
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [localError, setLocalError] = useState('');
 
-  // Redirect + success toast after login
-  useEffect(() => {
-    if (isAuthenticated && profile) {
-      const name = profile.first_name || profile.username || 'back';
-      toast.success(`Welcome back, ${name}!`);
-      navigate('/flights');
-    }
-  }, [isAuthenticated, profile, navigate]);
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setLocalError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.username.trim() || !formData.password.trim()) {
       const msg = 'Please enter both username and password.';
@@ -47,13 +38,23 @@ export function LoginForm() {
       toast.error(msg);
       return;
     }
-    dispatch(loginUser(formData));
+    const res = await dispatch(loginUser(formData));
+    if (res.meta.requestStatus === 'fulfilled') {
+      const p = res.payload.profile;
+      const name = p?.first_name || p?.username || 'back';
+      toast.success(`Welcome back, ${name}!`);
+      navigate('/flights');
+    }
   };
 
   // Fire error toast when Redux reports an error
   useEffect(() => {
     if (error) toast.error(error);
   }, [error]);
+
+  const handleGoogleLogin = () => {
+    // Google login not implemented yet
+  };
 
   return (
     <>

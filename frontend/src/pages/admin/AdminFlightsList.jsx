@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchFlights, addFlight, updateFlight, clearFlightErrors, deleteFlight } from '../../store/flightSlice';
+import { fetchFlights, addFlight, updateFlight, clearFlightErrors, deleteFlight, setCurrentPage } from '../../store/flightSlice';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Plus, Edit2, Eye, Plane, RefreshCw, AlertCircle, ShieldAlert, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DeleteFlightDialog } from '../../components/ui/DeleteFlightDialog';
+import { Pagination } from '../../components/ui/Pagination';
 
 const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -48,20 +49,26 @@ function Err({ msg }) { return msg ? <p style={{ fontSize: 12, color: '#b91c1c',
 
 export default function AdminFlightsList() {
   const dispatch = useDispatch();
-  const { list: flights, loading, actionLoading, validationErrors, error } = useSelector(s => s.flights);
+  const { list: flights, count, currentPage, totalPages, loading, actionLoading, validationErrors, error } = useSelector(s => s.flights);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [errs, setErrs] = useState({});
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, flightNumber }
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, flightNumber, airline }
 
   useEffect(() => {
     dispatch(clearFlightErrors());
-    dispatch(fetchFlights());
+    dispatch(fetchFlights(currentPage));
     return () => {
       dispatch(clearFlightErrors());
     };
-  }, [dispatch]);
+  }, [dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePageChange = (page) => {
+    dispatch(setCurrentPage(page));
+    dispatch(fetchFlights(page));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const openAdd = () => { dispatch(clearFlightErrors()); setErrs({}); setForm(EMPTY); setEditId(null); setOpen(true); };
   const openEdit = (f) => {
@@ -80,6 +87,13 @@ export default function AdminFlightsList() {
     const res = await dispatch(deleteFlight(id));
     if (res.meta.requestStatus === 'fulfilled') {
       toast.success(`Flight ${flightNumber} deleted successfully.`);
+      // If we deleted the last item on a non-first page, go back one page
+      const remainingOnPage = flights.length - 1;
+      if (remainingOnPage === 0 && currentPage > 1) {
+        handlePageChange(currentPage - 1);
+      } else {
+        dispatch(fetchFlights(currentPage));
+      }
     } else {
       toast.error(`Failed to delete ${flightNumber}.`);
     }
@@ -115,7 +129,10 @@ export default function AdminFlightsList() {
     const res = editId ? await dispatch(updateFlight({ id: editId, flightData: payload })) : await dispatch(addFlight(payload));
     if (res.meta.requestStatus === 'fulfilled') {
       setOpen(false);
-      dispatch(fetchFlights());
+      // After add, go to page 1 to see new flight; after edit, stay on current page
+      const targetPage = editId ? currentPage : 1;
+      if (!editId) dispatch(setCurrentPage(1));
+      dispatch(fetchFlights(targetPage));
       toast.success(editId ? `Flight ${form.flight_number} updated successfully.` : `Flight ${form.flight_number} added successfully.`);
     } else {
       toast.error(editId ? 'Failed to update flight. Please check the form.' : 'Failed to add flight. Please check the form.');
@@ -142,7 +159,7 @@ export default function AdminFlightsList() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, marginBottom: 28 }}>
-          <Stat label="Total Routes" value={flights.length} icon={<Plane size={48} color="#705d00" />} />
+          <Stat label="Total Routes" value={count} icon={<Plane size={48} color="#705d00" />} />
           <Stat label="Scheduled" value={flights.filter(f => f.status === 'SCHEDULED').length} icon={<RefreshCw size={48} color="#059669" />} accent="#059669" />
           <Stat label="Delayed" value={flights.filter(f => f.status === 'DELAYED').length} icon={<AlertCircle size={48} color="#d97706" />} accent="#d97706" />
           <Stat label="Cancelled" value={flights.filter(f => f.status === 'CANCELLED').length} icon={<AlertCircle size={48} color="#dc2626" />} accent="#dc2626" />
@@ -214,6 +231,19 @@ export default function AdminFlightsList() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination bar */}
+          {!loading && flights.length > 0 && (
+            <div style={{ padding: '0 20px 20px' }}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={count}
+                pageSize={10}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </div>
