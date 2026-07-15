@@ -109,7 +109,7 @@ export function Navbar() {
           {!isAuthenticated ? (
             <>
               <button className="landing-nav-signin" onClick={() => navigate("/login")}>Sign In</button>
-              <button className="landing-nav-join" onClick={() => navigate("/register")}>Join Club</button>
+              <button className="landing-nav-join" onClick={() => navigate("/register")}>Register</button>
             </>
           ) : (
             <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>

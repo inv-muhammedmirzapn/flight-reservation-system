@@ -1,5 +1,16 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
 
+const getResponseData = async (res) => {
+  if (res.status === 204) return null;
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return text;
+  }
+};
+
 // Helper to make authenticated requests
 export const fetchWithAuth = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
@@ -34,8 +45,8 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
           ...options,
           headers,
         });
-        const retryData = await retryResponse.json();
-        if (!retryResponse.ok) throw new Error(JSON.stringify(retryData));
+        const retryData = await getResponseData(retryResponse);
+        if (!retryResponse.ok) throw new Error(typeof retryData === 'string' ? retryData : JSON.stringify(retryData));
         return retryData;
       }
     } catch (refreshErr) {
@@ -47,8 +58,8 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
     }
   }
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
+  const data = await getResponseData(response);
+  if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
   return data;
 };
 

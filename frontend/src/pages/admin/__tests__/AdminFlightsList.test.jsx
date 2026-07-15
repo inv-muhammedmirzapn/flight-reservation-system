@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminFlightsList from '../AdminFlightsList';
 
-const mockDispatch = vi.fn();
+const mockDispatch = vi.fn().mockImplementation(() => Promise.resolve({ meta: { requestStatus: 'fulfilled' } }));
 
 vi.mock('react-redux', async () => {
   const actual = await vi.importActual('react-redux');
@@ -41,7 +41,6 @@ vi.mock('react-redux', async () => {
 describe('AdminFlightsList Component', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
-    vi.spyOn(window, 'confirm').mockImplementation(() => true);
   });
 
   it('renders flights list with details', () => {
@@ -56,38 +55,50 @@ describe('AdminFlightsList Component', () => {
   });
 
   it('asks for confirmation and dispatches deleteFlight when delete is clicked', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     render(
       <MemoryRouter>
         <AdminFlightsList />
       </MemoryRouter>
     );
 
+    // Click the delete action button to open dialog
     const deleteBtn = screen.getByTitle('Delete');
     fireEvent.click(deleteBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete flight AG-101?');
+    // Verify dialog is open
+    expect(screen.getByText('Delete Flight?')).toBeInTheDocument();
+    expect(screen.getByText(/You are about to permanently delete/)).toBeInTheDocument();
+
+    // Click confirm inside dialog
+    const confirmBtn = screen.getByText('Yes, Delete Flight');
+    fireEvent.click(confirmBtn);
+
     expect(mockDispatch).toHaveBeenCalled();
   });
 
   it('does not dispatch deleteFlight if user cancels confirmation', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
     render(
       <MemoryRouter>
         <AdminFlightsList />
       </MemoryRouter>
     );
 
+    // Click the delete action button to open dialog
     const deleteBtn = screen.getByTitle('Delete');
     fireEvent.click(deleteBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete flight AG-101?');
+    // Verify dialog is open
+    expect(screen.getByText('Delete Flight?')).toBeInTheDocument();
+
+    // Click cancel inside dialog
+    const cancelBtn = screen.getByText('Cancel');
+    fireEvent.click(cancelBtn);
+
+    // Verify dialog is closed
+    expect(screen.queryByText('Delete Flight?')).not.toBeInTheDocument();
     
     // We should not dispatch any delete thunk/action
     const dispatchedActions = mockDispatch.mock.calls.map(call => {
-      // In Redux Toolkit, thunks are functions, so call[0] is either a function or an action object
       return typeof call[0] === 'function' ? call[0].name : (call[0] && call[0].type);
     });
     
