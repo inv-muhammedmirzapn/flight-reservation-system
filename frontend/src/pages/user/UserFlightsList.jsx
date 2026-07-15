@@ -77,7 +77,7 @@ function FlightCard({ flight }) {
         background: 'rgba(255,255,255,0.72)',
         backdropFilter: 'blur(25px)',
         WebkitBackdropFilter: 'blur(25px)',
-        border: '1px solid #1a1c1d',
+        border: '1px solid rgba(255,255,255,0.5)',
         borderRadius: 16,
         padding: '24px 32px',
         textDecoration: 'none',
@@ -215,7 +215,8 @@ function Sidebar({
   adults, setAdults,
   childrenCount, setChildrenCount,
   infants, setInfants,
-  stopsFilter, setStopsFilter
+  stopsFilter, setStopsFilter,
+  onClearFilters
 }) {
   const statuses = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'BOARDING', 'DEPARTED', 'ARRIVED'];
 
@@ -227,13 +228,37 @@ function Sidebar({
       top: 88,
       alignSelf: 'flex-start',
     }}>
-      <div className="glass-card" style={{ borderRadius: 20, padding: 28 }}>
-        <h2 style={{
-          fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-          fontSize: 22, fontWeight: 700, color: '#1a1c1d', marginBottom: 24,
-        }}>
-          Filters
-        </h2>
+      <div className="glass-card sidebar-scroll" style={{ 
+        borderRadius: 20, 
+        padding: 28,
+        maxHeight: 'calc(100vh - 120px)',
+        overflowY: 'auto'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <h2 style={{
+            fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
+            fontSize: 22, fontWeight: 700, color: '#1a1c1d',
+          }}>
+            Filters
+          </h2>
+          <button
+            onClick={onClearFilters}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#705d00',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 6,
+            }}
+            onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
+            onMouseOut={(e) => e.target.style.background = 'transparent'}
+          >
+            Clear All
+          </button>
+        </div>
 
         {/* Route inputs */}
         <div style={{ marginBottom: 24 }}>
@@ -547,6 +572,14 @@ export default function UserFlightsList() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleClearFilters = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    setSearchParams(new URLSearchParams({
+      adults: '1',
+      depDate: todayStr
+    }), { replace: true });
+  };
+
   // Initialize min/max bounds from data
   const { absMin, absMax } = useMemo(() => {
     if (!flights.length) return { absMin: 0, absMax: 100000 };
@@ -631,7 +664,7 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{
@@ -680,6 +713,7 @@ export default function UserFlightsList() {
             childrenCount={childrenCount} setChildrenCount={setChildrenCount}
             infants={infants} setInfants={setInfants}
             stopsFilter={stopsFilter} setStopsFilter={setStopsFilter}
+            onClearFilters={handleClearFilters}
           />
 
           {/* Flight list */}

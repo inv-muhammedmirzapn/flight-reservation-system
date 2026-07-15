@@ -306,16 +306,16 @@ body {
   z-index: 0;
 }
 
-/* Content area — fixed height, no page scroll */
+/* Content area — scrollable for smaller screens */
 .auth-page-main {
   position: relative;
   z-index: 10;
-  height: 100vh;
-  padding: 5.5rem 1rem 1.5rem;
+  min-height: 100vh;
+  padding: 6.5rem 1rem 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* ─── Form Header ─────────────────────────────────────── */
@@ -659,6 +659,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 95%;
+  max-width: 1800px;
   z-index: 50;
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -674,8 +675,7 @@ body {
   justify-content: space-between;
   padding: 0 1.5rem;
   height: 64px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .landing-logo {
@@ -778,7 +778,6 @@ body {
   justify-content: center;
   padding-top: 6rem;
   padding-bottom: 3rem;
-  overflow: hidden;
 }
 
 .landing-hero-bg {
@@ -792,9 +791,9 @@ body {
 
 .landing-hero-content {
   position: relative;
-  z-index: 10;
-  width: 100%;
-  max-width: 1200px;
+  z-index: 30;
+  width: 95%;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 0 1.5rem;
   margin-top: 3rem;
@@ -931,7 +930,8 @@ body {
 }
 
 .landing-section-inner {
-  max-width: 1200px;
+  width: 95%;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -1029,7 +1029,8 @@ body {
 }
 
 .landing-footer-inner {
-  max-width: 1200px;
+  width: 95%;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 1.5rem;
   display: flex;
@@ -1070,6 +1071,19 @@ body {
 }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+  .landing-nav-links {
+    gap: 0.75rem;
+  }
+  .landing-nav-link {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.35rem;
+  }
+  .landing-logo {
+    font-size: 1.25rem;
+  }
+}
+
 @media (max-width: 900px) {
   .landing-dest-grid {
     grid-template-columns: 1fr 1fr;
@@ -1229,4 +1243,21 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
+}
+
+/* ── Custom Scrollbar for Sidebar ── */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(112, 93, 0, 0.2);
+  border-radius: 10px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(112, 93, 0, 0.4);
 }

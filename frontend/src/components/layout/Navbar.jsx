@@ -75,7 +75,7 @@ export function Navbar() {
         <div
           className="landing-logo"
           style={{ cursor: "pointer" }}
-          onClick={() => navigate(isAdmin ? "/admin/flights" : "/flights")}
+          onClick={() => navigate(isAuthenticated ? (isAdmin ? "/admin/flights" : "/flights") : "/")}
         >
           <div className="nav-logo-icon">
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -198,7 +198,7 @@ export function Navbar() {
                         justifyContent: "center", flexShrink: 0,
                       }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6">
-                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                         </svg>
                       </span>
                       View Profile
@@ -225,7 +225,7 @@ export function Navbar() {
                         justifyContent: "center", flexShrink: 0,
                       }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309">
-                          <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+                          <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
                         </svg>
                       </span>
                       Sign Out
