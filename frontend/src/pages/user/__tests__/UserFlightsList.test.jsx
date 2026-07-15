@@ -9,7 +9,9 @@ import UserFlightsList from '../UserFlightsList';
 // Mock components that might be problematic or that we want to simplify, if any.
 // In our case, DatePicker and DateSwitcher are simple and don't need mocking.
 
-const todayStr = new Date().toISOString().split('T')[0];
+// Build today's date string in local time (not UTC) to match what the filter now computes
+const now = new Date();
+const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 const sampleFlights = [
   {
@@ -19,8 +21,9 @@ const sampleFlights = [
     aircraft: 'Boeing 787',
     source_airport: 'COK',
     destination_airport: 'DEL',
-    departure_time: `${todayStr}T10:00:00Z`,
-    arrival_time: `${todayStr}T13:00:00Z`,
+    // Use noon local time — safely "today" in every timezone
+    departure_time: new Date(`${todayStr}T12:00:00`).toISOString(),
+    arrival_time: new Date(`${todayStr}T15:00:00`).toISOString(),
     base_fare: 5000,
     available_seats: 10,
     total_seats: 180,
@@ -34,13 +37,13 @@ const sampleFlights = [
     aircraft: 'Airbus A320',
     source_airport: 'COK',
     destination_airport: 'DEL',
-    departure_time: `${todayStr}T15:00:00Z`,
-    arrival_time: `${todayStr}T19:30:00Z`,
+    departure_time: new Date(`${todayStr}T13:00:00`).toISOString(),
+    arrival_time: new Date(`${todayStr}T17:30:00`).toISOString(),
     base_fare: 7500,
     available_seats: 2,
     total_seats: 150,
     status: 'SCHEDULED',
-    stops: [{ stop_number: 1, stop_location: 'BLR', stop_arrival: `${todayStr}T16:30:00Z`, stop_layover: '1h', stop_departure: `${todayStr}T17:30:00Z` }],
+    stops: [{ stop_number: 1, stop_location: 'BLR', stop_arrival: new Date(`${todayStr}T14:30:00`).toISOString(), stop_layover: '1h', stop_departure: new Date(`${todayStr}T15:30:00`).toISOString() }],
   },
   {
     id: 3,
@@ -49,8 +52,8 @@ const sampleFlights = [
     aircraft: 'Boeing 777',
     source_airport: 'COK',
     destination_airport: 'DEL',
-    departure_time: `${todayStr}T20:00:00Z`,
-    arrival_time: `${todayStr}T02:00:00Z`,
+    departure_time: new Date(`${todayStr}T14:00:00`).toISOString(),
+    arrival_time: new Date(`${todayStr}T19:00:00`).toISOString(),
     base_fare: 12000,
     available_seats: 15,
     total_seats: 200,

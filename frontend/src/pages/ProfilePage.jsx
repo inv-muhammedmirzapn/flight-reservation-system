@@ -5,10 +5,16 @@ import {
   User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock,
   CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X
 } from "lucide-react";
+import { Select } from "../components/ui/Select";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];
 const PROFILE_FIELDS = ["phone_number", "gender", "date_of_birth", "country", "state", "city"];
-const GENDER_OPTIONS = ["", "MALE", "FEMALE", "OTHER"];
+const GENDER_OPTIONS = [
+  { value: "", label: "Select gender" },
+  { value: "MALE", label: "Male" },
+  { value: "FEMALE", label: "Female" },
+  { value: "OTHER", label: "Other" }
+];
 
 const FIELD_LABELS = {
   username: "Username", email: "Email Address", first_name: "First Name",
@@ -398,16 +404,19 @@ function FormField({ id, value, onChange, type = "text", readOnly = false, optio
           <Icon size={15} />
         </span>
         {options ? (
-          <select
-            id={id} name={id} value={value} onChange={onChange} disabled={readOnly}
-            style={readOnly ? lockedStyle : editableStyle}
-          >
-            {options.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt === "" ? "Select gender" : opt.charAt(0) + opt.slice(1).toLowerCase()}
-              </option>
-            ))}
-          </select>
+          <Select
+            id={id}
+            name={id}
+            value={value}
+            onChange={onChange}
+            disabled={readOnly}
+            options={options}
+            style={{
+              ...(readOnly ? lockedStyle : editableStyle),
+              paddingRight: "2.5rem"
+            }}
+            label=""
+          />
         ) : (
           <input
             id={id} name={id} type={type} value={value} onChange={onChange} readOnly={readOnly}
