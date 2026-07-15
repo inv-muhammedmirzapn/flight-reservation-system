@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { loginUser } from '../../store/authSlice';
+import { Link, useNavigate } from 'react-router-dom';
+import { loginUser, logout } from '../../store/authSlice';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
+import toast from 'react-hot-toast';
 
 function GoogleIcon() {
   return (
@@ -18,7 +19,8 @@ function GoogleIcon() {
 
 export function LoginForm() {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const { loading, error, isAuthenticated, profile } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [localError, setLocalError] = useState('');
@@ -28,21 +30,42 @@ export function LoginForm() {
     setLocalError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.username.trim() || !formData.password.trim()) {
-      setLocalError('Please enter both username and password.');
+      const msg = 'Please enter both username and password.';
+      setLocalError(msg);
+      toast.error(msg);
       return;
     }
-    dispatch(loginUser(formData));
+    const res = await dispatch(loginUser(formData));
+    if (res.meta.requestStatus === 'fulfilled') {
+      const p = res.payload.profile;
+      
+      // Prevent admins from logging in here
+      const tokenObj = res.payload.token ? JSON.parse(atob(res.payload.token.split('.')[1])) : null;
+      const isAdmin = tokenObj?.is_superuser || p?.role === 'ADMIN';
+      
+      if (isAdmin) {
+        dispatch(logout());
+        toast.error('Admins cannot log in here. Please use the Admin Portal.');
+        return;
+      }
+
+      const name = p?.first_name || p?.username || 'back';
+      toast.success(`Welcome back, ${name}!`);
+      navigate('/flights');
+    }
   };
+
+  // Fire error toast when Redux reports an error
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
 
   const handleGoogleLogin = () => {
-    // TODO: wire up backend OAuth2 redirect
-    console.log('Google OAuth — coming soon');
+    // Google login not implemented yet
   };
-
-  const displayError = localError || error;
 
   return (
     <>
@@ -56,12 +79,6 @@ export function LoginForm() {
         <p className="form-subtitle">Sign in to your AeroGlass account</p>
       </div>
 
-      {displayError && (
-        <div className="alert alert-error">
-          <span>⚠️</span>
-          {displayError}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="form-fields">
         <Input

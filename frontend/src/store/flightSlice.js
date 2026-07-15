@@ -1,12 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { flightsAPI } from '../services/api';
 
+// fetchFlights now accepts an optional page number (default 1)
 export const fetchFlights = createAsyncThunk(
   'flights/fetchFlights',
-  async (_, { rejectWithValue }) => {
+  async (page = 1, { rejectWithValue }) => {
     try {
-      const data = await flightsAPI.list();
-      return data;
+      const data = await flightsAPI.list(page);
+      return data; // { count, next, previous, results }
     } catch (error) {
       let message = 'Failed to fetch flights';
       try {
@@ -44,7 +45,7 @@ export const addFlight = createAsyncThunk(
     } catch (error) {
       try {
         const errObj = JSON.parse(error.message);
-        return rejectWithValue(errObj); // Keep validation objects
+        return rejectWithValue(errObj);
       } catch (_) {
         return rejectWithValue({ non_field_errors: ['Failed to add flight'] });
       }
@@ -105,6 +106,9 @@ export const deleteFlight = createAsyncThunk(
 
 const initialState = {
   list: [],
+  count: 0,          // total number of flights (for pagination)
+  currentPage: 1,    // which page we are on
+  totalPages: 1,     // derived from count / page_size
   detail: null,
   loading: false,
   detailLoading: false,
@@ -112,6 +116,8 @@ const initialState = {
   error: null,
   validationErrors: null,
 };
+
+const PAGE_SIZE = 10;
 
 const flightSlice = createSlice({
   name: 'flights',
@@ -123,18 +129,24 @@ const flightSlice = createSlice({
     },
     clearFlightDetail: (state) => {
       state.detail = null;
-    }
+    },
+    setCurrentPage: (state, action) => {
+      state.currentPage = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch List
+      // Fetch List — response is now { count, next, previous, results }
       .addCase(fetchFlights.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchFlights.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = action.payload;
+        const { count, results } = action.payload;
+        state.list = results;
+        state.count = count;
+        state.totalPages = Math.ceil(count / PAGE_SIZE);
       })
       .addCase(fetchFlights.rejected, (state, action) => {
         state.loading = false;
@@ -153,14 +165,14 @@ const flightSlice = createSlice({
         state.detailLoading = false;
         state.error = action.payload;
       })
-      // Add Flight
+      // Add Flight — after adding, re-fetch so pagination stays accurate
       .addCase(addFlight.pending, (state) => {
         state.actionLoading = true;
         state.validationErrors = null;
       })
-      .addCase(addFlight.fulfilled, (state, action) => {
+      .addCase(addFlight.fulfilled, (state) => {
         state.actionLoading = false;
-        state.list.push(action.payload);
+        // caller dispatches fetchFlights(currentPage) after this
       })
       .addCase(addFlight.rejected, (state, action) => {
         state.actionLoading = false;
@@ -208,6 +220,9 @@ const flightSlice = createSlice({
       .addCase(deleteFlight.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.list = state.list.filter(f => f.id !== action.payload);
+        // Adjust count; caller re-fetches if page becomes empty
+        state.count = Math.max(0, state.count - 1);
+        state.totalPages = Math.ceil(state.count / PAGE_SIZE);
       })
       .addCase(deleteFlight.rejected, (state, action) => {
         state.actionLoading = false;
@@ -216,5 +231,5 @@ const flightSlice = createSlice({
   },
 });
 
-export const { clearFlightErrors, clearFlightDetail } = flightSlice.actions;
+export const { clearFlightErrors, clearFlightDetail, setCurrentPage } = flightSlice.actions;
 export default flightSlice.reducer;

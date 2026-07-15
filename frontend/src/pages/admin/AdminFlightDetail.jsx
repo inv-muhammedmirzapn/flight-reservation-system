@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchFlightDetail, patchFlight, clearFlightDetail } from '../../store/flightSlice';
 import { Select } from '../../components/ui/Select';
 import { Plane, ArrowLeft, Clock, Users, ShieldAlert } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
@@ -58,7 +59,12 @@ export default function AdminFlightDetail() {
   const handleStatusChange = async (e) => {
     const next = e.target.value;
     setStatusVal(next);
-    await dispatch(patchFlight({ id, flightData:{ status:next } }));
+    const patchPromise = dispatch(patchFlight({ id, flightData:{ status:next } })).unwrap();
+    toast.promise(patchPromise, {
+      loading: 'Updating status…',
+      success: `Status updated to ${next}.`,
+      error: 'Failed to update status.',
+    });
   };
 
   if (detailLoading) return (
