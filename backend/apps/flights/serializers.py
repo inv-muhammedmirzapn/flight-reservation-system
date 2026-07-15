@@ -21,7 +21,8 @@ class FlightSerializer(serializers.ModelSerializer):
             "available_seats",
             "status",
             "external_id",
-            "sync_source"
+            "sync_source",
+            "stops"
         ]
         read_only_fields = ["id"]
 

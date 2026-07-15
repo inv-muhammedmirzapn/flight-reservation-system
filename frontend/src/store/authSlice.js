@@ -61,7 +61,7 @@ const initialState = {
   profile: null,
   isAuthenticated: !!initialToken,
   isAdmin: decoded?.is_superuser || false,
-  loading: false,
+  loading: !!initialToken,
   error: null,
 };
 

@@ -86,6 +86,23 @@ export const patchFlight = createAsyncThunk(
   }
 );
 
+export const deleteFlight = createAsyncThunk(
+  'flights/deleteFlight',
+  async (id, { rejectWithValue }) => {
+    try {
+      await flightsAPI.delete(id);
+      return id;
+    } catch (error) {
+      let message = 'Failed to delete flight';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const initialState = {
   list: [],
   detail: null,
@@ -182,6 +199,19 @@ const flightSlice = createSlice({
       .addCase(patchFlight.rejected, (state, action) => {
         state.actionLoading = false;
         state.validationErrors = action.payload;
+      })
+      // Delete Flight
+      .addCase(deleteFlight.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteFlight.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.list = state.list.filter(f => f.id !== action.payload);
+      })
+      .addCase(deleteFlight.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       });
   },
 });

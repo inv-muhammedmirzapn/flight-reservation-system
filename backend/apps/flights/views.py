@@ -63,6 +63,19 @@ class FlightDetailView(APIView):
         serializer = FlightSerializer(flight)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def delete(self, request, id, *args, **kwargs) -> Response:
+        """
+        Delete a single flight.
+        """
+        if not (request.user.is_authenticated and (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role == 'ADMIN'))):
+            return Response(
+                {"detail": "You do not have permission to delete this flight."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        flight = self.get_object(id)
+        flight.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class FlightUpdateView(APIView):
     """
     API View to handle updates to existing flights.

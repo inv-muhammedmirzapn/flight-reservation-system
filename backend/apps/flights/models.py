@@ -39,6 +39,7 @@ class Flight(models.Model):
         db_index=True
     )
     sync_source = models.CharField(max_length=50, null=True, blank=True)
+    stops = models.JSONField(default=list, blank=True)
 
     class Meta:
         constraints = [
