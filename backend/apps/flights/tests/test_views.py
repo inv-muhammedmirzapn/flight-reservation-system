@@ -289,8 +289,10 @@ class FlightAPITests(APITestCase):
         )
         response = self.client.get("/api/flights/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        flight_numbers = [item["flight_number"] for item in response.data]
+        self.assertEqual(response.data["count"], 2)
+        results = response.data["results"]
+        self.assertEqual(len(results), 2)
+        flight_numbers = [item["flight_number"] for item in results]
         self.assertIn("FL111", flight_numbers)
         self.assertIn("FL222", flight_numbers)
 
