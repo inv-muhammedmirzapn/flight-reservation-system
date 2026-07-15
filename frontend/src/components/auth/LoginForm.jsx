@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser } from '../../store/authSlice';
+import { loginUser, logout } from '../../store/authSlice';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import toast from 'react-hot-toast';
@@ -41,6 +41,17 @@ export function LoginForm() {
     const res = await dispatch(loginUser(formData));
     if (res.meta.requestStatus === 'fulfilled') {
       const p = res.payload.profile;
+      
+      // Prevent admins from logging in here
+      const tokenObj = res.payload.token ? JSON.parse(atob(res.payload.token.split('.')[1])) : null;
+      const isAdmin = tokenObj?.is_superuser || p?.role === 'ADMIN';
+      
+      if (isAdmin) {
+        dispatch(logout());
+        toast.error('Admins cannot log in here. Please use the Admin Portal.');
+        return;
+      }
+
       const name = p?.first_name || p?.username || 'back';
       toast.success(`Welcome back, ${name}!`);
       navigate('/flights');

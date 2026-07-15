@@ -608,7 +608,7 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{
@@ -640,7 +640,7 @@ export default function UserFlightsList() {
         </div> */}
 
         {/* Layout: Sidebar + List */}
-        <div className="flights-layout" style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+        <div className="flights-layout" style={{ display: 'flex', gap: 28, alignItems: 'stretch', flex: 1 }}>
 
           {/* Sidebar */}
           <Sidebar
@@ -660,7 +660,7 @@ export default function UserFlightsList() {
           />
 
           {/* Flight list */}
-          <section style={{ flex: 1, minWidth: 0 }}>
+          <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
             {/* Compact search summary bar */}
             <div className="glass-card" style={{
@@ -703,14 +703,14 @@ export default function UserFlightsList() {
                 <p style={{ fontSize: 13, color: '#9e9488', marginTop: 6 }}>Try adjusting your filters.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
                 {filteredFlights.map(flight => (
                   <FlightCard key={flight.id} flight={flight} />
                 ))}
 
                 {/* Pagination bar */}
                 {!loading && flights.length > 0 && (
-                  <div style={{ paddingTop: 24 }}>
+                  <div style={{ paddingTop: 24, marginTop: 'auto' }}>
                     <Pagination
                       currentPage={currentPage}
                       totalPages={totalPages}
