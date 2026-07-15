@@ -19,6 +19,24 @@ export const fetchFlights = createAsyncThunk(
   }
 );
 
+// fetchAllFlights — fetches entire dataset in one request for client-side filtering (user listing page)
+export const fetchAllFlights = createAsyncThunk(
+  'flights/fetchAllFlights',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await flightsAPI.listAll();
+      return data; // { count, next, previous, results }
+    } catch (error) {
+      let message = 'Failed to fetch flights';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const fetchFlightDetail = createAsyncThunk(
   'flights/fetchFlightDetail',
   async (id, { rejectWithValue }) => {
@@ -48,6 +66,23 @@ export const addFlight = createAsyncThunk(
         return rejectWithValue(errObj);
       } catch (_) {
         return rejectWithValue({ non_field_errors: ['Failed to add flight'] });
+      }
+    }
+  }
+);
+
+export const bulkImportFlights = createAsyncThunk(
+  'flights/bulkImportFlights',
+  async (flightsData, { rejectWithValue }) => {
+    try {
+      const data = await flightsAPI.bulkImport(flightsData);
+      return data;
+    } catch (error) {
+      try {
+        const errObj = JSON.parse(error.message);
+        return rejectWithValue(errObj);
+      } catch (_) {
+        return rejectWithValue({ detail: 'Failed to import flights' });
       }
     }
   }
@@ -152,6 +187,22 @@ const flightSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // Fetch All (user listing page — loads full dataset for client-side filtering)
+      .addCase(fetchAllFlights.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllFlights.fulfilled, (state, action) => {
+        state.loading = false;
+        const { count, results } = action.payload;
+        state.list = results;
+        state.count = count;
+        state.totalPages = Math.ceil(count / PAGE_SIZE);
+      })
+      .addCase(fetchAllFlights.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // Fetch Detail
       .addCase(fetchFlightDetail.pending, (state) => {
         state.detailLoading = true;
@@ -177,6 +228,18 @@ const flightSlice = createSlice({
       .addCase(addFlight.rejected, (state, action) => {
         state.actionLoading = false;
         state.validationErrors = action.payload;
+      })
+      // Bulk Import Flights
+      .addCase(bulkImportFlights.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(bulkImportFlights.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(bulkImportFlights.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload?.detail || 'Failed to import flights';
       })
       // Update Flight
       .addCase(updateFlight.pending, (state) => {

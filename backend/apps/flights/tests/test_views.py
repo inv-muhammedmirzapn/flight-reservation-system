@@ -414,3 +414,106 @@ class FlightAPITests(APITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Flight.objects.filter(id=flight.id).exists())
+
+
+class FlightBulkImportAPITests(APITestCase):
+    """
+    Test suite for FlightBulkImportView (POST /api/flights/bulk-import/).
+    """
+
+    def setUp(self):
+        self.url = "/api/flights/bulk-import/"
+        self.departure_time = timezone.now() + timedelta(days=1)
+        self.arrival_time = self.departure_time + timedelta(hours=3)
+        
+        # Admin User
+        self.admin_user = User.objects.create_user(username="admin_user", password="password123")
+        profile = self.admin_user.profile
+        profile.role = Profile.Role.ADMIN
+        profile.save()
+
+        # Regular User
+        self.customer_user = User.objects.create_user(username="customer_user", password="password123")
+
+        self.valid_flights = [
+            {
+                "flight_number": "IM101",
+                "airline": "AeroGlass Gold",
+                "aircraft": "Boeing 787",
+                "source_airport": "MIA",
+                "destination_airport": "LAX",
+                "departure_time": self.departure_time.isoformat(),
+                "arrival_time": self.arrival_time.isoformat(),
+                "base_fare": "500.00",
+                "total_seats": 200,
+                "available_seats": 200,
+                "status": "SCHEDULED"
+            },
+            {
+                "flight_number": "IM102",
+                "airline": "AeroGlass Premium",
+                "aircraft": "Airbus A350",
+                "source_airport": "JFK",
+                "destination_airport": "DEL",
+                "departure_time": self.departure_time.isoformat(),
+                "arrival_time": self.arrival_time.isoformat(),
+                "base_fare": "750.00",
+                "total_seats": 250,
+                "available_seats": 250,
+                "status": "SCHEDULED"
+            }
+        ]
+
+    def test_bulk_import_unauthorized_fails(self):
+        """Test that non-admin and anonymous users cannot call bulk import."""
+        # Anonymous
+        response = self.client.post(self.url, self.valid_flights, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Customer User
+        self.client.force_authenticate(user=self.customer_user)
+        response = self.client.post(self.url, self.valid_flights, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bulk_import_success(self):
+        """Test that admin can successfully bulk import multiple valid flights."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(self.url, self.valid_flights, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["created_count"], 2)
+        self.assertEqual(len(response.data["errors"]), 0)
+        self.assertEqual(Flight.objects.count(), 2)
+        self.assertTrue(Flight.objects.filter(flight_number="IM101").exists())
+        self.assertTrue(Flight.objects.filter(flight_number="IM102").exists())
+
+    def test_bulk_import_partial_success(self):
+        """Test that invalid flight records fail but valid ones in the list are created."""
+        self.client.force_authenticate(user=self.admin_user)
+        
+        # Flight with identical source and destination airport (invalid)
+        invalid_flight = {
+            "flight_number": "IM103",
+            "airline": "AeroGlass Premium",
+            "aircraft": "Airbus A350",
+            "source_airport": "JFK",
+            "destination_airport": "JFK",
+            "departure_time": self.departure_time.isoformat(),
+            "arrival_time": self.arrival_time.isoformat(),
+            "base_fare": "750.00",
+            "total_seats": 250,
+            "available_seats": 250,
+            "status": "SCHEDULED"
+        }
+        
+        payload = [self.valid_flights[0], invalid_flight]
+        response = self.client.post(self.url, payload, format="json")
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["created_count"], 1)
+        self.assertEqual(len(response.data["errors"]), 1)
+        self.assertEqual(response.data["errors"][0]["flight_number"], "IM103")
+        
+        # Check that IM101 is created, but IM103 is not
+        self.assertTrue(Flight.objects.filter(flight_number="IM101").exists())
+        self.assertFalse(Flight.objects.filter(flight_number="IM103").exists())
+

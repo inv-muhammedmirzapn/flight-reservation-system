@@ -96,6 +96,10 @@ export const flightsAPI = {
     return fetchWithAuth(`/flights/?page=${page}`);
   },
 
+  listAll: async () => {
+    return fetchWithAuth(`/flights/?page_size=1000`);
+  },
+
   retrieve: async (id) => {
     return fetchWithAuth(`/flights/${id}/`);
   },
@@ -124,6 +128,13 @@ export const flightsAPI = {
   delete: async (id) => {
     return fetchWithAuth(`/flights/${id}/`, {
       method: 'DELETE',
+    });
+  },
+
+  bulkImport: async (flightsData) => {
+    return fetchWithAuth('/flights/bulk-import/', {
+      method: 'POST',
+      body: JSON.stringify(flightsData),
     });
   }
 };

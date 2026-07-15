@@ -142,3 +142,54 @@ class FlightUpdateView(APIView):
                 {"non_field_errors": [str(exc)]},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class FlightBulkImportView(APIView):
+    """
+    API View to handle bulk import of flights from a JSON list.
+    Only authenticated users with superuser or ADMIN role are allowed.
+    """
+    def post(self, request, *args, **kwargs) -> Response:
+        if not (request.user.is_authenticated and (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role == 'ADMIN'))):
+            return Response(
+                {"detail": "You do not have permission to import flights."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        data = request.data
+        if isinstance(data, dict):
+            # Accept {"flights": [...]} structure
+            data = data.get("flights", [])
+
+        if not isinstance(data, list):
+            return Response(
+                {"detail": "Invalid format. Expected a JSON array of flights."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        created_flights = []
+        errors = []
+
+        for index, item in enumerate(data):
+            # Identify flight by flight_number or index
+            flight_number = item.get("flight_number", f"Item #{index + 1}")
+            serializer = FlightSerializer(data=item)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    created_flights.append(serializer.data)
+                except (IntegrityError, DjangoValidationError) as exc:
+                    errors.append({
+                        "flight_number": flight_number,
+                        "errors": {"non_field_errors": [str(exc)]}
+                    })
+            else:
+                errors.append({
+                    "flight_number": flight_number,
+                    "errors": serializer.errors
+                })
+
+        return Response({
+            "created_count": len(created_flights),
+            "created_flights": created_flights,
+            "errors": errors
+        }, status=status.HTTP_200_OK)

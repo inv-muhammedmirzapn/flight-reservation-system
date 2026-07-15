@@ -1,67 +1,253 @@
-export function Select({ id, label, options = [], ...props }) {
+import React, { useState, useRef, useEffect, useId } from 'react';
+import { ChevronDown } from 'lucide-react';
+
+export function Select({
+  id,
+  name,
+  label,
+  options = [],
+  value,
+  onChange,
+  disabled = false,
+  style = {},
+  ...props
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const containerRef = useRef(null);
+  const uniqueId = useId();
+  const selectId = id || uniqueId;
+  const selectName = name || id;
+
+  const normalizedOptions = options.map(opt => {
+    if (typeof opt === 'string') {
+      return { value: opt, label: opt };
+    }
+    return opt;
+  });
+
+  const selectedOption = normalizedOptions.find(opt => opt.value === value) || normalizedOptions[0];
+
+  // Close dropdown on clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Sync highlightedIndex with selected value when dropdown opens
+  useEffect(() => {
+    if (isOpen) {
+      const idx = normalizedOptions.findIndex(opt => opt.value === value);
+      setHighlightedIndex(idx >= 0 ? idx : 0);
+    } else {
+      setHighlightedIndex(-1);
+    }
+  }, [isOpen, value, options]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelect = (val) => {
+    if (disabled) return;
+    setIsOpen(false);
+    if (onChange) {
+      onChange({
+        target: {
+          id: selectId,
+          name: selectName,
+          value: val,
+        }
+      });
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (isOpen) {
+          if (highlightedIndex >= 0 && highlightedIndex < normalizedOptions.length) {
+            handleSelect(normalizedOptions[highlightedIndex].value);
+          }
+        } else {
+          setIsOpen(true);
+        }
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        if (!isOpen) {
+          setIsOpen(true);
+        } else {
+          setHighlightedIndex(prev => (prev + 1) % normalizedOptions.length);
+        }
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (!isOpen) {
+          setIsOpen(true);
+        } else {
+          setHighlightedIndex(prev => (prev - 1 + normalizedOptions.length) % normalizedOptions.length);
+        }
+        break;
+      case 'Escape':
+        if (isOpen) {
+          e.preventDefault();
+          setIsOpen(false);
+        }
+        break;
+      case 'Tab':
+        if (isOpen) {
+          setIsOpen(false);
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  const triggerStyle = {
+    width: '100%',
+    background: disabled ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.65)',
+    border: isFocused && !disabled
+      ? '1.5px solid #705d00'
+      : '1.5px solid rgba(0,0,0,0.1)',
+    borderRadius: 10,
+    padding: '9px 36px 9px 13px',
+    fontSize: 14,
+    fontWeight: 500,
+    color: disabled ? '#a09888' : '#1a1c1d',
+    fontFamily: 'Inter, sans-serif',
+    outline: 'none',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    textAlign: 'left',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    boxShadow: isFocused && !disabled ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
+    ...style,
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative', width: '100%' }}>
       {label && (
         <label
-          htmlFor={id}
+          htmlFor={selectId}
           style={{
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
             color: '#5e5e5e',
+            userSelect: 'none',
           }}
         >
           {label}
         </label>
       )}
-      <div style={{ position: 'relative' }}>
-        <select
-          id={id}
-          name={id}
+      <div style={{ position: 'relative', width: '100%' }}>
+        <button
+          id={selectId}
+          type="button"
+          disabled={disabled}
+          onClick={() => setIsOpen(prev => !prev)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onKeyDown={handleKeyDown}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={`${selectId}-listbox`}
+          style={triggerStyle}
           {...props}
-          style={{
-            width: '100%',
-            background: 'rgba(255,255,255,0.65)',
-            border: '1.5px solid rgba(0,0,0,0.1)',
-            borderRadius: 10,
-            padding: '9px 36px 9px 13px',
-            fontSize: 14,
-            fontWeight: 500,
-            color: '#1a1c1d',
-            fontFamily: 'Inter, sans-serif',
-            outline: 'none',
-            appearance: 'none',
-            cursor: 'pointer',
-            transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
-            ...props.style,
-          }}
-          onFocus={e => {
-            e.target.style.borderColor = '#705d00';
-            e.target.style.background = 'rgba(255,255,255,0.92)';
-            e.target.style.boxShadow = '0 0 0 3px rgba(112,93,0,0.1)';
-          }}
-          onBlur={e => {
-            e.target.style.borderColor = 'rgba(0,0,0,0.1)';
-            e.target.style.background = 'rgba(255,255,255,0.65)';
-            e.target.style.boxShadow = 'none';
-          }}
         >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value} style={{ background: '#fff', color: '#1a1c1d' }}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        {/* Custom chevron */}
-        <div style={{
-          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-          pointerEvents: 'none', color: '#5e5e5e',
-        }}>
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+          <span>{selectedOption ? selectedOption.label : 'Select...'}</span>
+          <ChevronDown
+            size={14}
+            style={{
+              color: disabled ? '#b0a896' : '#5e5e5e',
+              transition: 'transform 0.2s',
+              transform: isOpen ? 'rotate(180deg)' : 'none',
+              marginLeft: 8,
+              flexShrink: 0,
+            }}
+          />
+        </button>
+
+        {isOpen && (
+          <ul
+            id={`${selectId}-listbox`}
+            role="listbox"
+            tabIndex={-1}
+            aria-activedescendant={highlightedIndex >= 0 ? `${selectId}-opt-${highlightedIndex}` : undefined}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 5px)',
+              left: 0,
+              width: '100%',
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+              borderRadius: 12,
+              maxHeight: 220,
+              overflowY: 'auto',
+              zIndex: 2000,
+              padding: '6px 0',
+              margin: 0,
+              listStyle: 'none',
+            }}
+          >
+            {normalizedOptions.map((opt, index) => {
+              const isSelected = opt.value === value;
+              const isHighlighted = index === highlightedIndex;
+
+              let itemBackground = 'transparent';
+              let itemColor = '#1a1c1d';
+
+              if (isSelected) {
+                itemBackground = 'rgba(255, 215, 0, 0.15)';
+                itemColor = '#705d00';
+              }
+              if (isHighlighted) {
+                itemBackground = 'rgba(255, 215, 0, 0.3)';
+              }
+
+              return (
+                <li
+                  key={opt.value}
+                  id={`${selectId}-opt-${index}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  onClick={() => handleSelect(opt.value)}
+                  style={{
+                    padding: '10px 14px',
+                    fontSize: 14,
+                    fontWeight: isSelected ? 600 : 500,
+                    color: itemColor,
+                    background: itemBackground,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s, color 0.15s',
+                    userSelect: 'none',
+                  }}
+                >
+                  {opt.label}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

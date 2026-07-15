@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, Link } from 'react-router-dom';
-import { fetchFlightDetail, patchFlight, clearFlightDetail } from '../../store/flightSlice';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { fetchFlightDetail, patchFlight, clearFlightDetail, deleteFlight } from '../../store/flightSlice';
 import { Select } from '../../components/ui/Select';
-import { Plane, ArrowLeft, Clock, Users, ShieldAlert } from 'lucide-react';
+import { Plane, ArrowLeft, Clock, Users, ShieldAlert, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { DeleteFlightDialog } from '../../components/ui/DeleteFlightDialog';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
@@ -50,11 +51,26 @@ function InfoTile({ icon, label, value, sub }) {
 export default function AdminFlightDetail() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { detail:flight, detailLoading, actionLoading, error } = useSelector(s => s.flights);
   const [statusVal, setStatusVal] = useState('SCHEDULED');
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, flightNumber, airline }
 
   useEffect(() => { dispatch(fetchFlightDetail(id)); return () => { dispatch(clearFlightDetail()); }; }, [dispatch, id]);
   useEffect(() => { if (flight) setStatusVal(flight.status); }, [flight]);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const { id, flightNumber } = deleteTarget;
+    const res = await dispatch(deleteFlight(id));
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success(`Flight ${flightNumber} deleted successfully.`);
+      navigate('/admin/flights');
+    } else {
+      toast.error(`Failed to delete ${flightNumber}.`);
+    }
+    setDeleteTarget(null);
+  };
 
   const handleStatusChange = async (e) => {
     const next = e.target.value;
@@ -177,6 +193,35 @@ export default function AdminFlightDetail() {
             </div>
           </div>
         </div>
+
+        {/* Action buttons outside the card */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+          <button
+            onClick={() => navigate(`/admin/flights/${flight.id}/edit`)}
+            className="btn-edit-action"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffd700', color: '#1a1c1d', fontWeight: 700, fontSize: 14, padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(255,215,0,0.2)', transition: 'background 0.2s' }}
+          >
+            <Edit2 size={16} /> Edit Route
+          </button>
+          <button
+            onClick={() => setDeleteTarget({ id: flight.id, flightNumber: flight.flight_number, airline: flight.airline })}
+            className="btn-delete-action"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 14, padding: '12px 24px', borderRadius: 12, border: '1px solid #fecaca', cursor: 'pointer', transition: 'background 0.2s' }}
+          >
+            <Trash2 size={16} /> Delete Route
+          </button>
+        </div>
+
+        {/* Delete confirmation dialog */}
+        <DeleteFlightDialog
+          open={!!deleteTarget}
+          flightNumber={deleteTarget?.flightNumber}
+          airline={deleteTarget?.airline}
+          loading={actionLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
+
       </div>
     </>
   );

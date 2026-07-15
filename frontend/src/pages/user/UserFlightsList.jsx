@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
-import { fetchFlights, setCurrentPage } from '../../store/flightSlice';
+import { fetchAllFlights } from '../../store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
 import DatePicker from '../../components/ui/DatePicker';
 import DateSwitcher from '../../components/ui/DateSwitcher';
@@ -415,7 +415,7 @@ function Sidebar({
 /* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightsList() {
   const dispatch = useDispatch();
-  const { list: flights, count, currentPage, totalPages, loading, error } = useSelector(state => state.flights);
+  const { list: flights, loading, error } = useSelector(state => state.flights);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const source = searchParams.get('from') || '';
@@ -533,12 +533,17 @@ export default function UserFlightsList() {
     }, { replace: true });
   };
 
+  // Client-side pagination state (independent of backend page)
+  const [clientPage, setClientPage] = useState(1);
+  const CLIENT_PAGE_SIZE = 10;
+
   useEffect(() => {
-    dispatch(fetchFlights(currentPage));
-  }, [dispatch, currentPage]);
+    // Fetch ALL flights for client-side filtering and pagination
+    dispatch(fetchAllFlights());
+  }, [dispatch]);
 
   const handlePageChange = (page) => {
-    dispatch(setCurrentPage(page));
+    setClientPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -576,8 +581,14 @@ export default function UserFlightsList() {
     const currentMaxFare = maxFare !== null ? maxFare : absMax;
     const matchFare = Number(flight.base_fare) >= currentMinFare && Number(flight.base_fare) <= currentMaxFare;
 
-    const matchDepDate = !depDate || flight.departure_time.split('T')[0] === depDate;
-    const matchArrDate = !arrDate || flight.arrival_time.split('T')[0] === arrDate;
+    // Compare dates in local calendar time (not UTC) to avoid timezone boundary leaks
+    const toLocalDate = (iso) => {
+      const d = new Date(iso);
+      // YYYY-MM-DD in the browser's local timezone
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const matchDepDate = !depDate || toLocalDate(flight.departure_time) === depDate;
+    const matchArrDate = !arrDate || toLocalDate(flight.arrival_time) === arrDate;
 
     // Available seats >= passengers
     const totalPassengers = adults + childrenCount + infants;
@@ -590,6 +601,18 @@ export default function UserFlightsList() {
 
     return matchSource && matchDest && matchStatus && matchFare && matchDepDate && matchArrDate && matchSeats && matchStops;
   }), [flights, source, destination, statusFilter, minFare, maxFare, absMin, absMax, depDate, arrDate, adults, childrenCount, infants, stopsFilter]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setClientPage(1);
+  }, [source, destination, statusFilter, minFare, maxFare, depDate, arrDate, adults, childrenCount, infants, stopsFilter]);
+
+  // Client-side pagination derived from filteredFlights
+  const filteredTotalPages = Math.max(1, Math.ceil(filteredFlights.length / CLIENT_PAGE_SIZE));
+  const pagedFlights = useMemo(() => {
+    const start = (clientPage - 1) * CLIENT_PAGE_SIZE;
+    return filteredFlights.slice(start, start + CLIENT_PAGE_SIZE);
+  }, [filteredFlights, clientPage]);
 
   return (
     <>
@@ -704,18 +727,18 @@ export default function UserFlightsList() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
-                {filteredFlights.map(flight => (
+                {pagedFlights.map(flight => (
                   <FlightCard key={flight.id} flight={flight} />
                 ))}
 
-                {/* Pagination bar */}
-                {!loading && flights.length > 0 && (
+                {/* Client-side pagination bar — always based on filteredFlights */}
+                {filteredFlights.length > 0 && (
                   <div style={{ paddingTop: 24, marginTop: 'auto' }}>
                     <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      totalCount={count}
-                      pageSize={10}
+                      currentPage={clientPage}
+                      totalPages={filteredTotalPages}
+                      totalCount={filteredFlights.length}
+                      pageSize={CLIENT_PAGE_SIZE}
                       onPageChange={handlePageChange}
                     />
                   </div>

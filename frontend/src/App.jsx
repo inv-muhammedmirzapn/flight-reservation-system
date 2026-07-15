@@ -22,6 +22,7 @@ import UserFlightDetail from './pages/user/UserFlightDetail';
 // Admin Pages
 import AdminFlightsList from './pages/admin/AdminFlightsList';
 import AdminFlightDetail from './pages/admin/AdminFlightDetail';
+import AdminFlightForm from './pages/admin/AdminFlightForm';
 
 // Profile (friend's work)
 import ProfilePage from './pages/ProfilePage';
@@ -148,7 +149,9 @@ function App() {
 
           {/* ── Admin ── */}
           <Route path="/admin/flights" element={<ProtectedRoute adminOnly><AdminFlightsList /></ProtectedRoute>} />
+          <Route path="/admin/flights/new" element={<ProtectedRoute adminOnly><AdminFlightForm /></ProtectedRoute>} />
           <Route path="/admin/flights/:id" element={<ProtectedRoute adminOnly><AdminFlightDetail /></ProtectedRoute>} />
+          <Route path="/admin/flights/:id/edit" element={<ProtectedRoute adminOnly><AdminFlightForm /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
