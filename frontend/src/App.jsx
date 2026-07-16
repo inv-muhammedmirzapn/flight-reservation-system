@@ -31,15 +31,15 @@ import './index.css';
 
 function App() {
   const dispatch = useDispatch();
-  const { token, loading } = useSelector((state) => state.auth);
+  const { token, profile, isInitializing } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (token) {
+    if (token && !profile) {
       dispatch(fetchProfile());
     }
-  }, [dispatch, token]);
+  }, [dispatch, token, profile]);
 
-  if (loading) {
+  if (isInitializing) {
     return (
       <div style={{
         display: 'flex',

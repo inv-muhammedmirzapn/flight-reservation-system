@@ -39,40 +39,28 @@ export function LoginForm() {
       toast.error(msg);
       return;
     }
-    const res = await dispatch(loginUser(formData));
+    const res = await dispatch(loginUser({ credentials: formData, requireCustomer: true }));
     if (res.meta.requestStatus === 'fulfilled') {
       const p = res.payload.profile;
-      
-      // Prevent admins from logging in here
-      const tokenObj = res.payload.token ? JSON.parse(atob(res.payload.token.split('.')[1])) : null;
-      const isAdmin = tokenObj?.is_superuser || p?.role === 'ADMIN';
-      
-      if (isAdmin) {
-        dispatch(logout());
-        toast.error('Admins cannot log in here. Please use the Admin Portal.');
-        return;
-      }
-
       const name = p?.first_name || p?.username || 'back';
       toast.success(`Welcome back, ${name}!`);
       navigate('/flights');
+    } else {
+      toast.error(res.payload);
     }
   };
-
-  // Fire error toast when Redux reports an error
-  useEffect(() => {
-    if (error) toast.error(error);
-  }, [error]);
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
-        const res = await dispatch(googleLoginUser(tokenResponse.access_token));
+        const res = await dispatch(googleLoginUser({ token: tokenResponse.access_token, requireCustomer: true }));
         if (res.meta.requestStatus === 'fulfilled') {
           const p = res.payload.profile;
           const name = p?.first_name || p?.username || 'back';
           toast.success(`Welcome back, ${name}!`);
           navigate('/flights');
+        } else {
+          toast.error(res.payload);
         }
       } catch (err) {
         toast.error('Google Login failed.');

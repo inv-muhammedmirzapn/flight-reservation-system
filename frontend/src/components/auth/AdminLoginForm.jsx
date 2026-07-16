@@ -29,39 +29,15 @@ export function AdminLoginForm() {
       return;
     }
     
-    const result = await dispatch(loginUser(formData));
+    const result = await dispatch(loginUser({ credentials: formData, requireAdmin: true }));
     
-    if (loginUser.fulfilled.match(result)) {
-      const payload = result.payload;
-      let isAdmin = false;
-      try {
-        const token = payload.token;
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const decoded = JSON.parse(window.atob(base64));
-        isAdmin = decoded?.is_superuser || payload.profile?.role === 'ADMIN';
-      } catch(e) {
-        // ignore
-      }
-
-      if (!isAdmin) {
-        dispatch(logout());
-        const msg = 'Access Denied: Administrator privileges required.';
-        setLocalError(msg);
-        toast.error(msg);
-      } else {
-        toast.success('Welcome back, Admin. Access granted.');
-        navigate('/admin/flights');
-      }
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Welcome back, Admin. Access granted.');
+      navigate('/admin/flights');
+    } else {
+      toast.error(result.payload);
     }
   };
-
-  // Redux error toast
-  useEffect(() => {
-    if (error) toast.error(error);
-  }, [error]);
-
-  const displayError = localError || error;
 
   return (
     <>
@@ -83,10 +59,10 @@ export function AdminLoginForm() {
         <p className="form-subtitle">Authenticate to access the workspace</p>
       </div>
 
-      {displayError && (
+      {(localError || error) && (
         <div className="alert alert-error">
           <span>⚠️</span>
-          {displayError}
+          {localError || error}
         </div>
       )}
 
