@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 /**
  * DeleteFlightDialog
@@ -18,6 +19,7 @@ import { createPortal } from "react-dom";
  */
 export function DeleteFlightDialog({ open, flightNumber, airline, loading, onConfirm, onCancel }) {
   const dialogRef = useRef(null);
+  const { t } = useTranslation();
 
   /* Focus-trap & ESC key — identical to LogoutConfirmDialog */
   useEffect(() => {
@@ -121,7 +123,7 @@ export function DeleteFlightDialog({ open, flightNumber, airline, loading, onCon
               letterSpacing: "-0.01em",
             }}
           >
-            Delete Flight?
+            {t("admin.delete.title", { defaultValue: 'Delete Flight?' })}
           </h2>
 
           {/* ── Body copy — identical style ── */}
@@ -134,14 +136,14 @@ export function DeleteFlightDialog({ open, flightNumber, airline, loading, onCon
               textAlign: "center",
               lineHeight: 1.5,
             }}
-          >
-            You are about to permanently delete{" "}
-            <strong style={{ color: "#1a1c1d" }}>
-              {airline ? `${airline} flight ` : "flight "}
-              {flightNumber}
-            </strong>.{" "}
-            This action cannot be undone.
-          </p>
+            dangerouslySetInnerHTML={{
+              __html: t("admin.delete.desc", {
+                flightNumber: `<strong style="color: #1a1c1d">${flightNumber}</strong>`,
+                airline: airline ? `<strong style="color: #1a1c1d">${airline}</strong>` : '',
+                defaultValue: `You are about to permanently delete <strong style="color: #1a1c1d">${airline ? `${airline} flight ` : "flight "}${flightNumber}</strong>. This action cannot be undone.`
+              })
+            }}
+          />
 
           {/* ── Actions — identical layout to LogoutConfirmDialog ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
@@ -192,9 +194,9 @@ export function DeleteFlightDialog({ open, flightNumber, airline, loading, onCon
                     borderRadius: "50%",
                     animation: "spin 0.75s linear infinite",
                   }} />
-                  Deleting...
+                  {t("admin.delete.deleting", { defaultValue: 'Deleting...' })}
                 </>
-              ) : "Yes, Delete Flight"}
+              ) : t("admin.delete.yes", { defaultValue: 'Yes, Delete Flight' })}
             </button>
 
             {/* Cancel — identical ghost button to LogoutConfirmDialog */}
@@ -226,7 +228,7 @@ export function DeleteFlightDialog({ open, flightNumber, airline, loading, onCon
                 e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)";
               }}
             >
-              Cancel
+              {t("admin.delete.cancel", { defaultValue: 'Cancel' })}
             </button>
           </div>
         </div>

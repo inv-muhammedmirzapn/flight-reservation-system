@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchAllFlights } from '../../store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
 import DatePicker from '../../components/ui/DatePicker';
@@ -61,6 +62,7 @@ function StatusBadge({ status }) {
 
 /* ── FlightCard (horizontal Stitch style) ─────────────────── */
 function FlightCard({ flight }) {
+  const { t } = useTranslation();
   const depTime = fmtTime(flight.departure_time);
   const arrTime = fmtTime(flight.arrival_time);
   const duration = diffHM(flight.departure_time, flight.arrival_time);
@@ -136,9 +138,9 @@ function FlightCard({ flight }) {
             </div>
             <div style={{ fontSize: 12, color: '#705d00', marginTop: 4, fontWeight: 600, textAlign: 'center' }}>
               {(flight.stops || []).length === 0
-                ? 'Non-stop'
+                ? t("flights.nonStop", { defaultValue: 'Non-stop' })
                 : (flight.stops || []).length === 1
-                  ? `1 Stop${(flight.stops || [])[0]?.stop_location ? ` (${(flight.stops || [])[0].stop_location})` : ''}`
+                  ? t("flights.oneStop", { defaultValue: '1 Stop' }) + ((flight.stops || [])[0]?.stop_location ? ` (${(flight.stops || [])[0].stop_location})` : '')
                   : `${(flight.stops || []).length} Stops${(flight.stops || []).map(s => s.stop_location).filter(Boolean).length > 0 ? ` (${(flight.stops || []).map(s => s.stop_location).filter(Boolean).join(', ')})` : ''}`
               }
             </div>
@@ -196,7 +198,7 @@ function FlightCard({ flight }) {
         }}
           className="select-btn"
         >
-          Select <ArrowRight size={14} />
+          {t("flights.select", { defaultValue: 'Select' })} <ArrowRight size={14} />
         </div>
       </div>
     </Link>
@@ -218,6 +220,7 @@ function Sidebar({
   stopsFilter, setStopsFilter,
   onClearFilters
 }) {
+  const { t } = useTranslation();
   const statuses = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'BOARDING', 'DEPARTED', 'ARRIVED'];
 
   return (
@@ -238,7 +241,7 @@ function Sidebar({
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
             fontSize: 22, fontWeight: 700, color: '#1a1c1d',
           }}>
-            Filters
+            {t("flights.filters", { defaultValue: 'Filters' })}
           </h2>
           <button
             onClick={onClearFilters}
@@ -255,13 +258,13 @@ function Sidebar({
             onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
             onMouseOut={(e) => e.target.style.background = 'transparent'}
           >
-            Clear All
+            {t("flights.clearAll", { defaultValue: 'Clear All' })}
           </button>
         </div>
 
         {/* Route inputs */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Route</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.route", { defaultValue: 'Route' })}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -271,7 +274,7 @@ function Sidebar({
               <Search size={14} color="#5e5e5e" />
               <input
                 type="text"
-                placeholder="From (e.g. COK)"
+                placeholder={t("flights.fromLabel", { defaultValue: 'From (e.g. COK)' })}
                 value={source}
                 onChange={e => setSource(e.target.value)}
                 style={{
@@ -288,7 +291,7 @@ function Sidebar({
               <Search size={14} color="#5e5e5e" />
               <input
                 type="text"
-                placeholder="To (e.g. DEL)"
+                placeholder={t("flights.toLabel", { defaultValue: 'To (e.g. DEL)' })}
                 value={destination}
                 onChange={e => setDestination(e.target.value)}
                 style={{
@@ -302,17 +305,17 @@ function Sidebar({
 
         {/* Dates filter */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Dates</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.dates", { defaultValue: 'Dates' })}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <DatePicker
-              label="Departure"
-              placeholder="Add departure"
+              label={t("flights.departure", { defaultValue: 'Departure' })}
+              placeholder={t("flights.addDeparture", { defaultValue: 'Add departure' })}
               value={depDate}
               onChange={setDepDate}
             />
             <DatePicker
-              label="Arrival"
-              placeholder="Add arrival"
+              label={t("flights.arrival", { defaultValue: 'Arrival' })}
+              placeholder={t("flights.addArrival", { defaultValue: 'Add arrival' })}
               value={arrDate}
               onChange={setArrDate}
             />
@@ -321,7 +324,7 @@ function Sidebar({
 
         {/* Passengers Selector */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Passengers</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.passengers", { defaultValue: 'Passengers' })}</h3>
           <PassengerSelector
             adults={adults}
             setAdults={setAdults}
@@ -335,10 +338,10 @@ function Sidebar({
 
         {/* Price Range */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Price Range</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
           
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>Min Price</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
             <input
               type="range"
               min={absMin}
@@ -354,7 +357,7 @@ function Sidebar({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>Max Price</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
             <input
               type="range"
               min={minFare}
@@ -372,12 +375,12 @@ function Sidebar({
 
         {/* Stops filter */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Stops</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.stops", { defaultValue: 'Stops' })}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { label: 'Non-stop', value: 0 },
-              { label: '1 Stop', value: 1 },
-              { label: '2+ Stops', value: 2 },
+              { label: t("flights.nonStop", { defaultValue: 'Non-stop' }), value: 0 },
+              { label: t("flights.oneStop", { defaultValue: '1 Stop' }), value: 1 },
+              { label: t("flights.twoPlusStops", { defaultValue: '2+ Stops' }), value: 2 },
             ].map(opt => {
               const isChecked = stopsFilter.includes(opt.value);
               return (
@@ -403,7 +406,7 @@ function Sidebar({
 
         {/* Status filter */}
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Status</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.status", { defaultValue: 'Status' })}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
               <input
@@ -414,7 +417,7 @@ function Sidebar({
                 onChange={() => setStatusFilter('')}
                 style={{ accentColor: '#705d00' }}
               />
-              <span style={{ color: '#1a1c1d' }}>All Statuses</span>
+              <span style={{ color: '#1a1c1d' }}>{t("flights.allStatuses", { defaultValue: 'All Statuses' })}</span>
             </label>
             {statuses.map(s => (
               <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
@@ -438,6 +441,7 @@ function Sidebar({
 
 /* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightsList() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { list: flights, loading, error } = useSelector(state => state.flights);
 
@@ -724,12 +728,12 @@ export default function UserFlightsList() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15, color: '#1a1c1d' }}>
-                <span>{source || 'Any Origin'}</span>
+                <span>{source || t("flights.anyOrigin", { defaultValue: 'Any Origin' })}</span>
                 <Plane size={16} color="#705d00" />
-                <span>{destination || 'Any Destination'}</span>
+                <span>{destination || t("flights.anyDestination", { defaultValue: 'Any Destination' })}</span>
               </div>
               <div style={{ fontSize: 13, color: '#5e5e5e' }}>
-                {filteredFlights.length} flight{filteredFlights.length !== 1 ? 's' : ''} found
+                {t(filteredFlights.length === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: filteredFlights.length, defaultValue: `${filteredFlights.length} flights found` })}
                 {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
               </div>
             </div>
@@ -748,7 +752,7 @@ export default function UserFlightsList() {
               }}>
                 <Plane size={48} color="#705d00" className="animate-bounce" />
                 <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
-                  Fetching flight details...
+                  {t("flights.fetching", { defaultValue: 'Fetching flight details...' })}
                 </div>
               </div>
             ) : error ? (
@@ -758,8 +762,8 @@ export default function UserFlightsList() {
             ) : filteredFlights.length === 0 ? (
               <div className="glass-card" style={{ borderRadius: 20, padding: 64, textAlign: 'center' }}>
                 <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
-                <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>No flights found matching your criteria.</p>
-                <p style={{ fontSize: 13, color: '#9e9488', marginTop: 6 }}>Try adjusting your filters.</p>
+                <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>{t("flights.noFlightsFound", { defaultValue: 'No flights found matching your criteria.' })}</p>
+                <p style={{ fontSize: 13, color: '#9e9488', marginTop: 6 }}>{t("flights.tryAdjusting", { defaultValue: 'Try adjusting your filters.' })}</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>

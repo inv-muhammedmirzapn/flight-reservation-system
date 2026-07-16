@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 /**
  * LogoutConfirmDialog
@@ -12,6 +13,7 @@ import { createPortal } from "react-dom";
  *   onCancel  – () => void, called when "Cancel" is chosen
  */
 export function LogoutConfirmDialog({ open, onConfirm, onCancel }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
 
   /* Focus-trap & ESC key */
@@ -116,7 +118,7 @@ export function LogoutConfirmDialog({ open, onConfirm, onCancel }) {
               letterSpacing: "-0.01em",
             }}
           >
-            Sign Out?
+            {t("auth.signOutPrompt")}
           </h2>
 
           {/* ── Body copy ── */}
@@ -130,8 +132,7 @@ export function LogoutConfirmDialog({ open, onConfirm, onCancel }) {
               lineHeight: 1.5,
             }}
           >
-            You'll be signed out of your AeroGlass account. Any unsaved changes
-            will be lost.
+            {t("auth.signOutDesc")}
           </p>
 
           {/* ── Actions ── */}
@@ -165,7 +166,7 @@ export function LogoutConfirmDialog({ open, onConfirm, onCancel }) {
                 e.currentTarget.style.background = "#ffd700";
               }}
             >
-              Yes, Sign Out
+              {t("auth.yesSignOut")}
             </button>
 
             {/* Cancel — ghost */}
@@ -193,7 +194,7 @@ export function LogoutConfirmDialog({ open, onConfirm, onCancel }) {
                 e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)";
               }}
             >
-              Cancel
+              {t("auth.cancel")}
             </button>
           </div>
         </div>

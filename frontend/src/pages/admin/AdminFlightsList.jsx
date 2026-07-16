@@ -13,6 +13,7 @@ import { Plus, Edit2, Eye, Plane, RefreshCw, AlertCircle, Trash2, UploadCloud, F
 import toast from 'react-hot-toast';
 import { DeleteFlightDialog } from '../../components/ui/DeleteFlightDialog';
 import { Pagination } from '../../components/ui/Pagination';
+import { useTranslation } from 'react-i18next';
 
 const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -26,8 +27,8 @@ const STATUS_STYLE = {
   ARRIVED:   { bg: '#f3e8ff', color: '#7c3aed', border: '#d8b4fe' },
 };
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
+const getStatusOptions = (t) => [
+  { value: '', label: t("flights.allStatuses", { defaultValue: 'All Statuses' }) },
   { value: 'SCHEDULED', label: 'Scheduled' },
   { value: 'DELAYED',   label: 'Delayed' },
   { value: 'CANCELLED', label: 'Cancelled' },
@@ -60,6 +61,7 @@ function Stat({ label, value, icon, accent, loading }) {
 }
 
 export default function AdminFlightsList() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list: flights, count, currentPage, totalPages, loading, statsLoading, actionLoading, error, stats = {} } = useSelector(s => s.flights);
@@ -333,20 +335,20 @@ export default function AdminFlightsList() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
           <div>
-            <h1 style={{ fontFamily: "'Plus Jakarta Sans',Inter,sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em' }}>Flight Management Console</h1>
-            <p style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>Manage flight routes, seat availabilities, schedules and statuses.</p>
+            <h1 style={{ fontFamily: "'Plus Jakarta Sans',Inter,sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{t("admin.title", { defaultValue: 'Flight Management Console' })}</h1>
+            <p style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>{t("admin.subtitle", { defaultValue: 'Manage flight routes, seat availabilities, schedules and statuses.' })}</p>
           </div>
           <button className="add-btn" onClick={() => { dispatch(clearFlightErrors()); setOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffd700', color: '#1a1c1d', fontWeight: 700, fontSize: 14, padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(255,215,0,0.4)', transition: 'background 0.2s' }}>
-            <Plus size={18} /> Add Flight Route
+            <Plus size={18} /> {t("admin.addRoute", { defaultValue: 'Add Flight Route' })}
           </button>
         </div>
 
         {/* Stats — sourced from backend, stable across pagination */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, marginBottom: 28 }}>
-          <Stat label="Total Routes"  value={stats.total}     icon={<Plane size={48} color="#705d00" />}            loading={statsLoading} />
-          <Stat label="Scheduled"     value={stats.scheduled} icon={<RefreshCw size={48} color="#059669" />} accent="#059669" loading={statsLoading} />
-          <Stat label="Delayed"       value={stats.delayed}   icon={<AlertCircle size={48} color="#d97706" />} accent="#d97706" loading={statsLoading} />
-          <Stat label="Cancelled"     value={stats.cancelled} icon={<AlertCircle size={48} color="#dc2626" />} accent="#dc2626" loading={statsLoading} />
+          <Stat label={t("admin.totalRoutes", { defaultValue: 'Total Routes' })}  value={stats.total}     icon={<Plane size={48} color="#705d00" />}            loading={statsLoading} />
+          <Stat label={t("admin.scheduled", { defaultValue: 'Scheduled' })}     value={stats.scheduled} icon={<RefreshCw size={48} color="#059669" />} accent="#059669" loading={statsLoading} />
+          <Stat label={t("admin.delayed", { defaultValue: 'Delayed' })}       value={stats.delayed}   icon={<AlertCircle size={48} color="#d97706" />} accent="#d97706" loading={statsLoading} />
+          <Stat label={t("admin.cancelled", { defaultValue: 'Cancelled' })}     value={stats.cancelled} icon={<AlertCircle size={48} color="#dc2626" />} accent="#dc2626" loading={statsLoading} />
         </div>
 
         {/* Main Control & Search Bar */}
@@ -357,7 +359,7 @@ export default function AdminFlightsList() {
             <input
               className="filter-input"
               type="text"
-              placeholder="Search flight no., airline, airport..."
+              placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
               value={searchInput}
               onChange={handleSearchChange}
               style={{ width: '100%', padding: '10px 16px 10px 40px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
@@ -373,7 +375,7 @@ export default function AdminFlightsList() {
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}
             >
               <SlidersHorizontal size={15} color="#705d00" />
-              <span>Filters & Sorting</span>
+              <span>{t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}</span>
               {hasActiveFilters && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
                   {
@@ -397,7 +399,7 @@ export default function AdminFlightsList() {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
               >
-                Clear All
+                {t("admin.clearAll", { defaultValue: 'Clear All' })}
               </button>
             )}
           </div>
@@ -406,7 +408,7 @@ export default function AdminFlightsList() {
         {/* Active Filter Chips / Badges */}
         {hasActiveFilters && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginRight: 4 }}>Active Filters:</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginRight: 4 }}>{t("admin.activeFilters", { defaultValue: 'Active Filters:' })}</span>
             {activeSearch && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
                 <span>Search: "{activeSearch}"</span>
@@ -464,13 +466,13 @@ export default function AdminFlightsList() {
           {loading ? (
             <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
               <Plane size={48} color="#705d00" className="animate-bounce" />
-              <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans',Inter,sans-serif" }}>Fetching flight details...</div>
+              <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans',Inter,sans-serif" }}>{t("admin.fetching", { defaultValue: 'Fetching flight details...' })}</div>
             </div>
           ) : flights.length === 0 ? (
             <div style={{ padding: '64px 24px', textAlign: 'center' }}>
               <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
               <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>
-                {hasActiveFilters ? 'No flights match your filters.' : 'No flights registered yet.'}
+                {hasActiveFilters ? t("admin.noMatch", { defaultValue: 'No flights match your filters.' }) : t("admin.noFlights", { defaultValue: 'No flights registered yet.' })}
               </p>
             </div>
           ) : (
@@ -478,7 +480,7 @@ export default function AdminFlightsList() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    {['Flight No.', 'Airline / Aircraft', 'Route', 'Times (Dep / Arr)', 'Fare (INR)', 'Seats', 'Status', 'Actions'].map(h => (
+                    {[t("admin.table.flightNo", { defaultValue: 'Flight No.' }), t("admin.table.airline", { defaultValue: 'Airline / Aircraft' }), t("admin.table.route", { defaultValue: 'Route' }), t("admin.table.times", { defaultValue: 'Times (Dep / Arr)' }), t("admin.table.fare", { defaultValue: 'Fare (INR)' }), t("admin.table.seats", { defaultValue: 'Seats' }), t("admin.table.status", { defaultValue: 'Status' }), t("admin.table.actions", { defaultValue: 'Actions' })].map(h => (
                       <th key={h} style={{ padding: '14px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -526,10 +528,10 @@ export default function AdminFlightsList() {
         </div>
 
         {/* Add Flight Modal */}
-        <Modal isOpen={open} onClose={() => setOpen(false)} title="Add Flight Route">
+        <Modal isOpen={open} onClose={() => setOpen(false)} title={t("admin.modals.addTitle", { defaultValue: 'Add Flight Route' })}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '8px 4px' }}>
             <p style={{ fontSize: 14, color: '#5e5e5e', margin: 0, textAlign: 'center' }}>
-              Choose how you want to register new flight routes in the system.
+              {t("admin.modals.chooseRegister", { defaultValue: 'Choose how you want to register new flight routes in the system.' })}
             </p>
 
             {/* Manual — full width */}
@@ -539,8 +541,8 @@ export default function AdminFlightsList() {
                   <FileText size={22} color="#705d00" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', margin: 0 }}>Add Manually</h3>
-                  <p style={{ fontSize: 12, color: '#5e5e5e', margin: '2px 0 0', lineHeight: 1.4 }}>Fill out a form to create a single flight route.</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', margin: 0 }}>{t("admin.modals.addManually", { defaultValue: 'Add Manually' })}</h3>
+                  <p style={{ fontSize: 12, color: '#5e5e5e', margin: '2px 0 0', lineHeight: 1.4 }}>{t("admin.modals.addManuallyDesc", { defaultValue: 'Fill out a form to create a single flight route.' })}</p>
                 </div>
               </div>
               <button
@@ -549,7 +551,7 @@ export default function AdminFlightsList() {
                 onMouseEnter={e => e.currentTarget.style.background = '#2a2d2e'}
                 onMouseLeave={e => e.currentTarget.style.background = '#1a1c1d'}
               >
-                Create
+                {t("admin.modals.create", { defaultValue: 'Create' })}
               </button>
             </div>
 
@@ -560,8 +562,13 @@ export default function AdminFlightsList() {
                   <UploadCloud size={22} color="#705d00" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', margin: 0 }}>Import JSON / CSV</h3>
-                  <p style={{ fontSize: 12, color: '#5e5e5e', margin: '2px 0 0', lineHeight: 1.4 }}>Upload a <strong>.json</strong> array or a <strong>.csv</strong> file — format is detected automatically.</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', margin: 0 }}>{t("admin.modals.importJsonCsv", { defaultValue: 'Import JSON / CSV' })}</h3>
+                  <p 
+                    style={{ fontSize: 12, color: '#5e5e5e', margin: '2px 0 0', lineHeight: 1.4 }} 
+                    dangerouslySetInnerHTML={{ 
+                      __html: t("admin.modals.importJsonCsvDesc", { defaultValue: 'Upload a <strong>.json</strong> array or a <strong>.csv</strong> file — format is detected automatically.' }) 
+                    }} 
+                  />
                 </div>
               </div>
               <input type="file" accept=".json,.csv" onChange={handleImport} style={{ display: 'none' }} id="import-file-input" />
@@ -571,19 +578,19 @@ export default function AdminFlightsList() {
                 onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
                 onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
               >
-                Upload File
+                {t("admin.modals.uploadFile", { defaultValue: 'Upload File' })}
               </label>
             </div>
           </div>
         </Modal>
 
         {/* Advanced Filters & Sorting Modal */}
-        <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filters & Sorting">
+        <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title={t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '8px 4px', maxHeight: '70vh', overflowY: 'auto' }} className="sidebar-scroll">
             
             {/* Sorting Section */}
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>Sort Routes By</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort Routes By' })}</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Select
                   options={[
@@ -610,13 +617,13 @@ export default function AdminFlightsList() {
 
             {/* Flight Search */}
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>Search Query</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.searchQuery", { defaultValue: 'Search Query' })}</label>
               <div style={{ position: 'relative' }}>
                 <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
                 <input
                   className="filter-input"
                   type="text"
-                  placeholder="Flight no., airline, airport..."
+                  placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
                   value={draftSearch}
                   onChange={(e) => setDraftSearch(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
@@ -627,7 +634,7 @@ export default function AdminFlightsList() {
             {/* Routing Section */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>Source Airport (IATA)</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.sourceAirport", { defaultValue: 'Source Airport (IATA)' })}</label>
                 <div style={{ position: 'relative' }}>
                   <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
                   <input
@@ -642,7 +649,7 @@ export default function AdminFlightsList() {
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>Destination Airport (IATA)</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.destAirport", { defaultValue: 'Destination Airport (IATA)' })}</label>
                 <div style={{ position: 'relative' }}>
                   <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
                   <input
@@ -661,8 +668,8 @@ export default function AdminFlightsList() {
             {/* Status and Dates */}
             <div>
               <Select
-                label="Flight Status"
-                options={STATUS_OPTIONS}
+                label={t("admin.table.status", { defaultValue: 'Status' })}
+                options={getStatusOptions(t)}
                 value={draftStatus}
                 onChange={(e) => setDraftStatus(e.target.value)}
               />
@@ -671,16 +678,16 @@ export default function AdminFlightsList() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <DatePicker
-                  label="Departure Date"
-                  placeholder="Any date"
+                  label={t("admin.modals.departureDate", { defaultValue: 'Departure Date' })}
+                  placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
                   value={draftDate}
                   onChange={(val) => setDraftDate(val)}
                 />
               </div>
               <div>
                 <DatePicker
-                  label="Arrival Date"
-                  placeholder="Any date"
+                  label={t("admin.modals.arrivalDate", { defaultValue: 'Arrival Date' })}
+                  placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
                   value={draftArrivalDate}
                   onChange={(val) => setDraftArrivalDate(val)}
                 />
@@ -698,7 +705,7 @@ export default function AdminFlightsList() {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
               >
-                Reset All
+                {t("admin.modals.resetAll", { defaultValue: 'Reset All' })}
               </button>
               <button
                 onClick={handleApplyFilters}
@@ -706,7 +713,7 @@ export default function AdminFlightsList() {
                 onMouseEnter={e => e.currentTarget.style.background = '#2a2d2e'}
                 onMouseLeave={e => e.currentTarget.style.background = '#1a1c1d'}
               >
-                Apply Filters
+                {t("admin.modals.applyFilters", { defaultValue: 'Apply Filters' })}
               </button>
             </div>
           </div>

@@ -1,6 +1,8 @@
 import { Plane } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function Footer() {
+  const { t } = useTranslation();
   return (
     <footer style={{
       borderTop: '1px solid #e2e2e4',
@@ -30,14 +32,19 @@ export function Footer() {
           letterSpacing: '-0.02em',
         }}>
           <Plane size={18} color="#ffd700" style={{ transform: 'rotate(-45deg)' }} />
-          AeroGlass
+          {t("brand.name", { defaultValue: "AeroGlass" })}
         </div>
 
         {/* Links */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-          {['Privacy Policy', 'Terms of Service', 'Cookie Settings', 'Contact'].map(link => (
+          {[
+            { key: 'privacyPolicy', label: 'Privacy Policy' },
+            { key: 'termsOfService', label: 'Terms of Service' },
+            { key: 'cookieSettings', label: 'Cookie Settings' },
+            { key: 'contact', label: 'Contact' }
+          ].map(({ key, label }) => (
             <a
-              key={link}
+              key={key}
               href="#"
               style={{
                 fontSize: '0.8rem',
@@ -48,14 +55,14 @@ export function Footer() {
               onMouseEnter={e => e.target.style.color = '#705d00'}
               onMouseLeave={e => e.target.style.color = '#5e5e5e'}
             >
-              {link}
+              {t(`footer.${key}`, { defaultValue: label })}
             </a>
           ))}
         </div>
 
         {/* Copyright */}
         <div style={{ fontSize: '0.8125rem', color: '#705d00', fontWeight: 500 }}>
-          © {new Date().getFullYear()} AeroGlass Luxury Travel. All rights reserved.
+          {t("footer.copyright", { year: new Date().getFullYear(), defaultValue: `© ${new Date().getFullYear()} AeroGlass Luxury Travel. All rights reserved.` })}
         </div>
       </div>
     </footer>

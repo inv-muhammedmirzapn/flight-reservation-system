@@ -6,8 +6,10 @@ import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import { ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export function AdminLoginForm() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
@@ -55,8 +57,8 @@ export function AdminLoginForm() {
         <div className="form-icon" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
           <ShieldAlert size={22} />
         </div>
-        <h1 className="form-title" style={{ fontFamily: "'Plus Jakarta Sans',Inter,sans-serif", fontWeight: 800 }}>Admin Login</h1>
-        <p className="form-subtitle">Authenticate to access the workspace</p>
+        <h1 className="form-title" style={{ fontFamily: "'Plus Jakarta Sans',Inter,sans-serif", fontWeight: 800 }}>{t("admin.auth.loginTitle")}</h1>
+        <p className="form-subtitle">{t("admin.auth.loginSubtitle")}</p>
       </div>
 
       {(localError || error) && (
@@ -70,8 +72,8 @@ export function AdminLoginForm() {
         <Input
           id="username"
           name="username"
-          label="Admin Username"
-          placeholder="Enter administrator username"
+          label={t("admin.auth.usernameLabel")}
+          placeholder={t("admin.auth.usernamePlaceholder")}
           required
           value={formData.username}
           onChange={handleChange}
@@ -80,20 +82,20 @@ export function AdminLoginForm() {
         <PasswordInput
           id="password"
           name="password"
-          label="Password"
-          placeholder="Enter password"
+          label={t("admin.auth.passwordLabel")}
+          placeholder={t("admin.auth.passwordPlaceholder")}
           required
           value={formData.password}
           onChange={handleChange}
           autoComplete="current-password"
         />
         <button disabled={loading} className="admin-auth-btn" type="submit">
-          {loading ? <><div className="spinner" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1a1c1d' }} /> Authenticating...</> : 'Access Workspace'}
+          {loading ? <><div className="spinner" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1a1c1d' }} /> {t("admin.auth.authenticating")}</> : t("admin.auth.accessWorkspace")}
         </button>
       </form>
 
       <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: '#5e5e5e' }}>
-        Not an administrator? <Link to="/login" style={{ color: '#705d00', fontWeight: 600, textDecoration: 'none' }}>Return to Customer Login</Link>
+        {t("admin.auth.notAdmin")} <Link to="/login" style={{ color: '#705d00', fontWeight: 600, textDecoration: 'none' }}>{t("admin.auth.returnToCustomer")}</Link>
       </div>
     </>
   );
