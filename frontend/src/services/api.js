@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const getResponseData = async (res) => {
   if (res.status === 204) return null;
@@ -80,6 +80,17 @@ export const authAPI = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
+  },
+
+  googleLogin: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/auth/google-login/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(JSON.stringify(data));

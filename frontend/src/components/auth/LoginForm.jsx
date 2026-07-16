@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser, logout } from '../../store/authSlice';
+import { loginUser, logout, googleLoginUser } from '../../store/authSlice';
+import { useGoogleLogin } from '@react-oauth/google';
 import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import toast from 'react-hot-toast';
@@ -63,8 +64,25 @@ export function LoginForm() {
     if (error) toast.error(error);
   }, [error]);
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await dispatch(googleLoginUser(tokenResponse.access_token));
+        if (res.meta.requestStatus === 'fulfilled') {
+          const p = res.payload.profile;
+          const name = p?.first_name || p?.username || 'back';
+          toast.success(`Welcome back, ${name}!`);
+          navigate('/flights');
+        }
+      } catch (err) {
+        toast.error('Google Login failed.');
+      }
+    },
+    onError: () => toast.error('Google Login Failed')
+  });
+
   const handleGoogleLogin = () => {
-    // Google login not implemented yet
+    googleLogin();
   };
 
   return (

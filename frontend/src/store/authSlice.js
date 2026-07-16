@@ -52,6 +52,27 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+export const googleLoginUser = createAsyncThunk(
+  'auth/googleLoginUser',
+  async (token, { dispatch, rejectWithValue }) => {
+    try {
+      const data = await authAPI.googleLogin(token);
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+      
+      const profile = await dispatch(fetchProfile()).unwrap();
+      return { token: data.access, profile };
+    } catch (error) {
+      let message = 'Google Login failed';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || errObj.error || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const initialToken = localStorage.getItem('access_token');
 const decoded = decodeToken(initialToken);
 
@@ -99,6 +120,23 @@ const authSlice = createSlice({
         state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Google Login
+      .addCase(googleLoginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleLoginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload.token;
+        state.decodedToken = decodeToken(action.payload.token);
+        state.profile = action.payload.profile;
+        state.isAuthenticated = true;
+        state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
+      })
+      .addCase(googleLoginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
