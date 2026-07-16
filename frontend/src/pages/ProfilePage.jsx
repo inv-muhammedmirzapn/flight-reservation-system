@@ -362,7 +362,7 @@ function ViewField({ fieldKey, value }) {
       {isEmpty ? (
         <div style={S.viewFieldEmpty}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f0c040", display: "inline-block" }} />
-          Not set
+
         </div>
       ) : (
         <div style={S.viewFieldValue}>{displayVal}</div>
