@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useId } from 'react';
+import ReactDOM from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 export function Select({
@@ -15,7 +16,9 @@ export function Select({
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dropdownStyle, setDropdownStyle] = useState({});
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
   const uniqueId = useId();
   const selectId = id || uniqueId;
   const selectName = name || id;
@@ -29,10 +32,28 @@ export function Select({
 
   const selectedOption = normalizedOptions.find(opt => opt.value === value) || normalizedOptions[0];
 
+  // Compute dropdown position from the trigger button's bounding rect
+  const updateDropdownPosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 5,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  };
+
   // Close dropdown on clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current && !containerRef.current.contains(event.target)
+      ) {
+        // also check the portal'd dropdown
+        const portal = document.getElementById(`${selectId}-portal`);
+        if (portal && portal.contains(event.target)) return;
         setIsOpen(false);
       }
     }
@@ -42,7 +63,19 @@ export function Select({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, selectId]);
+
+  // Recompute position on scroll / resize while open
+  useEffect(() => {
+    if (!isOpen) return;
+    updateDropdownPosition();
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    window.addEventListener('resize', updateDropdownPosition);
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+      window.removeEventListener('resize', updateDropdownPosition);
+    };
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync highlightedIndex with selected value when dropdown opens
   useEffect(() => {
@@ -138,6 +171,67 @@ export function Select({
     ...style,
   };
 
+  const dropdown = isOpen && ReactDOM.createPortal(
+    <ul
+      id={`${selectId}-listbox`}
+      role="listbox"
+      tabIndex={-1}
+      aria-activedescendant={highlightedIndex >= 0 ? `${selectId}-opt-${highlightedIndex}` : undefined}
+      style={{
+        ...dropdownStyle,
+        background: 'rgba(255, 255, 255, 0.97)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)',
+        borderRadius: 12,
+        maxHeight: 220,
+        overflowY: 'auto',
+        padding: '6px 0',
+        margin: 0,
+        listStyle: 'none',
+      }}
+    >
+      {normalizedOptions.map((opt, index) => {
+        const isSelected = opt.value === value;
+        const isHighlighted = index === highlightedIndex;
+
+        let itemBackground = 'transparent';
+        let itemColor = '#1a1c1d';
+
+        if (isSelected) {
+          itemBackground = 'rgba(255, 215, 0, 0.15)';
+          itemColor = '#705d00';
+        }
+        if (isHighlighted) {
+          itemBackground = 'rgba(255, 215, 0, 0.3)';
+        }
+
+        return (
+          <li
+            key={opt.value}
+            id={`${selectId}-opt-${index}`}
+            role="option"
+            aria-selected={isSelected}
+            onMouseEnter={() => setHighlightedIndex(index)}
+            onClick={() => handleSelect(opt.value)}
+            style={{
+              padding: '10px 14px',
+              fontSize: 14,
+              fontWeight: isSelected ? 600 : 500,
+              color: itemColor,
+              background: itemBackground,
+              cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+              userSelect: 'none',
+            }}
+          >
+            {opt.label}
+          </li>
+        );
+      })}
+    </ul>,
+    document.body
+  );
+
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative', width: '100%' }}>
       {label && (
@@ -157,10 +251,14 @@ export function Select({
       )}
       <div style={{ position: 'relative', width: '100%' }}>
         <button
+          ref={triggerRef}
           id={selectId}
           type="button"
           disabled={disabled}
-          onClick={() => setIsOpen(prev => !prev)}
+          onClick={() => {
+            if (!isOpen) updateDropdownPosition();
+            setIsOpen(prev => !prev);
+          }}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
@@ -183,71 +281,7 @@ export function Select({
           />
         </button>
 
-        {isOpen && (
-          <ul
-            id={`${selectId}-listbox`}
-            role="listbox"
-            tabIndex={-1}
-            aria-activedescendant={highlightedIndex >= 0 ? `${selectId}-opt-${highlightedIndex}` : undefined}
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 5px)',
-              left: 0,
-              width: '100%',
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
-              borderRadius: 12,
-              maxHeight: 220,
-              overflowY: 'auto',
-              zIndex: 2000,
-              padding: '6px 0',
-              margin: 0,
-              listStyle: 'none',
-            }}
-          >
-            {normalizedOptions.map((opt, index) => {
-              const isSelected = opt.value === value;
-              const isHighlighted = index === highlightedIndex;
-
-              let itemBackground = 'transparent';
-              let itemColor = '#1a1c1d';
-
-              if (isSelected) {
-                itemBackground = 'rgba(255, 215, 0, 0.15)';
-                itemColor = '#705d00';
-              }
-              if (isHighlighted) {
-                itemBackground = 'rgba(255, 215, 0, 0.3)';
-              }
-
-              return (
-                <li
-                  key={opt.value}
-                  id={`${selectId}-opt-${index}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  onClick={() => handleSelect(opt.value)}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: 14,
-                    fontWeight: isSelected ? 600 : 500,
-                    color: itemColor,
-                    background: itemBackground,
-                    cursor: 'pointer',
-                    transition: 'background 0.15s, color 0.15s',
-                    userSelect: 'none',
-                  }}
-                >
-                  {opt.label}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {dropdown}
       </div>
     </div>
   );
