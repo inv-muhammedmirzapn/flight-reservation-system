@@ -3,6 +3,9 @@ import { initReactI18next } from 'react-i18next';
 
 // English Translations
 const enTranslation = {
+  brand: {
+    name: "AeroGlass"
+  },
   navbar: {
     flights: "Flights",
     bookings: "Bookings",
@@ -76,7 +79,13 @@ const enTranslation = {
       confirm: "Repeat your password",
       userEmail: "Enter your username or email",
       passEnter: "Enter your password"
-    }
+    },
+    travelSmarter: "Travel smarter.",
+    bookConfidence: "Book with confidence.",
+    signOutPrompt: "Sign Out?",
+    signOutDesc: "You'll be signed out of your AeroGlass account. Any unsaved changes will be lost.",
+    yesSignOut: "Yes, Sign Out",
+    cancel: "Cancel"
   },
   profile: {
     myProfile: "My Profile",
@@ -115,11 +124,161 @@ const enTranslation = {
     remaining: "{{count}} fields remaining",
     notFilled: "{{empty}} of {{total}} fields are not yet filled",
     allComplete: "All fields are complete"
+  },
+  footer: {
+    privacyPolicy: "Privacy Policy",
+    termsOfService: "Terms of Service",
+    cookieSettings: "Cookie Settings",
+    contact: "Contact",
+    copyright: "© {{year}} AeroGlass Luxury Travel. All rights reserved."
+  },
+  flights: {
+    filters: "Filters",
+    clearAll: "Clear All",
+    route: "Route",
+    fromLabel: "From (e.g. COK)",
+    toLabel: "To (e.g. DEL)",
+    dates: "Dates",
+    departure: "DEPARTURE",
+    arrival: "ARRIVAL",
+    addDeparture: "Add departure",
+    addArrival: "Add arrival",
+    passengers: "Passengers",
+    priceRange: "Price Range",
+    minPrice: "Min Price",
+    maxPrice: "Max Price",
+    stops: "Stops",
+    nonStop: "Non-stop",
+    oneStop: "1 Stop",
+    twoPlusStops: "2+ Stops",
+    status: "Status",
+    allStatuses: "All Statuses",
+    select: "Select",
+    anyOrigin: "Any Origin",
+    anyDestination: "Any Destination",
+    flightsFound_one: "{{count}} flight found",
+    flightsFound_other: "{{count}} flights found",
+    fetching: "Fetching flight details...",
+    noFlightsFound: "No flights found matching your criteria.",
+    tryAdjusting: "Try adjusting your filters.",
+    adultsLabel: "ADULTS (12y +)",
+    childrenLabel: "CHILDREN (2y - 12y)",
+    infantsLabel: "INFANTS (below 2y)",
+    onDayOfTravel: "on the day of travel",
+    adultSummary: "Adult",
+    adultsSummary: "Adults",
+    childSummary: "Child",
+    childrenSummary: "Children",
+    infantSummary: "Infant",
+    infantsSummary: "Infants"
+  },
+  admin: {
+    title: "Flight Management Console",
+    subtitle: "Manage flight routes, seat availabilities, schedules and statuses.",
+    addRoute: "Add Flight Route",
+    totalRoutes: "Total Routes",
+    scheduled: "Scheduled",
+    delayed: "Delayed",
+    cancelled: "Cancelled",
+    searchPlaceholder: "Search flight no., airline, airport...",
+    filtersAndSorting: "Filters & Sorting",
+    clearAll: "Clear All",
+    activeFilters: "Active Filters:",
+    fetching: "Fetching flight details...",
+    noMatch: "No flights match your filters.",
+    noFlights: "No flights registered yet.",
+    table: {
+      flightNo: "Flight No.",
+      airline: "Airline / Aircraft",
+      route: "Route",
+      times: "Times (Dep / Arr)",
+      fare: "Fare (INR)",
+      seats: "Seats",
+      status: "Status",
+      actions: "Actions"
+    },
+    modals: {
+      addTitle: "Add Flight Route",
+      chooseRegister: "Choose how you want to register new flight routes in the system.",
+      addManually: "Add Manually",
+      addManuallyDesc: "Fill out a form to create a single flight route.",
+      importJsonCsv: "Import JSON / CSV",
+      importJsonCsvDesc: "Upload a <strong>.json</strong> array or a <strong>.csv</strong> file — format is detected automatically.",
+      uploadFile: "Upload File",
+      create: "Create",
+      sortBy: "Sort Routes By",
+      searchQuery: "Search Query",
+      sourceAirport: "Source Airport (IATA)",
+      destAirport: "Destination Airport (IATA)",
+      departureDate: "Departure Date",
+      arrivalDate: "Arrival Date",
+      anyDate: "Any date",
+      resetAll: "Reset All",
+      applyFilters: "Apply Filters",
+      addManually: "Add Manually"
+    },
+    auth: {
+      loginTitle: "Admin Login",
+      loginSubtitle: "Authenticate to access the workspace",
+      usernameLabel: "ADMIN USERNAME",
+      usernamePlaceholder: "Enter administrator username",
+      passwordLabel: "Password",
+      passwordPlaceholder: "Enter password",
+      accessWorkspace: "Access Workspace",
+      authenticating: "Authenticating...",
+      notAdmin: "Not an administrator?",
+      returnToCustomer: "Return to Customer Login",
+      features: {
+        systemAdmin: "System Administration",
+        secureAccess: "Secure Access",
+        flightMonitoring: "Flight Monitoring",
+        staffControls: "Staff Controls"
+      }
+    },
+    form: {
+      editTitle: "Edit Flight Route",
+      editSubtitle: "Modifying flight details for route {{flightNumber}}",
+      addTitle: "Add Flight Route",
+      addSubtitle: "Manually configure a new flight route",
+      generalInfo: "General Information",
+      flightNumber: "Flight Number",
+      airline: "Airline",
+      aircraftModel: "Aircraft Model",
+      status: "Status",
+      routeInfo: "Route Information",
+      sourceCode: "Source Airport Code (From)",
+      destCode: "Destination Airport Code (To)",
+      scheduleSettings: "Schedule Settings",
+      departureTime: "Departure Time",
+      arrivalTime: "Arrival Time",
+      pricingCapacity: "Pricing & Capacity",
+      baseFare: "Base Fare (INR)",
+      totalSeats: "Total Seats Capacity",
+      availableSeats: "Available Seats",
+      cancel: "Cancel",
+      saveFlight: "Save Flight Route",
+      saving: "Saving...",
+      backToConsole: "Back to Console"
+    },
+    delete: {
+      title: "Delete Flight?",
+      desc: "You are about to permanently delete {{airline}} flight {{flightNumber}}. This action cannot be undone.",
+      yes: "Yes, Delete Flight",
+      deleting: "Deleting...",
+      cancel: "Cancel"
+    }
+  },
+  datePicker: {
+    months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    weekdays: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   }
 };
 
 // Japanese Translations
 const jaTranslation = {
+  brand: {
+    name: "エアログラス"
+  },
   navbar: {
     flights: "フライト",
     bookings: "予約",
@@ -193,7 +352,13 @@ const jaTranslation = {
       confirm: "パスワードを再入力",
       userEmail: "ユーザーネームまたはメールを入力",
       passEnter: "パスワードを入力"
-    }
+    },
+    travelSmarter: "スマートにトラベル",
+    bookConfidence: "安心して予約",
+    signOutPrompt: "ログアウトしますか？",
+    signOutDesc: "AeroGlassアカウントからログアウトします。保存されていない変更は失われます。",
+    yesSignOut: "はい、ログアウトします",
+    cancel: "キャンセル"
   },
   profile: {
     myProfile: "マイプロフィール",
@@ -232,6 +397,153 @@ const jaTranslation = {
     remaining: "残り{{count}}項目",
     notFilled: "{{total}}項目中{{empty}}項目が未入力です",
     allComplete: "すべての項目が入力済みです"
+  },
+  footer: {
+    privacyPolicy: "プライバシーポリシー",
+    termsOfService: "利用規約",
+    cookieSettings: "クッキー設定",
+    contact: "コンタクト",
+    copyright: "© {{year}} AeroGlass Luxury Travel. 無断転載を禁じます。"
+  },
+  flights: {
+    filters: "フィルター",
+    clearAll: "すべてクリア",
+    route: "ルート",
+    fromLabel: "出発地 (例: COK)",
+    toLabel: "目的地 (例: DEL)",
+    dates: "日付",
+    departure: "出発",
+    arrival: "到着",
+    addDeparture: "出発を追加",
+    addArrival: "到着を追加",
+    passengers: "搭乗者",
+    priceRange: "価格帯",
+    minPrice: "最低価格",
+    maxPrice: "最高価格",
+    stops: "経由地",
+    nonStop: "直行便",
+    oneStop: "1回の経由",
+    twoPlusStops: "2回以上の経由",
+    status: "ステータス",
+    allStatuses: "すべてのステータス",
+    select: "選択",
+    anyOrigin: "任意の出発地",
+    anyDestination: "任意の目的地",
+    flightsFound_one: "{{count}}件のフライトが見つかりました",
+    flightsFound_other: "{{count}}件のフライトが見つかりました",
+    fetching: "フライト詳細を取得中...",
+    noFlightsFound: "条件に一致するフライトが見つかりませんでした。",
+    tryAdjusting: "フィルターを調整してみてください。",
+    adultsLabel: "大人 (12歳以上)",
+    childrenLabel: "子供 (2歳 - 12歳)",
+    infantsLabel: "幼児 (2歳未満)",
+    onDayOfTravel: "旅行日に",
+    adultSummary: "大人",
+    adultsSummary: "大人",
+    childSummary: "子供",
+    childrenSummary: "子供",
+    infantSummary: "幼児",
+    infantsSummary: "幼児"
+  },
+  admin: {
+    title: "フライトマネジメントコンソール",
+    subtitle: "フライトルート、空席状況、スケジュール、ステータスを管理します。",
+    addRoute: "フライトルートを追加",
+    totalRoutes: "総ルート数",
+    scheduled: "スケジュール済み",
+    delayed: "遅延",
+    cancelled: "キャンセル済み",
+    searchPlaceholder: "便名、エアライン、空港をサーチ...",
+    filtersAndSorting: "フィルター＆ソート",
+    clearAll: "すべてクリア",
+    activeFilters: "アクティブなフィルター:",
+    fetching: "フライト詳細を取得中...",
+    noMatch: "フィルターに一致するフライトがありません。",
+    noFlights: "登録されているフライトがありません。",
+    table: {
+      flightNo: "便名",
+      airline: "エアライン / 機材",
+      route: "ルート",
+      times: "時間 (出発 / 到着)",
+      fare: "運賃 (INR)",
+      seats: "シート",
+      status: "ステータス",
+      actions: "アクション"
+    },
+    modals: {
+      addTitle: "フライトルートを追加",
+      chooseRegister: "システムに新しいフライトルートを登録する方法を選択してください。",
+      addManually: "マニュアルで追加",
+      addManuallyDesc: "フォームに入力して1つのフライトルートを作成します。",
+      importJsonCsv: "JSON / CSV をインポート",
+      importJsonCsvDesc: "<strong>.json</strong> 配列または <strong>.csv</strong> ファイルをアップロードします — フォーマットは自動的に検出されます。",
+      uploadFile: "ファイルをアップロード",
+      create: "クリエイト",
+      sortBy: "ルートのソート",
+      searchQuery: "サーチクエリ",
+      sourceAirport: "出発空港 (IATA)",
+      destAirport: "到着空港 (IATA)",
+      departureDate: "出発日",
+      arrivalDate: "到着日",
+      anyDate: "指定なし",
+      resetAll: "すべてリセット",
+      applyFilters: "フィルターを適用",
+      addManually: "マニュアルで追加"
+    },
+    auth: {
+      loginTitle: "管理者ログイン",
+      loginSubtitle: "ワークスペースにアクセスするために認証してください",
+      usernameLabel: "管理者ユーザー名",
+      usernamePlaceholder: "管理者ユーザー名を入力",
+      passwordLabel: "パスワード",
+      passwordPlaceholder: "パスワードを入力",
+      accessWorkspace: "ワークスペースにアクセス",
+      authenticating: "認証中...",
+      notAdmin: "管理者ではありませんか？",
+      returnToCustomer: "カスタマーログインに戻る",
+      features: {
+        systemAdmin: "システム管理",
+        secureAccess: "安全なアクセス",
+        flightMonitoring: "フライト監視",
+        staffControls: "スタッフ管理"
+      }
+    },
+    form: {
+      editTitle: "フライトルートを編集",
+      editSubtitle: "ルート {{flightNumber}} のフライト詳細を変更しています",
+      addTitle: "フライトルートを追加",
+      addSubtitle: "新しいフライトルートを手動で設定します",
+      generalInfo: "一般情報",
+      flightNumber: "便名",
+      airline: "エアライン",
+      aircraftModel: "機材モデル",
+      status: "ステータス",
+      routeInfo: "ルート情報",
+      sourceCode: "出発空港コード (From)",
+      destCode: "到着空港コード (To)",
+      scheduleSettings: "スケジュール設定",
+      departureTime: "出発時間",
+      arrivalTime: "到着時間",
+      pricingCapacity: "価格と座席数",
+      baseFare: "基本運賃 (INR)",
+      totalSeats: "総座席数",
+      availableSeats: "空席数",
+      cancel: "キャンセル",
+      saveFlight: "フライトルートを保存",
+      saving: "保存中...",
+      backToConsole: "コンソールに戻る"
+    },
+    delete: {
+      title: "フライトを削除しますか？",
+      desc: "便名 {{flightNumber}} ({{airline}}) を完全に削除しようとしています。この操作は元に戻せません。",
+      yes: "はい、フライトを削除します",
+      deleting: "削除中...",
+      cancel: "キャンセル"
+    }
+  },
+  datePicker: {
+    months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+    weekdays: ["日", "月", "火", "水", "木", "金", "土"]
   }
 };
 

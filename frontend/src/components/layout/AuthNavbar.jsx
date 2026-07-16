@@ -1,7 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // Shared floating glassmorphism navbar used on login & register pages
 export function AuthNavbar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   return (
     <nav className="landing-nav">
@@ -12,7 +14,7 @@ export function AuthNavbar() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
-          AeroGlass
+          {t("brand.name", { defaultValue: "AeroGlass" })}
         </Link>
         <div className="landing-nav-links">
           <a className="landing-nav-link" href="/#explore">Explore</a>

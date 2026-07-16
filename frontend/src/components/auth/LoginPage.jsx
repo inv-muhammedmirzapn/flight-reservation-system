@@ -34,9 +34,9 @@ export function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </div>
-              <div className="auth-brand-name">AeroGlass</div>
+              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })}</div>
               <p className="auth-brand-tagline">
-                Travel smarter.<br />Book with confidence.
+                {t("auth.travelSmarter")}<br />{t("auth.bookConfidence")}
               </p>
 
               {/* Features */}
@@ -50,7 +50,7 @@ export function LoginPage() {
               </ul>
             </div>
 
-            <div className="auth-brand-footer">© 2025 AeroGlass · All rights reserved</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

@@ -32,7 +32,7 @@ export function RegisterPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </div>
-              <div className="auth-brand-name">AeroGlass</div>
+              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })}</div>
               <p className="auth-brand-tagline">
                 {t("auth.joinMillions")}
               </p>
@@ -48,7 +48,7 @@ export function RegisterPage() {
               </div>
             </div>
 
-            <div className="auth-brand-footer">© 2025 AeroGlass · All rights reserved</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
           </div>
 
           {/* ── Right: Register form ── */}

@@ -1,13 +1,15 @@
 import { AdminLoginForm } from './AdminLoginForm';
+import { useTranslation } from 'react-i18next';
 
-const features = [
-  { icon: 'admin_panel_settings', label: 'System Administration' },
-  { icon: 'security',             label: 'Secure Access' },
-  { icon: 'insights',             label: 'Flight Monitoring' },
-  { icon: 'manage_accounts',      label: 'Staff Controls' },
+const getFeatures = (t) => [
+  { icon: 'admin_panel_settings', label: t("admin.auth.features.systemAdmin", { defaultValue: 'System Administration' }) },
+  { icon: 'security',             label: t("admin.auth.features.secureAccess", { defaultValue: 'Secure Access' }) },
+  { icon: 'insights',             label: t("admin.auth.features.flightMonitoring", { defaultValue: 'Flight Monitoring' }) },
+  { icon: 'manage_accounts',      label: t("admin.auth.features.staffControls", { defaultValue: 'Staff Controls' }) },
 ];
 
 export function AdminLoginPage() {
+  const { t } = useTranslation();
   return (
     <div className="auth-page">
       <div className="auth-page-bg" style={{ background: '#f5f5f7' }} />
@@ -22,13 +24,13 @@ export function AdminLoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </div>
-              <div className="auth-brand-name">AeroGlass Workspace</div>
+              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })} Workspace</div>
               <p className="auth-brand-tagline" style={{ color: '#d0c6ab' }}>
                 Secure Admin Portal.<br />Authorized personnel only.
               </p>
 
               <ul className="auth-brand-features">
-                {features.map(f => (
+                {getFeatures(t).map(f => (
                   <li key={f.label} className="auth-brand-feature" style={{ color: '#f3f3f5' }}>
                     <span className="auth-brand-feature-dot" style={{ background: '#ffd700' }} />
                     {f.label}
@@ -36,7 +38,7 @@ export function AdminLoginPage() {
                 ))}
               </ul>
             </div>
-            <div className="auth-brand-footer" style={{ color: '#5e5e5e' }}>© 2025 AeroGlass · Internal Operations</div>
+            <div className="auth-brand-footer" style={{ color: '#5e5e5e' }}>{t("footer.copyright", { year: 2025 }).replace("All rights reserved.", "Internal Operations")}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

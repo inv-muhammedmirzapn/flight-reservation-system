@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function DatePicker({ label, placeholder, value, onChange, variant, className = '' }) {
-  const MONTH_NAMES = [
+  const { t } = useTranslation();
+  const MONTH_NAMES = t('datePicker.months', { returnObjects: true }) || [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const WEEKDAYS = t('datePicker.weekdays', { returnObjects: true }) || ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
+from drf_spectacular.utils import extend_schema
 
 from .models import Flight
 from .serializers import FlightSerializer
@@ -70,6 +71,7 @@ class FlightListCreateView(APIView):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
 
+    @extend_schema(responses=FlightSerializer(many=True))
     def get(self, request, *args, **kwargs) -> Response:
         """
         List flights — 10 per page by default.
@@ -130,6 +132,7 @@ class FlightListCreateView(APIView):
         serializer = FlightSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    @extend_schema(request=FlightSerializer, responses={201: FlightSerializer})
     def post(self, request, *args, **kwargs) -> Response:
         """
         Create a new Flight.
@@ -175,12 +178,14 @@ class FlightDetailView(APIView):
         except (Flight.DoesNotExist, ValueError, DjangoValidationError):
             raise Http404
 
+    @extend_schema(responses=FlightSerializer)
     def get(self, request, id, *args, **kwargs) -> Response:
         """Retrieve details of a single flight."""
         flight = self.get_object(id)
         serializer = FlightSerializer(flight)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(responses={204: None})
     def delete(self, request, id, *args, **kwargs) -> Response:
         """
         Delete a single flight.
@@ -209,6 +214,7 @@ class FlightUpdateView(APIView):
         except (Flight.DoesNotExist, ValueError, DjangoValidationError):
             raise Http404
 
+    @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
     def put(self, request, id, *args, **kwargs) -> Response:
         """
         Update an existing flight.
@@ -229,6 +235,7 @@ class FlightUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
     def patch(self, request, id, *args, **kwargs) -> Response:
         """
         Partially update an existing flight.

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function PassengerSelector({
   label,
@@ -13,6 +14,7 @@ export default function PassengerSelector({
   variant,
   className = ''
 }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const [dropdownRect, setDropdownRect] = useState(null);
@@ -57,9 +59,9 @@ export default function PassengerSelector({
     const cVal = Number(childrenCount) || 0;
     const iVal = Number(infants) || 0;
 
-    const aText = aVal >= 10 ? '9+ Adults' : `${aVal} Adult${aVal > 1 ? 's' : ''}`;
-    const cText = cVal === 0 ? '' : cVal >= 7 ? '6+ Children' : `${cVal} Child${cVal > 1 ? 'ren' : ''}`;
-    const iText = iVal === 0 ? '' : iVal >= 7 ? '6+ Infants' : `${iVal} Infant${iVal > 1 ? 's' : ''}`;
+    const aText = aVal >= 10 ? '9+ ' + t("flights.adultsSummary") : `${aVal} ${aVal > 1 ? t("flights.adultsSummary") : t("flights.adultSummary")}`;
+    const cText = cVal === 0 ? '' : cVal >= 7 ? '6+ ' + t("flights.childrenSummary") : `${cVal} ${cVal > 1 ? t("flights.childrenSummary") : t("flights.childSummary")}`;
+    const iText = iVal === 0 ? '' : iVal >= 7 ? '6+ ' + t("flights.infantsSummary") : `${iVal} ${iVal > 1 ? t("flights.infantsSummary") : t("flights.infantSummary")}`;
 
     return [aText, cText, iText].filter(Boolean).join(', ');
   };
@@ -145,8 +147,8 @@ export default function PassengerSelector({
           {/* ADULTS */}
           <div>
             <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>ADULTS (12y +)</span>
-              <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>on the day of travel</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>{t("flights.adultsLabel")}</span>
+              <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>{t("flights.onDayOfTravel")}</span>
             </div>
             <div style={{
               display: 'flex',
@@ -190,8 +192,8 @@ export default function PassengerSelector({
             {/* CHILDREN */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>CHILDREN (2y - 12y)</span>
-                <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>on the day of travel</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>{t("flights.childrenLabel")}</span>
+                <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>{t("flights.onDayOfTravel")}</span>
               </div>
               <div style={{
                 display: 'flex',
@@ -233,8 +235,8 @@ export default function PassengerSelector({
             {/* INFANTS */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>INFANTS (below 2y)</span>
-                <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>on the day of travel</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.02em' }}>{t("flights.infantsLabel")}</span>
+                <span style={{ fontSize: 11, color: '#9e9488', marginTop: 1 }}>{t("flights.onDayOfTravel")}</span>
               </div>
               <div style={{
                 display: 'flex',

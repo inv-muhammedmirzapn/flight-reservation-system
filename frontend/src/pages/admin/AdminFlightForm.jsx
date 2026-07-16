@@ -7,14 +7,15 @@ import { Select } from '../../components/ui/Select';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 import { ArrowLeft, Save, X, Plane, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
-const STATUS_OPTS = [
-  { value: 'SCHEDULED', label: 'Scheduled' },
-  { value: 'DELAYED', label: 'Delayed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'BOARDING', label: 'Boarding' },
-  { value: 'DEPARTED', label: 'Departed' },
-  { value: 'ARRIVED', label: 'Arrived' },
+const getStatusOpts = (t) => [
+  { value: 'SCHEDULED', label: t("flights.status_SCHEDULED", { defaultValue: 'Scheduled' }) },
+  { value: 'DELAYED', label: t("flights.status_DELAYED", { defaultValue: 'Delayed' }) },
+  { value: 'CANCELLED', label: t("flights.status_CANCELLED", { defaultValue: 'Cancelled' }) },
+  { value: 'BOARDING', label: t("flights.status_BOARDING", { defaultValue: 'Boarding' }) },
+  { value: 'DEPARTED', label: t("flights.status_DEPARTED", { defaultValue: 'Departed' }) },
+  { value: 'ARRIVED', label: t("flights.status_ARRIVED", { defaultValue: 'Arrived' }) },
 ];
 
 const EMPTY_FORM = {
@@ -36,6 +37,7 @@ export default function AdminFlightForm() {
   const isEdit = !!id;
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { detail: flight, detailLoading, actionLoading, validationErrors } = useSelector(state => state.flights);
 
@@ -203,16 +205,16 @@ export default function AdminFlightForm() {
       <div style={{ maxWidth: 840, margin: '0 auto', padding: '88px 24px 48px' }}>
         {/* Back Link */}
         <Link to="/admin/flights" className="back-lnk" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#1a1c1d', fontWeight: 700, textDecoration: 'none', fontSize: 14, marginBottom: 24, transition: 'color 0.2s' }}>
-          <ArrowLeft size={16} /> Back to Console
+          <ArrowLeft size={16} /> {t("admin.form.backToConsole", { defaultValue: 'Back to Console' })}
         </Link>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <div>
             <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 32, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em', margin: 0 }}>
-              {isEdit ? 'Edit Flight Route' : 'Add Flight Route'}
+              {isEdit ? t("admin.form.editTitle", { defaultValue: 'Edit Flight Route' }) : t("admin.form.addTitle", { defaultValue: 'Add Flight Route' })}
             </h1>
             <p style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4, margin: 0 }}>
-              {isEdit ? `Modifying flight details for route ${form.flight_number}` : 'Manually configure a new flight route'}
+              {isEdit ? t("admin.form.editSubtitle", { flightNumber: form.flight_number, defaultValue: `Modifying flight details for route ${form.flight_number}` }) : t("admin.form.addSubtitle", { defaultValue: 'Manually configure a new flight route' })}
             </p>
           </div>
         </div>
@@ -232,12 +234,12 @@ export default function AdminFlightForm() {
           {/* Section 1: Flight General Info */}
           <div className="section-container">
             <h3 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#705d00', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Plane size={16} /> General Information
+              <Plane size={16} /> {t("admin.form.generalInfo", { defaultValue: 'General Information' })}
             </h3>
             <div className="form-grid">
               <Input
                 id="flight_number"
-                label="Flight Number"
+                label={t("admin.form.flightNumber", { defaultValue: 'Flight Number' })}
                 placeholder="e.g. AG-102"
                 value={form.flight_number}
                 onChange={handleChange}
@@ -246,7 +248,7 @@ export default function AdminFlightForm() {
               />
               <Input
                 id="airline"
-                label="Airline"
+                label={t("admin.form.airline", { defaultValue: 'Airline' })}
                 placeholder="e.g. AeroGlass Premium"
                 value={form.airline}
                 onChange={handleChange}
@@ -254,7 +256,7 @@ export default function AdminFlightForm() {
               />
               <Input
                 id="aircraft"
-                label="Aircraft Model"
+                label={t("admin.form.aircraftModel", { defaultValue: 'Aircraft Model' })}
                 placeholder="e.g. Boeing 787"
                 value={form.aircraft}
                 onChange={handleChange}
@@ -262,8 +264,8 @@ export default function AdminFlightForm() {
               />
               <Select
                 id="status"
-                label="Status"
-                options={STATUS_OPTS}
+                label={t("admin.form.status", { defaultValue: 'Status' })}
+                options={getStatusOpts(t)}
                 value={form.status}
                 onChange={handleChange}
                 error={validationErrors?.status?.[0] || localErrors.status}
@@ -274,12 +276,12 @@ export default function AdminFlightForm() {
           {/* Section 2: Route Settings */}
           <div className="section-container">
             <h3 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#705d00' }}>
-              Route Information
+              {t("admin.form.routeInfo", { defaultValue: 'Route Information' })}
             </h3>
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
               <Input
                 id="source_airport"
-                label="Source Airport Code (From)"
+                label={t("admin.form.sourceCode", { defaultValue: 'Source Airport Code (From)' })}
                 placeholder="e.g. MIA"
                 value={form.source_airport}
                 onChange={handleChange}
@@ -287,7 +289,7 @@ export default function AdminFlightForm() {
               />
               <Input
                 id="destination_airport"
-                label="Destination Airport Code (To)"
+                label={t("admin.form.destCode", { defaultValue: 'Destination Airport Code (To)' })}
                 placeholder="e.g. LAX"
                 value={form.destination_airport}
                 onChange={handleChange}
@@ -299,12 +301,12 @@ export default function AdminFlightForm() {
           {/* Section 3: Schedule */}
           <div className="section-container">
             <h3 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#705d00' }}>
-              Schedule Settings
+              {t("admin.form.scheduleSettings", { defaultValue: 'Schedule Settings' })}
             </h3>
             <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
-                  Departure Time
+                  {t("admin.form.departureTime", { defaultValue: 'Departure Time' })}
                 </label>
                 <DateTimePicker
                   value={form.departure_time}
@@ -321,7 +323,7 @@ export default function AdminFlightForm() {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
-                  Arrival Time
+                  {t("admin.form.arrivalTime", { defaultValue: 'Arrival Time' })}
                 </label>
                 <DateTimePicker
                   value={form.arrival_time}
@@ -341,13 +343,13 @@ export default function AdminFlightForm() {
           {/* Section 4: Seating & Pricing */}
           <div className="section-container">
             <h3 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#705d00' }}>
-              Pricing & Capacity
+              {t("admin.form.pricingCapacity", { defaultValue: 'Pricing & Capacity' })}
             </h3>
             <div className="form-grid">
               <Input
                 id="base_fare"
                 type="number"
-                label="Base Fare (INR)"
+                label={t("admin.form.baseFare", { defaultValue: 'Base Fare (INR)' })}
                 placeholder="e.g. 5000"
                 value={form.base_fare}
                 onChange={handleChange}
@@ -356,7 +358,7 @@ export default function AdminFlightForm() {
               <Input
                 id="total_seats"
                 type="number"
-                label="Total Seats Capacity"
+                label={t("admin.form.totalSeats", { defaultValue: 'Total Seats Capacity' })}
                 placeholder="e.g. 180"
                 value={form.total_seats}
                 onChange={handleChange}
@@ -365,7 +367,7 @@ export default function AdminFlightForm() {
               <Input
                 id="available_seats"
                 type="number"
-                label="Available Seats"
+                label={t("admin.form.availableSeats", { defaultValue: 'Available Seats' })}
                 placeholder="e.g. 180"
                 value={form.available_seats}
                 onChange={handleChange}
@@ -382,7 +384,7 @@ export default function AdminFlightForm() {
               className="btn-cancel"
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.05)', color: '#1a1c1d', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
             >
-              <X size={16} /> Cancel
+              <X size={16} /> {t("admin.form.cancel", { defaultValue: 'Cancel' })}
             </button>
             <button
               type="submit"
@@ -390,7 +392,7 @@ export default function AdminFlightForm() {
               className="btn-submit"
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ffd700', color: '#1a1c1d', fontWeight: 700, fontSize: 14, padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,215,0,0.25)', transition: 'background 0.2s', opacity: actionLoading ? 0.7 : 1 }}
             >
-              <Save size={16} /> {actionLoading ? 'Saving...' : 'Save Flight Route'}
+              <Save size={16} /> {actionLoading ? t("admin.form.saving", { defaultValue: 'Saving...' }) : t("admin.form.saveFlight", { defaultValue: 'Save Flight Route' })}
             </button>
           </div>
 
