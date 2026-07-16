@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import DatePicker from '../ui/DatePicker';
 import PassengerSelector from '../ui/PassengerSelector';
 
 export function LandingPage() {
+  const { t } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -35,15 +37,15 @@ export function LandingPage() {
         <div className="landing-hero-bg" />
         <div className="landing-hero-content">
           <div className="landing-search-card">
-            <h1 className="landing-hero-title">Where to next?</h1>
+            <h1 className="landing-hero-title">{t("landing.heroTitle")}</h1>
             <form className="landing-search-form" onSubmit={handleSearch}>
               <div className="landing-search-row">
                 <div className="landing-search-input-wrap">
                   <span className="material-symbols-outlined landing-search-icon">flight_takeoff</span>
                   <div className="landing-search-field">
-                    <label>FROM</label>
+                    <label>{t("landing.from")}</label>
                     <input
-                      placeholder="City or Airport"
+                      placeholder={t("landing.cityOrAirport")}
                       type="text"
                       autoComplete="off"
                       value={from}
@@ -54,9 +56,9 @@ export function LandingPage() {
                 <div className="landing-search-input-wrap">
                   <span className="material-symbols-outlined landing-search-icon">flight_land</span>
                   <div className="landing-search-field">
-                    <label>TO</label>
+                    <label>{t("landing.to")}</label>
                     <input
-                      placeholder="Destination"
+                      placeholder={t("landing.destination")}
                       type="text"
                       autoComplete="off"
                       value={to}
@@ -69,9 +71,9 @@ export function LandingPage() {
                 <div className="landing-search-input-wrap">
                   <span className="material-symbols-outlined landing-search-icon">calendar_today</span>
                   <div className="landing-search-field">
-                    <label>DEPARTURE</label>
+                    <label>{t("landing.departure")}</label>
                     <DatePicker
-                      placeholder="Add dates"
+                      placeholder={t("landing.addDates", { defaultValue: "Add dates" })}
                       value={depDate}
                       onChange={setDepDate}
                       variant="transparent"
@@ -81,9 +83,9 @@ export function LandingPage() {
                 <div className="landing-search-input-wrap">
                   <span className="material-symbols-outlined landing-search-icon">event_repeat</span>
                   <div className="landing-search-field">
-                    <label>RETURN</label>
+                    <label>{t("landing.returnDate")}</label>
                     <DatePicker
-                      placeholder="Add dates"
+                      placeholder={t("landing.addDates", { defaultValue: "Add dates" })}
                       value={arrDate}
                       onChange={setArrDate}
                       variant="transparent"
@@ -93,7 +95,7 @@ export function LandingPage() {
                 <div className="landing-search-input-wrap">
                   <span className="material-symbols-outlined landing-search-icon">group</span>
                   <div className="landing-search-field" style={{ width: '100%' }}>
-                    <label>PASSENGERS</label>
+                    <label>{t("landing.passengers")}</label>
                     <PassengerSelector
                       adults={adults}
                       setAdults={setAdults}
@@ -108,7 +110,7 @@ export function LandingPage() {
               </div>
               <button className="landing-search-btn" type="submit">
                 <span className="material-symbols-outlined">search</span>
-                Search Flights
+                {t("landing.searchFlights")}
               </button>
             </form>
           </div>
@@ -118,23 +120,23 @@ export function LandingPage() {
       {/* ── Popular Destinations ── */}
       <section className="landing-destinations">
         <div className="landing-section-inner">
-          <h2 className="landing-section-title">Popular Destinations</h2>
+          <h2 className="landing-section-title">{t("landing.popularDestinations")}</h2>
           <div className="landing-dest-grid">
             {[
               {
-                city: 'London', sub: 'Direct flights', price: 'From $540',
-                img: '/images/dest_london.png',
+                city: t("landing.london"), sub: t("landing.directFlights"), price: t("landing.from540"),
+                img: '/images/dest_london.png', key: 'london'
               },
               {
-                city: 'Tokyo', sub: 'Non-stop available', price: 'From $890',
-                img: '/images/dest_tokyo.png',
+                city: t("landing.tokyo"), sub: t("landing.nonStopAvailable"), price: t("landing.from890"),
+                img: '/images/dest_tokyo.png', key: 'tokyo'
               },
               {
-                city: 'Paris', sub: 'Premium economy', price: 'From $620',
-                img: '/images/dest_paris.png',
+                city: t("landing.paris"), sub: t("landing.premiumEconomy"), price: t("landing.from620"),
+                img: '/images/dest_paris.png', key: 'paris'
               },
-            ].map(({ city, sub, price, img }) => (
-              <div className="landing-dest-card" key={city}>
+            ].map(({ city, sub, price, img, key }) => (
+              <div className="landing-dest-card" key={key}>
                 <img className="landing-dest-img" src={img} alt={city} />
                 <div className="landing-dest-overlay" />
                 <div className="landing-dest-info">

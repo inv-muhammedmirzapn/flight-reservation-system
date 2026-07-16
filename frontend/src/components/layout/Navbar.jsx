@@ -4,23 +4,25 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../../store/authSlice";
 import { LogoutConfirmDialog } from "../ui/LogoutConfirmDialog";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 // Nav links shown when authenticated (adapted for the app dashboard)
 const APP_NAV_LINKS = [
-  { label: "Flights", href: "/flights" },
-  { label: "Bookings", href: "/bookings" },
-  { label: "Rewards", href: "/rewards" },
-  { label: "Support", href: "/#support" },
+  { labelKey: "flights", href: "/flights" },
+  { labelKey: "bookings", href: "/bookings" },
+  { labelKey: "rewards", href: "/rewards" },
+  { labelKey: "support", href: "/#support" },
 ];
 
 const ADMIN_NAV_LINKS = [
-  { label: "Flights", href: "/admin/flights" },
-  { label: "Reports", href: "/admin/reports" },
-  { label: "Users", href: "/admin/users" },
-  { label: "Support", href: "/#support" },
+  { labelKey: "flights", href: "/admin/flights" },
+  { labelKey: "reports", href: "/admin/reports" },
+  { labelKey: "users", href: "/admin/users" },
+  { labelKey: "support", href: "/#support" },
 ];
 
 export function Navbar() {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,14 +31,21 @@ export function Navbar() {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Build initials from Redux profile
-  const firstName = profile?.first_name || "";
-  const lastName = profile?.last_name || "";
+  const [localFirstName, setLocalFirstName] = useState(localStorage.getItem("firstName") || "");
+
+  useEffect(() => {
+    const handleAuthChange = () => setLocalFirstName(localStorage.getItem("firstName") || "");
+    window.addEventListener("authChange", handleAuthChange);
+    return () => window.removeEventListener("authChange", handleAuthChange);
+  }, []);
+
+  // Build initials from Redux profile or local storage
+  const firstName = profile?.first_name || localFirstName || "";
   const username = profile?.username || "";
-  const initials =
-    firstName || lastName
-      ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-      : username.charAt(0).toUpperCase() || "U";
+  
+  const initials = firstName
+    ? firstName.charAt(0).toUpperCase()
+    : (username.charAt(0).toUpperCase() || "U");
 
   const navLinks = isAdmin ? ADMIN_NAV_LINKS : APP_NAV_LINKS;
 
@@ -50,6 +59,11 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language?.startsWith('en') ? 'ja' : 'en';
+    i18n.changeLanguage(newLang);
+  };
 
   const handleLogoutRequest = () => {
     setDropdownOpen(false);
@@ -99,17 +113,50 @@ export function Navbar() {
                 }
               }}
             >
-              {link.label}
+              {t(`navbar.${link.labelKey}`)}
             </a>
           ))}
         </div>
 
         {/* Right side */}
         <div className="landing-nav-actions">
+          {/* Language Switcher */}
+          <button 
+            onClick={toggleLanguage}
+            style={{
+              background: "rgba(255, 255, 255, 0.4)",
+              border: "1px solid rgba(0,0,0,0.05)",
+              borderRadius: "2rem",
+              padding: "0.25rem 0.6rem",
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              marginRight: "0.5rem",
+              color: "#1a1c1d",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.25rem",
+              backdropFilter: "blur(10px)",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <span style={{ opacity: i18n.language?.startsWith('ja') ? 0.4 : 1 }}>EN</span>
+            <span style={{ opacity: 0.3 }}>|</span>
+            <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
+          </button>
+
           {!isAuthenticated ? (
             <>
-              <button className="landing-nav-signin" onClick={() => navigate("/login")}>Sign In</button>
-              <button className="landing-nav-join" onClick={() => navigate("/register")}>Register</button>
+              <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>
+              <button className="landing-nav-join" onClick={() => navigate("/register")}>{t("navbar.register")}</button>
             </>
           ) : (
             <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>
@@ -173,7 +220,7 @@ export function Navbar() {
                       textTransform: "uppercase",
                       letterSpacing: "0.1em",
                       margin: 0,
-                    }}>My Account</p>
+                    }}>{t("navbar.myAccount")}</p>
                   </div>
 
                   <div style={{ padding: "0.375rem 0" }}>
@@ -201,7 +248,7 @@ export function Navbar() {
                           <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                         </svg>
                       </span>
-                      View Profile
+                      {t("navbar.viewProfile")}
                     </button>
 
                     {/* Sign Out */}
@@ -228,7 +275,7 @@ export function Navbar() {
                           <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
                         </svg>
                       </span>
-                      Sign Out
+                      {t("navbar.signOut")}
                     </button>
                   </div>
                 </div>

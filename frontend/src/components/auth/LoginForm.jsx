@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { loginUser, logout, googleLoginUser } from '../../store/authSlice';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Input } from '../ui/Input';
@@ -19,6 +20,7 @@ function GoogleIcon() {
 }
 
 export function LoginForm() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, isAuthenticated, profile } = useSelector((state) => state.auth);
@@ -81,16 +83,16 @@ export function LoginForm() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h1 className="form-title">Welcome back</h1>
-        <p className="form-subtitle">Sign in to your AeroGlass account</p>
+        <h1 className="form-title">{t("auth.welcomeBack")}</h1>
+        <p className="form-subtitle">{t("auth.signInSubtitle")}</p>
       </div>
 
 
       <form onSubmit={handleSubmit} className="form-fields">
         <Input
           id="username"
-          label="Username or Email"
-          placeholder="Enter your username or email"
+          label={t("auth.usernameOrEmail")}
+          placeholder={t("auth.placeholders.userEmail")}
           required
           value={formData.username}
           onChange={handleChange}
@@ -98,27 +100,27 @@ export function LoginForm() {
         />
         <PasswordInput
           id="password"
-          label="Password"
-          placeholder="Enter your password"
+          label={t("auth.password")}
+          placeholder={t("auth.placeholders.passEnter")}
           required
           value={formData.password}
           onChange={handleChange}
           autoComplete="current-password"
         />
         <button disabled={loading} className="auth-btn" type="submit">
-          {loading ? <><div className="spinner" /> Signing in...</> : 'Sign In'}
+          {loading ? <><div className="spinner" /> {t("auth.signingIn")}</> : t("auth.signIn")}
         </button>
       </form>
 
       <div className="or-divider">
         <span className="or-divider-line" />
-        <span className="or-divider-text">or continue with</span>
+        <span className="or-divider-text">{t("auth.orContinueWith")}</span>
         <span className="or-divider-line" />
       </div>
 
       <button type="button" className="google-btn" onClick={handleGoogleLogin}>
         <GoogleIcon />
-        Continue with Google
+        {t("auth.continueWithGoogle")}
       </button>
 
 

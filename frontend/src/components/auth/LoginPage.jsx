@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LoginForm } from './LoginForm';
 
-const features = [
-  { icon: 'flight_takeoff', label: 'Smart flight search' },
-  { icon: 'radar',          label: 'Real-time tracking'  },
-  { icon: 'bolt',           label: 'Instant booking'     },
-  { icon: 'price_check',    label: 'Price predictions'   },
+const getFeatures = (t) => [
+  { icon: 'flight_takeoff', label: t("auth.smartSearch") },
+  { icon: 'radar',          label: t("auth.realTime")  },
+  { icon: 'bolt',           label: t("auth.instantBooking")     },
+  { icon: 'price_check',    label: t("auth.pricePredictions")   },
 ];
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [successMsg] = useState(() => {
     const msg = sessionStorage.getItem('registerSuccess') || '';
     sessionStorage.removeItem('registerSuccess');
@@ -39,7 +41,7 @@ export function LoginPage() {
 
               {/* Features */}
               <ul className="auth-brand-features">
-                {features.map(f => (
+                {getFeatures(t).map(f => (
                   <li key={f.label} className="auth-brand-feature">
                     <span className="auth-brand-feature-dot" />
                     {f.label}
@@ -60,8 +62,8 @@ export function LoginPage() {
             )}
             <LoginForm />
             <div className="auth-toggle">
-              Don't have an account?
-              <Link className="auth-toggle-btn" to="/register">Join Club</Link>
+              {t("auth.dontHaveAccount")}
+              <Link className="auth-toggle-btn" to="/register">{t("auth.joinClub")}</Link>
             </div>
           </div>
 

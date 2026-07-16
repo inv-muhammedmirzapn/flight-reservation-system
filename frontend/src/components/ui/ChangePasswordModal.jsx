@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Key, AlertCircle, CheckCircle2, X, Eye, EyeOff } from "lucide-react";
 import { profileAPI } from "../../services/api";
+import { useTranslation } from "react-i18next";
 
 const S = {
   overlay: {
@@ -145,6 +146,7 @@ const S = {
 };
 
 export default function ChangePasswordModal({ isOpen, onClose }) {
+  const { t } = useTranslation();
   const [pwdData, setPwdData] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
   const [pwdSaving, setPwdSaving] = useState(false);
   const [pwdMsg, setPwdMsg] = useState({ type: "", text: "" });
@@ -217,8 +219,8 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
         </button>
 
         <div style={S.header}>
-          <h2 style={S.title}>Update Password</h2>
-          <p style={S.subtitle}>Secure your account with a strong password.</p>
+          <h2 style={S.title}>{t("profile.updatePassword")}</h2>
+          <p style={S.subtitle}>{t("profile.updatePassDesc")}</p>
         </div>
 
         {pwdMsg.text && (
@@ -235,7 +237,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
 
         <form onSubmit={handleSubmit}>
           <div style={S.formGroup}>
-            <label style={S.label} htmlFor="oldPassword">Current Password</label>
+            <label style={S.label} htmlFor="oldPassword">{t("profile.currentPassword")}</label>
             <div style={S.inputWrap}>
               <span style={S.inputIcon}><Key size={16} /></span>
               <input
@@ -245,7 +247,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={pwdData.oldPassword}
                 onChange={handlePwdChange}
                 style={S.input}
-                placeholder="Enter current password"
+                placeholder={t("profile.enterCurrent")}
                 onFocus={(e) => { e.target.style.borderColor = "#ffd700"; e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "rgba(0,0,0,0.12)"; e.target.style.boxShadow = "none"; }}
               />
@@ -262,7 +264,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
           </div>
 
           <div style={S.formGroup}>
-            <label style={S.label} htmlFor="newPassword">New Password</label>
+            <label style={S.label} htmlFor="newPassword">{t("profile.newPassword")}</label>
             <div style={S.inputWrap}>
               <span style={S.inputIcon}><Key size={16} /></span>
               <input
@@ -272,7 +274,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={pwdData.newPassword}
                 onChange={handlePwdChange}
                 style={S.input}
-                placeholder="Enter new password"
+                placeholder={t("profile.enterNew")}
                 onFocus={(e) => { e.target.style.borderColor = "#ffd700"; e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "rgba(0,0,0,0.12)"; e.target.style.boxShadow = "none"; }}
               />
@@ -289,7 +291,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
           </div>
 
           <div style={S.formGroup}>
-            <label style={S.label} htmlFor="confirmPassword">Confirm New Password</label>
+            <label style={S.label} htmlFor="confirmPassword">{t("profile.confirmNewPassword")}</label>
             <div style={S.inputWrap}>
               <span style={S.inputIcon}><Key size={16} /></span>
               <input
@@ -299,7 +301,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
                 value={pwdData.confirmPassword}
                 onChange={handlePwdChange}
                 style={S.input}
-                placeholder="Re-enter new password"
+                placeholder={t("profile.confirmNew")}
                 onFocus={(e) => { e.target.style.borderColor = "#ffd700"; e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "rgba(0,0,0,0.12)"; e.target.style.boxShadow = "none"; }}
               />
@@ -323,7 +325,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
               onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.08)"}
               onMouseLeave={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.05)"}
             >
-              Cancel
+              {t("profile.cancel")}
             </button>
             <button
               type="submit"
@@ -335,11 +337,11 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
               {pwdSaving ? (
                 <>
                   <span style={{ width: "16px", height: "16px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
-                  Updating...
+                  {t("profile.updating")}
                   <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 </>
               ) : (
-                "Save Password"
+                t("profile.saveChanges")
               )}
             </button>
           </div>
