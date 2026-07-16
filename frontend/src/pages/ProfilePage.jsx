@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Select } from "../components/ui/Select";
 import ChangePasswordModal from "../components/ui/ChangePasswordModal";
+import { useTranslation } from "react-i18next";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];
 const PROFILE_FIELDS = ["phone_number", "gender", "date_of_birth", "country", "state", "city"];
@@ -17,12 +18,11 @@ const GENDER_OPTIONS = [
   { value: "OTHER", label: "Other" }
 ];
 
-const FIELD_LABELS = {
-  username: "Username", email: "Email Address", first_name: "First Name",
-  last_name: "Last Name", phone_number: "Phone Number", gender: "Gender",
-  date_of_birth: "Date of Birth", country: "Country", state: "State", city: "City",
-  oldPassword: "Current Password", newPassword: "New Password", confirmPassword: "Confirm New Password",
-};
+const getFieldLabels = (t) => ({
+  username: t("auth.username"), email: t("auth.email"), first_name: t("auth.firstName"),
+  last_name: t("auth.lastName"), phone_number: t("profile.phone"), gender: t("profile.gender"),
+  date_of_birth: t("profile.dob"), country: t("profile.country"), state: t("profile.state"), city: t("profile.city"),
+});
 
 const FIELD_ICONS = {
   username: User, email: Mail, first_name: User, last_name: User,
@@ -344,9 +344,8 @@ const S = {
 };
 
 /* ── Sub-components ────────────────────────────────── */
-function ViewField({ fieldKey, value }) {
+function ViewField({ fieldKey, value, label }) {
   const Icon = FIELD_ICONS[fieldKey];
-  const label = FIELD_LABELS[fieldKey];
   const isEmpty = !value || value === "";
   const displayVal =
     fieldKey === "gender" && value
@@ -375,9 +374,8 @@ function ViewField({ fieldKey, value }) {
   );
 }
 
-function FormField({ id, value, onChange, type = "text", readOnly = false, options = null }) {
+function FormField({ id, value, onChange, label, type = "text", readOnly = false, options = null }) {
   const Icon = FIELD_ICONS[id];
-  const label = FIELD_LABELS[id];
 
   const lockedStyle = {
     ...S.inputBase,
@@ -467,6 +465,8 @@ function CircleProgress({ pct }) {
 
 /* ── Main Page ─────────────────────────────────────── */
 export default function ProfilePage() {
+  const { t } = useTranslation();
+  const fieldLabels = getFieldLabels(t);
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -581,11 +581,11 @@ export default function ProfilePage() {
             <div style={S.progressWrap}>
               <CircleProgress pct={completeness} />
               <div>
-                <div style={S.progressLabel}>Profile Status</div>
+                <div style={S.progressLabel}>{t("profile.status")}</div>
                 <div style={S.progressText}>
                   {completeness === 100
-                    ? "✓ All fields complete"
-                    : `${emptyFields.length} field${emptyFields.length !== 1 ? "s" : ""} remaining`}
+                    ? t("profile.complete")
+                    : t("profile.remaining", { count: emptyFields.length })}
                 </div>
               </div>
             </div>
@@ -611,11 +611,11 @@ export default function ProfilePage() {
             <div style={S.card}>
               <div style={S.cardHeader}>
                 <div>
-                  <h2 style={S.cardTitle}>Profile Details</h2>
+                  <h2 style={S.cardTitle}>{t("profile.personalInfo")}</h2>
                   <div style={S.cardSubtitle}>
                     {emptyFields.length > 0
-                      ? `${emptyFields.length} of ${allFields.length} fields are not yet filled`
-                      : "All fields are complete"}
+                      ? t("profile.notFilled", { empty: emptyFields.length, total: allFields.length })
+                      : t("profile.allComplete")}
                   </div>
                 </div>
                 <div style={{ "display": "flex", "flex-wrap": "wrap", "gap": "1rem" }}>
@@ -627,7 +627,7 @@ export default function ProfilePage() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
                   >
-                    <Key size={14} /> Update Password
+                    <Key size={14} /> {t("profile.updatePassword")}
                   </button>
                   <button
                     onClick={() => setEditMode(true)}
@@ -635,17 +635,17 @@ export default function ProfilePage() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
                   >
-                    <Edit2 size={14} /> Update Profile
+                    <Edit2 size={14} /> {t("profile.editProfile")}
                   </button>
                 </div>
               </div>
 
               {/* Account Information */}
               <div style={S.sectionGroup}>
-                <div style={S.sectionLabel}>Account Information</div>
+                <div style={S.sectionLabel}>{t("profile.basicInfo")}</div>
                 <div style={S.fieldGrid2col}>
                   {REGISTRATION_FIELDS.map((key) => (
-                    <ViewField key={key} fieldKey={key} value={profile[key]} />
+                    <ViewField key={key} fieldKey={key} value={profile[key]} label={fieldLabels[key]} />
                   ))}
                 </div>
               </div>
@@ -654,10 +654,10 @@ export default function ProfilePage() {
 
               {/* Personal Details */}
               <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }}>
-                <div style={S.sectionLabel}>Personal Details</div>
+                <div style={S.sectionLabel}>{t("profile.contactDetails")}</div>
                 <div style={S.fieldGrid}>
                   {PROFILE_FIELDS.map((key) => (
-                    <ViewField key={key} fieldKey={key} value={profile[key]} />
+                    <ViewField key={key} fieldKey={key} value={profile[key]} label={fieldLabels[key]} />
                   ))}
                 </div>
               </div>
@@ -669,19 +669,19 @@ export default function ProfilePage() {
             <form onSubmit={handleSave} style={S.card}>
               <div style={S.cardHeader}>
                 <div>
-                  <h2 style={S.cardTitle}>Edit Profile</h2>
-                  <div style={S.cardSubtitle}>Update your personal information below</div>
+                  <h2 style={S.cardTitle}>{t("profile.editProfile")}</h2>
+                  <div style={S.cardSubtitle}>{t("profile.updateDetails")}</div>
                 </div>
               </div>
 
               {/* Account Information — locked */}
               <div style={S.sectionGroup}>
-                <div style={S.sectionLabel}>Account Information</div>
+                <div style={S.sectionLabel}>{t("profile.basicInfo")}</div>
                 <div style={S.fieldGrid2col}>
-                  <FormField id="username" value={formData.username} onChange={handleChange} readOnly />
-                  <FormField id="email" type="email" value={formData.email} onChange={handleChange} readOnly />
-                  <FormField id="first_name" value={formData.first_name} onChange={handleChange} readOnly />
-                  <FormField id="last_name" value={formData.last_name} onChange={handleChange} readOnly />
+                  <FormField id="username" label={fieldLabels.username} value={formData.username} onChange={handleChange} readOnly />
+                  <FormField id="email" label={fieldLabels.email} type="email" value={formData.email} onChange={handleChange} readOnly />
+                  <FormField id="first_name" label={fieldLabels.first_name} value={formData.first_name} onChange={handleChange} readOnly />
+                  <FormField id="last_name" label={fieldLabels.last_name} value={formData.last_name} onChange={handleChange} readOnly />
                 </div>
               </div>
 
@@ -689,14 +689,14 @@ export default function ProfilePage() {
 
               {/* Personal Details — editable */}
               <div style={{ ...S.sectionGroup, marginTop: "1.5rem" }}>
-                <div style={S.sectionLabel}>Personal Details</div>
+                <div style={S.sectionLabel}>{t("profile.contactDetails")}</div>
                 <div style={S.fieldGrid}>
-                  <FormField id="phone_number" value={formData.phone_number} onChange={handleChange} />
-                  <FormField id="gender" value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} />
-                  <FormField id="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} />
-                  <FormField id="country" value={formData.country} onChange={handleChange} />
-                  <FormField id="state" value={formData.state} onChange={handleChange} />
-                  <FormField id="city" value={formData.city} onChange={handleChange} />
+                  <FormField id="phone_number" label={fieldLabels.phone_number} value={formData.phone_number} onChange={handleChange} />
+                  <FormField id="gender" label={fieldLabels.gender} value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} />
+                  <FormField id="date_of_birth" label={fieldLabels.date_of_birth} type="date" value={formData.date_of_birth} onChange={handleChange} />
+                  <FormField id="country" label={fieldLabels.country} value={formData.country} onChange={handleChange} />
+                  <FormField id="state" label={fieldLabels.state} value={formData.state} onChange={handleChange} />
+                  <FormField id="city" label={fieldLabels.city} value={formData.city} onChange={handleChange} />
                 </div>
               </div>
 
@@ -709,7 +709,7 @@ export default function ProfilePage() {
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
                 >
-                  <X size={14} /> Cancel
+                  <X size={14} /> {t("profile.cancel")}
                 </button>
                 <button
                   type="submit" disabled={saving}
@@ -720,11 +720,11 @@ export default function ProfilePage() {
                   {saving ? (
                     <>
                       <span style={{ width: "14px", height: "14px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
-                      Saving…
+                      {t("profile.updating")}
                       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                     </>
                   ) : (
-                    <><Save size={14} /> Save Changes</>
+                    <><Save size={14} /> {t("profile.saveChanges")}</>
                   )}
                 </button>
               </div>

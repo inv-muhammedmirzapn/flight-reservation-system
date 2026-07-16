@@ -4,8 +4,10 @@ import { Input } from '../ui/Input';
 import { PasswordInput } from '../ui/PasswordInput';
 import { PasswordStrength, getPasswordRules } from '../ui/PasswordStrength';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export function RegisterForm({ onSuccess }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -76,8 +78,8 @@ export function RegisterForm({ onSuccess }) {
   return (
     <>
       <div className="form-header">
-        <h1 className="form-title">Create account</h1>
-        <p className="form-subtitle">Fill in your details to get started</p>
+        <h1 className="form-title">{t("auth.createAccount")}</h1>
+        <p className="form-subtitle">{t("auth.fillDetails")}</p>
       </div>
 
       {message.text && (
@@ -90,21 +92,21 @@ export function RegisterForm({ onSuccess }) {
       <form onSubmit={handleSubmit} className="register-form-grid" autoComplete="off">
         <div className="register-form-col">
           <div className="field-row">
-            <Input id="first_name" label="First Name" placeholder="John" required value={formData.first_name} onChange={handleChange} autoComplete="off" />
-            <Input id="last_name" label="Last Name" placeholder="Doe" required value={formData.last_name} onChange={handleChange} autoComplete="off" />
+            <Input id="first_name" label={t("auth.firstName")} placeholder={t("auth.placeholders.first")} required value={formData.first_name} onChange={handleChange} autoComplete="off" />
+            <Input id="last_name" label={t("auth.lastName")} placeholder={t("auth.placeholders.last")} required value={formData.last_name} onChange={handleChange} autoComplete="off" />
           </div>
-          <Input id="email" label="Email Address" type="email" placeholder="you@example.com" required value={formData.email} onChange={handleChange} autoComplete="off" />
-          <Input id="username" label="Username" placeholder="Choose a username" required value={formData.username} onChange={handleChange} autoComplete="off" />
+          <Input id="email" label={t("auth.email")} type="email" placeholder={t("auth.placeholders.email")} required value={formData.email} onChange={handleChange} autoComplete="off" />
+          <Input id="username" label={t("auth.username")} placeholder={t("auth.placeholders.username")} required value={formData.username} onChange={handleChange} autoComplete="off" />
         </div>
 
         <div className="register-form-col">
-          <PasswordInput id="password" label="Password" placeholder="Create a strong password" required value={formData.password} onChange={handleChange} autoComplete="new-password" />
-          <PasswordInput id="confirmPassword" label="Confirm Password" placeholder="Repeat your password" required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
+          <PasswordInput id="password" label={t("auth.password")} placeholder={t("auth.placeholders.password")} required value={formData.password} onChange={handleChange} autoComplete="new-password" />
+          <PasswordInput id="confirmPassword" label={t("auth.confirmPassword")} placeholder={t("auth.placeholders.confirm")} required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
           <PasswordStrength password={formData.password} />
         </div>
 
         <button disabled={loading} className="auth-btn submit-btn-grid" type="submit">
-          {loading ? <><div className="spinner" /> Creating account...</> : 'Create Account'}
+          {loading ? <><div className="spinner" /> {t("auth.creatingAccount")}</> : t("auth.createAccountBtn")}
         </button>
       </form>
     </>

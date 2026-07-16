@@ -1,13 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { RegisterForm } from './RegisterForm';
 
-const stats = [
-  { value: '2M+',   label: 'Travelers'   },
-  { value: '150+',  label: 'Airlines'    },
-  { value: '500+',  label: 'Destinations'},
+const getStats = (t) => [
+  { value: '2M+',   label: t("auth.travelers")   },
+  { value: '150+',  label: t("auth.airlines")    },
+  { value: '500+',  label: t("auth.destinations")},
 ];
 
 export function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleSuccess = () => {
@@ -32,12 +34,12 @@ export function RegisterPage() {
               </div>
               <div className="auth-brand-name">AeroGlass</div>
               <p className="auth-brand-tagline">
-                Join millions of travelers<br />who fly smarter.
+                {t("auth.joinMillions")}
               </p>
 
               {/* Stats */}
               <div className="auth-brand-stats">
-                {stats.map(s => (
+                {getStats(t).map(s => (
                   <div key={s.label} className="auth-brand-stat">
                     <span className="auth-brand-stat-value">{s.value}</span>
                     <span className="auth-brand-stat-label">{s.label}</span>
@@ -53,8 +55,8 @@ export function RegisterPage() {
           <div className="auth-split-form auth-split-form--register">
             <RegisterForm onSuccess={handleSuccess} />
             <div className="auth-toggle">
-              Already have an account?
-              <Link className="auth-toggle-btn" to="/login">Sign In</Link>
+              {t("auth.alreadyHaveAccount")}
+              <Link className="auth-toggle-btn" to="/login">{t("auth.signInInstead")}</Link>
             </div>
           </div>
 
