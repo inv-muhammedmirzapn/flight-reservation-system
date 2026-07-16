@@ -221,18 +221,17 @@ function Sidebar({
   const statuses = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'BOARDING', 'DEPARTED', 'ARRIVED'];
 
   return (
-    <aside style={{
+    <aside className="sidebar-aside" style={{
       width: 260,
       flexShrink: 0,
       position: 'sticky',
       top: 88,
       alignSelf: 'flex-start',
+      zIndex: 10,
     }}>
-      <div className="glass-card sidebar-scroll" style={{ 
-        borderRadius: 20, 
+      <div className="glass-card" style={{
+        borderRadius: 20,
         padding: 28,
-        maxHeight: 'calc(100vh - 120px)',
-        overflowY: 'auto'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h2 style={{

@@ -1,12 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { flightsAPI } from '../services/api';
 
-// fetchFlights now accepts an optional page number (default 1)
+// fetchFlights accepts { page, params } or just a page number for backwards compat
 export const fetchFlights = createAsyncThunk(
   'flights/fetchFlights',
-  async (page = 1, { rejectWithValue }) => {
+  async (arg = 1, { rejectWithValue }) => {
     try {
-      const data = await flightsAPI.list(page);
+      const page   = typeof arg === 'object' ? (arg.page   ?? 1)  : arg;
+      const params = typeof arg === 'object' ? (arg.params ?? {}) : {};
+      const data = await flightsAPI.list(page, params);
       return data; // { count, next, previous, results }
     } catch (error) {
       let message = 'Failed to fetch flights';
@@ -28,6 +30,23 @@ export const fetchAllFlights = createAsyncThunk(
       return data; // { count, next, previous, results }
     } catch (error) {
       let message = 'Failed to fetch flights';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// fetchFlightStats — global per-status counts, independent of pagination
+export const fetchFlightStats = createAsyncThunk(
+  'flights/fetchFlightStats',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await flightsAPI.stats();
+    } catch (error) {
+      let message = 'Failed to fetch flight stats';
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
@@ -88,6 +107,23 @@ export const bulkImportFlights = createAsyncThunk(
   }
 );
 
+export const bulkImportFlightsCsv = createAsyncThunk(
+  'flights/bulkImportFlightsCsv',
+  async (file, { rejectWithValue }) => {
+    try {
+      const data = await flightsAPI.bulkImportCsv(file);
+      return data;
+    } catch (error) {
+      try {
+        const errObj = JSON.parse(error.message);
+        return rejectWithValue(errObj);
+      } catch (_) {
+        return rejectWithValue({ detail: 'Failed to import CSV file' });
+      }
+    }
+  }
+);
+
 export const updateFlight = createAsyncThunk(
   'flights/updateFlight',
   async ({ id, flightData }, { rejectWithValue }) => {
@@ -141,11 +177,22 @@ export const deleteFlight = createAsyncThunk(
 
 const initialState = {
   list: [],
-  count: 0,          // total number of flights (for pagination)
+  count: 0,          // total number of flights matching current query (for pagination)
   currentPage: 1,    // which page we are on
   totalPages: 1,     // derived from count / page_size
+  filters: {},       // active filter params for the admin listing
+  stats: {           // global per-status counts — fetched independently, stable across pages
+    total: 0,
+    scheduled: 0,
+    delayed: 0,
+    cancelled: 0,
+    boarding: 0,
+    departed: 0,
+    arrived: 0,
+  },
   detail: null,
   loading: false,
+  statsLoading: false,
   detailLoading: false,
   actionLoading: false,
   error: null,
@@ -168,10 +215,16 @@ const flightSlice = createSlice({
     setCurrentPage: (state, action) => {
       state.currentPage = action.payload;
     },
+    setFilters: (state, action) => {
+      state.filters = action.payload;
+    },
+    clearFilters: (state) => {
+      state.filters = {};
+    },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch List — response is now { count, next, previous, results }
+      // Fetch List
       .addCase(fetchFlights.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -203,6 +256,17 @@ const flightSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // Fetch Stats
+      .addCase(fetchFlightStats.pending, (state) => {
+        state.statsLoading = true;
+      })
+      .addCase(fetchFlightStats.fulfilled, (state, action) => {
+        state.statsLoading = false;
+        state.stats = action.payload;
+      })
+      .addCase(fetchFlightStats.rejected, (state) => {
+        state.statsLoading = false;
+      })
       // Fetch Detail
       .addCase(fetchFlightDetail.pending, (state) => {
         state.detailLoading = true;
@@ -216,20 +280,19 @@ const flightSlice = createSlice({
         state.detailLoading = false;
         state.error = action.payload;
       })
-      // Add Flight — after adding, re-fetch so pagination stays accurate
+      // Add Flight
       .addCase(addFlight.pending, (state) => {
         state.actionLoading = true;
         state.validationErrors = null;
       })
       .addCase(addFlight.fulfilled, (state) => {
         state.actionLoading = false;
-        // caller dispatches fetchFlights(currentPage) after this
       })
       .addCase(addFlight.rejected, (state, action) => {
         state.actionLoading = false;
         state.validationErrors = action.payload;
       })
-      // Bulk Import Flights
+      // Bulk Import (JSON)
       .addCase(bulkImportFlights.pending, (state) => {
         state.actionLoading = true;
         state.error = null;
@@ -240,6 +303,18 @@ const flightSlice = createSlice({
       .addCase(bulkImportFlights.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload?.detail || 'Failed to import flights';
+      })
+      // Bulk Import (CSV)
+      .addCase(bulkImportFlightsCsv.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(bulkImportFlightsCsv.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(bulkImportFlightsCsv.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload?.detail || 'Failed to import CSV file';
       })
       // Update Flight
       .addCase(updateFlight.pending, (state) => {
@@ -294,5 +369,5 @@ const flightSlice = createSlice({
   },
 });
 
-export const { clearFlightErrors, clearFlightDetail, setCurrentPage } = flightSlice.actions;
+export const { clearFlightErrors, clearFlightDetail, setCurrentPage, setFilters, clearFilters } = flightSlice.actions;
 export default flightSlice.reducer;

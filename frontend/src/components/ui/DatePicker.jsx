@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
 
 export default function DatePicker({ label, placeholder, value, onChange, variant, className = '' }) {
@@ -10,6 +11,7 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState({});
   
   // Parse initial date or default to today's date for calendar view state
   const initialDate = value ? new Date(value) : new Date();
@@ -17,12 +19,35 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth()); // 0-indexed
 
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
   const isTransparent = variant === 'transparent';
+
+  const updateDropdownPosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    
+    // Check if dropdown goes offscreen horizontally
+    let left = rect.left;
+    if (left + 280 > window.innerWidth) {
+      left = Math.max(10, rect.right - 280);
+    }
+    
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 5,
+      left: left,
+      zIndex: 9999,
+    });
+  };
 
   // Close calendar on click outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current && !containerRef.current.contains(event.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -30,10 +55,23 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Recompute position on scroll / resize while open
+  useEffect(() => {
+    if (!isOpen) return;
+    updateDropdownPosition();
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    window.addEventListener('resize', updateDropdownPosition);
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+      window.removeEventListener('resize', updateDropdownPosition);
+    };
+  }, [isOpen]);
+
   const handleOpen = () => {
     const activeDate = value ? new Date(value) : new Date();
     setViewYear(activeDate.getFullYear());
     setViewMonth(activeDate.getMonth());
+    updateDropdownPosition();
     setIsOpen(true);
   };
 
@@ -100,7 +138,7 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
         </label>
       )}
       
-      <div style={{ position: 'relative' }}>
+      <div ref={triggerRef} style={{ position: 'relative' }}>
         <input
           type="text"
           placeholder={placeholder}
@@ -165,14 +203,12 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
         )}
       </div>
 
-      {isOpen && (
+      {isOpen && ReactDOM.createPortal(
         <div
+          ref={dropdownRef}
           className="glass-card"
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            left: 0,
-            zIndex: 999,
+            ...dropdownStyle,
             width: 280,
             padding: 16,
             borderRadius: 16,
@@ -279,7 +315,8 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
