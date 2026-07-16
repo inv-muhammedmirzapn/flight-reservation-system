@@ -743,11 +743,14 @@ export default function UserFlightsList() {
 
             {/* States */}
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' }}>
-                <div style={{
-                  width: 44, height: 44, border: '3px solid rgba(112,93,0,0.15)',
-                  borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite',
-                }} />
+              <div style={{ 
+                position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(248, 250, 252, 0.9)', backdropFilter: 'blur(10px)',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' 
+              }}>
+                <Plane size={48} color="#705d00" className="animate-bounce" />
+                <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
+                  Fetching flight details...
+                </div>
               </div>
             ) : error ? (
               <div className="glass-card" style={{ borderRadius: 16, padding: 24, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', textAlign: 'center' }}>

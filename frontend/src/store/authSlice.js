@@ -32,14 +32,28 @@ export const fetchProfile = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
-  async (credentials, { dispatch, rejectWithValue }) => {
+  async ({ credentials, requireAdmin, requireCustomer }, { dispatch, rejectWithValue }) => {
     try {
       const data = await authAPI.login(credentials);
+      
+      const isAdmin = data.role === 'ADMIN';
+      
+      if (requireAdmin && !isAdmin) {
+        return rejectWithValue('Access Denied: Administrator privileges required.');
+      }
+      if (requireCustomer && isAdmin) {
+        return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
+      }
+
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
       
-      // Load profile info immediately
-      const profile = await dispatch(fetchProfile()).unwrap();
+      const profile = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        role: data.role
+      };
       return { token: data.access, profile };
     } catch (error) {
       let message = 'Login failed';
@@ -54,13 +68,24 @@ export const loginUser = createAsyncThunk(
 
 export const googleLoginUser = createAsyncThunk(
   'auth/googleLoginUser',
-  async (token, { dispatch, rejectWithValue }) => {
+  async ({ token, requireCustomer }, { dispatch, rejectWithValue }) => {
     try {
       const data = await authAPI.googleLogin(token);
+      
+      const isAdmin = data.role === 'ADMIN';
+      if (requireCustomer && isAdmin) {
+        return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
+      }
+
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
       
-      const profile = await dispatch(fetchProfile()).unwrap();
+      const profile = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        role: data.role
+      };
       return { token: data.access, profile };
     } catch (error) {
       let message = 'Google Login failed';
@@ -82,7 +107,8 @@ const initialState = {
   profile: null,
   isAuthenticated: !!initialToken,
   isAdmin: decoded?.is_superuser || false,
-  loading: !!initialToken,
+  loading: false,
+  isInitializing: !!initialToken,
   error: null,
 };
 
@@ -142,15 +168,15 @@ const authSlice = createSlice({
       })
       // Fetch Profile
       .addCase(fetchProfile.pending, (state) => {
-        state.loading = true;
+        state.isInitializing = true;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        state.loading = false;
+        state.isInitializing = false;
         state.profile = action.payload;
         state.isAdmin = state.decodedToken?.is_superuser || action.payload.role === 'ADMIN';
       })
       .addCase(fetchProfile.rejected, (state) => {
-        state.loading = false;
+        state.isInitializing = false;
         // Don't force logout immediately on profile fail, but clear profile state
         state.profile = null;
       });

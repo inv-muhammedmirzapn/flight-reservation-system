@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 import re
 from .models import Profile
-
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class StrongPasswordValidator:
     """Custom validator matching the frontend password rules."""
@@ -111,3 +111,17 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        user = self.user
+        data['id'] = user.id
+        data['username'] = user.username
+        data['email'] = user.email
+        
+        profile, _ = Profile.objects.get_or_create(user=user)
+        data['role'] = profile.role
+        
+        return data

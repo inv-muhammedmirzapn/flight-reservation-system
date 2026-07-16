@@ -1,9 +1,8 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer
 from .models import Profile
-from .serializers import ProfileSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -31,15 +30,7 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom token view that ensures a Profile exists for authenticated user."""
-    serializer_class = TokenObtainPairSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = getattr(serializer, 'user', None)
-        if user is not None:
-            Profile.objects.get_or_create(user=user)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+    serializer_class = CustomTokenObtainPairSerializer
 
 class GoogleLoginView(APIView):
     permission_classes = (AllowAny,)
@@ -96,7 +87,10 @@ class GoogleLoginView(APIView):
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'profile': ProfileSerializer(user.profile).data
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.profile.role
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
