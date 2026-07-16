@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { User, ChevronDown } from 'lucide-react';
 
 export default function PassengerSelector({
@@ -14,18 +15,41 @@ export default function PassengerSelector({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const [dropdownRect, setDropdownRect] = useState(null);
   const isTransparent = variant === 'transparent';
 
-  // Close popup on click outside
+  // Close popup on click outside or scroll
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
+        // We also need to check if click is inside the portal, but for simplicity we can check if it's a passenger button
+        if (!event.target.closest('.passenger-dropdown-panel')) {
+          setIsOpen(false);
+        }
       }
     }
+    
+    function handleScroll(event) {
+      if (isOpen && !event.target.closest('.passenger-dropdown-panel')) {
+         setIsOpen(false);
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, [isOpen]);
+
+  const toggleOpen = () => {
+    if (!isOpen && containerRef.current) {
+      setDropdownRect(containerRef.current.getBoundingClientRect());
+    }
+    setIsOpen(!isOpen);
+  };
 
   // Format the input display value
   const getSummary = () => {
@@ -65,7 +89,7 @@ export default function PassengerSelector({
           type="text"
           value={getSummary()}
           readOnly
-          onClick={() => setIsOpen(prev => !prev)}
+          onClick={toggleOpen}
           style={{
             width: '100%',
             padding: isTransparent ? '0 24px 0 0' : '12px 36px 12px 14px',
@@ -97,20 +121,20 @@ export default function PassengerSelector({
         />
       </div>
 
-      {isOpen && (
+      {isOpen && dropdownRect && createPortal(
         <div
           className="glass-card passenger-dropdown-panel"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 8px)',
-            left: 0,
-            zIndex: 1000,
-            width: 440,
-            padding: '24px 28px',
+            top: dropdownRect.bottom + 8 + window.scrollY,
+            left: dropdownRect.left + window.scrollX,
+            zIndex: 99999,
+            width: isTransparent ? 440 : Math.max(320, dropdownRect.width),
+            padding: '24px',
             borderRadius: 24,
             background: 'rgba(255, 255, 255, 0.92)',
             border: '1px solid rgba(255, 255, 255, 0.95)',
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
             backdropFilter: 'blur(30px)',
             WebkitBackdropFilter: 'blur(30px)',
             display: 'flex',
@@ -161,8 +185,8 @@ export default function PassengerSelector({
             </div>
           </div>
 
-          {/* CHILDREN & INFANTS in two-column row */}
-          <div style={{ display: 'flex', gap: 24 }}>
+          {/* CHILDREN & INFANTS in two-column row if wide enough, else stack */}
+          <div style={{ display: 'flex', flexDirection: isTransparent ? 'row' : 'column', gap: 24 }}>
             {/* CHILDREN */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 10 }}>
@@ -249,7 +273,8 @@ export default function PassengerSelector({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

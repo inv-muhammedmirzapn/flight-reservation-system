@@ -156,7 +156,7 @@ function FlightCard({ flight }) {
         </div>
 
         {/* Flight meta */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160, marginLeft: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
             <StatusBadge status={flight.status} />
