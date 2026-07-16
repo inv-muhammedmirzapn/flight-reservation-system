@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import CustomTokenObtainPairView
-from .views import RegisterView, ProfileAPIView, GoogleLoginView
+from .views import RegisterView, ProfileAPIView, GoogleLoginView, ChangePasswordAPIView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -11,4 +11,5 @@ urlpatterns = [
     path('google-login/', GoogleLoginView.as_view(), name='google_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("profile/", ProfileAPIView.as_view(), name="profile"),
+    path("change-password/", ChangePasswordAPIView.as_view(), name="change_password"),
 ]
