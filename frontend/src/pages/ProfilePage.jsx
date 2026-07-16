@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { profileAPI } from "../services/api";
 import {
   User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock,
-  CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X
+  CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X, Key
 } from "lucide-react";
 import { Select } from "../components/ui/Select";
+import ChangePasswordModal from "../components/ui/ChangePasswordModal";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];
 const PROFILE_FIELDS = ["phone_number", "gender", "date_of_birth", "country", "state", "city"];
@@ -20,12 +21,14 @@ const FIELD_LABELS = {
   username: "Username", email: "Email Address", first_name: "First Name",
   last_name: "Last Name", phone_number: "Phone Number", gender: "Gender",
   date_of_birth: "Date of Birth", country: "Country", state: "State", city: "City",
+  oldPassword: "Current Password", newPassword: "New Password", confirmPassword: "Confirm New Password",
 };
 
 const FIELD_ICONS = {
   username: User, email: Mail, first_name: User, last_name: User,
   phone_number: Phone, gender: User, date_of_birth: Calendar,
   country: Flag, state: Map, city: MapPin,
+  oldPassword: Key, newPassword: Key, confirmPassword: Key,
 };
 
 /* ── Inline style objects ─────────────────────────── */
@@ -138,6 +141,7 @@ const S = {
     borderRadius: "1.5rem",
     boxShadow: "0 8px 32px rgba(0,0,0,0.07)",
     overflow: "hidden",
+
   },
   cardHeader: {
     display: "flex",
@@ -171,7 +175,7 @@ const S = {
     fontWeight: "700",
     fontSize: "0.875rem",
     border: "none",
-    borderRadius: "0.75rem",
+    borderRadius: "1rem",
     cursor: "pointer",
     boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
     transition: "all 0.2s",
@@ -362,7 +366,7 @@ function ViewField({ fieldKey, value }) {
       {isEmpty ? (
         <div style={S.viewFieldEmpty}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f0c040", display: "inline-block" }} />
-          Not set
+
         </div>
       ) : (
         <div style={S.viewFieldValue}>{displayVal}</div>
@@ -472,6 +476,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState({ type: "", text: "" });
 
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   useEffect(() => { fetchProfile(); }, []);
 
   const fetchProfile = async () => {
@@ -525,6 +530,7 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
+
   const allFields = [...REGISTRATION_FIELDS, ...PROFILE_FIELDS];
   const emptyFields = profile ? PROFILE_FIELDS.filter((f) => !profile[f] || profile[f] === "") : [];
   const completeness = profile
@@ -559,160 +565,180 @@ export default function ProfilePage() {
   const avatarChar = (profile?.first_name?.charAt(0) || profile?.username?.charAt(0) || "U").toUpperCase();
 
   return (
-    <div style={S.page}>
-      <div style={S.container}>
+    <>
+      <div style={S.page}>
+        <div style={S.container}>
 
-        {/* ── Header Card ── */}
-        <div style={S.headerCard}>
-          <div style={S.avatar}>{avatarChar}</div>
+          {/* ── Header Card ── */}
+          <div style={S.headerCard}>
+            <div style={S.avatar}>{avatarChar}</div>
 
-          <div style={S.headerInfo}>
-            <h1 style={S.headerName}>{fullName}</h1>
-            <p style={S.headerUsername}>@{profile?.username}</p>
-          </div>
-
-          <div style={S.progressWrap}>
-            <CircleProgress pct={completeness} />
-            <div>
-              <div style={S.progressLabel}>Profile Status</div>
-              <div style={S.progressText}>
-                {completeness === 100
-                  ? "✓ All fields complete"
-                  : `${emptyFields.length} field${emptyFields.length !== 1 ? "s" : ""} remaining`}
-              </div>
+            <div style={S.headerInfo}>
+              <h1 style={S.headerName}>{fullName}</h1>
+              <p style={S.headerUsername}>@{profile?.username}</p>
             </div>
-          </div>
-        </div>
 
-        {/* ── Alert Banner ── */}
-        {saveMsg.text && (
-          <div style={{
-            ...S.alertBase,
-            background: saveMsg.type === "error" ? "#fff2f2" : "#f0fdf4",
-            color: saveMsg.type === "error" ? "#b91c1c" : "#15803d",
-            borderColor: saveMsg.type === "error" ? "#fecaca" : "#bbf7d0",
-          }}>
-            {saveMsg.type === "error"
-              ? <AlertCircle size={16} />
-              : <CheckCircle2 size={16} />}
-            {saveMsg.text}
-          </div>
-        )}
-
-        {/* ════════════ VIEW MODE ════════════ */}
-        {!editMode && (
-          <div style={S.card}>
-            <div style={S.cardHeader}>
+            <div style={S.progressWrap}>
+              <CircleProgress pct={completeness} />
               <div>
-                <h2 style={S.cardTitle}>Profile Details</h2>
-                <div style={S.cardSubtitle}>
-                  {emptyFields.length > 0
-                    ? `${emptyFields.length} of ${allFields.length} fields are not yet filled`
-                    : "All fields are complete"}
+                <div style={S.progressLabel}>Profile Status</div>
+                <div style={S.progressText}>
+                  {completeness === 100
+                    ? "✓ All fields complete"
+                    : `${emptyFields.length} field${emptyFields.length !== 1 ? "s" : ""} remaining`}
                 </div>
               </div>
-              <button
-                onClick={() => setEditMode(true)}
-                style={S.editBtn}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
-              >
-                <Edit2 size={14} /> Update Profile
-              </button>
-            </div>
-
-            {/* Account Information */}
-            <div style={S.sectionGroup}>
-              <div style={S.sectionLabel}>Account Information</div>
-              <div style={S.fieldGrid2col}>
-                {REGISTRATION_FIELDS.map((key) => (
-                  <ViewField key={key} fieldKey={key} value={profile[key]} />
-                ))}
-              </div>
-            </div>
-
-            <div style={S.divider} />
-
-            {/* Personal Details */}
-            <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }}>
-              <div style={S.sectionLabel}>Personal Details</div>
-              <div style={S.fieldGrid}>
-                {PROFILE_FIELDS.map((key) => (
-                  <ViewField key={key} fieldKey={key} value={profile[key]} />
-                ))}
-              </div>
             </div>
           </div>
-        )}
 
-        {/* ════════════ EDIT MODE ════════════ */}
-        {editMode && (
-          <form onSubmit={handleSave} style={S.card}>
-            <div style={S.cardHeader}>
-              <div>
-                <h2 style={S.cardTitle}>Edit Profile</h2>
-                <div style={S.cardSubtitle}>Update your personal information below</div>
+          {/* ── Alert Banner ── */}
+          {saveMsg.text && (
+            <div style={{
+              ...S.alertBase,
+              background: saveMsg.type === "error" ? "#fff2f2" : "#f0fdf4",
+              color: saveMsg.type === "error" ? "#b91c1c" : "#15803d",
+              borderColor: saveMsg.type === "error" ? "#fecaca" : "#bbf7d0",
+            }}>
+              {saveMsg.type === "error"
+                ? <AlertCircle size={16} />
+                : <CheckCircle2 size={16} />}
+              {saveMsg.text}
+            </div>
+          )}
+
+          {/* ════════════ VIEW MODE ════════════ */}
+          {!editMode && (
+            <div style={S.card}>
+              <div style={S.cardHeader}>
+                <div>
+                  <h2 style={S.cardTitle}>Profile Details</h2>
+                  <div style={S.cardSubtitle}>
+                    {emptyFields.length > 0
+                      ? `${emptyFields.length} of ${allFields.length} fields are not yet filled`
+                      : "All fields are complete"}
+                  </div>
+                </div>
+                <div style={{ "display": "flex", "flex-wrap": "wrap", "gap": "1rem" }}>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordModalOpen(true)}
+                    style={S.editBtn}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
+                  >
+                    <Key size={14} /> Update Password
+                  </button>
+                  <button
+                    onClick={() => setEditMode(true)}
+                    style={S.editBtn}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#ffe333")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#ffd700")}
+                  >
+                    <Edit2 size={14} /> Update Profile
+                  </button>
+                </div>
+              </div>
+
+              {/* Account Information */}
+              <div style={S.sectionGroup}>
+                <div style={S.sectionLabel}>Account Information</div>
+                <div style={S.fieldGrid2col}>
+                  {REGISTRATION_FIELDS.map((key) => (
+                    <ViewField key={key} fieldKey={key} value={profile[key]} />
+                  ))}
+                </div>
+              </div>
+
+              <div style={S.divider} />
+
+              {/* Personal Details */}
+              <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }}>
+                <div style={S.sectionLabel}>Personal Details</div>
+                <div style={S.fieldGrid}>
+                  {PROFILE_FIELDS.map((key) => (
+                    <ViewField key={key} fieldKey={key} value={profile[key]} />
+                  ))}
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Account Information — locked */}
-            <div style={S.sectionGroup}>
-              <div style={S.sectionLabel}>Account Information</div>
-              <div style={S.fieldGrid2col}>
-                <FormField id="username" value={formData.username} onChange={handleChange} readOnly />
-                <FormField id="email" type="email" value={formData.email} onChange={handleChange} readOnly />
-                <FormField id="first_name" value={formData.first_name} onChange={handleChange} readOnly />
-                <FormField id="last_name" value={formData.last_name} onChange={handleChange} readOnly />
+          {/* ════════════ EDIT MODE ════════════ */}
+          {editMode && (
+            <form onSubmit={handleSave} style={S.card}>
+              <div style={S.cardHeader}>
+                <div>
+                  <h2 style={S.cardTitle}>Edit Profile</h2>
+                  <div style={S.cardSubtitle}>Update your personal information below</div>
+                </div>
               </div>
-            </div>
 
-            <div style={S.divider} />
-
-            {/* Personal Details — editable */}
-            <div style={{ ...S.sectionGroup, marginTop: "1.5rem" }}>
-              <div style={S.sectionLabel}>Personal Details</div>
-              <div style={S.fieldGrid}>
-                <FormField id="phone_number" value={formData.phone_number} onChange={handleChange} />
-                <FormField id="gender" value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} />
-                <FormField id="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} />
-                <FormField id="country" value={formData.country} onChange={handleChange} />
-                <FormField id="state" value={formData.state} onChange={handleChange} />
-                <FormField id="city" value={formData.city} onChange={handleChange} />
+              {/* Account Information — locked */}
+              <div style={S.sectionGroup}>
+                <div style={S.sectionLabel}>Account Information</div>
+                <div style={S.fieldGrid2col}>
+                  <FormField id="username" value={formData.username} onChange={handleChange} readOnly />
+                  <FormField id="email" type="email" value={formData.email} onChange={handleChange} readOnly />
+                  <FormField id="first_name" value={formData.first_name} onChange={handleChange} readOnly />
+                  <FormField id="last_name" value={formData.last_name} onChange={handleChange} readOnly />
+                </div>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div style={S.formActions}>
-              <button
-                type="button" disabled={saving}
-                onClick={() => { setEditMode(false); setSaveMsg({ type: "", text: "" }); }}
-                style={S.cancelBtn}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
-              >
-                <X size={14} /> Cancel
-              </button>
-              <button
-                type="submit" disabled={saving}
-                style={{ ...S.saveBtn, opacity: saving ? 0.7 : 1 }}
-                onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = "#ffe333"; }}
-                onMouseLeave={(e) => { if (!saving) e.currentTarget.style.background = "#ffd700"; }}
-              >
-                {saving ? (
-                  <>
-                    <span style={{ width: "14px", height: "14px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
-                    Saving…
-                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  </>
-                ) : (
-                  <><Save size={14} /> Save Changes</>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+              <div style={S.divider} />
+
+              {/* Personal Details — editable */}
+              <div style={{ ...S.sectionGroup, marginTop: "1.5rem" }}>
+                <div style={S.sectionLabel}>Personal Details</div>
+                <div style={S.fieldGrid}>
+                  <FormField id="phone_number" value={formData.phone_number} onChange={handleChange} />
+                  <FormField id="gender" value={formData.gender} onChange={handleChange} options={GENDER_OPTIONS} />
+                  <FormField id="date_of_birth" type="date" value={formData.date_of_birth} onChange={handleChange} />
+                  <FormField id="country" value={formData.country} onChange={handleChange} />
+                  <FormField id="state" value={formData.state} onChange={handleChange} />
+                  <FormField id="city" value={formData.city} onChange={handleChange} />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={S.formActions}>
+                <button
+                  type="button" disabled={saving}
+                  onClick={() => { setEditMode(false); setSaveMsg({ type: "", text: "" }); }}
+                  style={S.cancelBtn}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+                >
+                  <X size={14} /> Cancel
+                </button>
+                <button
+                  type="submit" disabled={saving}
+                  style={{ ...S.saveBtn, opacity: saving ? 0.7 : 1 }}
+                  onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = "#ffe333"; }}
+                  onMouseLeave={(e) => { if (!saving) e.currentTarget.style.background = "#ffd700"; }}
+                >
+                  {saving ? (
+                    <>
+                      <span style={{ width: "14px", height: "14px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                      Saving…
+                      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                    </>
+                  ) : (
+                    <><Save size={14} /> Save Changes</>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+        </div>
 
       </div>
-    </div>
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
+    </>
   );
 }

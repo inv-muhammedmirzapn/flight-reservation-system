@@ -162,4 +162,11 @@ export const profileAPI = {
       body: JSON.stringify(profileData),
     });
   },
+
+  changePassword: async (passwordData) => {
+    return fetchWithAuth('/auth/change-password/', {
+      method: 'POST',
+      body: JSON.stringify(passwordData),
+    });
+  },
 };

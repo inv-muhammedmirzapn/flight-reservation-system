@@ -125,3 +125,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['role'] = profile.role
         
         return data
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        validator = StrongPasswordValidator()
+        try:
+            validator.validate(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+    def validate(self, attrs):
+        if attrs.get('old_password') == attrs.get('new_password'):
+            raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
+        return attrs
