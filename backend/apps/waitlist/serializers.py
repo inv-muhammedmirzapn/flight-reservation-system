@@ -1,54 +1,35 @@
 from rest_framework import serializers
-from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import WaitlistEntry, WaitlistStatus
-
+from apps.flights.models import Flight
 
 class WaitlistEntrySerializer(serializers.ModelSerializer):
-    queue_position = serializers.SerializerMethodField()
-    username = serializers.CharField(source="user.username", read_only=True)
+    flight_number = serializers.CharField(source="flight.flight_number", read_only=True)
 
     class Meta:
         model = WaitlistEntry
         fields = [
             "id",
-            "user",
-            "username",
             "flight",
-            "seat_count",
-            "price",
-            "status",
-            "booking",
-            "queue_position",
-            "created_at",
-            "updated_at",
+            "flight_number",
+            "joined_at",
+            "status"
         ]
-        read_only_fields = [
-            "id",
-            "user",
-            "username",
-            "price",
-            "status",
-            "booking",
-            "created_at",
-            "updated_at",
-        ]
+        read_only_fields = ["id", "joined_at", "status"]
 
-    def get_queue_position(self, obj):
-        if obj.status != WaitlistStatus.PENDING:
-            return None
-        # Count preceding pending entries for the same flight
-        return (
-            WaitlistEntry.objects.filter(
-                flight=obj.flight,
-                status=WaitlistStatus.PENDING,
-                created_at__lt=obj.created_at,
-            ).count()
-            + 1
-        )
+    def validate(self, attrs):
+        flight = attrs.get("flight")
+        user = self.context["request"].user
 
-    def validate_seat_count(self, value):
-        if value < 1 or value > 9:
-            raise serializers.ValidationError(
-                "Seat count must be between 1 and 9 seats."
-            )
-        return value
+        if flight.available_seats > 0:
+            raise serializers.ValidationError({"flight": "Cannot join waitlist. The flight still has available seats."})
+        
+        # Check if user already has a pending waitlist entry for this flight
+        if WaitlistEntry.objects.filter(user=user, flight=flight, status=WaitlistStatus.PENDING).exists():
+            raise serializers.ValidationError({"flight": "You are already on the waitlist for this flight."})
+            
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        validated_data["user"] = user
+        return super().create(validated_data)
