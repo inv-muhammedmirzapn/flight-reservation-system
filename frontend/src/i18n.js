@@ -68,8 +68,8 @@ const enTranslation = {
     airlines: "Airlines",
     destinations: "Destinations",
     placeholders: {
-      first: "John",
-      last: "Doe",
+      first: "Enter your First name",
+      last: "Enter your Last name",
       email: "you@example.com",
       username: "Choose a username",
       password: "Create a strong password",

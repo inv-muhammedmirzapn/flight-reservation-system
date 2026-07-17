@@ -42,10 +42,12 @@ export function Navbar() {
   // Build initials from Redux profile or local storage
   const firstName = profile?.first_name || localFirstName || "";
   const username = profile?.username || "";
-  
-  const initials = firstName
-    ? firstName.charAt(0).toUpperCase()
-    : (username.charAt(0).toUpperCase() || "U");
+
+  const initials = isAdmin
+    ? "A"
+    : firstName
+      ? firstName.charAt(0).toUpperCase()
+      : (username.charAt(0).toUpperCase() || "U");
 
   const navLinks = isAdmin ? ADMIN_NAV_LINKS : APP_NAV_LINKS;
 
@@ -121,7 +123,7 @@ export function Navbar() {
         {/* Right side */}
         <div className="landing-nav-actions">
           {/* Language Switcher */}
-          <button 
+          <button
             onClick={toggleLanguage}
             style={{
               background: "rgba(255, 255, 255, 0.4)",
