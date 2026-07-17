@@ -1,0 +1,949 @@
+openapi: 3.0.3
+info:
+  title: Flight Management API
+  version: 1.0.0
+  description: API documentation for the Flight Management System
+paths:
+  /api/auth/change-password/:
+    post:
+      operationId: auth_change_password_create
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/google-login/:
+    post:
+      operationId: auth_google_login_create
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Custom token view that ensures a Profile exists for authenticated
+        user.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenObtainPair'
+          description: ''
+  /api/auth/profile/:
+    get:
+      operationId: auth_profile_retrieve
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    put:
+      operationId: auth_profile_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    patch:
+      operationId: auth_profile_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/bookings/:
+    get:
+      operationId: bookings_list
+      summary: List all bookings for the authenticated user
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+          description: ''
+    post:
+      operationId: bookings_create
+      summary: Create a new booking
+      tags:
+      - Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/{id}/:
+    get:
+      operationId: bookings_retrieve
+      summary: Retrieve a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    put:
+      operationId: bookings_update
+      summary: Update a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    patch:
+      operationId: bookings_partial_update
+      summary: Partially update a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    delete:
+      operationId: bookings_destroy
+      summary: Delete a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/{id}/cancel/:
+    post:
+      operationId: bookings_cancel_create
+      summary: Cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        '400':
+          description: No response body
+        '404':
+          description: No response body
+  /api/flights/:
+    get:
+      operationId: flights_list
+      description: |-
+        List flights — 10 per page by default.
+        Query params:
+          ?page=N            page number
+          ?page_size=N       override page size (max 100)
+          ?search=<text>     OR-match on flight_number, airline, source, destination
+          ?status=<STATUS>   exact match on status field
+          ?source=<IATA>     case-insensitive contains match on source_airport
+          ?destination=<IATA> case-insensitive contains match on destination_airport
+          ?date=<YYYY-MM-DD> filter by departure date (local date of departure_time)
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Flight'
+          description: ''
+    post:
+      operationId: flights_create
+      description: |-
+        Create a new Flight.
+        Requires ADMIN role or superuser.
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Flight'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Flight'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Flight'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flight'
+          description: ''
+  /api/flights/{id}/:
+    get:
+      operationId: flights_retrieve
+      description: Retrieve details of a single flight.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flight'
+          description: ''
+    delete:
+      operationId: flights_destroy
+      description: |-
+        Delete a single flight.
+        Requires ADMIN role or superuser.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/{id}/update/:
+    put:
+      operationId: flights_update_update
+      description: |-
+        Update an existing flight.
+        Requires ADMIN role or superuser.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Flight'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Flight'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Flight'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flight'
+          description: ''
+    patch:
+      operationId: flights_update_partial_update
+      description: |-
+        Partially update an existing flight.
+        Requires ADMIN role or superuser.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFlight'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFlight'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFlight'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flight'
+          description: ''
+  /api/flights/bulk-import/:
+    post:
+      operationId: flights_bulk_import_create
+      description: |-
+        POST /api/flights/bulk-import/
+
+        Accepts two formats — both admin-only:
+
+        1. JSON body (list or {"flights": [...]}):
+           Content-Type: application/json
+
+        2. CSV file upload:
+           Content-Type: multipart/form-data
+           Field name: "file"
+           Required CSV headers (matching model field names):
+             flight_number, airline, aircraft, source_airport,
+             destination_airport, departure_time, arrival_time,
+             base_fare, total_seats, available_seats, status
+
+        Returns: { created_count, created_flights, errors }
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/flights/stats/:
+    get:
+      operationId: flights_stats_retrieve
+      description: |-
+        GET /api/flights/stats/
+        Returns aggregate flight counts by status — always across ALL flights,
+        independent of pagination or filters. Public endpoint.
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    BlankEnum:
+      enum:
+      - ''
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        flight:
+          type: string
+          format: uuid
+        seat_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - flight
+      - id
+      - status
+      - total_price
+      - updated_at
+      - user
+    BookingStatusEnum:
+      enum:
+      - PENDING
+      - CONFIRMED
+      - CANCELLED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `CONFIRMED` - Confirmed
+        * `CANCELLED` - Cancelled
+    CustomTokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    Flight:
+      type: object
+      description: Serializer for the Flight model, handling representation and validation.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        flight_number:
+          type: string
+          maxLength: 20
+        airline:
+          type: string
+          maxLength: 100
+        aircraft:
+          type: string
+          maxLength: 100
+        source_airport:
+          type: string
+          maxLength: 10
+        destination_airport:
+          type: string
+          maxLength: 10
+        departure_time:
+          type: string
+          format: date-time
+        arrival_time:
+          type: string
+          format: date-time
+        base_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        total_seats:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        available_seats:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        status:
+          $ref: '#/components/schemas/FlightStatusEnum'
+        external_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        sync_source:
+          type: string
+          nullable: true
+          maxLength: 50
+        stops: {}
+      required:
+      - aircraft
+      - airline
+      - arrival_time
+      - available_seats
+      - base_fare
+      - departure_time
+      - destination_airport
+      - flight_number
+      - id
+      - source_airport
+      - total_seats
+    FlightStatusEnum:
+      enum:
+      - SCHEDULED
+      - DELAYED
+      - CANCELLED
+      - BOARDING
+      - DEPARTED
+      - ARRIVED
+      type: string
+      description: |-
+        * `SCHEDULED` - Scheduled
+        * `DELAYED` - Delayed
+        * `CANCELLED` - Cancelled
+        * `BOARDING` - Boarding
+        * `DEPARTED` - Departed
+        * `ARRIVED` - Arrived
+    GenderEnum:
+      enum:
+      - MALE
+      - FEMALE
+      - OTHER
+      type: string
+      description: |-
+        * `MALE` - Male
+        * `FEMALE` - Female
+        * `OTHER` - Other
+    PatchedBooking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        flight:
+          type: string
+          format: uuid
+        seat_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedFlight:
+      type: object
+      description: Serializer for the Flight model, handling representation and validation.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        flight_number:
+          type: string
+          maxLength: 20
+        airline:
+          type: string
+          maxLength: 100
+        aircraft:
+          type: string
+          maxLength: 100
+        source_airport:
+          type: string
+          maxLength: 10
+        destination_airport:
+          type: string
+          maxLength: 10
+        departure_time:
+          type: string
+          format: date-time
+        arrival_time:
+          type: string
+          format: date-time
+        base_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        total_seats:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        available_seats:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        status:
+          $ref: '#/components/schemas/FlightStatusEnum'
+        external_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        sync_source:
+          type: string
+          nullable: true
+          maxLength: 50
+        stops: {}
+    PatchedProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        phone_number:
+          type: string
+          maxLength: 15
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        country:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        phone_number:
+          type: string
+          maxLength: 15
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        country:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - role
+      - updated_at
+      - username
+    Register:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+      required:
+      - email
+      - password
+      - username
+    RoleEnum:
+      enum:
+      - ADMIN
+      - CUSTOMER
+      type: string
+      description: |-
+        * `ADMIN` - Admin
+        * `CUSTOMER` - Customer
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
