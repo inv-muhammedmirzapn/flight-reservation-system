@@ -94,5 +94,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.status = BookingStatus.CANCELLED
         booking.save()
 
+        # Auto-allocate seats to waitlist passengers
+        from apps.waitlist.services import process_waitlist_allocations
+        process_waitlist_allocations(flight)
+
         serializer = self.get_serializer(booking)
         return Response(serializer.data, status=status.HTTP_200_OK)
