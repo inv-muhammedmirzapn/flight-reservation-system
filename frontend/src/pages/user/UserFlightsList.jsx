@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAllFlights } from '../../store/flightSlice';
+import { fetchAllFlights } from '@/store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
-import DatePicker from '../../components/ui/DatePicker';
-import DateSwitcher from '../../components/ui/DateSwitcher';
-import PassengerSelector from '../../components/ui/PassengerSelector';
-import { Pagination } from '../../components/ui/Pagination';
+import DatePicker from '@/components/ui/DatePicker';
+import DateSwitcher from '@/components/ui/DateSwitcher';
+import PassengerSelector from '@/components/ui/PassengerSelector';
+import { Pagination } from '@/components/ui/Pagination';
 
 /* ── helpers ──────────────────────────────────────────────── */
 const INR = (amount) =>

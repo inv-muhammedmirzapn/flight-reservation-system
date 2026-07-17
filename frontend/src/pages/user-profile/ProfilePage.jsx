@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { profileAPI } from "../services/api";
+import { profileAPI } from "@/services/profile-service/profileService";
 import {
   User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock,
   CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X, Key
 } from "lucide-react";
-import { Select } from "../components/ui/Select";
-import ChangePasswordModal from "../components/ui/ChangePasswordModal";
+import { Select } from "@/components/ui/Select";
+import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
 import { useTranslation } from "react-i18next";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];

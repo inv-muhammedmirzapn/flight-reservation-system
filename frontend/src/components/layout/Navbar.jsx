@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import { logout } from "../../store/authSlice";
-import { LogoutConfirmDialog } from "../ui/LogoutConfirmDialog";
+import { logout } from '@/store/authSlice';
+import { LogoutConfirmDialog } from '@/components/ui/LogoutConfirmDialog';
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 

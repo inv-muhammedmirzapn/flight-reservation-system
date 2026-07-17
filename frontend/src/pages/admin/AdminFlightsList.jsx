@@ -5,14 +5,14 @@ import {
   fetchFlights, deleteFlight, setCurrentPage,
   bulkImportFlights, bulkImportFlightsCsv,
   clearFlightErrors, fetchFlightStats,
-} from '../../store/flightSlice';
-import { Modal } from '../../components/ui/Modal';
-import { Select } from '../../components/ui/Select';
-import DatePicker from '../../components/ui/DatePicker';
+} from '@/store/flightSlice';
+import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { Plus, Edit2, Eye, Plane, RefreshCw, AlertCircle, Trash2, UploadCloud, FileText, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { DeleteFlightDialog } from '../../components/ui/DeleteFlightDialog';
-import { Pagination } from '../../components/ui/Pagination';
+import { DeleteFlightDialog } from '@/components/ui/DeleteFlightDialog';
+import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
 
 const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);

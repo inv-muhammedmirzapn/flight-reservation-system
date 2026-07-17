@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RegisterForm } from './RegisterForm';
+import { RegisterForm } from '@/components/auth/RegisterForm';
 
 const getStats = (t) => [
   { value: '2M+',   label: t("auth.travelers")   },
@@ -8,7 +8,7 @@ const getStats = (t) => [
   { value: '500+',  label: t("auth.destinations")},
 ];
 
-export function RegisterPage() {
+export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 

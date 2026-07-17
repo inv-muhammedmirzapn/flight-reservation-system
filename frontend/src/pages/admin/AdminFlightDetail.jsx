@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { fetchFlightDetail, patchFlight, clearFlightDetail, deleteFlight } from '../../store/flightSlice';
-import { Select } from '../../components/ui/Select';
+import { fetchFlightDetail, patchFlight, clearFlightDetail, deleteFlight } from '@/store/flightSlice';
+import { Select } from '@/components/ui/Select';
 import { Plane, ArrowLeft, Clock, Users, ShieldAlert, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { DeleteFlightDialog } from '../../components/ui/DeleteFlightDialog';
+import { DeleteFlightDialog } from '@/components/ui/DeleteFlightDialog';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
