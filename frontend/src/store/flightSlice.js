@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { flightsAPI } from '../services/api';
+import { flightsAPI } from '@/services/flight-service/flightService';
 
 // fetchFlights accepts { page, params } or just a page number for backwards compat
 export const fetchFlights = createAsyncThunk(

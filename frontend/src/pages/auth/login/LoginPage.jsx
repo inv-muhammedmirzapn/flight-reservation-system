@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LoginForm } from './LoginForm';
+import { LoginForm } from '@/components/auth/LoginForm';
 
 const getFeatures = (t) => [
   { icon: 'flight_takeoff', label: t("auth.smartSearch") },
@@ -10,7 +10,7 @@ const getFeatures = (t) => [
   { icon: 'price_check',    label: t("auth.pricePredictions")   },
 ];
 
-export function LoginPage() {
+export default function LoginPage() {
   const { t } = useTranslation();
   const [successMsg] = useState(() => {
     const msg = sessionStorage.getItem('registerSuccess') || '';

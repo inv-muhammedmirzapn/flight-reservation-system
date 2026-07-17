@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { authAPI } from '../../services/api';
-import { Input } from '../ui/Input';
-import { PasswordInput } from '../ui/PasswordInput';
-import { PasswordStrength, getPasswordRules } from '../ui/PasswordStrength';
+import { authAPI } from '@/services/auth-service/authService';
+import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordStrength, getPasswordRules } from '@/components/ui/PasswordStrength';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchFlightDetail, clearFlightDetail } from '../../store/flightSlice';
+import { fetchFlightDetail, clearFlightDetail } from '@/store/flightSlice';
 import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 

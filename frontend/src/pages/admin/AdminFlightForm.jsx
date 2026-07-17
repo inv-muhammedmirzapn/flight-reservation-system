@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { fetchFlightDetail, addFlight, updateFlight, clearFlightErrors, clearFlightDetail } from '../../store/flightSlice';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import DateTimePicker from '../../components/ui/DateTimePicker';
+import { fetchFlightDetail, addFlight, updateFlight, clearFlightErrors, clearFlightDetail } from '@/store/flightSlice';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import DateTimePicker from '@/components/ui/DateTimePicker';
 import { ArrowLeft, Save, X, Plane, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';

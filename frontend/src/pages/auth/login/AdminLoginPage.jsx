@@ -1,4 +1,4 @@
-import { AdminLoginForm } from './AdminLoginForm';
+import { AdminLoginForm } from '@/components/auth/AdminLoginForm';
 import { useTranslation } from 'react-i18next';
 
 const getFeatures = (t) => [
@@ -8,7 +8,7 @@ const getFeatures = (t) => [
   { icon: 'manage_accounts',      label: t("admin.auth.features.staffControls", { defaultValue: 'Staff Controls' }) },
 ];
 
-export function AdminLoginPage() {
+export default function AdminLoginPage() {
   const { t } = useTranslation();
   return (
     <div className="auth-page">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Key, AlertCircle, CheckCircle2, X, Eye, EyeOff } from "lucide-react";
-import { profileAPI } from "../../services/api";
+import { profileAPI } from "@/services/profile-service/profileService";
 import { useTranslation } from "react-i18next";
 
 const S = {

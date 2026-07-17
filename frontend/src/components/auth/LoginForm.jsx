@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { loginUser, logout, googleLoginUser } from '../../store/authSlice';
+import { loginUser, logout, googleLoginUser } from '@/store/authSlice';
 import { useGoogleLogin } from '@react-oauth/google';
-import { Input } from '../ui/Input';
-import { PasswordInput } from '../ui/PasswordInput';
+import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import toast from 'react-hot-toast';
 
 function GoogleIcon() {

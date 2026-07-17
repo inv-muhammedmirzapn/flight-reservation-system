@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import DatePicker from '../ui/DatePicker';
-import PassengerSelector from '../ui/PassengerSelector';
+import DatePicker from '@/components/ui/DatePicker';
+import PassengerSelector from '@/components/ui/PassengerSelector';
 
-export function LandingPage() {
+export default function LandingPage() {
   const { t } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
   const [from, setFrom] = useState('');

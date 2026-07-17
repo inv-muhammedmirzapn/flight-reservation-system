@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginUser, logout } from '../../store/authSlice';
-import { Input } from '../ui/Input';
-import { PasswordInput } from '../ui/PasswordInput';
+import { loginUser, logout } from '@/store/authSlice';
+import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
