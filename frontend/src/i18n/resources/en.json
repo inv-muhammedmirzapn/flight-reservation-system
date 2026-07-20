@@ -4,6 +4,7 @@
   },
   "navbar": {
     "flights": "Flights",
+    "analytics": "Analytics",
     "bookings": "Bookings",
     "rewards": "Rewards",
     "support": "Support",
@@ -169,6 +170,47 @@
     "infantsSummary": "Infants"
   },
   "admin": {
+    "analytics": {
+      "title": "Booking Analytics Dashboard",
+      "subtitle": "Real-time aggregated insights across revenue, bookings, routes and occupancy.",
+      "liveUpdated": "LIVE · Updated {{time}}",
+      "retry": "Retry",
+      "noData": "No data yet",
+      "kpi": {
+        "totalRevenue": "Total Revenue",
+        "revenueSub": "from confirmed bookings",
+        "totalBookings": "Total Bookings",
+        "bookingsSub": "all time",
+        "confirmed": "Confirmed",
+        "confirmedSub": "active bookings",
+        "cancelled": "Cancelled",
+        "cancelledSub": "total cancellations",
+        "cancellationRate": "Cancellation Rate",
+        "rateSub": "cancelled / total",
+        "avgOccupancy": "Avg Occupancy",
+        "occupancySub": "top 10 flights"
+      },
+      "charts": {
+        "monthlyRevenue": "📈 Monthly Revenue (last 12 months)",
+        "popularRoutes": "🗺️ Popular Routes (top 10 by bookings)",
+        "peakHours": "🕐 Peak Booking Hours (UTC)",
+        "flightOccupancy": "✈️ Flight Occupancy (top 10)"
+      },
+      "tooltip": {
+        "revenue": "Revenue",
+        "bookings": "Bookings",
+        "occupancy": "Occupancy %",
+        "hour": "Hour",
+        "seats": "seats",
+        "occupied": "occupied"
+      },
+      "legend": {
+        "gte80": "≥ 80%",
+        "60to79": "60–79%",
+        "40to59": "40–59%",
+        "lt40": "< 40%"
+      }
+    },
     "title": "Flight Management Console",
     "subtitle": "Manage flight routes, seat availabilities, schedules and statuses.",
     "addRoute": "Add Flight Route",

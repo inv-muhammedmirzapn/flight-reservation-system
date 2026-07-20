@@ -4,6 +4,7 @@
   },
   "navbar": {
     "flights": "フライト",
+    "analytics": "アナリティクス",
     "bookings": "予約",
     "rewards": "リワード",
     "support": "サポート",
@@ -169,6 +170,47 @@
     "infantsSummary": "幼児"
   },
   "admin": {
+    "analytics": {
+      "title": "予約アナリティクスダッシュボード",
+      "subtitle": "収益、予約、ルート、および搭乗率に関するリアルタイムの集計インサイト。",
+      "liveUpdated": "LIVE · 更新 {{time}}",
+      "retry": "再試行",
+      "noData": "データがありません",
+      "kpi": {
+        "totalRevenue": "総収益",
+        "revenueSub": "確定した予約から",
+        "totalBookings": "総予約数",
+        "bookingsSub": "全期間",
+        "confirmed": "確定済み",
+        "confirmedSub": "アクティブな予約",
+        "cancelled": "キャンセル",
+        "cancelledSub": "総キャンセル数",
+        "cancellationRate": "キャンセル率",
+        "rateSub": "キャンセル / 全体",
+        "avgOccupancy": "平均搭乗率",
+        "occupancySub": "上位10フライト"
+      },
+      "charts": {
+        "monthlyRevenue": "📈 月間収益（過去12ヶ月）",
+        "popularRoutes": "🗺️ 人気のルート（予約数トップ10）",
+        "peakHours": "🕐 ピーク予約時間（UTC）",
+        "flightOccupancy": "✈️ フライト搭乗率（トップ10）"
+      },
+      "tooltip": {
+        "revenue": "収益",
+        "bookings": "予約数",
+        "occupancy": "搭乗率 %",
+        "hour": "時間",
+        "seats": "席",
+        "occupied": "搭乗済み"
+      },
+      "legend": {
+        "gte80": "80% 以上",
+        "60to79": "60–79%",
+        "40to59": "40–59%",
+        "lt40": "40% 未満"
+      }
+    },
     "title": "フライトマネジメントコンソール",
     "subtitle": "フライトルート、空席状況、スケジュール、ステータスを管理します。",
     "addRoute": "フライトルートを追加",

@@ -16,7 +16,7 @@ const APP_NAV_LINKS = [
 
 const ADMIN_NAV_LINKS = [
   { labelKey: "flights", href: "/admin/flights" },
-  { label: "Analytics", href: "/admin/analytics" },
+  { labelKey: "analytics", href: "/admin/analytics" },
   { labelKey: "users", href: "/admin/users" },
   { labelKey: "support", href: "/#support" },
 ];
