@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
@@ -36,10 +37,10 @@ const INR = (v) =>
 function KpiCard({ icon, label, value, sub, accent, loading }) {
   return (
     <div
-      className="glass-card"
+      className="glass-card kpi-card"
       style={{
-        borderRadius: 20, padding: '22px 24px',
-        display: 'flex', alignItems: 'center', gap: 18,
+        borderRadius: 20,
+        display: 'flex', alignItems: 'center',
         transition: 'transform 0.2s, box-shadow 0.2s',
         cursor: 'default',
       }}
@@ -52,26 +53,26 @@ function KpiCard({ icon, label, value, sub, accent, loading }) {
         e.currentTarget.style.boxShadow = '';
       }}
     >
-      <div style={{
-        width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+      <div className="kpi-icon-wrap" style={{
+        borderRadius: 14, flexShrink: 0,
         background: `${accent}18`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>
+        <div className="kpi-label" style={{ fontWeight: 700, letterSpacing: '0.06em', color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>
           {label}
         </div>
-        <div style={{
-          fontSize: 26, fontWeight: 800, color: loading ? '#d0c6ab' : accent,
+        <div className="kpi-value" style={{
+          fontWeight: 800, color: loading ? '#d0c6ab' : accent,
           fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", lineHeight: 1,
           transition: 'color 0.3s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {loading ? '—' : value}
         </div>
         {sub && !loading && (
-          <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{sub}</div>
+          <div className="kpi-sub" style={{ color: MUTED, marginTop: 4 }}>{sub}</div>
         )}
       </div>
     </div>
@@ -118,6 +119,7 @@ const CustomTooltip = ({ active, payload, label, currency }) => {
 
 // ─── Main Component ──────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState(null);
   const [monthly, setMonthly] = useState([]);
   const [routes, setRoutes] = useState([]);
@@ -125,7 +127,7 @@ export default function AnalyticsDashboard() {
   const [peakHours, setPeakHours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
+
   const intervalRef = useRef(null);
 
   const load = useCallback(async (isSilent = false) => {
@@ -144,7 +146,6 @@ export default function AnalyticsDashboard() {
       setRoutes(r);
       setOccupancy(o);
       setPeakHours(p);
-      setLastUpdated(new Date());
     } catch (err) {
       if (!isSilent) setError(err.message || 'Failed to load analytics data.');
     } finally {
@@ -176,9 +177,41 @@ export default function AnalyticsDashboard() {
     <>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .kpi-card { padding: 22px 24px; gap: 18px; }
+        .kpi-icon-wrap { width: 52px; height: 52px; }
+        .kpi-label { font-size: 11px; }
+        .kpi-value { font-size: 26px; }
+        .kpi-sub { font-size: 12px; }
+
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
         .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 900px) { .chart-grid-2 { grid-template-columns: 1fr; } }
+        
+        @media (max-width: 900px) { 
+          .chart-grid-2 { grid-template-columns: 1fr; } 
+        }
+        
+        /* Proportional shrinking on laptops to fit 6 on one line without horizontal scroll */
+        @media (min-width: 1024px) { 
+          .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+          .kpi-card { padding: 16px 14px; gap: 12px; }
+          .kpi-icon-wrap { width: 42px; height: 42px; }
+          .kpi-icon-wrap svg { width: 20px; height: 20px; }
+          .kpi-label { font-size: 10px; }
+          .kpi-value { font-size: 20px; }
+          .kpi-sub { font-size: 11px; }
+        }
+        
+        /* Larger screens scale back up */
+        @media (min-width: 1440px) {
+          .kpi-grid { gap: 16px; }
+          .kpi-card { padding: 22px 24px; gap: 18px; }
+          .kpi-icon-wrap { width: 52px; height: 52px; }
+          .kpi-icon-wrap svg { width: 24px; height: 24px; }
+          .kpi-label { font-size: 11px; }
+          .kpi-value { font-size: 26px; }
+          .kpi-sub { font-size: 12px; }
+        }
       `}</style>
 
       <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
@@ -190,23 +223,13 @@ export default function AnalyticsDashboard() {
               fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
               fontSize: 28, fontWeight: 800, color: DARK, letterSpacing: '-0.02em',
             }}>
-              Booking Analytics Dashboard
+              {t('admin.analytics.title')}
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
               <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
-                Real-time aggregated insights across revenue, bookings, routes and occupancy.
+                {t('admin.analytics.subtitle')}
               </p>
-              {lastUpdated && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  fontSize: 11, color: GOLD_DARK, fontWeight: 600,
-                  background: `${GOLD}22`, borderRadius: 20, padding: '3px 10px',
-                  border: `1px solid ${GOLD}44`,
-                }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: GREEN, display: 'inline-block', boxShadow: `0 0 6px ${GREEN}` }} />
-                  LIVE · Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </span>
-              )}
+
             </div>
           </div>
         </div>
@@ -230,7 +253,7 @@ export default function AnalyticsDashboard() {
                 borderRadius: 8, border: 'none', cursor: 'pointer',
               }}
             >
-              Retry
+              {t('admin.analytics.retry')}
             </button>
           </div>
         )}
@@ -239,49 +262,49 @@ export default function AnalyticsDashboard() {
         <div className="kpi-grid" style={{ marginBottom: 24 }}>
           <KpiCard
             icon={<TrendingUp size={24} color={GOLD} />}
-            label="Total Revenue"
+            label={t('admin.analytics.kpi.totalRevenue')}
             value={summary ? INR(summary.total_revenue) : '—'}
-            sub="from confirmed bookings"
+            sub={t('admin.analytics.kpi.revenueSub')}
             accent="#705d00"
             loading={loading}
           />
           <KpiCard
             icon={<Ticket size={24} color={BLUE} />}
-            label="Total Bookings"
+            label={t('admin.analytics.kpi.totalBookings')}
             value={summary?.total_bookings ?? '—'}
-            sub="all time"
+            sub={t('admin.analytics.kpi.bookingsSub')}
             accent={BLUE}
             loading={loading}
           />
           <KpiCard
             icon={<CheckCircle size={24} color={GREEN} />}
-            label="Confirmed"
+            label={t('admin.analytics.kpi.confirmed')}
             value={summary?.confirmed_bookings ?? '—'}
-            sub="active bookings"
+            sub={t('admin.analytics.kpi.confirmedSub')}
             accent={GREEN}
             loading={loading}
           />
           <KpiCard
             icon={<XCircle size={24} color={RED} />}
-            label="Cancelled"
+            label={t('admin.analytics.kpi.cancelled')}
             value={summary?.cancelled_bookings ?? '—'}
-            sub="total cancellations"
+            sub={t('admin.analytics.kpi.cancelledSub')}
             accent={RED}
             loading={loading}
           />
           <KpiCard
             icon={<Percent size={24} color={AMBER} />}
-            label="Cancellation Rate"
+            label={t('admin.analytics.kpi.cancellationRate')}
             value={summary ? `${summary.cancellation_rate}%` : '—'}
-            sub="cancelled / total"
+            sub={t('admin.analytics.kpi.rateSub')}
             accent={AMBER}
             loading={loading}
           />
           <KpiCard
             icon={<PlaneTakeoff size={24} color={PURPLE} />}
-            label="Avg Occupancy"
+            label={t('admin.analytics.kpi.avgOccupancy')}
             value={loading ? '—' : `${avgOccupancy}%`}
-            sub="top 10 flights"
+            sub={t('admin.analytics.kpi.occupancySub')}
             accent={PURPLE}
             loading={loading}
           />
@@ -291,10 +314,10 @@ export default function AnalyticsDashboard() {
         <div className="chart-grid-2" style={{ marginBottom: 20 }}>
 
           {/* Monthly Revenue AreaChart */}
-          <ChartCard title="📈 Monthly Revenue (last 12 months)" loading={loading}>
+          <ChartCard title={t('admin.analytics.charts.monthlyRevenue')} loading={loading}>
             {monthly.length === 0 ? (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
-                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
+                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> {t('admin.analytics.noData')}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={320}>
@@ -311,7 +334,7 @@ export default function AnalyticsDashboard() {
                     tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip currency />} />
                   <Area
-                    type="monotone" dataKey="revenue" name="Revenue"
+                    type="monotone" dataKey="revenue" name={t('admin.analytics.tooltip.revenue')}
                     stroke="#705d00" strokeWidth={2.5}
                     fill="url(#revGrad)" dot={{ r: 4, fill: '#705d00', strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: '#705d00' }}
@@ -322,10 +345,10 @@ export default function AnalyticsDashboard() {
           </ChartCard>
 
           {/* Popular Routes HorizontalBarChart */}
-          <ChartCard title="🗺️ Popular Routes (top 10 by bookings)" loading={loading}>
+          <ChartCard title={t('admin.analytics.charts.popularRoutes')} loading={loading}>
             {routes.length === 0 ? (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
-                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
+                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> {t('admin.analytics.noData')}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={320}>
@@ -338,7 +361,7 @@ export default function AnalyticsDashboard() {
                   <XAxis type="number" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
                   <YAxis type="category" dataKey="route" tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }} width={90} tickLine={false} axisLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="bookings" name="Bookings" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                  <Bar dataKey="bookings" name={t('admin.analytics.tooltip.bookings')} radius={[0, 6, 6, 0]} maxBarSize={22}>
                     {routes.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
@@ -353,10 +376,10 @@ export default function AnalyticsDashboard() {
         <div className="chart-grid-2">
 
           {/* Peak Booking Hours BarChart */}
-          <ChartCard title="🕐 Peak Booking Hours (UTC)" loading={loading}>
+          <ChartCard title={t('admin.analytics.charts.peakHours')} loading={loading}>
             {peakHours.length === 0 ? (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
-                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
+                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> {t('admin.analytics.noData')}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={320}>
@@ -367,8 +390,8 @@ export default function AnalyticsDashboard() {
                     interval={1}
                   />
                   <YAxis width={90} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(v) => [v, 'Bookings']} labelFormatter={h => `Hour ${String(h).padStart(2, '0')}:00`} />
-                  <Bar dataKey="bookings" name="Bookings" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                  <Tooltip content={<CustomTooltip />} formatter={(v) => [v, t('admin.analytics.tooltip.bookings')]} labelFormatter={h => `${t('admin.analytics.tooltip.hour')} ${String(h).padStart(2, '0')}:00`} />
+                  <Bar dataKey="bookings" name={t('admin.analytics.tooltip.bookings')} radius={[4, 4, 0, 0]} maxBarSize={20}>
                     {peakHours.map((entry, i) => {
                       const max = Math.max(...peakHours.map(p => p.bookings));
                       return <Cell key={i} fill={entry.bookings === max ? '#705d00' : `${GOLD}99`} />;
@@ -380,10 +403,10 @@ export default function AnalyticsDashboard() {
           </ChartCard>
 
           {/* Flight Occupancy HorizontalBarChart */}
-          <ChartCard title="✈️ Flight Occupancy (top 10)" loading={loading}>
+          <ChartCard title={t('admin.analytics.charts.flightOccupancy')} loading={loading}>
             {occupancy.length === 0 ? (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
-                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
+                <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> {t('admin.analytics.noData')}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={320}>
@@ -407,18 +430,18 @@ export default function AnalyticsDashboard() {
                           padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                         }}>
                           <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>{label} — {d?.route}</div>
-                          <div style={{ fontSize: 12, color: MUTED }}>{d?.booked_seats} / {d?.total_seats} seats</div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: '#705d00', marginTop: 4 }}>{d?.occupancy_rate}% occupied</div>
+                          <div style={{ fontSize: 12, color: MUTED }}>{d?.booked_seats} / {d?.total_seats} {t('admin.analytics.tooltip.seats')}</div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: '#705d00', marginTop: 4 }}>{d?.occupancy_rate}% {t('admin.analytics.tooltip.occupied')}</div>
                         </div>
                       );
                     }}
                   />
-                  <Bar dataKey="occupancy_rate" name="Occupancy %" radius={[0, 6, 6, 0]} maxBarSize={20}>
+                  <Bar dataKey="occupancy_rate" name={t('admin.analytics.tooltip.occupancy')} radius={[0, 6, 6, 0]} maxBarSize={20}>
                     {occupancy.map((f, i) => {
                       const c = f.occupancy_rate >= 80 ? '#705d00'
-                              : f.occupancy_rate >= 60 ? '#9b7d00'
-                              : f.occupancy_rate >= 40 ? '#c9a800'
-                              :                          '#f0ce4e';
+                        : f.occupancy_rate >= 60 ? '#9b7d00'
+                          : f.occupancy_rate >= 40 ? '#c9a800'
+                            : '#f0ce4e';
                       return <Cell key={i} fill={c} />;
                     })}
                   </Bar>
@@ -431,7 +454,7 @@ export default function AnalyticsDashboard() {
         {/* ── Occupancy Legend ── */}
         {!loading && occupancy.length > 0 && (
           <div style={{ display: 'flex', gap: 18, justifyContent: 'flex-end', marginTop: 12 }}>
-            {[['#705d00', '≥ 80%'], ['#9b7d00', '60–79%'], ['#c9a800', '40–59%'], ['#f0ce4e', '< 40%']].map(([color, label]) => (
+            {[['#705d00', t('admin.analytics.legend.gte80')], ['#9b7d00', t('admin.analytics.legend.60to79')], ['#c9a800', t('admin.analytics.legend.40to59')], ['#f0ce4e', t('admin.analytics.legend.lt40')]].map(([color, label]) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: MUTED }}>
                 <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
                 {label}
