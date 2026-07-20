@@ -5,9 +5,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from .models import Booking
 from .serializers import BookingSerializer
-from .services import cancel_booking
+from .services import cancel_booking, create_booking
 
-class BookingViewSet(mixins.ListModelMixin,
+class BookingViewSet(mixins.CreateModelMixin,
+                     mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      viewsets.GenericViewSet):
     """
@@ -18,7 +19,29 @@ class BookingViewSet(mixins.ListModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.filter(user=self.request.user)
+        return Booking.objects.filter(user=self.request.user).select_related('flight')
+
+    def create(self, request, *args, **kwargs):
+        """
+        Book a flight.
+        Expects: { "flight": "<flight-uuid>" }
+        Delegates to the service layer for seat-locking and validation.
+        """
+        flight_id = request.data.get('flight')
+        if not flight_id:
+            return Response({'detail': 'flight field is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            booking = create_booking(flight_id=flight_id, user=request.user)
+            serializer = self.get_serializer(booking)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            # e.message is the clean string; str(e) would give "['message']"
+            msg = e.message if isinstance(getattr(e, 'message', None), str) else (
+                e.messages[0] if getattr(e, 'messages', None) else str(e)
+            )
+            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'detail': 'Booking failed. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):

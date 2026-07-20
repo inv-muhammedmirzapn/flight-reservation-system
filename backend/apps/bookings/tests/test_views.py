@@ -16,7 +16,7 @@ User = get_user_model()
 class BookingViewSetTests(TestCase):
     """
     Tests for the Booking API.
-    Note: BookingViewSet supports list, retrieve and cancel only.
+    BookingViewSet supports create, list, retrieve and cancel.
     The Booking model fields are: user, flight, status, created_at, updated_at.
     """
 
@@ -173,3 +173,203 @@ class BookingConcurrencyTests(TestCase):
         cancel_booking(self.booking.id, self.user)
         self.flight.refresh_from_db()
         self.assertEqual(self.flight.available_seats, before + 1)
+
+
+class CreateBookingViewTests(TestCase):
+    """
+    Tests for POST /api/bookings/ (create booking endpoint).
+    Covers: successful creation, no seats available, duplicate booking,
+    missing flight field, and unauthenticated access.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='booker', email='booker@example.com', password='testpassword'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+        self.flight = Flight.objects.create(
+            flight_number='FL999',
+            airline='Test Airline',
+            aircraft='Airbus A320',
+            source_airport='DEL',
+            destination_airport='BOM',
+            departure_time=timezone.now() + timedelta(days=2),
+            arrival_time=timezone.now() + timedelta(days=2, hours=2),
+            base_fare=3500.00,
+            total_seats=100,
+            available_seats=50,
+            status=FlightStatus.SCHEDULED
+        )
+
+    def _book_url(self):
+        return reverse('bookings:booking-list')
+
+    def test_create_booking_success(self):
+        """A POST to /bookings/ with a valid flight id creates a CONFIRMED booking."""
+        response = self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['status'], 'CONFIRMED')
+        self.assertIn('flight_detail', response.data)
+        self.assertEqual(response.data['flight_detail']['id'], str(self.flight.id))
+
+        # Seat count decremented
+        self.flight.refresh_from_db()
+        self.assertEqual(self.flight.available_seats, 49)
+
+    def test_create_booking_creates_db_record(self):
+        """Booking object is actually persisted in the database."""
+        self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertTrue(
+            Booking.objects.filter(user=self.user, flight=self.flight, status=BookingStatus.CONFIRMED).exists()
+        )
+
+    def test_create_booking_no_seats_available(self):
+        """Returns 400 when the flight has no available seats."""
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        response = self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_booking_duplicate_confirmed(self):
+        """Returns 400 when user already has a confirmed booking for the same flight."""
+        Booking.objects.create(user=self.user, flight=self.flight, status=BookingStatus.CONFIRMED)
+
+        # Manually deduct to simulate real state
+        self.flight.available_seats -= 1
+        self.flight.save()
+
+        response = self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_booking_after_cancel_allowed(self):
+        """User can re-book after cancelling their existing booking on the same flight."""
+        # Create and cancel a booking
+        Booking.objects.create(user=self.user, flight=self.flight, status=BookingStatus.CANCELLED)
+
+        # Re-book should succeed (no active CONFIRMED booking)
+        response = self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_booking_missing_flight_field(self):
+        """Returns 400 when flight field is omitted from the request."""
+        response = self.client.post(self._book_url(), {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_booking_nonexistent_flight(self):
+        """Returns 400 when the provided flight UUID does not exist."""
+        import uuid
+        response = self.client.post(self._book_url(), {'flight': str(uuid.uuid4())}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_booking_unauthenticated(self):
+        """Unauthenticated users cannot create bookings."""
+        anon = APIClient()
+        response = anon.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_booking_response_contains_flight_detail(self):
+        """Response must include nested flight_detail for the frontend to use."""
+        response = self.client.post(self._book_url(), {'flight': str(self.flight.id)}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        detail = response.data['flight_detail']
+        self.assertEqual(detail['flight_number'], self.flight.flight_number)
+        self.assertEqual(detail['source_airport'], self.flight.source_airport)
+        self.assertEqual(detail['destination_airport'], self.flight.destination_airport)
+
+
+class CreateBookingServiceTests(TestCase):
+    """
+    Unit tests for the create_booking service function.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='svc_user', email='svc@example.com', password='testpassword'
+        )
+        self.flight = Flight.objects.create(
+            flight_number='FL001',
+            airline='Airline',
+            aircraft='Boeing 777',
+            source_airport='SFO',
+            destination_airport='ORD',
+            departure_time=timezone.now() + timedelta(days=3),
+            arrival_time=timezone.now() + timedelta(days=3, hours=4),
+            base_fare=8000.00,
+            total_seats=200,
+            available_seats=100,
+            status=FlightStatus.SCHEDULED
+        )
+
+    def test_service_creates_booking(self):
+        from apps.bookings.services import create_booking
+        booking = create_booking(self.flight.id, self.user)
+        self.assertEqual(booking.status, BookingStatus.CONFIRMED)
+        self.assertEqual(booking.user, self.user)
+        self.assertEqual(booking.flight, self.flight)
+
+    def test_service_decrements_seats(self):
+        from apps.bookings.services import create_booking
+        before = self.flight.available_seats
+        create_booking(self.flight.id, self.user)
+        self.flight.refresh_from_db()
+        self.assertEqual(self.flight.available_seats, before - 1)
+
+    def test_service_raises_when_no_seats(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        self.flight.available_seats = 0
+        self.flight.save()
+        with self.assertRaises(ValidationError):
+            create_booking(self.flight.id, self.user)
+
+    def test_service_raises_on_duplicate_confirmed(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        create_booking(self.flight.id, self.user)
+        # Second call should raise
+        with self.assertRaises(ValidationError):
+            create_booking(self.flight.id, self.user)
+
+    def test_service_raises_on_nonexistent_flight(self):
+        import uuid
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            create_booking(uuid.uuid4(), self.user)
+
+    def test_service_raises_on_cancelled_flight(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        self.flight.status = FlightStatus.CANCELLED
+        self.flight.save()
+        with self.assertRaisesMessage(ValidationError, "Cannot book a flight that is already cancelled."):
+            create_booking(self.flight.id, self.user)
+
+    def test_service_raises_on_departed_flight(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        self.flight.status = FlightStatus.DEPARTED
+        self.flight.save()
+        with self.assertRaisesMessage(ValidationError, "Cannot book a flight that is already departed."):
+            create_booking(self.flight.id, self.user)
+
+    def test_service_raises_on_boarding_flight(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        self.flight.status = FlightStatus.BOARDING
+        self.flight.save()
+        with self.assertRaisesMessage(ValidationError, "Cannot book a flight that is already boarding."):
+            create_booking(self.flight.id, self.user)
+
+    def test_service_raises_on_past_departure_time(self):
+        from apps.bookings.services import create_booking
+        from django.core.exceptions import ValidationError
+        self.flight.departure_time = timezone.now() - timedelta(hours=1)
+        # Avoid model validation error by keeping arrival after departure
+        self.flight.arrival_time = self.flight.departure_time + timedelta(hours=2)
+        self.flight.save()
+        with self.assertRaisesMessage(ValidationError, "Cannot book a flight that has already departed."):
+            create_booking(self.flight.id, self.user)
