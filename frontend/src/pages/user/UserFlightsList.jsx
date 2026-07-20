@@ -232,9 +232,11 @@ function Sidebar({
       alignSelf: 'flex-start',
       zIndex: 10,
     }}>
-      <div className="glass-card" style={{
+      <div className="glass-card sidebar-scroll" style={{
         borderRadius: 20,
         padding: 28,
+        maxHeight: 'calc(100vh - 120px)',
+        overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h2 style={{
@@ -660,10 +662,24 @@ export default function UserFlightsList() {
         .select-btn:hover {
           background: #ffe333 !important;
         }
+        .sidebar-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,0.08);
+          border-radius: 10px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(0,0,0,0.15);
+        }
         @media (max-width: 900px) {
           .flights-layout { flex-direction: column !important; }
           .sidebar-aside { width: 100% !important; position: static !important; }
           .flight-row-card { flex-direction: column !important; align-items: flex-start !important; }
+          .sidebar-scroll { max-height: none !important; overflow-y: visible !important; }
         }
       `}</style>
 

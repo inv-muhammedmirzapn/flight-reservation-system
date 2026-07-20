@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyBookings, cancelBooking } from '@/store/bookingSlice';
 import {
-  Plane, ArrowRight, Clock, Calendar, AlertCircle, Loader,
+  Plane, ArrowRight, AlertCircle, Loader,
   CheckCircle, XCircle, RefreshCw, Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -47,152 +47,225 @@ function StatusBadge({ status }) {
   );
 }
 
-/* ── Booking Card ────────────────────────────────── */
-function BookingCard({ booking, onCancel, cancellingId }) {
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+/* ── Booking List Item ───────────────────────────── */
+function BookingListItem({ booking, isSelected, onClick }) {
   const flight = booking.flight_detail;
-  const isConfirmed = booking.status === 'CONFIRMED';
-  const isCancelling = cancellingId === booking.id;
-
+  
   if (!flight) return null;
 
-  const isPast = new Date(flight.departure_time) < new Date();
-
   return (
-    <div style={{
-      background: 'rgba(255,255,255,0.65)',
-      border: '1px solid rgba(255,255,255,0.7)',
-      borderRadius: 20, padding: '22px 26px',
-      transition: 'box-shadow 0.2s',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {/* Subtle glow */}
-      {isConfirmed && (
-        <div style={{
-          position: 'absolute', top: -20, right: -20, width: 100, height: 100,
-          borderRadius: '50%', background: '#ffd700', filter: 'blur(50px)',
-          opacity: 0.12, pointerEvents: 'none',
-        }} />
-      )}
-
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 10,
-              background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Plane size={14} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
-            </div>
-            <span style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
-              {flight.flight_number}
-            </span>
+    <div
+      onClick={onClick}
+      style={{
+        background: isSelected ? '#ffffff' : 'rgba(255,255,255,0.65)',
+        border: `1px solid ${isSelected ? '#ffd700' : 'rgba(255,255,255,0.7)'}`,
+        boxShadow: isSelected ? '0 4px 20px rgba(255,215,0,0.15)' : 'none',
+        borderRadius: 16, padding: '16px 20px',
+        cursor: 'pointer', transition: 'all 0.2s',
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Plane size={12} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
           </div>
-          <div style={{ fontSize: 12, color: '#5e5e5e', marginLeft: 40 }}>{flight.airline} · {flight.aircraft}</div>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 16, fontWeight: 800, color: '#1a1c1d' }}>
+            {flight.flight_number}
+          </span>
         </div>
         <StatusBadge status={booking.status} />
       </div>
 
-      {/* Route timeline */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr auto 1fr',
-        alignItems: 'center', gap: 12, marginBottom: 16,
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.departure_time)}</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.source_airport}</div>
-          <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>{fmtDate(flight.departure_time)}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.departure_time)}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.source_airport}</div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <div style={{ flex: 1, height: 1.5, background: '#d0c6ab' }} />
-            <Plane size={12} color="#705d00" />
-            <div style={{ flex: 1, height: 1.5, background: '#d0c6ab' }} />
-          </div>
-          <div style={{ fontSize: 10, color: '#705d00', fontWeight: 700 }}>Direct</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 16px' }}>
+           <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4 }}>
+             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+             <Plane size={10} color="#705d00" />
+             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+           </div>
+           <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>Direct</div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.arrival_time)}</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.destination_airport}</div>
-          <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>{fmtDate(flight.arrival_time)}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.arrival_time)}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.destination_airport}</div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Footer */}
+/* ── Booking Detail Card ─────────────────────────── */
+function BookingDetailCard({ booking, onCancel, cancellingId }) {
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
+  // reset confirm state when booking changes
+  useEffect(() => setShowCancelConfirm(false), [booking?.id]);
+
+  if (!booking || !booking.flight_detail) return (
+    <div style={{
+      background: 'rgba(255,255,255,0.4)', borderRadius: 24, border: '1px dashed rgba(0,0,0,0.1)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: 400, color: '#9e9488'
+    }}>
+       <Plane size={32} opacity={0.2} style={{ marginBottom: 12 }} />
+       <p style={{ fontSize: 14, fontWeight: 600 }}>Select a booking to view details</p>
+    </div>
+  );
+
+  const flight = booking.flight_detail;
+  const isConfirmed = booking.status === 'CONFIRMED';
+  const isCancelling = cancellingId === booking.id;
+  const isPast = new Date(flight.departure_time) < new Date();
+
+  return (
+    <div className="booking-detail-card" style={{
+      background: '#fff',
+      border: '1px solid rgba(0,0,0,0.08)',
+      borderRadius: 24,
+      boxShadow: '0 12px 32px rgba(0,0,0,0.05)',
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
+      {/* Header pattern */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.06)',
-        flexWrap: 'wrap', gap: 10,
+        background: '#1a1c1d',
+        height: 70, position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: '#ffd700', opacity: 0.1, filter: 'blur(30px)' }} />
+      </div>
+
+      <div style={{ padding: '0 20px 20px', position: 'relative', marginTop: -28 }}>
+        <div style={{
+          background: '#fff', borderRadius: 16, padding: '12px 16px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: 20
+        }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Booking Ref</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.04em' }}>{String(booking.id).slice(0, 8).toUpperCase()}</div>
+          </div>
+          <StatusBadge status={booking.status} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+           <div style={{
+             width: 36, height: 36, borderRadius: 12,
+             background: 'rgba(255,215,0,0.15)',
+             display: 'flex', alignItems: 'center', justifyContent: 'center',
+           }}>
+             <Plane size={16} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
+           </div>
+           <div>
+             <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
+               {flight.flight_number}
+             </div>
+             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
+           </div>
+        </div>
+
+        {/* Departure/Arrival Timeline */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+           <div>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
+             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
+             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
+             <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
+           </div>
+
+           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 24px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
+               <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+               <Plane size={18} color="#1a1c1d" style={{ transform: 'rotate(90deg)' }} />
+               <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+             </div>
+           </div>
+
+           <div style={{ textAlign: 'right' }}>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
+             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
+             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
+             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
+           </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Fare</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#1a1c1d' }}>{INR(flight.base_fare)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Booked</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#5e5e5e' }}>{fmtBookingDate(booking.created_at)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Ref.</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1c1d', letterSpacing: '0.04em' }}>
-              {String(booking.id).slice(0, 8).toUpperCase()}
-            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Booked On</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1c1d' }}>{fmtBookingDate(booking.created_at)}</div>
           </div>
         </div>
 
-        {/* Cancel action */}
+        {/* Action */}
         {isConfirmed && !isPast && (
-          !showCancelConfirm ? (
-            <button
-              id={`cancel-booking-btn-${booking.id}`}
-              onClick={() => setShowCancelConfirm(true)}
-              style={{
-                background: 'transparent', border: '1px solid #fca5a5',
-                color: '#b91c1c', fontWeight: 700, fontSize: 12,
-                padding: '8px 16px', borderRadius: 10, cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              Cancel Booking
-            </button>
-          ) : (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600 }}>Sure?</span>
+          <div style={{ marginTop: 4 }}>
+            {!showCancelConfirm ? (
               <button
-                id={`cancel-confirm-yes-${booking.id}`}
-                onClick={() => { setShowCancelConfirm(false); onCancel(booking.id); }}
-                disabled={isCancelling}
+                id={`cancel-booking-btn-${booking.id}`}
+                onClick={() => setShowCancelConfirm(true)}
                 style={{
-                  background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c',
-                  fontWeight: 700, fontSize: 12, padding: '8px 14px', borderRadius: 10,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%',
+                  background: '#fff1f2', border: 'none',
+                  color: '#e11d48', fontWeight: 700, fontSize: 13,
+                  padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                  transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
               >
-                {isCancelling ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-                Yes, Cancel
+                <XCircle size={15} /> Cancel Reservation
               </button>
-              <button
-                id={`cancel-confirm-no-${booking.id}`}
-                onClick={() => setShowCancelConfirm(false)}
-                style={{
-                  background: 'transparent', border: '1px solid rgba(0,0,0,0.12)',
-                  color: '#5e5e5e', fontWeight: 700, fontSize: 12,
-                  padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
-                }}
-              >
-                No
-              </button>
-            </div>
-          )
+            ) : (
+              <div style={{ background: '#fff1f2', borderRadius: 12, padding: 14 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#be123c', fontWeight: 700, textAlign: 'center' }}>Confirm Cancellation?</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    id={`cancel-confirm-yes-${booking.id}`}
+                    onClick={() => onCancel(booking.id)}
+                    disabled={isCancelling}
+                    style={{
+                      flex: 1, background: '#e11d48', border: 'none', color: '#fff',
+                      fontWeight: 700, fontSize: 12, padding: '8px', borderRadius: 8,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    {isCancelling ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
+                  </button>
+                  <button
+                    id={`cancel-confirm-no-${booking.id}`}
+                    onClick={() => setShowCancelConfirm(false)}
+                    style={{
+                      flex: 1, background: 'transparent', border: '1px solid rgba(225,29,72,0.3)',
+                      color: '#e11d48', fontWeight: 700, fontSize: 12,
+                      padding: '8px', borderRadius: 8, cursor: 'pointer',
+                    }}
+                  >
+                    No, Keep it
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
-
         {isPast && isConfirmed && (
-          <span style={{ fontSize: 12, color: '#9e9488', fontWeight: 600 }}>Flight departed</span>
+          <div style={{ textAlign: 'center', padding: '12px', background: '#f3f4f6', borderRadius: 12, color: '#5e5e5e', fontSize: 13, fontWeight: 600 }}>
+            This flight has departed
+          </div>
         )}
       </div>
     </div>
@@ -204,6 +277,7 @@ export default function MyBookingsPage() {
   const dispatch = useDispatch();
   const { list, listLoading, listError, cancelLoadingId, cancelError } = useSelector((s) => s.bookings);
   const [filter, setFilter] = useState('ALL'); // ALL | CONFIRMED | CANCELLED
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMyBookings());
@@ -223,6 +297,19 @@ export default function MyBookingsPage() {
 
   const filtered = list.filter((b) => filter === 'ALL' || b.status === filter);
 
+  // Auto-select first booking
+  useEffect(() => {
+    if (filtered.length > 0) {
+      if (!selectedBookingId || !filtered.find(b => b.id === selectedBookingId)) {
+        setSelectedBookingId(filtered[0].id);
+      }
+    } else {
+      setSelectedBookingId(null);
+    }
+  }, [filtered, selectedBookingId]);
+
+  const selectedBooking = filtered.find(b => b.id === selectedBookingId);
+
   return (
     <>
       <style>{`
@@ -233,12 +320,35 @@ export default function MyBookingsPage() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .booking-list-item { animation: fade-up 0.3s ease both; }
+        
+        /* Master-Detail Layout */
+        @media (min-width: 900px) {
+          .bookings-layout {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            gap: 32px;
+            align-items: start;
+          }
+          .booking-detail-wrapper {
+            position: sticky;
+            top: 100px;
+          }
+        }
+        @media (max-width: 899px) {
+          .bookings-layout {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 24px;
+          }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '88px 24px 64px' }}>
-
-        {/* Page header */}
-        <div style={{ marginBottom: 32 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '88px 24px 64px' }}>
+        <div className={filtered.length > 0 ? "bookings-layout" : ""}>
+          {/* Left Column */}
+          <div>
+            {/* Page header */}
+            <div style={{ marginBottom: 32 }}>
           <h1 style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
             fontSize: 30, fontWeight: 800, color: '#1a1c1d',
@@ -283,23 +393,6 @@ export default function MyBookingsPage() {
               )}
             </button>
           ))}
-
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              id="refresh-bookings-btn"
-              onClick={() => dispatch(fetchMyBookings())}
-              disabled={listLoading}
-              style={{
-                background: 'transparent', border: '1px solid rgba(0,0,0,0.1)',
-                borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-                color: '#5e5e5e', fontWeight: 600, fontSize: 12,
-              }}
-            >
-              <RefreshCw size={13} style={listLoading ? { animation: 'spin 1s linear infinite' } : {}} />
-              Refresh
-            </button>
-          </div>
         </div>
 
         {/* Loading */}
@@ -361,24 +454,37 @@ export default function MyBookingsPage() {
           </div>
         )}
 
-        {/* Booking list */}
-        {filtered.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filtered.map((booking, i) => (
-              <div
-                key={booking.id}
-                className="booking-list-item"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <BookingCard
-                  booking={booking}
-                  onCancel={handleCancel}
-                  cancellingId={cancelLoadingId}
-                />
+            {/* Master List */}
+            {filtered.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {filtered.map((booking, i) => (
+                  <div
+                    key={booking.id}
+                    className="booking-list-item"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  >
+                    <BookingListItem
+                      booking={booking}
+                      isSelected={selectedBookingId === booking.id}
+                      onClick={() => setSelectedBookingId(booking.id)}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </div> {/* End Left Column */}
+
+          {/* Right Column: Detail Card */}
+          {filtered.length > 0 && (
+            <div className="booking-detail-wrapper">
+               <BookingDetailCard
+                 booking={selectedBooking}
+                 onCancel={handleCancel}
+                 cancellingId={cancelLoadingId}
+               />
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
