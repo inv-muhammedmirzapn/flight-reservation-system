@@ -1,20 +1,12 @@
-from django.urls import path
-from .views import (
-    WaitlistJoinView,
-    WaitlistListView,
-    WaitlistDetailView,
-    WaitlistCancelView,
-    WaitlistFlightCountView,
-)
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import WaitlistViewSet
+
+router = DefaultRouter()
+router.register(r'', WaitlistViewSet, basename='waitlist')
+
+app_name = 'waitlist'
 
 urlpatterns = [
-    path("join/", WaitlistJoinView.as_view(), name="waitlist-join"),
-    path("", WaitlistListView.as_view(), name="waitlist-list"),
-    path("<uuid:pk>/", WaitlistDetailView.as_view(), name="waitlist-detail"),
-    path("<uuid:pk>/cancel/", WaitlistCancelView.as_view(), name="waitlist-cancel"),
-    path(
-        "flight/<uuid:flight_id>/",
-        WaitlistFlightCountView.as_view(),
-        name="waitlist-flight-count",
-    ),
+    path('', include(router.urls)),
 ]
