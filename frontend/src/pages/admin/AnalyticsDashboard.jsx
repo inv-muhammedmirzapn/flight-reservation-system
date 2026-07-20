@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
@@ -16,14 +16,16 @@ import {
 } from '@/services/analytics-service';
 
 // ─── Palette ────────────────────────────────────────────────────────
-const GOLD    = '#ffd700';
-const DARK    = '#1a1c1d';
-const GREEN   = '#059669';
-const RED     = '#dc2626';
-const BLUE    = '#3b82f6';
-const PURPLE  = '#7c3aed';
-const AMBER   = '#d97706';
-const MUTED   = '#5e5e5e';
+const GOLD = '#ffd700';
+const GOLD_DARK = '#705d00';
+const DARK = '#1a1c1d';
+const GREEN = '#059669';
+const RED = '#dc2626';
+const BLUE = '#3b82f6';
+const PURPLE = '#7c3aed';
+const AMBER = '#d97706';
+const MUTED = '#5e5e5e';
+const REFRESH_INTERVAL_MS = 30_000;
 
 const CHART_COLORS = [GOLD, BLUE, GREEN, PURPLE, AMBER, RED, '#06b6d4', '#ec4899', '#84cc16', '#f97316'];
 
@@ -84,7 +86,7 @@ function ChartCard({ title, children, loading }) {
         {title}
       </div>
       {loading ? (
-        <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
             width: 36, height: 36, border: `3px solid rgba(112,93,0,0.15)`,
             borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 1s linear infinite',
@@ -116,16 +118,18 @@ const CustomTooltip = ({ active, payload, label, currency }) => {
 
 // ─── Main Component ──────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
-  const [summary, setSummary]           = useState(null);
-  const [monthly, setMonthly]           = useState([]);
-  const [routes, setRoutes]             = useState([]);
-  const [occupancy, setOccupancy]       = useState([]);
-  const [peakHours, setPeakHours]       = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [monthly, setMonthly] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [occupancy, setOccupancy] = useState([]);
+  const [peakHours, setPeakHours] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const intervalRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     setError(null);
     try {
       const [s, m, r, o, p] = await Promise.all([
@@ -140,14 +144,28 @@ export default function AnalyticsDashboard() {
       setRoutes(r);
       setOccupancy(o);
       setPeakHours(p);
+      setLastUpdated(new Date());
     } catch (err) {
-      setError(err.message || 'Failed to load analytics data.');
+      if (!isSilent) setError(err.message || 'Failed to load analytics data.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load(false);
+    intervalRef.current = setInterval(() => load(true), REFRESH_INTERVAL_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [load]);
 
   // Average occupancy from top flights
   const avgOccupancy = occupancy.length
@@ -174,28 +192,25 @@ export default function AnalyticsDashboard() {
             }}>
               Booking Analytics Dashboard
             </h1>
-            <p style={{ fontSize: 14, color: MUTED, marginTop: 4 }}>
-              Real-time aggregated insights across revenue, bookings, routes and occupancy.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+              <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
+                Real-time aggregated insights across revenue, bookings, routes and occupancy.
+              </p>
+              {lastUpdated && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 11, color: GOLD_DARK, fontWeight: 600,
+                  background: `${GOLD}22`, borderRadius: 20, padding: '3px 10px',
+                  border: `1px solid ${GOLD}44`,
+                }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: GREEN, display: 'inline-block', boxShadow: `0 0 6px ${GREEN}` }} />
+                  LIVE · Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            id="analytics-refresh-btn"
-            onClick={load}
-            disabled={loading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 20px', background: loading ? 'rgba(0,0,0,0.05)' : DARK,
-              color: loading ? MUTED : GOLD, fontWeight: 700, fontSize: 13,
-              borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#2a2d2e'; }}
-            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = DARK; }}
-          >
-            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
         </div>
+
 
         {/* ── Error ── */}
         {error && (
@@ -208,7 +223,7 @@ export default function AnalyticsDashboard() {
             <AlertCircle size={18} />
             <span>{error}</span>
             <button
-              onClick={load}
+              onClick={() => load(false)}
               style={{
                 marginLeft: 'auto', padding: '6px 14px', background: RED,
                 color: '#fff', fontWeight: 700, fontSize: 12,
@@ -278,21 +293,21 @@ export default function AnalyticsDashboard() {
           {/* Monthly Revenue AreaChart */}
           <ChartCard title="📈 Monthly Revenue (last 12 months)" loading={loading}>
             {monthly.length === 0 ? (
-              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
+              <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
                 <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={monthly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart data={monthly} margin={{ top: 20, right: 30, left: 0, bottom: 15 }}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#705d00" stopOpacity={0.25} />
+                      <stop offset="5%" stopColor="#705d00" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#705d00" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
+                  <YAxis width={90} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
                     tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip currency />} />
                   <Area
@@ -309,15 +324,15 @@ export default function AnalyticsDashboard() {
           {/* Popular Routes HorizontalBarChart */}
           <ChartCard title="🗺️ Popular Routes (top 10 by bookings)" loading={loading}>
             {routes.length === 0 ? (
-              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
+              <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
                 <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(220, routes.length * 36)}>
+              <ResponsiveContainer width="100%" height={320}>
                 <BarChart
                   data={routes}
                   layout="vertical"
-                  margin={{ top: 0, right: 24, left: 0, bottom: 0 }}
+                  margin={{ top: 20, right: 30, left: 0, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
@@ -340,19 +355,19 @@ export default function AnalyticsDashboard() {
           {/* Peak Booking Hours BarChart */}
           <ChartCard title="🕐 Peak Booking Hours (UTC)" loading={loading}>
             {peakHours.length === 0 ? (
-              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
+              <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
                 <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={peakHours} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={peakHours} margin={{ top: 20, right: 30, left: 0, bottom: 15 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis dataKey="hour" tick={{ fontSize: 10, fill: MUTED }} tickLine={false} axisLine={false}
                     tickFormatter={h => `${String(h).padStart(2, '0')}:00`}
                     interval={1}
                   />
-                  <YAxis tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} formatter={(v) => [v, 'Bookings']} labelFormatter={h => `Hour ${String(h).padStart(2,'0')}:00`} />
+                  <YAxis width={90} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} formatter={(v) => [v, 'Bookings']} labelFormatter={h => `Hour ${String(h).padStart(2, '0')}:00`} />
                   <Bar dataKey="bookings" name="Bookings" radius={[4, 4, 0, 0]} maxBarSize={20}>
                     {peakHours.map((entry, i) => {
                       const max = Math.max(...peakHours.map(p => p.bookings));
@@ -367,20 +382,20 @@ export default function AnalyticsDashboard() {
           {/* Flight Occupancy HorizontalBarChart */}
           <ChartCard title="✈️ Flight Occupancy (top 10)" loading={loading}>
             {occupancy.length === 0 ? (
-              <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
+              <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14 }}>
                 <BarChart2 size={32} style={{ opacity: 0.3, marginRight: 8 }} /> No data yet
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(220, occupancy.length * 36)}>
+              <ResponsiveContainer width="100%" height={320}>
                 <BarChart
                   data={occupancy}
                   layout="vertical"
-                  margin={{ top: 0, right: 48, left: 0, bottom: 0 }}
+                  margin={{ top: 20, right: 30, left: 0, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
                     tickFormatter={v => `${v}%`} />
-                  <YAxis type="category" dataKey="flight_number" tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }} width={60} tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="flight_number" tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }} width={90} tickLine={false} axisLine={false} />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
@@ -398,9 +413,12 @@ export default function AnalyticsDashboard() {
                       );
                     }}
                   />
-                  <Bar dataKey="occupancy_rate" name="Occupancy %" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                  <Bar dataKey="occupancy_rate" name="Occupancy %" radius={[0, 6, 6, 0]} maxBarSize={20}>
                     {occupancy.map((f, i) => {
-                      const c = f.occupancy_rate >= 80 ? RED : f.occupancy_rate >= 50 ? AMBER : GREEN;
+                      const c = f.occupancy_rate >= 80 ? '#705d00'
+                              : f.occupancy_rate >= 60 ? '#9b7d00'
+                              : f.occupancy_rate >= 40 ? '#c9a800'
+                              :                          '#f0ce4e';
                       return <Cell key={i} fill={c} />;
                     })}
                   </Bar>
@@ -412,9 +430,9 @@ export default function AnalyticsDashboard() {
 
         {/* ── Occupancy Legend ── */}
         {!loading && occupancy.length > 0 && (
-          <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'flex-end' }}>
-            {[['≥ 80% — High', RED], ['50–79% — Medium', AMBER], ['< 50% — Low', GREEN]].map(([label, color]) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: MUTED }}>
+          <div style={{ display: 'flex', gap: 18, justifyContent: 'flex-end', marginTop: 12 }}>
+            {[['#705d00', '≥ 80%'], ['#9b7d00', '60–79%'], ['#c9a800', '40–59%'], ['#f0ce4e', '< 40%']].map(([color, label]) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: MUTED }}>
                 <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
                 {label}
               </div>
