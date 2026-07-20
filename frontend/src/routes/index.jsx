@@ -14,6 +14,7 @@ const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
 const AdminFlightsList = lazy(() => import('@/pages/admin/AdminFlightsList'));
 const AdminFlightForm = lazy(() => import('@/pages/admin/AdminFlightForm'));
 const AdminFlightDetail = lazy(() => import('@/pages/admin/AdminFlightDetail'));
+const AnalyticsDashboard = lazy(() => import('@/pages/admin/AnalyticsDashboard'));
 
 const LoadingFallback = () => (
   <div className="flex-grow flex items-center justify-center min-h-[50vh]">
@@ -133,6 +134,16 @@ const router = createBrowserRouter([
           <ProtectedRoute adminOnly>
             <Suspense fallback={<LoadingFallback />}>
               <AdminFlightForm />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/analytics',
+        element: (
+          <ProtectedRoute adminOnly>
+            <Suspense fallback={<LoadingFallback />}>
+              <AnalyticsDashboard />
             </Suspense>
           </ProtectedRoute>
         ),

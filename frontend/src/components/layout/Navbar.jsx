@@ -16,7 +16,7 @@ const APP_NAV_LINKS = [
 
 const ADMIN_NAV_LINKS = [
   { labelKey: "flights", href: "/admin/flights" },
-  { labelKey: "reports", href: "/admin/reports" },
+  { label: "Analytics", href: "/admin/analytics" },
   { labelKey: "users", href: "/admin/users" },
   { labelKey: "support", href: "/#support" },
 ];
@@ -115,7 +115,7 @@ export function Navbar() {
                 }
               }}
             >
-              {t(`navbar.${link.labelKey}`)}
+              {link.label ?? t(`navbar.${link.labelKey}`)}
             </a>
           ))}
         </div>
