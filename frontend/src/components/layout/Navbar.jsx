@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 // Nav links shown when authenticated (adapted for the app dashboard)
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
-  { labelKey: "bookings", href: "/bookings" },
+  { labelKey: "bookings", href: "/my-bookings" },
   { labelKey: "rewards", href: "/rewards" },
   { labelKey: "support", href: "/#support" },
 ];

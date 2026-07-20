@@ -43,7 +43,12 @@ describe('UserFlightDetail Component', () => {
           detailLoading: false, 
           error: null 
         }) => state,
-        auth: (state = { isAuthenticated, user: isAuthenticated ? { id: 1 } : null }) => state
+        auth: (state = { isAuthenticated, user: isAuthenticated ? { id: 1 } : null }) => state,
+        bookings: (state = {
+          createLoading: false,
+          createError: null,
+          lastCreated: null,
+        }) => state,
       }
     });
 

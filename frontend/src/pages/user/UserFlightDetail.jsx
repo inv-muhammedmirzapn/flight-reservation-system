@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchFlightDetail, clearFlightDetail } from '@/store/flightSlice';
-import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight } from 'lucide-react';
+import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BookingConfirmModal from '@/components/BookingConfirmModal';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (amount) =>
@@ -93,6 +94,7 @@ export default function UserFlightDetail() {
   const navigate = useNavigate();
   const { detail: flight, detailLoading, error } = useSelector(state => state.flights);
   const { isAuthenticated } = useSelector(state => state.auth);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
@@ -115,7 +117,7 @@ export default function UserFlightDetail() {
       navigate('/login');
       return;
     }
-    // Proceed to booking (e.g. redirect to payment or booking confirmation)
+    setShowModal(true);
   };
 
   /* Loading */
@@ -153,6 +155,22 @@ export default function UserFlightDetail() {
   if (!flight) return null;
 
   const duration = diffHM(flight.departure_time, flight.arrival_time);
+  
+  const isPastDeparture = new Date(flight.departure_time) < new Date();
+  const unbookableStatuses = ['CANCELLED', 'DEPARTED', 'ARRIVED', 'BOARDING'];
+  const isUnbookableStatus = unbookableStatuses.includes(flight.status);
+  const isSoldOut = flight.available_seats <= 0;
+  
+  const canBook = !isPastDeparture && !isUnbookableStatus && !isSoldOut;
+
+  let unavailableReason = '';
+  if (isUnbookableStatus) {
+    unavailableReason = `Flight ${flight.status.toLowerCase()}`;
+  } else if (isPastDeparture) {
+    unavailableReason = 'Past departure time';
+  } else if (isSoldOut) {
+    unavailableReason = 'Sold out';
+  }
 
   return (
     <>
@@ -160,6 +178,14 @@ export default function UserFlightDetail() {
         .book-btn:hover { background: #ffe333 !important; }
         .back-link:hover { color: #705d00 !important; }
       `}</style>
+
+      {/* Booking Confirm Modal */}
+      {showModal && flight && (
+        <BookingConfirmModal
+          flight={flight}
+          onClose={() => setShowModal(false)}
+        />
+      )}
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '88px 24px 48px' }}>
 
@@ -349,20 +375,33 @@ export default function UserFlightDetail() {
                 {INR(flight.base_fare)}
               </div>
             </div>
-            <button
-              className="book-btn"
-              onClick={handleBookNow}
-              style={{
-                background: '#ffd700', color: '#1a1c1d',
-                fontWeight: 700, fontSize: 15,
-                padding: '14px 36px', borderRadius: 14, border: 'none', cursor: 'pointer',
-                boxShadow: '0 4px 18px rgba(255,215,0,0.4)',
-                transition: 'background 0.2s',
+            
+            {canBook ? (
+              <button
+                className="book-btn"
+                onClick={handleBookNow}
+                style={{
+                  background: '#ffd700', color: '#1a1c1d',
+                  fontWeight: 700, fontSize: 15,
+                  padding: '14px 36px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                  boxShadow: '0 4px 18px rgba(255,215,0,0.4)',
+                  transition: 'background 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}
+              >
+                Book Now <ArrowRight size={16} />
+              </button>
+            ) : (
+              <div style={{
+                background: 'rgba(0,0,0,0.03)', color: '#5e5e5e', border: '1px solid rgba(0,0,0,0.08)',
+                fontWeight: 700, fontSize: 14,
+                padding: '10px 20px', borderRadius: 12,
                 display: 'flex', alignItems: 'center', gap: 8,
-              }}
-            >
-              Book Now <ArrowRight size={16} />
-            </button>
+              }}>
+                <AlertCircle size={16} style={{ opacity: 0.7 }} />
+                <span>Not Available <span style={{ opacity: 0.6, fontWeight: 500, marginLeft: 4 }}>({unavailableReason})</span></span>
+              </div>
+            )}
           </div>
         </div>
       </div>

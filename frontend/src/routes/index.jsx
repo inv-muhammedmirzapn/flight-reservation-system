@@ -10,6 +10,8 @@ const AdminLoginPage = lazy(() => import('@/pages/auth/login/AdminLoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/sign-up/RegisterPage'));
 const UserFlightsList = lazy(() => import('@/pages/user/UserFlightsList'));
 const UserFlightDetail = lazy(() => import('@/pages/user/UserFlightDetail'));
+const MyBookingsPage = lazy(() => import('@/pages/user/MyBookingsPage'));
+const BookingConfirmationPage = lazy(() => import('@/pages/user/BookingConfirmationPage'));
 const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
 const AdminFlightsList = lazy(() => import('@/pages/admin/AdminFlightsList'));
 const AdminFlightForm = lazy(() => import('@/pages/admin/AdminFlightForm'));
@@ -92,6 +94,26 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <Suspense fallback={<LoadingFallback />}>
               <ProfilePage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-bookings',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <MyBookingsPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'bookings/:id/confirmation',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <BookingConfirmationPage />
             </Suspense>
           </ProtectedRoute>
         ),
