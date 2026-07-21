@@ -64,3 +64,55 @@ class NotificationService:
         for booking in flight.bookings.filter(status='CONFIRMED'):
             cls._create_notification(booking.user, title, message, NotificationType.FLIGHT_CANCELLED)
             cls._send_email(booking.user, title, message)
+
+    @classmethod
+    def send_flight_status_notification(cls, flight, old_status, new_status):
+        if old_status == new_status:
+            return
+
+        status_map = {
+            'DELAYED': {
+                'type': NotificationType.FLIGHT_DELAYED,
+                'title': f"Flight Delayed: {flight.flight_number}",
+                'message': f"Important update regarding your flight {flight.flight_number} from {flight.source_airport} to {flight.destination_airport}. The flight has been delayed and is now scheduled to depart at {flight.departure_time.strftime('%Y-%m-%d %H:%M:%S')}."
+            },
+            'CANCELLED': {
+                'type': NotificationType.FLIGHT_CANCELLED,
+                'title': f"Flight Cancelled: {flight.flight_number}",
+                'message': f"We regret to inform you that your flight {flight.flight_number} from {flight.source_airport} to {flight.destination_airport} has been cancelled. Please contact support for rebooking or refunds."
+            },
+            'BOARDING': {
+                'type': NotificationType.FLIGHT_BOARDING,
+                'title': f"Flight Boarding: {flight.flight_number}",
+                'message': f"Flight {flight.flight_number} from {flight.source_airport} to {flight.destination_airport} is now boarding. Please proceed to the boarding gate."
+            },
+            'DEPARTED': {
+                'type': NotificationType.FLIGHT_DEPARTED,
+                'title': f"Flight Departed: {flight.flight_number}",
+                'message': f"Flight {flight.flight_number} from {flight.source_airport} to {flight.destination_airport} has departed."
+            },
+            'ARRIVED': {
+                'type': NotificationType.FLIGHT_ARRIVED,
+                'title': f"Flight Arrived: {flight.flight_number}",
+                'message': f"Flight {flight.flight_number} from {flight.source_airport} to {flight.destination_airport} has arrived safely."
+            },
+        }
+
+        details = status_map.get(new_status)
+        if not details:
+            return
+
+        notification_type = details['type']
+        title = details['title']
+        message = details['message']
+
+        # Get users from confirmed bookings and pending waitlists
+        confirmed_users = [booking.user for booking in flight.bookings.filter(status='CONFIRMED')]
+        waitlist_users = [entry.user for entry in flight.waitlist_entries.filter(status='PENDING')]
+
+        # Deduplicate
+        users_to_notify = {user.id: user for user in (confirmed_users + waitlist_users)}.values()
+
+        for user in users_to_notify:
+            cls._create_notification(user, title, message, notification_type)
+            cls._send_email(user, title, message)

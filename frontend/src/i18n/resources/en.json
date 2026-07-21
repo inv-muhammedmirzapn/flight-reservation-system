@@ -366,6 +366,15 @@
     "fare": "Fare",
     "booked": "Booked",
     "ref": "Ref.",
-    "loginRequired": "You need to login for booking"
+    "loginRequired": "You need to login for booking",
+    "notificationsTitle": "Notifications",
+    "notificationsSubtitle": "Stay updated with real-time flight status alerts.",
+    "markAllRead": "Mark All as Read",
+    "noNotifications": "No notifications yet",
+    "noNotificationsDesc": "We'll let you know when there are updates regarding your flights.",
+    "notificationRead": "Read",
+    "notificationUnread": "Unread",
+    "all": "All",
+    "unread": "Unread"
   }
 }

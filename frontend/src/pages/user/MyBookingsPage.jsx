@@ -59,6 +59,28 @@ function WaitlistStatusBadge({ status }) {
   );
 }
 
+function FlightStatusBadge({ status }) {
+  const styles = {
+    SCHEDULED: { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', icon: <Clock size={11} /> },
+    DELAYED: { bg: '#fffbeb', color: '#b45309', border: '#fcd34d', icon: <Clock size={11} /> },
+    CANCELLED: { bg: '#fef2f2', color: '#991b1b', border: '#fca5a5', icon: <XCircle size={11} /> },
+    BOARDING: { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', icon: <Plane size={11} style={{ transform: 'rotate(-45deg)' }} /> },
+    DEPARTED: { bg: '#f9fafb', color: '#4b5563', border: '#e5e7eb', icon: <Plane size={11} style={{ transform: 'rotate(-45deg)' }} /> },
+    ARRIVED: { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', icon: <CheckCircle size={11} /> },
+  };
+  const s = styles[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', icon: null };
+  return (
+    <span style={{
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      borderRadius: 9999, padding: '4px 12px',
+      fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+    }}>
+      {s.icon}{status}
+    </span>
+  );
+}
+
 /* ── Booking List Item ───────────────────────────── */
 function BookingListItem({ booking, isSelected, onClick }) {
   const flight = booking.flight_detail;
@@ -89,7 +111,10 @@ function BookingListItem({ booking, isSelected, onClick }) {
             {flight.flight_number}
           </span>
         </div>
-        <StatusBadge status={booking.status} />
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {flight.status !== 'SCHEDULED' && <FlightStatusBadge status={flight.status} />}
+          <StatusBadge status={booking.status} />
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -146,7 +171,8 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
             {flight.flight_number}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {flight.status !== 'SCHEDULED' && <FlightStatusBadge status={flight.status} />}
           {entry.status === 'PENDING' && entry.queue_position !== undefined && (
             <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>
               Pos #{entry.queue_position}
@@ -204,6 +230,11 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
   const isCancelling = cancellingId === booking.id;
   const isPast = new Date(flight.departure_time) < new Date();
 
+  const isFlightCancelled = flight.status === 'CANCELLED';
+  const isFlightDepartedOrArrived = flight.status === 'DEPARTED' || flight.status === 'ARRIVED';
+  const isFlightBoarding = flight.status === 'BOARDING';
+  const canCancel = isConfirmed && !isPast && !isFlightCancelled && !isFlightDepartedOrArrived && !isFlightBoarding;
+
   return (
     <div className="booking-detail-card" style={{
       background: '#fff',
@@ -234,6 +265,29 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
           </div>
           <StatusBadge status={booking.status} />
         </div>
+
+        {flight.status !== 'SCHEDULED' && (
+          <div style={{
+            background: flight.status === 'CANCELLED' ? '#fef2f2' : flight.status === 'DELAYED' ? '#fffbeb' : '#eff6ff',
+            border: `1px solid ${flight.status === 'CANCELLED' ? '#fee2e2' : flight.status === 'DELAYED' ? '#fef3c7' : '#dbeafe'}`,
+            borderRadius: 16, padding: '16px 20px', marginBottom: 20,
+            display: 'flex', alignItems: 'flex-start', gap: 12
+          }}>
+            <AlertCircle size={20} color={flight.status === 'CANCELLED' ? '#ef4444' : flight.status === 'DELAYED' ? '#f59e0b' : '#3b82f6'} style={{ marginTop: 2, flexShrink: 0 }} />
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: flight.status === 'CANCELLED' ? '#991b1b' : flight.status === 'DELAYED' ? '#92400e' : '#1e40af' }}>
+                Flight Status: {flight.status}
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: flight.status === 'CANCELLED' ? '#b91c1c' : flight.status === 'DELAYED' ? '#b45309' : '#1e3a8a', lineHeight: 1.4 }}>
+                {flight.status === 'CANCELLED' && 'This flight has been cancelled. Please contact customer support for refund/rebooking options.'}
+                {flight.status === 'DELAYED' && 'This flight is delayed. Please check the updated departure and arrival times.'}
+                {flight.status === 'BOARDING' && 'This flight is boarding. Please proceed to the gate immediately.'}
+                {flight.status === 'DEPARTED' && 'This flight has departed.'}
+                {flight.status === 'ARRIVED' && 'This flight has arrived at its destination.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
            <div style={{
@@ -290,21 +344,36 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         {/* Action */}
         {isConfirmed && !isPast && (
           <div style={{ marginTop: 4 }}>
-            <button
-              id={`cancel-booking-btn-${booking.id}`}
-              onClick={() => setShowCancelConfirm(true)}
-              style={{
-                width: '100%',
-                background: '#fff1f2', border: 'none',
-                color: '#e11d48', fontWeight: 700, fontSize: 13,
-                padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
-                transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
-              onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
-            >
-              <XCircle size={15} /> Cancel Reservation
-            </button>
+            {canCancel ? (
+              <button
+                id={`cancel-booking-btn-${booking.id}`}
+                onClick={() => setShowCancelConfirm(true)}
+                style={{
+                  width: '100%',
+                  background: '#fff1f2', border: 'none',
+                  color: '#e11d48', fontWeight: 700, fontSize: 13,
+                  padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                  transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
+              >
+                <XCircle size={15} /> Cancel Reservation
+              </button>
+            ) : (
+              <div style={{
+                textAlign: 'center', padding: '12px', background: '#f3f4f6', borderRadius: 12,
+                color: '#9e9488', fontSize: 13, fontWeight: 600, border: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12
+              }}>
+                <XCircle size={15} opacity={0.5} />
+                <span>
+                  {isFlightCancelled && 'Cancellation unavailable: Flight has been cancelled'}
+                  {isFlightDepartedOrArrived && 'Cancellation unavailable: Flight has departed/arrived'}
+                  {isFlightBoarding && 'Cancellation unavailable: Flight is currently boarding'}
+                </span>
+              </div>
+            )}
 
             {showCancelConfirm && createPortal(
               <div style={{
@@ -398,6 +467,11 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
   const isCancelling = cancellingId === entry.id;
   const isPast = new Date(flight.departure_time) < new Date();
 
+  const isFlightCancelled = flight.status === 'CANCELLED';
+  const isFlightDepartedOrArrived = flight.status === 'DEPARTED' || flight.status === 'ARRIVED';
+  const isFlightBoarding = flight.status === 'BOARDING';
+  const canCancel = isPending && !isPast && !isFlightCancelled && !isFlightDepartedOrArrived && !isFlightBoarding;
+
   return (
     <div className="booking-detail-card" style={{
       background: '#fff',
@@ -428,6 +502,29 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
           </div>
           <WaitlistStatusBadge status={entry.status} />
         </div>
+
+        {flight.status !== 'SCHEDULED' && (
+          <div style={{
+            background: flight.status === 'CANCELLED' ? '#fef2f2' : flight.status === 'DELAYED' ? '#fffbeb' : '#eff6ff',
+            border: `1px solid ${flight.status === 'CANCELLED' ? '#fee2e2' : flight.status === 'DELAYED' ? '#fef3c7' : '#dbeafe'}`,
+            borderRadius: 16, padding: '16px 20px', marginBottom: 20,
+            display: 'flex', alignItems: 'flex-start', gap: 12
+          }}>
+            <AlertCircle size={20} color={flight.status === 'CANCELLED' ? '#ef4444' : flight.status === 'DELAYED' ? '#f59e0b' : '#3b82f6'} style={{ marginTop: 2, flexShrink: 0 }} />
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: flight.status === 'CANCELLED' ? '#991b1b' : flight.status === 'DELAYED' ? '#92400e' : '#1e40af' }}>
+                Flight Status: {flight.status}
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: flight.status === 'CANCELLED' ? '#b91c1c' : flight.status === 'DELAYED' ? '#b45309' : '#1e3a8a', lineHeight: 1.4 }}>
+                {flight.status === 'CANCELLED' && 'This flight has been cancelled. Please contact customer support for refund/rebooking options.'}
+                {flight.status === 'DELAYED' && 'This flight is delayed. Please check the updated departure and arrival times.'}
+                {flight.status === 'BOARDING' && 'This flight is boarding. Please proceed to the gate immediately.'}
+                {flight.status === 'DEPARTED' && 'This flight has departed.'}
+                {flight.status === 'ARRIVED' && 'This flight has arrived at its destination.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Queue position badge for PENDING waitlist entries */}
         {isPending && entry.queue_position !== undefined && (
@@ -505,21 +602,36 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
         {/* Action */}
         {isPending && !isPast && (
           <div style={{ marginTop: 4 }}>
-            <button
-              id={`cancel-waitlist-btn-${entry.id}`}
-              onClick={() => setShowCancelConfirm(true)}
-              style={{
-                width: '100%',
-                background: '#fff1f2', border: 'none',
-                color: '#e11d48', fontWeight: 700, fontSize: 13,
-                padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
-                transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
-              onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
-            >
-              <XCircle size={15} /> Cancel Waitlist Request
-            </button>
+            {canCancel ? (
+              <button
+                id={`cancel-waitlist-btn-${entry.id}`}
+                onClick={() => setShowCancelConfirm(true)}
+                style={{
+                  width: '100%',
+                  background: '#fff1f2', border: 'none',
+                  color: '#e11d48', fontWeight: 700, fontSize: 13,
+                  padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                  transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
+              >
+                <XCircle size={15} /> Cancel Waitlist Request
+              </button>
+            ) : (
+              <div style={{
+                textAlign: 'center', padding: '12px', background: '#f3f4f6', borderRadius: 12,
+                color: '#9e9488', fontSize: 13, fontWeight: 600, border: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12
+              }}>
+                <XCircle size={15} opacity={0.5} />
+                <span>
+                  {isFlightCancelled && 'Cancellation unavailable: Flight has been cancelled'}
+                  {isFlightDepartedOrArrived && 'Cancellation unavailable: Flight has departed/arrived'}
+                  {isFlightBoarding && 'Cancellation unavailable: Flight is currently boarding'}
+                </span>
+              </div>
+            )}
 
             {showCancelConfirm && createPortal(
               <div style={{

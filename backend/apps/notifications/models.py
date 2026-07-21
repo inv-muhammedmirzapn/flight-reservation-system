@@ -7,6 +7,9 @@ class NotificationType(models.TextChoices):
     WAITLIST_ALLOCATED = 'WAITLIST_ALLOCATED', 'Waitlist Allocated'
     FLIGHT_DELAYED = 'FLIGHT_DELAYED', 'Flight Delayed'
     FLIGHT_CANCELLED = 'FLIGHT_CANCELLED', 'Flight Cancelled'
+    FLIGHT_BOARDING = 'FLIGHT_BOARDING', 'Flight Boarding'
+    FLIGHT_DEPARTED = 'FLIGHT_DEPARTED', 'Flight Departed'
+    FLIGHT_ARRIVED = 'FLIGHT_ARRIVED', 'Flight Arrived'
 
 class Notification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

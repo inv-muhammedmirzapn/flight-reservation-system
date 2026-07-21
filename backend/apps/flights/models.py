@@ -114,7 +114,20 @@ class Flight(models.Model):
         Overridden save method to run full clean validation.
         """
         self.full_clean()
+        
+        is_new = self._state.adding
+        old_status = None
+        if not is_new:
+            try:
+                old_status = Flight.objects.only('status').get(pk=self.pk).status
+            except Flight.DoesNotExist:
+                pass
+                
         super().save(*args, **kwargs)
+        
+        if old_status is not None and old_status != self.status:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_flight_status_notification(self, old_status, self.status)
 
     def __str__(self) -> str:
         return f"{self.flight_number} ({self.source_airport} -> {self.destination_airport})"

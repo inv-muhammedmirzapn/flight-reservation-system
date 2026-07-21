@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout } from '@/store/authSlice';
+import { fetchNotifications } from '@/store/notificationsSlice';
 import { LogoutConfirmDialog } from '@/components/ui/LogoutConfirmDialog';
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -27,6 +28,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isAdmin, profile } = useSelector((state) => state.auth);
+  const { unreadCount } = useSelector((state) => state.notifications);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -38,6 +40,16 @@ export function Navbar() {
     window.addEventListener("authChange", handleAuthChange);
     return () => window.removeEventListener("authChange", handleAuthChange);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin) {
+      dispatch(fetchNotifications());
+      const interval = setInterval(() => {
+        dispatch(fetchNotifications());
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [dispatch, isAuthenticated, isAdmin]);
 
   // Build initials from Redux profile or local storage
   const firstName = profile?.first_name || localFirstName || "";
@@ -154,134 +166,225 @@ export function Navbar() {
             <span style={{ opacity: 0.3 }}>|</span>
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
           </button>
-
           {!isAuthenticated ? (
             <>
               <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>
               <button className="landing-nav-join" onClick={() => navigate("/register")}>{t("navbar.register")}</button>
             </>
           ) : (
-            <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>
-              {/* Avatar button — same gold colour as Join Club */}
-              <button
-                id="profile-avatar-btn"
-                onClick={() => setDropdownOpen((prev) => !prev)}
-                aria-label="Profile menu"
-                style={{
-                  width: "2.25rem",
-                  height: "2.25rem",
-                  borderRadius: "50%",
-                  background: "#ffd700",
-                  color: "#1a1c1d",
-                  fontWeight: 700,
-                  fontSize: "0.875rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "2px solid rgba(255,255,255,0.7)",
-                  boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
-                  cursor: "pointer",
-                  transition: "transform 0.15s, box-shadow 0.15s",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.08)";
-                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(255,215,0,0.5)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(255,215,0,0.35)";
-                }}
-              >
-                {initials}
-              </button>
-
-              {/* Dropdown — glassmorphism card matching screenshot */}
-              {dropdownOpen && (
-                <div style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "calc(100% + 0.75rem)",
-                  width: "13.5rem",
-                  background: "rgba(255,255,255,0.95)",
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
-                  border: "1px solid rgba(255,255,255,0.6)",
-                  borderRadius: "1rem",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                  overflow: "hidden",
-                  zIndex: 100,
-                  animation: "fadeSlideDown 0.15s ease",
-                }}>
-                  {/* MY ACCOUNT header */}
-                  <div style={{ padding: "0.625rem 1rem 0.5rem", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-                    <p style={{
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              {/* Notifications Bell */}
+              {!isAdmin && (
+                <button
+                  id="nav-notifications-bell"
+                  onClick={() => navigate("/notifications")}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.4)",
+                    border: "1px solid rgba(0,0,0,0.05)",
+                    borderRadius: "50%",
+                    width: "2.25rem",
+                    height: "2.25rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    position: "relative",
+                    color: "#1a1c1d",
+                    transition: "transform 0.15s",
+                    backdropFilter: "blur(10px)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                >
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: "absolute",
+                      top: "-2px",
+                      right: "-2px",
+                      background: "#ef4444",
+                      color: "#ffffff",
                       fontSize: "0.65rem",
                       fontWeight: 700,
-                      color: "#9ca3af",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      margin: 0,
-                    }}>{t("navbar.myAccount")}</p>
-                  </div>
-
-                  <div style={{ padding: "0.375rem 0" }}>
-                    {/* View Profile */}
-                    <button
-                      id="nav-view-profile"
-                      onClick={() => { setDropdownOpen(false); navigate("/profile"); }}
-                      style={{
-                        width: "100%", textAlign: "left", padding: "0.625rem 1rem",
-                        fontSize: "0.9rem", fontWeight: 500, color: "#1a1c1d",
-                        background: "none", border: "none", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: "0.75rem",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                    >
-                      {/* Blue person icon */}
-                      <span style={{
-                        width: "1.75rem", height: "1.75rem", borderRadius: "50%",
-                        background: "#eff6ff", display: "flex", alignItems: "center",
-                        justifyContent: "center", flexShrink: 0,
-                      }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6">
-                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                        </svg>
-                      </span>
-                      {t("navbar.viewProfile")}
-                    </button>
-
-                    {/* Sign Out */}
-                    <button
-                      id="nav-logout"
-                      onClick={handleLogoutRequest}
-                      style={{
-                        width: "100%", textAlign: "left", padding: "0.625rem 1rem",
-                        fontSize: "0.9rem", fontWeight: 500, color: "#b91c1c",
-                        background: "none", border: "none", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: "0.75rem",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#fef2f2"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                    >
-                      {/* Brown/red door icon */}
-                      <span style={{
-                        width: "1.75rem", height: "1.75rem", borderRadius: "50%",
-                        background: "#fff7ed", display: "flex", alignItems: "center",
-                        justifyContent: "center", flexShrink: 0,
-                      }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309">
-                          <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
-                        </svg>
-                      </span>
-                      {t("navbar.signOut")}
-                    </button>
-                  </div>
-                </div>
+                      borderRadius: "50%",
+                      width: "14px",
+                      height: "14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
               )}
+
+              <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>
+                {/* Avatar button — same gold colour as Join Club */}
+                <button
+                  id="profile-avatar-btn"
+                  onClick={() => setDropdownOpen((prev) => !prev)}
+                  aria-label="Profile menu"
+                  style={{
+                    width: "2.25rem",
+                    height: "2.25rem",
+                    borderRadius: "50%",
+                    background: "#ffd700",
+                    color: "#1a1c1d",
+                    fontWeight: 700,
+                    fontSize: "0.875rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "2px solid rgba(255,255,255,0.7)",
+                    boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
+                    cursor: "pointer",
+                    transition: "transform 0.15s, box-shadow 0.15s",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "scale(1.08)";
+                    e.currentTarget.style.boxShadow = "0 6px 18px rgba(255,215,0,0.5)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(255,215,0,0.35)";
+                  }}
+                >
+                  {initials}
+                </button>
+
+                {/* Dropdown — glassmorphism card matching screenshot */}
+                {dropdownOpen && (
+                  <div style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 0.75rem)",
+                    width: "13.5rem",
+                    background: "rgba(255,255,255,0.95)",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    border: "1px solid rgba(255,255,255,0.6)",
+                    borderRadius: "1rem",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 100,
+                    animation: "fadeSlideDown 0.15s ease",
+                  }}>
+                    {/* MY ACCOUNT header */}
+                    <div style={{ padding: "0.625rem 1rem 0.5rem", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                      <p style={{
+                        fontSize: "0.65rem",
+                        fontWeight: 700,
+                        color: "#9ca3af",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        margin: 0,
+                      }}>{t("navbar.myAccount")}</p>
+                    </div>
+
+                    <div style={{ padding: "0.375rem 0" }}>
+                      {/* View Profile */}
+                      <button
+                        id="nav-view-profile"
+                        onClick={() => { setDropdownOpen(false); navigate("/profile"); }}
+                        style={{
+                          width: "100%", textAlign: "left", padding: "0.625rem 1rem",
+                          fontSize: "0.9rem", fontWeight: 500, color: "#1a1c1d",
+                          background: "none", border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: "0.75rem",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                      >
+                        {/* Blue person icon */}
+                        <span style={{
+                          width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                          background: "#eff6ff", display: "flex", alignItems: "center",
+                          justifyContent: "center", flexShrink: 0,
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6">
+                            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                          </svg>
+                        </span>
+                        {t("navbar.viewProfile")}
+                      </button>
+
+                      {/* View Notifications */}
+                      {!isAdmin && (
+                        <button
+                          id="nav-view-notifications"
+                          onClick={() => { setDropdownOpen(false); navigate("/notifications"); }}
+                          style={{
+                            width: "100%", textAlign: "left", padding: "0.625rem 1rem",
+                            fontSize: "0.9rem", fontWeight: 500, color: "#1a1c1d",
+                            background: "none", border: "none", cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: "0.75rem",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                        >
+                          {/* Gold bell icon */}
+                          <span style={{
+                            width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                            background: "rgba(255, 215, 0, 0.15)", display: "flex", alignItems: "center",
+                            justifyContent: "center", flexShrink: 0,
+                          }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#705d00">
+                              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1-1.5-1s-1.5.17-1.5 1v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
+                            </svg>
+                          </span>
+                          {t("navbar.notifications", "Notifications")}
+                          {unreadCount > 0 && (
+                            <span style={{
+                              marginLeft: "auto",
+                              background: "#ef4444",
+                              color: "#ffffff",
+                              fontSize: "0.7rem",
+                              fontWeight: 700,
+                              borderRadius: "9999px",
+                              padding: "2px 6px",
+                            }}>
+                              {unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Sign Out */}
+                      <button
+                        id="nav-logout"
+                        onClick={handleLogoutRequest}
+                        style={{
+                          width: "100%", textAlign: "left", padding: "0.625rem 1rem",
+                          fontSize: "0.9rem", fontWeight: 500, color: "#b91c1c",
+                          background: "none", border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: "0.75rem",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#fef2f2"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                      >
+                        {/* Brown/red door icon */}
+                        <span style={{
+                          width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                          background: "#fff7ed", display: "flex", alignItems: "center",
+                          justifyContent: "center", flexShrink: 0,
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309">
+                            <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 00-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" />
+                          </svg>
+                        </span>
+                        {t("navbar.signOut")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
