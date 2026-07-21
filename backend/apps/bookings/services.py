@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Booking, BookingStatus
 from apps.flights.models import Flight, FlightStatus
-from apps.waitlist.services import auto_allocate_waitlist
+from apps.waitlist.services import process_waitlist_allocations
 
 
 def create_booking(flight_id, user):
@@ -57,6 +57,8 @@ def create_booking(flight_id, user):
             user=user,
             flight=flight,
             status=BookingStatus.CONFIRMED,
+            seat_count=1,
+            total_price=flight.base_fare,
         )
 
         try:
@@ -94,10 +96,10 @@ def cancel_booking(booking_id, user):
 
     # Increment available seats on the flight
     flight = booking.flight
-    flight.available_seats += 1
+    flight.available_seats += booking.seat_count
     flight.save()
 
     # Trigger waitlist auto-allocation
-    auto_allocate_waitlist(flight)
+    process_waitlist_allocations(flight)
 
     return booking

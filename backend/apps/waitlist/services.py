@@ -1,48 +1,51 @@
 from django.db import transaction
-from .models import WaitlistEntry, WaitlistStatus
 from apps.bookings.models import Booking, BookingStatus
+from .models import WaitlistEntry, WaitlistStatus
+
 
 @transaction.atomic
-def auto_allocate_waitlist(flight):
+def process_waitlist_allocations(flight):
     """
-    Checks if there are available seats on the flight and if there are users
-    on the waitlist. If so, automatically allocates the oldest PENDING waitlist
-    entry by creating a Booking for them and decrementing available seats.
+    Called when available seats on a flight increase (due to cancellation).
+    Scans the waitlist queue in FIFO order (by created_at) and allocates
+    seats to pending entries that can be fully accommodated by the available seats.
     """
-    # Only proceed if seats are available
     if flight.available_seats <= 0:
-        return None
+        return
 
-    # Fetch the oldest pending waitlist entry
-    # Using select_for_update to lock the row and prevent race conditions
-    entry = WaitlistEntry.objects.select_for_update().filter(
-        flight=flight,
-        status=WaitlistStatus.PENDING
-    ).order_by('joined_at').first()
-
-    if not entry:
-        return None
-
-    # We found someone in the queue!
-    # Update waitlist status
-    entry.status = WaitlistStatus.ALLOCATED
-    entry.save()
-
-    # Create the confirmed booking
-    new_booking = Booking.objects.create(
-        user=entry.user,
-        flight=flight,
-        status=BookingStatus.CONFIRMED
+    # Select pending entries for update to prevent concurrent allocation conflicts
+    pending_entries = (
+        WaitlistEntry.objects.filter(flight=flight, status=WaitlistStatus.PENDING)
+        .order_by("created_at")
+        .select_for_update()
     )
 
-    try:
-        from apps.notifications.services import NotificationService
-        NotificationService.send_waitlist_allocation(new_booking)
-    except Exception:
-        pass
+    for entry in pending_entries:
+        if flight.available_seats >= entry.seat_count:
+            # Deduct seats
+            flight.available_seats -= entry.seat_count
+            flight.save()
 
-    # Decrement flight seats
-    flight.available_seats -= 1
-    flight.save()
+            # Create confirmed booking
+            booking = Booking.objects.create(
+                user=entry.user,
+                flight=flight,
+                seat_count=entry.seat_count,
+                total_price=flight.base_fare * entry.seat_count,
+                status=BookingStatus.CONFIRMED,
+            )
 
-    return new_booking
+            # Confirm waitlist entry and link to new booking
+            entry.status = WaitlistStatus.CONFIRMED
+            entry.booking = booking
+            entry.save()
+
+            # Notify the user their waitlist spot was confirmed
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.send_waitlist_allocation(booking)
+            except Exception:
+                pass
+
+            if flight.available_seats == 0:
+                break
