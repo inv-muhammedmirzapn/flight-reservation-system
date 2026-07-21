@@ -311,11 +311,24 @@ body {
   position: relative;
   z-index: 10;
   min-height: 100vh;
-  padding: 6.5rem 1rem 2.5rem;
+  padding: 5.5rem 1rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
+}
+
+@media (max-height: 768px) {
+  .auth-page-main {
+    padding-top: 5.5rem;
+    padding-bottom: 1rem;
+  }
+  .auth-split-form {
+    padding: 1.5rem 2rem;
+  }
+  .auth-split-brand {
+    padding: 1.5rem 2rem;
+  }
 }
 
 /* ─── Form Header ─────────────────────────────────────── */
