@@ -61,14 +61,7 @@ export function RegisterForm({ onSuccess }) {
       toast.success('Account created. You can now sign in.');
       onSuccess();
     } catch (err) {
-      let errText = err.message;
-      try {
-        const errObj = JSON.parse(err.message);
-        if (errObj.detail) errText = errObj.detail;
-        else errText = Object.keys(errObj)
-          .map(k => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${Array.isArray(errObj[k]) ? errObj[k][0] : errObj[k]}`)
-          .join(' · ');
-      } catch (_) {}
+      const errText = err.message;
       setMessage({ type: 'error', text: errText });
       toast.error(errText);
       setLoading(false);
@@ -92,16 +85,16 @@ export function RegisterForm({ onSuccess }) {
       <form onSubmit={handleSubmit} className="register-form-grid" autoComplete="off">
         <div className="register-form-col">
           <div className="field-row">
-            <Input id="first_name" label={t("auth.firstName")} placeholder={t("auth.placeholders.first")} required value={formData.first_name} onChange={handleChange} autoComplete="off" />
-            <Input id="last_name" label={t("auth.lastName")} placeholder={t("auth.placeholders.last")} required value={formData.last_name} onChange={handleChange} autoComplete="off" />
+            <Input id="first_name" label={t("auth.firstName")} placeholder={t("auth.placeholders.first")} required value={formData.first_name} onChange={handleChange} autoComplete="off" disabled={loading} />
+            <Input id="last_name" label={t("auth.lastName")} placeholder={t("auth.placeholders.last")} required value={formData.last_name} onChange={handleChange} autoComplete="off" disabled={loading} />
           </div>
-          <Input id="email" label={t("auth.email")} type="email" placeholder={t("auth.placeholders.email")} required value={formData.email} onChange={handleChange} autoComplete="off" />
-          <Input id="username" label={t("auth.username")} placeholder={t("auth.placeholders.username")} required value={formData.username} onChange={handleChange} autoComplete="off" />
+          <Input id="email" label={t("auth.email")} type="email" placeholder={t("auth.placeholders.email")} required value={formData.email} onChange={handleChange} autoComplete="off" disabled={loading} />
+          <Input id="username" label={t("auth.username")} placeholder={t("auth.placeholders.username")} required value={formData.username} onChange={handleChange} autoComplete="off" disabled={loading} />
         </div>
 
         <div className="register-form-col">
-          <PasswordInput id="password" label={t("auth.password")} placeholder={t("auth.placeholders.password")} required value={formData.password} onChange={handleChange} autoComplete="new-password" />
-          <PasswordInput id="confirmPassword" label={t("auth.confirmPassword")} placeholder={t("auth.placeholders.confirm")} required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" />
+          <PasswordInput id="password" label={t("auth.password")} placeholder={t("auth.placeholders.password")} required value={formData.password} onChange={handleChange} autoComplete="new-password" disabled={loading} />
+          <PasswordInput id="confirmPassword" label={t("auth.confirmPassword")} placeholder={t("auth.placeholders.confirm")} required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" disabled={loading} />
           <PasswordStrength password={formData.password} />
         </div>
 

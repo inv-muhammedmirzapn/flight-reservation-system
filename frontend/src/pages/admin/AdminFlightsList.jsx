@@ -15,7 +15,7 @@ import { DeleteFlightDialog } from '@/components/ui/DeleteFlightDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
 
-const INR = (v) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
+import { INR } from '@/utils/formatters';
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 
 const STATUS_STYLE = {

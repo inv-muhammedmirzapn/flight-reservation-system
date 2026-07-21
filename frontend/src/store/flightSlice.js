@@ -21,23 +21,6 @@ export const fetchFlights = createAsyncThunk(
   }
 );
 
-// fetchAllFlights — fetches entire dataset in one request for client-side filtering (user listing page)
-export const fetchAllFlights = createAsyncThunk(
-  'flights/fetchAllFlights',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await flightsAPI.listAll();
-      return data; // { count, next, previous, results }
-    } catch (error) {
-      let message = 'Failed to fetch flights';
-      try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
-      } catch (_) {}
-      return rejectWithValue(message);
-    }
-  }
-);
 
 // fetchFlightStats — global per-status counts, independent of pagination
 export const fetchFlightStats = createAsyncThunk(
@@ -237,22 +220,6 @@ const flightSlice = createSlice({
         state.totalPages = Math.ceil(count / PAGE_SIZE);
       })
       .addCase(fetchFlights.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // Fetch All (user listing page — loads full dataset for client-side filtering)
-      .addCase(fetchAllFlights.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchAllFlights.fulfilled, (state, action) => {
-        state.loading = false;
-        const { count, results } = action.payload;
-        state.list = results;
-        state.count = count;
-        state.totalPages = Math.ceil(count / PAGE_SIZE);
-      })
-      .addCase(fetchAllFlights.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

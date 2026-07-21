@@ -30,8 +30,7 @@ const REFRESH_INTERVAL_MS = 30_000;
 
 const CHART_COLORS = [GOLD, BLUE, GREEN, PURPLE, AMBER, RED, '#06b6d4', '#ec4899', '#84cc16', '#f97316'];
 
-const INR = (v) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
+import { INR } from '@/utils/formatters';
 
 // ─── KPI Card ───────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {

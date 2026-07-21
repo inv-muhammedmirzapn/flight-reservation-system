@@ -3,13 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { joinWaitlist, clearJoinState } from '@/store/waitlistSlice';
 import { X, ArrowRight, Clock, Users, AlertCircle, Loader, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const INR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { INR } from '@/utils/formatters';
 
 export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 1 }) {
   const dispatch = useDispatch();
@@ -247,9 +241,7 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
             }}>
               <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
               <span>
-                {typeof joinError === 'string' && joinError.length < 300 && !joinError.startsWith('<')
-                  ? joinError
-                  : 'Failed to join waitlist. Please try again.'}
+                {typeof joinError === 'string' ? joinError : 'Failed to join waitlist. Please try again.'}
               </span>
             </div>
           )}
