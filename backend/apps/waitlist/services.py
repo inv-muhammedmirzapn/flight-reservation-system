@@ -40,5 +40,12 @@ def process_waitlist_allocations(flight):
             entry.booking = booking
             entry.save()
 
+            # Notify the user their waitlist spot was confirmed
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.send_waitlist_allocation(booking)
+            except Exception:
+                pass
+
             if flight.available_seats == 0:
                 break

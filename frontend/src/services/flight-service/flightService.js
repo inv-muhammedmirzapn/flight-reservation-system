@@ -14,7 +14,7 @@ export const flightsAPI = {
   },
 
   listAll: async () => {
-    return fetchWithAuth(`/flights/?page_size=1000`);
+    return fetchWithAuth(`/flights/?page_size=2000`);
   },
 
   retrieve: async (id) => {

@@ -34,7 +34,8 @@ const INR = (v) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 
 // ─── KPI Card ───────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, sub, accent, loading }) {
+function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div
       className="glass-card kpi-card"
@@ -43,14 +44,17 @@ function KpiCard({ icon, label, value, sub, accent, loading }) {
         display: 'flex', alignItems: 'center',
         transition: 'transform 0.2s, box-shadow 0.2s',
         cursor: 'default',
+        position: 'relative',
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-2px)';
         e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.1)';
+        setHovered(true);
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = '';
         e.currentTarget.style.boxShadow = '';
+        setHovered(false);
       }}
     >
       <div className="kpi-icon-wrap" style={{
@@ -75,6 +79,31 @@ function KpiCard({ icon, label, value, sub, accent, loading }) {
           <div className="kpi-sub" style={{ color: MUTED, marginTop: 4 }}>{sub}</div>
         )}
       </div>
+      {/* Exact-value tooltip on hover */}
+      {tooltip && !loading && hovered && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(26,28,29,0.95)', backdropFilter: 'blur(10px)',
+          color: '#ffd700', fontWeight: 700, fontSize: 13,
+          padding: '7px 14px', borderRadius: 10,
+          whiteSpace: 'nowrap', zIndex: 100,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          pointerEvents: 'none',
+          animation: 'fadeInUp 0.15s ease',
+        }}>
+          {tooltip}
+          {/* caret */}
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderTop: '6px solid rgba(26,28,29,0.95)',
+          }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -138,7 +167,7 @@ export default function AnalyticsDashboard() {
         fetchAnalyticsSummary(),
         fetchMonthlyRevenue(12),
         fetchPopularRoutes(10),
-        fetchFlightOccupancy(10),
+        fetchFlightOccupancy(15),
         fetchPeakBookingHours(),
       ]);
       setSummary(s);
@@ -168,10 +197,8 @@ export default function AnalyticsDashboard() {
     };
   }, [load]);
 
-  // Average occupancy from top flights
-  const avgOccupancy = occupancy.length
-    ? (occupancy.reduce((sum, f) => sum + f.occupancy_rate, 0) / occupancy.length).toFixed(1)
-    : 0;
+  // Average occupancy — now comes from server summary (covers ALL flights)
+  const avgOccupancy = summary?.avg_occupancy ?? 0;
 
   return (
     <>
@@ -184,6 +211,8 @@ export default function AnalyticsDashboard() {
         .kpi-value { font-size: 26px; }
         .kpi-sub { font-size: 12px; }
 
+        @keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
         .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
@@ -191,7 +220,7 @@ export default function AnalyticsDashboard() {
           .chart-grid-2 { grid-template-columns: 1fr; } 
         }
         
-        /* Proportional shrinking on laptops to fit 6 on one line without horizontal scroll */
+        /* 6 cards across on laptops */
         @media (min-width: 1024px) { 
           .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
           .kpi-card { padding: 16px 14px; gap: 12px; }
@@ -267,11 +296,12 @@ export default function AnalyticsDashboard() {
             sub={t('admin.analytics.kpi.revenueSub')}
             accent="#705d00"
             loading={loading}
+            tooltip={summary ? `Exact: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(summary.total_revenue)}` : undefined}
           />
           <KpiCard
             icon={<Ticket size={24} color={BLUE} />}
             label={t('admin.analytics.kpi.totalBookings')}
-            value={summary?.total_bookings ?? '—'}
+            value={summary ? summary.total_bookings.toLocaleString() : '—'}
             sub={t('admin.analytics.kpi.bookingsSub')}
             accent={BLUE}
             loading={loading}
@@ -279,7 +309,7 @@ export default function AnalyticsDashboard() {
           <KpiCard
             icon={<CheckCircle size={24} color={GREEN} />}
             label={t('admin.analytics.kpi.confirmed')}
-            value={summary?.confirmed_bookings ?? '—'}
+            value={summary ? summary.confirmed_bookings.toLocaleString() : '—'}
             sub={t('admin.analytics.kpi.confirmedSub')}
             accent={GREEN}
             loading={loading}
@@ -287,7 +317,7 @@ export default function AnalyticsDashboard() {
           <KpiCard
             icon={<XCircle size={24} color={RED} />}
             label={t('admin.analytics.kpi.cancelled')}
-            value={summary?.cancelled_bookings ?? '—'}
+            value={summary ? summary.cancelled_bookings.toLocaleString() : '—'}
             sub={t('admin.analytics.kpi.cancelledSub')}
             accent={RED}
             loading={loading}
@@ -330,8 +360,8 @@ export default function AnalyticsDashboard() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
-                  <YAxis width={90} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
-                    tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
+                  <YAxis width={100} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
+                    tickFormatter={v => v >= 10_000_000 ? `₹${(v/10_000_000).toFixed(1)}Cr` : v >= 100_000 ? `₹${(v/100_000).toFixed(0)}L` : `₹${(v/1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip currency />} />
                   <Area
                     type="monotone" dataKey="revenue" name={t('admin.analytics.tooltip.revenue')}
@@ -355,17 +385,26 @@ export default function AnalyticsDashboard() {
                 <BarChart
                   data={routes}
                   layout="vertical"
-                  margin={{ top: 20, right: 30, left: 0, bottom: 15 }}
+                  margin={{ top: 20, right: 40, left: 0, bottom: 15 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="route" tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }} width={90} tickLine={false} axisLine={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11, fill: MUTED }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={v => v.toLocaleString()}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="route"
+                    tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }}
+                    width={115}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="bookings" name={t('admin.analytics.tooltip.bookings')} radius={[0, 6, 6, 0]} maxBarSize={22}>
-                    {routes.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="bookings" name={t('admin.analytics.tooltip.bookings')} radius={[0, 6, 6, 0]} maxBarSize={22} fill={GOLD} />
                 </BarChart>
               </ResponsiveContainer>
             )}

@@ -53,13 +53,21 @@ def create_booking(flight_id, user):
         flight.available_seats -= 1
         flight.save()
 
-        return Booking.objects.create(
+        booking = Booking.objects.create(
             user=user,
             flight=flight,
             status=BookingStatus.CONFIRMED,
             seat_count=1,
             total_price=flight.base_fare,
         )
+
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_booking_confirmation(booking)
+        except Exception:
+            pass
+            
+        return booking
 
 
 @transaction.atomic
@@ -79,6 +87,12 @@ def cancel_booking(booking_id, user):
     # Update booking status
     booking.status = BookingStatus.CANCELLED
     booking.save()
+
+    try:
+        from apps.notifications.services import NotificationService
+        NotificationService.send_booking_cancellation(booking)
+    except Exception:
+        pass
 
     # Increment available seats on the flight
     flight = booking.flight

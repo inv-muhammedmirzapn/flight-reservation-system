@@ -9,19 +9,23 @@ from django.db.models import (
 from django.db.models.functions import TruncMonth, ExtractHour
 from django.utils import timezone
 from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 
 from apps.bookings.models import Booking, BookingStatus
-from apps.flights.models import Flight
+from apps.flights.models import Flight, FlightStatus
 
 
 def get_summary_stats() -> dict:
     """
-    Returns high-level booking statistics:
+    Returns high-level booking and fleet statistics:
       - total_bookings
       - confirmed_bookings
       - cancelled_bookings
       - cancellation_rate  (%)
       - total_revenue      (sum of base_fare for confirmed bookings)
+      - total_flights      (total flight records in DB)
+      - scheduled_flights  (flights with SCHEDULED status)
+      - avg_occupancy      (average occupancy % across all flights with seats > 0)
     """
     total = Booking.objects.count()
     confirmed = Booking.objects.filter(status=BookingStatus.CONFIRMED).count()
@@ -36,12 +40,27 @@ def get_summary_stats() -> dict:
     )
     total_revenue = float(revenue_result["total"] or 0)
 
+    # Fleet stats
+    total_flights = Flight.objects.count()
+    scheduled_flights = Flight.objects.filter(status=FlightStatus.SCHEDULED).count()
+
+    # Average occupancy across all flights that have at least one seat
+    flights_qs = Flight.objects.filter(total_seats__gt=0)
+    total_booked_seats = sum(
+        (f.total_seats - f.available_seats) for f in flights_qs
+    )
+    total_capacity = sum(f.total_seats for f in flights_qs)
+    avg_occupancy = round((total_booked_seats / total_capacity * 100), 1) if total_capacity > 0 else 0.0
+
     return {
         "total_bookings": total,
         "confirmed_bookings": confirmed,
         "cancelled_bookings": cancelled,
         "cancellation_rate": cancellation_rate,
         "total_revenue": total_revenue,
+        "total_flights": total_flights,
+        "scheduled_flights": scheduled_flights,
+        "avg_occupancy": avg_occupancy,
     }
 
 
@@ -50,7 +69,7 @@ def get_monthly_revenue(months: int = 12) -> list:
     Returns revenue grouped by calendar month for the last `months` months.
     Each item: { month: "YYYY-MM", revenue: float }
     """
-    cutoff = timezone.now() - timedelta(days=months * 30)
+    cutoff = timezone.now() - relativedelta(months=months)
 
     qs = (
         Booking.objects
@@ -97,17 +116,20 @@ def get_popular_routes(top_n: int = 10) -> list:
     ]
 
 
-def get_flight_occupancy(top_n: int = 20) -> list:
+def get_flight_occupancy(top_n: int = 15) -> list:
     """
-    Returns per-flight occupancy stats for the top N most booked flights.
+    Returns per-flight occupancy stats for the top N flights by occupancy rate.
     occupancy_rate = (total_seats - available_seats) / total_seats * 100
     Each item: { flight_number, route, total_seats, booked_seats, occupancy_rate }
+    Sorted highest occupancy first so the chart renders in a meaningful order.
     """
+    # Fetch a wider pool (top_n * 4) by booking count, then re-rank by occupancy_rate
+    pool = top_n * 4
     qs = (
         Flight.objects
         .annotate(booking_count=Count("bookings", filter=Q(bookings__status=BookingStatus.CONFIRMED)))
         .filter(total_seats__gt=0)
-        .order_by("-booking_count")[:top_n]
+        .order_by("-booking_count")[:pool]
     )
 
     results = []
@@ -124,7 +146,9 @@ def get_flight_occupancy(top_n: int = 20) -> list:
             "occupancy_rate": occupancy_rate,
         })
 
-    return results
+    # Sort by occupancy_rate descending, then return top_n
+    results.sort(key=lambda x: x["occupancy_rate"], reverse=True)
+    return results[:top_n]
 
 
 def get_peak_booking_hours() -> list:

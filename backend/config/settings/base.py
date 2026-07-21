@@ -60,6 +60,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Asia/Kolkata'
+USE_I18N = True
+USE_TZ = True
+
 CORS_ALLOW_ALL_ORIGINS = True
 
 REST_FRAMEWORK = {
