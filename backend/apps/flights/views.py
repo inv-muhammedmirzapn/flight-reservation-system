@@ -20,7 +20,7 @@ class FlightPagination(PageNumberPagination):
     """Return 10 flights per page. Clients pass ?page=N."""
     page_size = 10
     page_size_query_param = 'page_size'   # allow override via ?page_size=N
-    max_page_size = 100
+    max_page_size = 2000
     page_query_param = 'page'
 
 

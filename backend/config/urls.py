@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/bookings/', include('apps.bookings.urls')),
     path('api/waitlist/', include('apps.waitlist.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

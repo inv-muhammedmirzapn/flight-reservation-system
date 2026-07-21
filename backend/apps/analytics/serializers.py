@@ -15,6 +15,15 @@ class SummaryStatsSerializer(serializers.Serializer):
     total_revenue = serializers.FloatField(
         help_text="Total revenue from confirmed bookings (sum of base fares)"
     )
+    total_flights = serializers.IntegerField(
+        help_text="Total number of flight records in the system"
+    )
+    scheduled_flights = serializers.IntegerField(
+        help_text="Number of flights currently in SCHEDULED status"
+    )
+    avg_occupancy = serializers.FloatField(
+        help_text="Average occupancy percentage across all flights"
+    )
 
 
 class MonthlyRevenueSerializer(serializers.Serializer):

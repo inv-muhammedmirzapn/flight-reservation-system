@@ -35,6 +35,12 @@ def auto_allocate_waitlist(flight):
         status=BookingStatus.CONFIRMED
     )
 
+    try:
+        from apps.notifications.services import NotificationService
+        NotificationService.send_waitlist_allocation(new_booking)
+    except Exception:
+        pass
+
     # Decrement flight seats
     flight.available_seats -= 1
     flight.save()
