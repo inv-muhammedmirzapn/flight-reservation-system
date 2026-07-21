@@ -8,32 +8,7 @@ import BookingConfirmModal from '@/components/BookingConfirmModal';
 import WaitlistJoinModal from '@/components/WaitlistJoinModal';
 import { fetchWaitlistFlightCount } from '@/store/waitlistSlice';
 
-/* ── helpers ─────────────────────────────────────────────── */
-const INR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-
-const fmtTime = (iso) =>
-  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-IN', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-  });
-
-const diffHM = (dep, arr) => {
-  try {
-    const ms = new Date(arr) - new Date(dep);
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    return `${h}h ${m}m`;
-  } catch {
-    return 'N/A';
-  }
-};
+import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
 /* ── status badge ─────────────────────────────────────────── */
 const STATUS_STYLES = {

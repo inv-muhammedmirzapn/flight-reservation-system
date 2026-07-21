@@ -10,19 +10,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { INR, fmtTime, fmtDate } from '@/utils/formatters';
+
 /* ── helpers ─────────────────────────────────────── */
-const INR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency', currency: 'INR', maximumFractionDigits: 0,
-  }).format(amount);
-
-const fmtTime = (iso) =>
-  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-IN', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-  });
 
 const fmtBookingDate = (iso) =>
   new Date(iso).toLocaleString('en-IN', {

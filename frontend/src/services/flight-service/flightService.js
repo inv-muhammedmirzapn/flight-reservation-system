@@ -10,11 +10,12 @@ export const flightsAPI = {
     if (params.date)         qs.set('date', params.date);
     if (params.arrival_date) qs.set('arrival_date', params.arrival_date);
     if (params.ordering)     qs.set('ordering', params.ordering);
+    if (params.min_fare)     qs.set('min_fare', params.min_fare);
+    if (params.max_fare)     qs.set('max_fare', params.max_fare);
+    if (params.stops)        qs.set('stops', params.stops);
+    if (params.passengers)   qs.set('passengers', params.passengers);
+    if (params.page_size)    qs.set('page_size', params.page_size);
     return fetchWithAuth(`/flights/?${qs.toString()}`);
-  },
-
-  listAll: async () => {
-    return fetchWithAuth(`/flights/?page_size=2000`);
   },
 
   retrieve: async (id) => {

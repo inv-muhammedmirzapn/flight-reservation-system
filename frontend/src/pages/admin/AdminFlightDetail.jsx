@@ -8,11 +8,9 @@ import toast from 'react-hot-toast';
 import { DeleteFlightDialog } from '@/components/ui/DeleteFlightDialog';
 import { fetchWaitlistEntries } from '@/store/waitlistSlice';
 
+import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
+
 /* ── helpers ─────────────────────────────────────────────── */
-const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:false });
-const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
-const diffHM = (dep, arr) => { try { const ms=new Date(arr)-new Date(dep); return `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`; } catch(_){ return 'N/A'; } };
 
 const STATUS_OPTS = [
   { value:'SCHEDULED', label:'Scheduled' }, { value:'DELAYED',  label:'Delayed'   },

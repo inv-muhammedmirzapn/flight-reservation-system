@@ -35,12 +35,6 @@ export function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.username.trim() || !formData.password.trim()) {
-      const msg = 'Please enter both username and password.';
-      setLocalError(msg);
-      toast.error(msg);
-      return;
-    }
     const res = await dispatch(loginUser({ credentials: formData, requireCustomer: true }));
     if (res.meta.requestStatus === 'fulfilled') {
       const p = res.payload.profile;
@@ -97,6 +91,7 @@ export function LoginForm() {
           value={formData.username}
           onChange={handleChange}
           autoComplete="username"
+          disabled={loading}
         />
         <PasswordInput
           id="password"
@@ -106,6 +101,7 @@ export function LoginForm() {
           value={formData.password}
           onChange={handleChange}
           autoComplete="current-password"
+          disabled={loading}
         />
         <button disabled={loading} className="auth-btn" type="submit">
           {loading ? <><div className="spinner" /> {t("auth.signingIn")}</> : t("auth.signIn")}

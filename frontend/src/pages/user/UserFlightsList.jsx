@@ -2,33 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAllFlights } from '@/store/flightSlice';
+import { fetchFlights } from '@/store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
 import PassengerSelector from '@/components/ui/PassengerSelector';
 import { Pagination } from '@/components/ui/Pagination';
 
-/* ── helpers ──────────────────────────────────────────────── */
-const INR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-
-const fmtTime = (iso) =>
-  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-
-const diffHM = (dep, arr) => {
-  const ms = new Date(arr) - new Date(dep);
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  return `${h}h ${m}m`;
-};
+import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
 /* ── status badge ─────────────────────────────────────────── */
 const STATUS_STYLES = {
@@ -446,7 +427,7 @@ function Sidebar({
 export default function UserFlightsList() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { list: flights, loading, error } = useSelector(state => state.flights);
+  const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const source = searchParams.get('from') || '';
@@ -473,6 +454,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('from', val);
       else next.delete('from');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -482,6 +464,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('to', val);
       else next.delete('to');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -491,6 +474,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('status', val);
       else next.delete('status');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -500,6 +484,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val !== null && val !== undefined) next.set('minFare', val.toString());
       else next.delete('minFare');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -509,6 +494,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val !== null && val !== undefined) next.set('maxFare', val.toString());
       else next.delete('maxFare');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -518,6 +504,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('depDate', val);
       else next.delete('depDate');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -527,6 +514,7 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('arrDate', val);
       else next.delete('arrDate');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -535,6 +523,7 @@ export default function UserFlightsList() {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.set('adults', val.toString());
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -543,6 +532,7 @@ export default function UserFlightsList() {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.set('children', val.toString());
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -551,6 +541,7 @@ export default function UserFlightsList() {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.set('infants', val.toString());
+      next.delete('page');
       return next;
     }, { replace: true });
   };
@@ -560,21 +551,43 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val && val.length > 0) next.set('stops', val.join(','));
       else next.delete('stops');
+      next.delete('page');
       return next;
     }, { replace: true });
   };
 
-  // Client-side pagination state (independent of backend page)
-  const [clientPage, setClientPage] = useState(1);
-  const CLIENT_PAGE_SIZE = 10;
+  // Server-side pagination state
+  const pageParam = Number(searchParams.get('page')) || 1;
+  const setPage = (page) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (page > 1) next.set('page', page.toString());
+      else next.delete('page');
+      return next;
+    }, { replace: true });
+  };
 
   useEffect(() => {
-    // Fetch ALL flights for client-side filtering and pagination
-    dispatch(fetchAllFlights());
-  }, [dispatch]);
+    // Fetch flights for server-side filtering and pagination
+    dispatch(fetchFlights({
+      page: pageParam,
+      params: {
+        search: searchParams.get('search') || undefined,
+        status: statusFilter || undefined,
+        source: source || undefined,
+        destination: destination || undefined,
+        date: depDate || undefined,
+        arrival_date: arrDate || undefined,
+        min_fare: minFare || undefined,
+        max_fare: maxFare || undefined,
+        stops: stopsFilter.length > 0 ? stopsFilter.join(',') : undefined,
+        passengers: adults + childrenCount + infants,
+      }
+    }));
+  }, [dispatch, pageParam, searchParams, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, adults, childrenCount, infants]);
 
   const handlePageChange = (page) => {
-    setClientPage(page);
+    setPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -586,21 +599,9 @@ export default function UserFlightsList() {
     }), { replace: true });
   };
 
-  // Initialize min/max bounds from data
-  const { absMin, absMax } = useMemo(() => {
-    if (!flights.length) return { absMin: 0, absMax: 100000 };
-    const fares = flights.map(f => Number(f.base_fare) || 0);
-    return {
-      absMin: Math.min(...fares),
-      absMax: Math.max(...fares)
-    };
-  }, [flights]);
-
-  useEffect(() => {
-    if (minFare === null && flights.length) setMinFare(absMin);
-    if (maxFare === null && flights.length) setMaxFare(absMax);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [absMin, absMax, minFare, maxFare, flights.length]);
+  // Static bounds for server-side pagination slider
+  const absMin = 0;
+  const absMax = 100000;
 
   useEffect(() => {
     if (!searchParams.get('depDate')) {
@@ -610,48 +611,7 @@ export default function UserFlightsList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredFlights = useMemo(() => flights.filter(flight => {
-    const matchSource = !source || flight.source_airport.toLowerCase().includes(source.toLowerCase());
-    const matchDest = !destination || flight.destination_airport.toLowerCase().includes(destination.toLowerCase());
-    const matchStatus = !statusFilter || flight.status === statusFilter;
-    
-    // Fare bounds
-    const currentMinFare = minFare !== null ? minFare : absMin;
-    const currentMaxFare = maxFare !== null ? maxFare : absMax;
-    const matchFare = Number(flight.base_fare) >= currentMinFare && Number(flight.base_fare) <= currentMaxFare;
 
-    // Compare dates in local calendar time (not UTC) to avoid timezone boundary leaks
-    const toLocalDate = (iso) => {
-      const d = new Date(iso);
-      // YYYY-MM-DD in the browser's local timezone
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-    const matchDepDate = !depDate || toLocalDate(flight.departure_time) === depDate;
-    const matchArrDate = !arrDate || toLocalDate(flight.arrival_time) === arrDate;
-
-    // Available seats >= passengers OR flight is fully booked (allow waitlist join)
-    const totalPassengers = adults + childrenCount + infants;
-    const matchSeats = flight.available_seats >= totalPassengers || flight.available_seats === 0;
-
-    // Stops filter (database based stops list length)
-    const stopsCount = (flight.stops || []).length;
-    const stopCategory = stopsCount >= 2 ? 2 : stopsCount;
-    const matchStops = stopsFilter.length === 0 || stopsFilter.includes(stopCategory);
-
-    return matchSource && matchDest && matchStatus && matchFare && matchDepDate && matchArrDate && matchSeats && matchStops;
-  }), [flights, source, destination, statusFilter, minFare, maxFare, absMin, absMax, depDate, arrDate, adults, childrenCount, infants, stopsFilter]);
-
-  // Reset to page 1 whenever filters change
-  useEffect(() => {
-    setClientPage(1);
-  }, [source, destination, statusFilter, minFare, maxFare, depDate, arrDate, adults, childrenCount, infants, stopsFilter]);
-
-  // Client-side pagination derived from filteredFlights
-  const filteredTotalPages = Math.max(1, Math.ceil(filteredFlights.length / CLIENT_PAGE_SIZE));
-  const pagedFlights = useMemo(() => {
-    const start = (clientPage - 1) * CLIENT_PAGE_SIZE;
-    return filteredFlights.slice(start, start + CLIENT_PAGE_SIZE);
-  }, [filteredFlights, clientPage]);
 
   return (
     <>
@@ -750,7 +710,7 @@ export default function UserFlightsList() {
                 <span>{destination || t("flights.anyDestination", { defaultValue: 'Any Destination' })}</span>
               </div>
               <div style={{ fontSize: 13, color: '#5e5e5e' }}>
-                {t(filteredFlights.length === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: filteredFlights.length, defaultValue: `${filteredFlights.length} flights found` })}
+                {t(count === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: count, defaultValue: `${count} flights found` })}
                 {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
               </div>
             </div>
@@ -776,7 +736,7 @@ export default function UserFlightsList() {
               <div className="glass-card" style={{ borderRadius: 16, padding: 24, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', textAlign: 'center' }}>
                 {error}
               </div>
-            ) : filteredFlights.length === 0 ? (
+            ) : flights.length === 0 ? (
               <div className="glass-card" style={{ borderRadius: 20, padding: 64, textAlign: 'center' }}>
                 <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>{t("flights.noFlightsFound", { defaultValue: 'No flights found matching your criteria.' })}</p>
@@ -784,18 +744,18 @@ export default function UserFlightsList() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
-                {pagedFlights.map(flight => (
+                {flights.map(flight => (
                   <FlightCard key={flight.id} flight={flight} />
                 ))}
 
-                {/* Client-side pagination bar — always based on filteredFlights */}
-                {filteredFlights.length > 0 && (
+                {/* Server-side pagination bar */}
+                {count > 0 && (
                   <div style={{ paddingTop: 24, marginTop: 'auto' }}>
                     <Pagination
-                      currentPage={clientPage}
-                      totalPages={filteredTotalPages}
-                      totalCount={filteredFlights.length}
-                      pageSize={CLIENT_PAGE_SIZE}
+                      currentPage={pageParam}
+                      totalPages={totalPages}
+                      totalCount={count}
+                      pageSize={10}
                       onPageChange={handlePageChange}
                     />
                   </div>

@@ -127,6 +127,47 @@ class FlightListCreateView(APIView):
         if arrival_date:
             qs = qs.filter(arrival_time__date=arrival_date)
 
+        # Advanced Filters
+        min_fare = request.query_params.get('min_fare')
+        if min_fare is not None:
+            try:
+                qs = qs.filter(base_fare__gte=float(min_fare))
+            except ValueError:
+                pass
+
+        max_fare = request.query_params.get('max_fare')
+        if max_fare is not None:
+            try:
+                qs = qs.filter(base_fare__lte=float(max_fare))
+            except ValueError:
+                pass
+
+        stops = request.query_params.get('stops')
+        if stops:
+            # stops is a comma separated string like "0,1,2"
+            try:
+                stop_counts = [int(s.strip()) for s in stops.split(',')]
+                
+                # If 2 is in stop_counts, it means 2+ stops.
+                q_objects = Q()
+                for count in stop_counts:
+                    if count >= 2:
+                        q_objects |= Q(stops__len__gte=2)
+                    else:
+                        q_objects |= Q(stops__len=count)
+                qs = qs.filter(q_objects)
+            except ValueError:
+                pass
+
+        passengers = request.query_params.get('passengers')
+        if passengers:
+            try:
+                p_count = int(passengers)
+                # flight.available_seats >= passengers OR flight.available_seats == 0 (for waitlist)
+                qs = qs.filter(Q(available_seats__gte=p_count) | Q(available_seats=0))
+            except ValueError:
+                pass
+
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         serializer = FlightSerializer(page, many=True)

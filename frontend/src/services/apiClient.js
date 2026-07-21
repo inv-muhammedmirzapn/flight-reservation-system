@@ -11,6 +11,23 @@ export const getResponseData = async (res) => {
   }
 };
 
+export const extractErrorMessage = (data) => {
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    if (data.detail) return data.detail;
+    if (data.non_field_errors) return Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+    
+    // Map over keys for DRF field errors
+    const errors = Object.keys(data).map(key => {
+      const fieldError = data[key];
+      const msg = Array.isArray(fieldError) ? fieldError[0] : fieldError;
+      return `${key.charAt(0).toUpperCase() + key.slice(1)}: ${msg}`;
+    });
+    return errors.join(' · ');
+  }
+  return "An unexpected error occurred.";
+};
+
 // Helper to make authenticated requests
 export const fetchWithAuth = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
@@ -46,7 +63,7 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
           headers,
         });
         const retryData = await getResponseData(retryResponse);
-        if (!retryResponse.ok) throw new Error(typeof retryData === 'string' ? retryData : JSON.stringify(retryData));
+        if (!retryResponse.ok) throw new Error(extractErrorMessage(retryData));
         return retryData;
       }
     } catch (refreshErr) {
@@ -59,6 +76,6 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   }
 
   const data = await getResponseData(response);
-  if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+  if (!response.ok) throw new Error(extractErrorMessage(data));
   return data;
 };

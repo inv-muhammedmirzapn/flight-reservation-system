@@ -5,32 +5,7 @@ import { createBooking, clearCreateState } from '@/store/bookingSlice';
 import { Plane, X, ArrowRight, Clock, Users, AlertCircle, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-/* ── helpers ─────────────────────────────────────── */
-const INR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-
-const fmtTime = (iso) =>
-  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-IN', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-  });
-
-const diffHM = (dep, arr) => {
-  try {
-    const ms = new Date(arr) - new Date(dep);
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    return `${h}h ${m}m`;
-  } catch {
-    return 'N/A';
-  }
-};
+import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
 /* ─────────────────────────────────────────────────── */
 
@@ -254,10 +229,7 @@ export default function BookingConfirmModal({ flight, onClose }) {
             }}>
               <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
               <span>
-                {/* Guard: never render raw HTML or server stack traces */}
-                {typeof createError === 'string' && createError.length < 300 && !createError.startsWith('<')
-                  ? createError
-                  : 'Booking failed. Please try again.'}
+                {typeof createError === 'string' ? createError : 'Booking failed. Please try again.'}
               </span>
             </div>
           )}
