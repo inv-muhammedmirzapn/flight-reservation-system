@@ -36,8 +36,9 @@ describe('UserFlightDetail Component', () => {
             id: 1, 
             flight_number: 'AG-101', 
             base_fare: 5000, 
-            departure_time: new Date().toISOString(), 
-            arrival_time: new Date().toISOString(),
+            departure_time: new Date(Date.now() + 86400000).toISOString(), 
+            arrival_time: new Date(Date.now() + 90000000).toISOString(),
+            available_seats: 10,
             status: 'SCHEDULED'
           }, 
           detailLoading: false, 

@@ -62,6 +62,7 @@ function StatusBadge({ status }) {
 
 /* ── FlightCard (horizontal Stitch style) ─────────────────── */
 function FlightCard({ flight }) {
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const depTime = fmtTime(flight.departure_time);
   const arrTime = fmtTime(flight.arrival_time);
@@ -69,7 +70,7 @@ function FlightCard({ flight }) {
 
   return (
     <Link
-      to={`/flights/${flight.id}`}
+      to={`/flights/${flight.id}?${searchParams.toString()}`}
       style={{
         display: 'flex',
         flexDirection: 'row',
@@ -628,9 +629,9 @@ export default function UserFlightsList() {
     const matchDepDate = !depDate || toLocalDate(flight.departure_time) === depDate;
     const matchArrDate = !arrDate || toLocalDate(flight.arrival_time) === arrDate;
 
-    // Available seats >= passengers
+    // Available seats >= passengers OR flight is fully booked (allow waitlist join)
     const totalPassengers = adults + childrenCount + infants;
-    const matchSeats = flight.available_seats >= totalPassengers;
+    const matchSeats = flight.available_seats >= totalPassengers || flight.available_seats === 0;
 
     // Stops filter (database based stops list length)
     const stopsCount = (flight.stops || []).length;

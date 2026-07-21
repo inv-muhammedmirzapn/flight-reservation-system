@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchFlightDetail, clearFlightDetail } from '@/store/flightSlice';
 import { Plane, ArrowLeft, Clock, ShieldCheck, Tag, Users, ArrowRight, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BookingConfirmModal from '@/components/BookingConfirmModal';
+import WaitlistJoinModal from '@/components/WaitlistJoinModal';
+import { fetchWaitlistFlightCount } from '@/store/waitlistSlice';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (amount) =>
@@ -87,6 +89,8 @@ function InfoTile({ icon, label, value, sub }) {
   );
 }
 
+const DEFAULT_WAITLIST = { counts: {} };
+
 /* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightDetail() {
   const { id } = useParams();
@@ -95,6 +99,20 @@ export default function UserFlightDetail() {
   const { detail: flight, detailLoading, error } = useSelector(state => state.flights);
   const { isAuthenticated } = useSelector(state => state.auth);
   const [showModal, setShowModal] = useState(false);
+  const { counts } = useSelector(state => state.waitlist || DEFAULT_WAITLIST);
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const adults = Number(searchParams.get('adults')) || 1;
+  const children = Number(searchParams.get('children')) || 0;
+  const infants = Number(searchParams.get('infants')) || 0;
+  const totalPassengers = adults + children + infants;
+
+  useEffect(() => {
+    if (flight && flight.id) {
+      dispatch(fetchWaitlistFlightCount(flight.id));
+    }
+  }, [dispatch, flight]);
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
@@ -184,6 +202,15 @@ export default function UserFlightDetail() {
         <BookingConfirmModal
           flight={flight}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {/* Waitlist Join Modal */}
+      {showWaitlistModal && flight && (
+        <WaitlistJoinModal
+          flight={flight}
+          onClose={() => setShowWaitlistModal(false)}
+          initialSeatCount={Math.max(1, Math.min(9, totalPassengers))}
         />
       )}
 
@@ -391,6 +418,42 @@ export default function UserFlightDetail() {
               >
                 Book Now <ArrowRight size={16} />
               </button>
+            ) : isSoldOut && !isPastDeparture && !isUnbookableStatus ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{
+                  background: 'rgba(255,215,0,0.08)',
+                  border: '1px solid rgba(255,215,0,0.2)',
+                  borderRadius: 12, padding: '8px 16px',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  fontSize: 13, fontWeight: 700, color: '#705d00',
+                }}>
+                  <Users size={15} />
+                  <span>Waitlist Size: {counts[flight.id] !== undefined ? `${counts[flight.id]} passengers` : 'Checking...'}</span>
+                </div>
+
+                <button
+                  className="book-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isAuthenticated) {
+                      toast.error('You need to login to join the waitlist');
+                      navigate('/login');
+                      return;
+                    }
+                    setShowWaitlistModal(true);
+                  }}
+                  style={{
+                    background: '#ffd700', color: '#1a1c1d',
+                    fontWeight: 700, fontSize: 15,
+                    padding: '14px 36px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                    boxShadow: '0 4px 18px rgba(255,215,0,0.4)',
+                    transition: 'background 0.2s',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                >
+                  {isAuthenticated ? 'Join Waiting List' : 'Login to Join Waitlist'} <ArrowRight size={16} />
+                </button>
+              </div>
             ) : (
               <div style={{
                 background: 'rgba(0,0,0,0.03)', color: '#5e5e5e', border: '1px solid rgba(0,0,0,0.08)',
