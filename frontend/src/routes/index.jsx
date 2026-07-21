@@ -13,6 +13,7 @@ const UserFlightDetail = lazy(() => import('@/pages/user/UserFlightDetail'));
 const MyBookingsPage = lazy(() => import('@/pages/user/MyBookingsPage'));
 const BookingConfirmationPage = lazy(() => import('@/pages/user/BookingConfirmationPage'));
 const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
+const NotificationsPage = lazy(() => import('@/pages/user/NotificationsPage'));
 const AdminFlightsList = lazy(() => import('@/pages/admin/AdminFlightsList'));
 const AdminFlightForm = lazy(() => import('@/pages/admin/AdminFlightForm'));
 const AdminFlightDetail = lazy(() => import('@/pages/admin/AdminFlightDetail'));
@@ -104,6 +105,16 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <Suspense fallback={<LoadingFallback />}>
               <MyBookingsPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'notifications',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <NotificationsPage />
             </Suspense>
           </ProtectedRoute>
         ),

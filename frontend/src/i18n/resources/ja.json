@@ -366,6 +366,15 @@
     "fare": "運賃",
     "booked": "予約日",
     "ref": "予約番号",
-    "loginRequired": "予約にはログインが必要です"
+    "loginRequired": "予約にはログインが必要です",
+    "notificationsTitle": "通知",
+    "notificationsSubtitle": "リアルタイムのフライト状況アラートで最新情報を入手してください。",
+    "markAllRead": "すべて既読にする",
+    "noNotifications": "まだ通知はありません",
+    "noNotificationsDesc": "フライトに関する最新情報がある場合にお知らせします。",
+    "notificationRead": "既読",
+    "notificationUnread": "未読",
+    "all": "すべて",
+    "unread": "未読"
   }
 }
