@@ -184,6 +184,39 @@ class WaitlistTests(TestCase):
         response = self.client_anon.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_list_waitlist_order_by_latest(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        entry_old = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_old.created_at = timezone.now() - timedelta(seconds=10)
+        entry_old.save()
+
+        entry_new = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_new.created_at = timezone.now()
+        entry_new.save()
+
+        url = reverse("waitlist-list")
+        response = self.client_a.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        # Latest should be first
+        self.assertEqual(response.data[0]["id"], str(entry_new.id))
+        self.assertEqual(response.data[1]["id"], str(entry_old.id))
+
     def test_waitlist_detail_and_queue_position(self):
         self.flight.available_seats = 0
         self.flight.save()

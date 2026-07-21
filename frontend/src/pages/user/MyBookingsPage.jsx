@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyBookings, cancelBooking } from '@/store/bookingSlice';
@@ -299,51 +300,79 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         {/* Action */}
         {isConfirmed && !isPast && (
           <div style={{ marginTop: 4 }}>
-            {!showCancelConfirm ? (
-              <button
-                id={`cancel-booking-btn-${booking.id}`}
-                onClick={() => setShowCancelConfirm(true)}
-                style={{
-                  width: '100%',
-                  background: '#fff1f2', border: 'none',
-                  color: '#e11d48', fontWeight: 700, fontSize: 13,
-                  padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
-                  transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
-                }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
-              >
-                <XCircle size={15} /> Cancel Reservation
-              </button>
-            ) : (
-              <div style={{ background: '#fff1f2', borderRadius: 12, padding: 14 }}>
-                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#be123c', fontWeight: 700, textAlign: 'center' }}>Confirm Cancellation?</p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    id={`cancel-confirm-yes-${booking.id}`}
-                    onClick={() => onCancel(booking.id)}
-                    disabled={isCancelling}
-                    style={{
-                      flex: 1, background: '#e11d48', border: 'none', color: '#fff',
-                      fontWeight: 700, fontSize: 12, padding: '8px', borderRadius: 8,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                  >
-                    {isCancelling ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
-                  </button>
-                  <button
-                    id={`cancel-confirm-no-${booking.id}`}
-                    onClick={() => setShowCancelConfirm(false)}
-                    style={{
-                      flex: 1, background: 'transparent', border: '1px solid rgba(225,29,72,0.3)',
-                      color: '#e11d48', fontWeight: 700, fontSize: 12,
-                      padding: '8px', borderRadius: 8, cursor: 'pointer',
-                    }}
-                  >
-                    No, Keep it
-                  </button>
+            <button
+              id={`cancel-booking-btn-${booking.id}`}
+              onClick={() => setShowCancelConfirm(true)}
+              style={{
+                width: '100%',
+                background: '#fff1f2', border: 'none',
+                color: '#e11d48', fontWeight: 700, fontSize: 13,
+                padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
+            >
+              <XCircle size={15} /> Cancel Reservation
+            </button>
+
+            {showCancelConfirm && createPortal(
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', zIndex: 9999, backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+              }}>
+                <div style={{
+                  background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fade-up 0.3s ease-out'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AlertCircle size={24} color="#e11d48" />
+                    </div>
+                  </div>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>Cancel Reservation</h3>
+                  <p style={{ margin: '0 0 16px', color: '#5e5e5e', fontSize: 14, textAlign: 'center', lineHeight: 1.5 }}>
+                    Are you sure you want to cancel booking <strong>{String(booking.id).slice(0, 8).toUpperCase()}</strong>? This action cannot be undone.
+                  </p>
+                  <div style={{ padding: '12px', background: '#fff1f2', borderRadius: 12, marginBottom: 24, textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: '#be123c', fontWeight: 600 }}>
+                      A 10% cancellation fee ({INR((booking.total_price || flight.base_fare) * 0.10)}) will be deducted from your refund.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      id={`cancel-confirm-no-${booking.id}`}
+                      onClick={() => setShowCancelConfirm(false)}
+                      style={{
+                        flex: 1, background: '#f3f4f6', border: 'none', color: '#374151',
+                        fontWeight: 700, fontSize: 14, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#e5e7eb'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                    >
+                      No, Keep it
+                    </button>
+                    <button
+                      id={`cancel-confirm-yes-${booking.id}`}
+                      onClick={() => onCancel(booking.id)}
+                      disabled={isCancelling}
+                      style={{
+                        flex: 1, background: '#e11d48', border: 'none', color: '#fff',
+                        fontWeight: 700, fontSize: 14, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        opacity: isCancelling ? 0.7 : 1, transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
+                      onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
+                    >
+                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         )}
@@ -486,52 +515,79 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
         {/* Action */}
         {isPending && !isPast && (
           <div style={{ marginTop: 4 }}>
-            {!showCancelConfirm ? (
-              <button
-                id={`cancel-waitlist-btn-${entry.id}`}
-                onClick={() => setShowCancelConfirm(true)}
-                style={{
-                  width: '100%',
-                  background: '#fff1f2', border: 'none',
-                  color: '#e11d48', fontWeight: 700, fontSize: 13,
-                  padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
-                  transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
-                }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
-              >
-                <XCircle size={15} /> Cancel Waitlist Request
-              </button>
-            ) : (
-              <div style={{ background: '#fff1f2', borderRadius: 12, padding: 14 }}>
-                <p style={{ margin: '0 0 4px', fontSize: 12, color: '#be123c', fontWeight: 700, textAlign: 'center' }}>Confirm Cancellation?</p>
-                <p style={{ margin: '0 0 10px', fontSize: 11, color: '#be123c', textAlign: 'center' }}>A 5% processing fee ({INR(entry.price * 0.05)}) will be deducted from your refund.</p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    id={`cancel-waitlist-confirm-yes-${entry.id}`}
-                    onClick={() => onCancel(entry.id)}
-                    disabled={isCancelling}
-                    style={{
-                      flex: 1, background: '#e11d48', border: 'none', color: '#fff',
-                      fontWeight: 700, fontSize: 12, padding: '8px', borderRadius: 8,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                  >
-                    {isCancelling ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
-                  </button>
-                  <button
-                    id={`cancel-waitlist-confirm-no-${entry.id}`}
-                    onClick={() => setShowCancelConfirm(false)}
-                    style={{
-                      flex: 1, background: 'transparent', border: '1px solid rgba(225,29,72,0.3)',
-                      color: '#e11d48', fontWeight: 700, fontSize: 12,
-                      padding: '8px', borderRadius: 8, cursor: 'pointer',
-                    }}
-                  >
-                    No, Keep it
-                  </button>
+            <button
+              id={`cancel-waitlist-btn-${entry.id}`}
+              onClick={() => setShowCancelConfirm(true)}
+              style={{
+                width: '100%',
+                background: '#fff1f2', border: 'none',
+                color: '#e11d48', fontWeight: 700, fontSize: 13,
+                padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
+                transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
+            >
+              <XCircle size={15} /> Cancel Waitlist Request
+            </button>
+
+            {showCancelConfirm && createPortal(
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', zIndex: 9999, backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+              }}>
+                <div style={{
+                  background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fade-up 0.3s ease-out'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AlertCircle size={24} color="#e11d48" />
+                    </div>
+                  </div>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>Cancel Waitlist Request</h3>
+                  <p style={{ margin: '0 0 16px', color: '#5e5e5e', fontSize: 14, textAlign: 'center', lineHeight: 1.5 }}>
+                    Are you sure you want to cancel waitlist request <strong>{String(entry.id).slice(0, 8).toUpperCase()}</strong>? This action cannot be undone.
+                  </p>
+                  <div style={{ padding: '12px', background: '#fff1f2', borderRadius: 12, marginBottom: 24, textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: '#be123c', fontWeight: 600 }}>
+                      A 5% processing fee ({INR(entry.price * 0.05)}) will be deducted from your refund.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      id={`cancel-waitlist-confirm-no-${entry.id}`}
+                      onClick={() => setShowCancelConfirm(false)}
+                      style={{
+                        flex: 1, background: '#f3f4f6', border: 'none', color: '#374151',
+                        fontWeight: 700, fontSize: 14, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#e5e7eb'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                    >
+                      No, Keep it
+                    </button>
+                    <button
+                      id={`cancel-waitlist-confirm-yes-${entry.id}`}
+                      onClick={() => onCancel(entry.id)}
+                      disabled={isCancelling}
+                      style={{
+                        flex: 1, background: '#e11d48', border: 'none', color: '#fff',
+                        fontWeight: 700, fontSize: 14, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        opacity: isCancelling ? 0.7 : 1, transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
+                      onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
+                    >
+                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         )}

@@ -19,7 +19,7 @@ class BookingViewSet(mixins.CreateModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.filter(user=self.request.user).select_related('flight')
+        return Booking.objects.filter(user=self.request.user).select_related('flight').order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         """

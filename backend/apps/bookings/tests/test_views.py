@@ -67,6 +67,43 @@ class BookingViewSetTests(TestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['id'], str(self.booking.id))
 
+    def test_list_returns_latest_booking_first(self):
+        """Bookings should be returned in descending order of creation."""
+        # Create a newer booking for the same user
+        flight2 = Flight.objects.create(
+            flight_number='FL456',
+            airline='Test Airline',
+            aircraft='Boeing 737',
+            source_airport='LAX',
+            destination_airport='SFO',
+            departure_time=timezone.now() + timedelta(days=2),
+            arrival_time=timezone.now() + timedelta(days=2, hours=2),
+            base_fare=150.00,
+            total_seats=10,
+            available_seats=10,
+            status=FlightStatus.SCHEDULED
+        )
+        
+        booking_new = Booking.objects.create(
+            user=self.user,
+            flight=flight2,
+            status=BookingStatus.CONFIRMED
+        )
+        booking_new.created_at = timezone.now() + timedelta(seconds=10)
+        booking_new.save()
+
+        self.booking.created_at = timezone.now()
+        self.booking.save()
+
+        url = reverse('bookings:booking-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        
+        # Newest should be first
+        self.assertEqual(response.data[0]['id'], str(booking_new.id))
+        self.assertEqual(response.data[1]['id'], str(self.booking.id))
+
     def test_retrieve_own_booking(self):
         """A user can retrieve the detail of their own booking."""
         url = reverse('bookings:booking-detail', kwargs={'pk': self.booking.pk})
