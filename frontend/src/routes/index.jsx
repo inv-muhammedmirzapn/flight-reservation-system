@@ -8,6 +8,8 @@ const LandingPage = lazy(() => import('@/pages/landing/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/auth/login/LoginPage'));
 const AdminLoginPage = lazy(() => import('@/pages/auth/login/AdminLoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/sign-up/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/login/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/login/ResetPasswordPage'));
 const UserFlightsList = lazy(() => import('@/pages/user/UserFlightsList'));
 const UserFlightDetail = lazy(() => import('@/pages/user/UserFlightDetail'));
 const MyBookingsPage = lazy(() => import('@/pages/user/MyBookingsPage'));
@@ -66,6 +68,26 @@ const router = createBrowserRouter([
           <ProtectedRoute guestOnly>
             <Suspense fallback={<LoadingFallback />}>
               <RegisterPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'forgot-password',
+        element: (
+          <ProtectedRoute guestOnly>
+            <Suspense fallback={<LoadingFallback />}>
+              <ForgotPasswordPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reset-password',
+        element: (
+          <ProtectedRoute guestOnly>
+            <Suspense fallback={<LoadingFallback />}>
+              <ResetPasswordPage />
             </Suspense>
           </ProtectedRoute>
         ),

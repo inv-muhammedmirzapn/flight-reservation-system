@@ -142,3 +142,20 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs.get('old_password') == attrs.get('new_password'):
             raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
         return attrs
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True, write_only=True)
+    otp = serializers.CharField(required=True, write_only=True, max_length=6, min_length=6)
+    new_password = serializers.CharField(required=True, write_only=True)
+
+    def validate_new_password(self, value):
+        validator = StrongPasswordValidator()
+        try:
+            validator.validate(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
