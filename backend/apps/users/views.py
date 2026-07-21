@@ -1,7 +1,15 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
-from .serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, ChangePasswordSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+from django.core.cache import cache
+import random
+import threading
 from .models import Profile
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -115,4 +123,65 @@ class ChangePasswordAPIView(APIView):
             user.save()
             return Response({"detail": "Password has been successfully updated."}, status=status.HTTP_200_OK)
             
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ForgotPasswordView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.filter(email=email).first()
+            if user:
+                # Generate 6-digit OTP
+                otp = str(random.randint(100000, 999999))
+                
+                # Store in cache for 5 minutes (300 seconds)
+                cache_key = f"pwd_reset_otp_{email}"
+                cache.set(cache_key, otp, timeout=300)
+
+                # Define email sending function
+                def send_otp_email(target_email, otp_code):
+                    try:
+                        send_mail(
+                            subject="Your AeroGlass Password Reset OTP",
+                            message=f"Hello,\n\nYour password reset OTP is: {otp_code}\n\nThis OTP will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.",
+                            from_email=settings.EMAIL_HOST_USER,
+                            recipient_list=[target_email],
+                            fail_silently=False,
+                        )
+                    except Exception as e:
+                        print(f"Error sending password reset email: {e}")
+
+                # Send email in a background thread
+                threading.Thread(target=send_otp_email, args=(email, otp)).start()
+            
+            # Always return 200 OK so we don't leak whether an email exists or not
+            return Response({"detail": "If an account with that email exists, we have sent a password reset OTP."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+            new_password = serializer.validated_data['new_password']
+
+            cache_key = f"pwd_reset_otp_{email}"
+            cached_otp = cache.get(cache_key)
+
+            if cached_otp and cached_otp == otp:
+                user = User.objects.filter(email=email).first()
+                if user:
+                    user.set_password(new_password)
+                    user.save()
+                    cache.delete(cache_key)
+                    return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+            
+            return Response({"error": "The OTP is invalid or has expired."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

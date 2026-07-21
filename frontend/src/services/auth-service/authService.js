@@ -36,5 +36,27 @@ export const authAPI = {
 
   getProfile: async () => {
     return fetchWithAuth('/auth/profile/');
+  },
+
+  forgotPassword: async (email) => {
+    const response = await fetch(`${API_BASE_URL}/auth/password/forgot/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
+  },
+
+  resetPassword: async (email, otp, new_password) => {
+    const response = await fetch(`${API_BASE_URL}/auth/password/reset/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, new_password }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
   }
 };

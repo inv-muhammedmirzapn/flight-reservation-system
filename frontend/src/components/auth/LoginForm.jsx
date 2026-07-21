@@ -103,6 +103,11 @@ export function LoginForm() {
           autoComplete="current-password"
           disabled={loading}
         />
+        <div style={{ textAlign: 'right', marginTop: '-0.25rem', marginBottom: '1.25rem' }}>
+          <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: '#705d00', fontWeight: '600', textDecoration: 'none' }}>
+            Forgot Password?
+          </Link>
+        </div>
         <button disabled={loading} className="auth-btn" type="submit">
           {loading ? <><div className="spinner" /> {t("auth.signingIn")}</> : t("auth.signIn")}
         </button>
