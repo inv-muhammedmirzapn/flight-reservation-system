@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyBookings, cancelBooking } from '@/store/bookingSlice';
@@ -315,7 +316,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
               <XCircle size={15} /> Cancel Reservation
             </button>
 
-            {showCancelConfirm && (
+            {showCancelConfirm && createPortal(
               <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                 background: 'rgba(0,0,0,0.5)', zIndex: 9999, backdropFilter: 'blur(4px)',
@@ -370,7 +371,8 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         )}
@@ -529,7 +531,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
               <XCircle size={15} /> Cancel Waitlist Request
             </button>
 
-            {showCancelConfirm && (
+            {showCancelConfirm && createPortal(
               <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                 background: 'rgba(0,0,0,0.5)', zIndex: 9999, backdropFilter: 'blur(4px)',
@@ -584,7 +586,8 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         )}
