@@ -1,0 +1,54 @@
+[
+  {
+    "flight_number": "6E-901",
+    "airline": "IndiGo",
+    "aircraft": "Airbus A320neo",
+    "source_airport": "BOM",
+    "destination_airport": "DEL",
+    "departure_time": "2026-07-25T10:00:00Z",
+    "arrival_time": "2026-07-25T12:15:00Z",
+    "base_fare": 5500.00,
+    "total_seats": 150,
+    "available_seats": 0,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "AI-902",
+    "airline": "Air India",
+    "aircraft": "Boeing 787-8",
+    "source_airport": "DEL",
+    "destination_airport": "BLR",
+    "departure_time": "2026-07-25T14:30:00Z",
+    "arrival_time": "2026-07-25T17:15:00Z",
+    "base_fare": 7200.00,
+    "total_seats": 200,
+    "available_seats": 0,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "IX-903",
+    "airline": "Air India Express",
+    "aircraft": "Boeing 737 Max 8",
+    "source_airport": "COK",
+    "destination_airport": "DXB",
+    "departure_time": "2026-07-26T08:00:00Z",
+    "arrival_time": "2026-07-26T11:45:00Z",
+    "base_fare": 12500.00,
+    "total_seats": 180,
+    "available_seats": 12,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "QP-904",
+    "airline": "Akasa Air",
+    "aircraft": "Boeing 737 Max 8",
+    "source_airport": "BLR",
+    "destination_airport": "COK",
+    "departure_time": "2026-07-26T18:15:00Z",
+    "arrival_time": "2026-07-26T19:30:00Z",
+    "base_fare": 3800.00,
+    "total_seats": 189,
+    "available_seats": 0,
+    "status": "SCHEDULED"
+  }
+]

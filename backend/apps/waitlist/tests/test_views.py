@@ -333,7 +333,7 @@ class WaitlistTests(TestCase):
         )
 
         # 4. Cancel A's booking using API view action
-        url = reverse("booking-cancel", kwargs={"pk": booking_a.pk})
+        url = reverse("bookings:booking-cancel", kwargs={"pk": booking_a.pk})
         response = self.client_a.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -388,7 +388,7 @@ class WaitlistTests(TestCase):
         )
 
         # 5. Cancel A's booking (frees 2 seats)
-        url = reverse("booking-cancel", kwargs={"pk": booking_a.pk})
+        url = reverse("bookings:booking-cancel", kwargs={"pk": booking_a.pk})
         response = self.client_a.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

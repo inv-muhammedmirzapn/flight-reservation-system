@@ -21,5 +21,5 @@ class BookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ['id', 'flight', 'flight_detail', 'status', 'created_at']
-        read_only_fields = ['id', 'status', 'created_at', 'flight_detail']
+        fields = ['id', 'flight', 'flight_detail', 'status', 'seat_count', 'total_price', 'created_at']
+        read_only_fields = ['id', 'status', 'seat_count', 'total_price', 'created_at', 'flight_detail']

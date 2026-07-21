@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/Select';
 import { Plane, ArrowLeft, Clock, Users, ShieldAlert, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DeleteFlightDialog } from '@/components/ui/DeleteFlightDialog';
+import { fetchWaitlistEntries } from '@/store/waitlistSlice';
 
 /* ── helpers ─────────────────────────────────────────────── */
 const INR = (v) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v);
@@ -33,6 +34,25 @@ function Badge({ status }) {
   return <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.border}`, borderRadius:9999, padding:'5px 14px', fontSize:12, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>{status}</span>;
 }
 
+function WaitlistStatusBadge({ status }) {
+  const styles = {
+    PENDING: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+    CONFIRMED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
+    CANCELLED: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+    EXPIRED: { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
+  };
+  const s = styles[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+  return (
+    <span style={{
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      borderRadius: 9999, padding: '4px 10px', fontSize: 11, fontWeight: 700,
+      letterSpacing: '0.05em', textTransform: 'uppercase', display: 'inline-block'
+    }}>
+      {status}
+    </span>
+  );
+}
+
 function InfoTile({ icon, label, value, sub }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:16, background:'rgba(255,255,255,0.55)', border:'1px solid rgba(255,255,255,0.7)', borderRadius:16, padding:'18px 22px' }}>
@@ -53,10 +73,15 @@ export default function AdminFlightDetail() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { detail:flight, detailLoading, actionLoading, error } = useSelector(s => s.flights);
+  const { list: waitlistEntries, listLoading: waitlistLoading } = useSelector(s => s.waitlist);
   const [statusVal, setStatusVal] = useState('SCHEDULED');
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, flightNumber, airline }
 
-  useEffect(() => { dispatch(fetchFlightDetail(id)); return () => { dispatch(clearFlightDetail()); }; }, [dispatch, id]);
+  useEffect(() => {
+    dispatch(fetchFlightDetail(id));
+    dispatch(fetchWaitlistEntries(id));
+    return () => { dispatch(clearFlightDetail()); };
+  }, [dispatch, id]);
   useEffect(() => { if (flight) setStatusVal(flight.status); }, [flight]);
 
   const handleDeleteConfirm = async () => {
@@ -221,6 +246,66 @@ export default function AdminFlightDetail() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteTarget(null)}
         />
+
+        {/* Waitlist Queue Panel */}
+        <div className="glass-card" style={{ borderRadius:28, padding:'40px 48px', marginTop: 32, position:'relative', overflow:'hidden' }}>
+          <h2 style={{ fontFamily:"'Plus Jakarta Sans',Inter,sans-serif", fontSize:22, fontWeight:800, color:'#1a1c1d', letterSpacing:'-0.01em', marginBottom:20, display:'flex', alignItems:'center', gap:10 }}>
+            <Users size={20} color="#705d00" />
+            Waitlist Queue (FIFO Order)
+          </h2>
+
+          {waitlistLoading && waitlistEntries.length === 0 ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:'40px 0' }}>
+              <div style={{ width:32, height:32, border:'3px solid rgba(112,93,0,0.15)', borderTopColor:'#705d00', borderRadius:'50%', animation:'spin 0.75s linear infinite' }} />
+            </div>
+          ) : waitlistEntries.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'40px 0', color:'#5e5e5e', fontSize:14 }}>
+              No passengers currently on the waitlist for this flight.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase' }}>Pos</th>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase' }}>Passenger</th>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', textAlign: 'center' }}>Seats</th>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase' }}>Total Price</th>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase' }}>Joined At</th>
+                    <th style={{ padding: '12px 8px', fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', textAlign: 'right' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waitlistEntries.map((entry) => (
+                    <tr key={entry.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 14 }}>
+                      <td style={{ padding: '12px 8px', fontWeight: 700, color: '#b45309' }}>
+                        {entry.status === 'PENDING' ? `#${entry.queue_position}` : '-'}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: 600, color: '#1a1c1d' }}>
+                        {entry.username}
+                      </td>
+                      <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600 }}>
+                        {entry.seat_count}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: 600, color: '#705d00' }}>
+                        {INR(entry.price)}
+                      </td>
+                      <td style={{ padding: '12px 8px', color: '#5e5e5e' }}>
+                        {new Date(entry.created_at).toLocaleString('en-IN', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit', hour12: true
+                        })}
+                      </td>
+                      <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                        <WaitlistStatusBadge status={entry.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
       </div>
     </>

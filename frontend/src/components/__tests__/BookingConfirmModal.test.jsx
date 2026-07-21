@@ -69,7 +69,7 @@ describe('BookingConfirmModal', () => {
 
   it('renders modal with flight details', () => {
     renderModal();
-    expect(screen.getByText('Confirm Booking')).toBeTruthy();
+    expect(screen.getAllByText('Confirm Booking').length).toBeGreaterThan(0);
     expect(screen.getByText('AG-101')).toBeTruthy();
     expect(screen.getByText('DEL')).toBeTruthy();
     expect(screen.getByText('BOM')).toBeTruthy();
@@ -78,21 +78,21 @@ describe('BookingConfirmModal', () => {
 
   it('renders confirm and cancel buttons', () => {
     renderModal();
-    expect(screen.getById('booking-modal-confirm-btn')).toBeTruthy();
-    expect(screen.getById('booking-modal-cancel-btn')).toBeTruthy();
+    expect(document.getElementById('booking-modal-confirm-btn')).toBeTruthy();
+    expect(document.getElementById('booking-modal-cancel-btn')).toBeTruthy();
   });
 
   it('calls onClose when cancel button is clicked', () => {
     const onClose = vi.fn();
     renderModal({}, onClose);
-    fireEvent.click(screen.getById('booking-modal-cancel-btn'));
+    fireEvent.click(document.getElementById('booking-modal-cancel-btn'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when X button is clicked', () => {
     const onClose = vi.fn();
     renderModal({}, onClose);
-    fireEvent.click(screen.getById('booking-modal-close'));
+    fireEvent.click(document.getElementById('booking-modal-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -100,8 +100,8 @@ describe('BookingConfirmModal', () => {
     renderModal({ createLoading: true });
     expect(screen.getByText('Booking...')).toBeTruthy();
     // Buttons should be disabled
-    expect(screen.getById('booking-modal-confirm-btn').disabled).toBe(true);
-    expect(screen.getById('booking-modal-cancel-btn').disabled).toBe(true);
+    expect(document.getElementById('booking-modal-confirm-btn').disabled).toBe(true);
+    expect(document.getElementById('booking-modal-cancel-btn').disabled).toBe(true);
   });
 
   it('shows error message when createError is set', () => {
