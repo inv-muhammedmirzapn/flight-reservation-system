@@ -323,7 +323,7 @@ function Sidebar({
         {/* Price Range */}
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
-          
+
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
             <input
@@ -433,7 +433,7 @@ export default function UserFlightsList() {
   const source = searchParams.get('from') || '';
   const destination = searchParams.get('to') || '';
   const statusFilter = searchParams.get('status') || '';
-  
+
   const minFareParam = searchParams.get('minFare');
   const minFare = minFareParam !== null ? Number(minFareParam) : null;
   const maxFareParam = searchParams.get('maxFare');
@@ -568,6 +568,15 @@ export default function UserFlightsList() {
   };
 
   useEffect(() => {
+    if (searchParams.toString() === '') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      setSearchParams(new URLSearchParams({
+        adults: '1',
+        depDate: todayStr
+      }), { replace: true });
+      return;
+    }
+
     // Fetch flights for server-side filtering and pagination
     dispatch(fetchFlights({
       page: pageParam,
@@ -723,12 +732,15 @@ export default function UserFlightsList() {
 
             {/* States */}
             {loading ? (
-              <div style={{ 
-                position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(248, 250, 252, 0.9)', backdropFilter: 'blur(10px)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' 
+              <div style={{
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                padding: '48px 0', gap: 16,
               }}>
-                <Plane size={48} color="#705d00" className="animate-bounce" />
-                <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
+                <div style={{
+                  width: 40, height: 40, border: '3px solid rgba(112,93,0,0.15)',
+                  borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite',
+                }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#5e5e5e', fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
                   {t("flights.fetching", { defaultValue: 'Fetching flight details...' })}
                 </div>
               </div>

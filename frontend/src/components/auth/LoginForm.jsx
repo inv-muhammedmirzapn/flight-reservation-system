@@ -39,7 +39,7 @@ export function LoginForm() {
     if (res.meta.requestStatus === 'fulfilled') {
       const p = res.payload.profile;
       const name = p?.first_name || p?.username || 'back';
-      toast.success(`Welcome back, ${name}!`);
+      toast.success(t('auth.welcomeBackName', { name }));
       navigate('/flights');
     } else {
       toast.error(res.payload);
@@ -53,16 +53,16 @@ export function LoginForm() {
         if (res.meta.requestStatus === 'fulfilled') {
           const p = res.payload.profile;
           const name = p?.first_name || p?.username || 'back';
-          toast.success(`Welcome back, ${name}!`);
+          toast.success(t('auth.welcomeBackName', { name }));
           navigate('/flights');
         } else {
           toast.error(res.payload);
         }
       } catch (err) {
-        toast.error('Google Login failed.');
+        toast.error(t('auth.googleLoginFailed'));
       }
     },
-    onError: () => toast.error('Google Login Failed')
+    onError: () => toast.error(t('auth.googleLoginFailed'))
   });
 
   const handleGoogleLogin = () => {
@@ -103,9 +103,9 @@ export function LoginForm() {
           autoComplete="current-password"
           disabled={loading}
         />
-        <div style={{ textAlign: 'right', marginTop: '-0.25rem', marginBottom: '1.25rem' }}>
+        <div style={{ textAlign: 'right', marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
           <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: '#705d00', fontWeight: '600', textDecoration: 'none' }}>
-            Forgot Password?
+            {t("auth.forgotPassword")}
           </Link>
         </div>
         <button disabled={loading} className="auth-btn" type="submit">

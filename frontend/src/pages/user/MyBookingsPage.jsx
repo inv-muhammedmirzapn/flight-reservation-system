@@ -124,12 +124,12 @@ function BookingListItem({ booking, isSelected, onClick }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 16px' }}>
-           <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4 }}>
-             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
-             <Plane size={10} color="#705d00" />
-             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
-           </div>
-           <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>Direct</div>
+          <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4 }}>
+            <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+            <Plane size={10} color="#705d00" />
+            <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+          </div>
+          <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>Direct</div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
@@ -189,14 +189,14 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 16px' }}>
-           <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4 }}>
-             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
-             <Plane size={10} color="#705d00" />
-             <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
-           </div>
-           <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>
-             {entry.seat_count} {entry.seat_count === 1 ? 'seat' : 'seats'}
-           </div>
+          <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4 }}>
+            <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+            <Plane size={10} color="#705d00" />
+            <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
+          </div>
+          <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>
+            {entry.seat_count} {entry.seat_count === 1 ? 'seat' : 'seats'}
+          </div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
@@ -220,8 +220,8 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: 400, color: '#9e9488'
     }}>
-       <Plane size={32} opacity={0.2} style={{ marginBottom: 12 }} />
-       <p style={{ fontSize: 14, fontWeight: 600 }}>Select a booking to view details</p>
+      <Plane size={32} opacity={0.2} style={{ marginBottom: 12 }} />
+      <p style={{ fontSize: 14, fontWeight: 600 }}>Select a booking to view details</p>
     </div>
   );
 
@@ -290,44 +290,44 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-           <div style={{
-             width: 36, height: 36, borderRadius: 12,
-             background: 'rgba(255,215,0,0.15)',
-             display: 'flex', alignItems: 'center', justifyContent: 'center',
-           }}>
-             <Plane size={16} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
-           </div>
-           <div>
-             <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
-               {flight.flight_number}
-             </div>
-             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
-           </div>
+          <div style={{
+            width: 36, height: 36, borderRadius: 12,
+            background: 'rgba(255,215,0,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Plane size={16} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
+              {flight.flight_number}
+            </div>
+            <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
+          </div>
         </div>
 
         {/* Departure/Arrival Timeline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-           <div>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
-             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
-             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
-             <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
-           </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
+            <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
+          </div>
 
-           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 24px' }}>
-             <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
-               <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
-               <Plane size={18} color="#1a1c1d" style={{ transform: 'rotate(90deg)' }} />
-               <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
-             </div>
-           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
+              <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+              <Plane size={18} color="#1a1c1d" style={{ transform: 'rotate(90deg)' }} />
+              <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+            </div>
+          </div>
 
-           <div style={{ textAlign: 'right' }}>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
-             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
-             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
-             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
-           </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
+            <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
@@ -423,8 +423,8 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         opacity: isCancelling ? 0.7 : 1, transition: 'background 0.2s'
                       }}
-                      onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
-                      onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
+                      onMouseOver={(e) => { if (!isCancelling) e.currentTarget.style.background = '#be123c' }}
+                      onMouseOut={(e) => { if (!isCancelling) e.currentTarget.style.background = '#e11d48' }}
                     >
                       {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
                     </button>
@@ -457,8 +457,8 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: 400, color: '#9e9488'
     }}>
-       <Clock size={32} opacity={0.2} style={{ marginBottom: 12 }} />
-       <p style={{ fontSize: 14, fontWeight: 600 }}>Select a waitlist entry to view details</p>
+      <Clock size={32} opacity={0.2} style={{ marginBottom: 12 }} />
+      <p style={{ fontSize: 14, fontWeight: 600 }}>Select a waitlist entry to view details</p>
     </div>
   );
 
@@ -544,44 +544,44 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-           <div style={{
-             width: 36, height: 36, borderRadius: 12,
-             background: 'rgba(255,215,0,0.15)',
-             display: 'flex', alignItems: 'center', justifyContent: 'center',
-           }}>
-             <Plane size={16} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
-           </div>
-           <div>
-             <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
-               {flight.flight_number}
-             </div>
-             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
-           </div>
+          <div style={{
+            width: 36, height: 36, borderRadius: 12,
+            background: 'rgba(255,215,0,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Plane size={16} color="#705d00" style={{ transform: 'rotate(-45deg)' }} />
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 18, fontWeight: 800, color: '#1a1c1d' }}>
+              {flight.flight_number}
+            </div>
+            <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
+          </div>
         </div>
 
         {/* Departure/Arrival Timeline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-           <div>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
-             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
-             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
-             <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
-           </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
+            <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
+          </div>
 
-           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
-                <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
-                <Plane size={18} color="#1a1c1d" style={{ transform: 'rotate(90deg)' }} />
-                <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
-              </div>
-           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
+              <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+              <Plane size={18} color="#1a1c1d" style={{ transform: 'rotate(90deg)' }} />
+              <div style={{ flex: 1, height: 2, background: 'linear-gradient(to right, #1a1c1d 50%, transparent 50%)', backgroundSize: '12px 100%' }} />
+            </div>
+          </div>
 
-           <div style={{ textAlign: 'right' }}>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
-             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
-             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
-             <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
-           </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
+            <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
@@ -681,8 +681,8 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         opacity: isCancelling ? 0.7 : 1, transition: 'background 0.2s'
                       }}
-                      onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
-                      onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
+                      onMouseOver={(e) => { if (!isCancelling) e.currentTarget.style.background = '#be123c' }}
+                      onMouseOut={(e) => { if (!isCancelling) e.currentTarget.style.background = '#e11d48' }}
                     >
                       {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
                     </button>
@@ -756,24 +756,32 @@ export default function MyBookingsPage() {
   // Auto-selection of first booking
   useEffect(() => {
     if (filteredBookings.length > 0) {
-      if (!selectedBookingId || !filteredBookings.find(b => b.id === selectedBookingId)) {
-        setSelectedBookingId(filteredBookings[0].id);
-      }
+      setSelectedBookingId(prev => {
+        if (!prev || !filteredBookings.find(b => b.id === prev)) {
+          return filteredBookings[0].id;
+        }
+        return prev;
+      });
     } else {
       setSelectedBookingId(null);
     }
-  }, [filteredBookings, selectedBookingId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredBookings]);
 
   // Auto-selection of first waitlist entry
   useEffect(() => {
     if (filteredWaitlist.length > 0) {
-      if (!selectedWaitlistId || !filteredWaitlist.find(w => w.id === selectedWaitlistId)) {
-        setSelectedWaitlistId(filteredWaitlist[0].id);
-      }
+      setSelectedWaitlistId(prev => {
+        if (!prev || !filteredWaitlist.find(w => w.id === prev)) {
+          return filteredWaitlist[0].id;
+        }
+        return prev;
+      });
     } else {
       setSelectedWaitlistId(null);
     }
-  }, [filteredWaitlist, selectedWaitlistId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredWaitlist]);
 
   const selectedBooking = filteredBookings.find(b => b.id === selectedBookingId);
   const selectedWaitlist = filteredWaitlist.find(w => w.id === selectedWaitlistId);
@@ -867,7 +875,7 @@ export default function MyBookingsPage() {
             {isBookings ? (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
                 {[
-                  { key: 'ALL',       label: 'All Bookings' },
+                  { key: 'ALL', label: 'All Bookings' },
                   { key: 'CONFIRMED', label: 'Confirmed' },
                   { key: 'CANCELLED', label: 'Cancelled' },
                 ].map(({ key, label }) => (
@@ -900,11 +908,11 @@ export default function MyBookingsPage() {
             ) : (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
                 {[
-                  { key: 'ALL',       label: 'All Waitlist' },
-                  { key: 'PENDING',   label: 'Pending' },
+                  { key: 'ALL', label: 'All Waitlist' },
+                  { key: 'PENDING', label: 'Pending' },
                   { key: 'CONFIRMED', label: 'Confirmed' },
                   { key: 'CANCELLED', label: 'Cancelled' },
-                  { key: 'EXPIRED',   label: 'Expired' },
+                  { key: 'EXPIRED', label: 'Expired' },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
