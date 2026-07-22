@@ -1,15 +1,19 @@
 from rest_framework import serializers
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import WaitlistEntry, WaitlistStatus
-
+from .models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 
 from apps.bookings.serializers import FlightSummarySerializer
 
+class WaitlistPassengerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WaitlistPassenger
+        fields = ['id', 'name', 'age', 'gender', 'phone_number']
 
 class WaitlistEntrySerializer(serializers.ModelSerializer):
     queue_position = serializers.SerializerMethodField()
     username = serializers.CharField(source="user.username", read_only=True)
     flight_detail = FlightSummarySerializer(source="flight", read_only=True)
+    passengers = WaitlistPassengerSerializer(many=True, read_only=True)
 
     class Meta:
         model = WaitlistEntry
@@ -24,6 +28,7 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
             "status",
             "booking",
             "queue_position",
+            "passengers",
             "created_at",
             "updated_at",
         ]

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -214,12 +214,18 @@ function Sidebar({
       alignSelf: 'flex-start',
       zIndex: 10,
     }}>
-      <div className="glass-card sidebar-scroll" style={{
+      <div className="glass-card" style={{
         borderRadius: 20,
-        padding: 28,
         maxHeight: 'calc(100vh - 120px)',
-        overflowY: 'auto',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
+        <div className="sidebar-scroll" style={{
+          padding: 28,
+          overflowY: 'auto',
+          flex: 1,
+        }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h2 style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
@@ -419,8 +425,9 @@ function Sidebar({
           </div>
         </div>
       </div>
-    </aside>
-  );
+    </div>
+  </aside>
+);
 }
 
 /* ── Main Component ───────────────────────────────────────── */
@@ -641,17 +648,21 @@ export default function UserFlightsList() {
           background: #ffe333 !important;
         }
         .sidebar-scroll::-webkit-scrollbar {
-          width: 4px;
+          width: 6px;
         }
         .sidebar-scroll::-webkit-scrollbar-track {
           background: transparent;
         }
         .sidebar-scroll::-webkit-scrollbar-thumb {
-          background: rgba(0,0,0,0.08);
+          background: rgba(0,0,0,0.15);
           border-radius: 10px;
         }
         .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(0,0,0,0.15);
+          background: rgba(0,0,0,0.25);
+        }
+        .sidebar-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(0,0,0,0.15) transparent;
         }
         @media (max-width: 900px) {
           .flights-layout { flex-direction: column !important; }

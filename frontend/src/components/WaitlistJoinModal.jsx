@@ -8,7 +8,14 @@ import { INR } from '@/utils/formatters';
 export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 1 }) {
   const dispatch = useDispatch();
   const { joinLoading, joinError, lastJoined } = useSelector((s) => s.waitlist);
-  const [seatCount, setSeatCount] = useState(initialSeatCount);
+  const [passengers, setPassengers] = useState(
+    Array.from({ length: Math.max(1, initialSeatCount) }, () => ({
+      name: '',
+      age: '',
+      gender: 'M',
+      phone_number: '',
+    }))
+  );
 
   // Clear stale state on load/unload
   useEffect(() => {
@@ -27,16 +34,41 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
     }
   }, [lastJoined, dispatch, onClose]);
 
+  const [formError, setFormError] = useState(null);
   const handleConfirm = (e) => {
     e.preventDefault();
-    dispatch(joinWaitlist({ flightId: flight.id, seatCount }));
+    setFormError(null);
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+      if (!p.name || !p.age || !p.gender) {
+        setFormError(`Please fill all required fields for Passenger ${i + 1}`);
+        return;
+      }
+    }
+    dispatch(joinWaitlist({ flightId: flight.id, passengers }));
+  };
+
+  const handlePassengerChange = (index, field, value) => {
+    const newPassengers = [...passengers];
+    newPassengers[index] = { ...newPassengers[index], [field]: value };
+    setPassengers(newPassengers);
+  };
+
+  const addPassenger = () => {
+    setPassengers([...passengers, { name: '', age: '', gender: 'M', phone_number: '' }]);
+  };
+
+  const removePassenger = (index) => {
+    if (passengers.length > 1) {
+      setPassengers(passengers.filter((_, i) => i !== index));
+    }
   };
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  const totalPrice = flight.base_fare * seatCount;
+  const totalPrice = flight.base_fare * passengers.length;
 
   return (
     <>
@@ -70,11 +102,14 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
           aria-modal="true"
           aria-labelledby="waitlist-modal-title"
           style={{
-            width: '100%', maxWidth: 520,
+            width: '100%', maxWidth: 600,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            boxSizing: 'border-box',
             borderRadius: 24, padding: '32px 36px',
             position: 'relative',
             boxShadow: '0 32px 80px rgba(0,0,0,0.18)',
-            overflow: 'hidden',
           }}
         >
           {/* Glow blob */}
@@ -127,66 +162,106 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
             </p>
           </div>
 
-          {/* Selection of seat count */}
+          {/* Passenger details */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#1a1c1d' }}>Passenger Details</h3>
+              <button type="button" onClick={addPassenger} style={{
+                background: 'transparent', border: '1px dashed rgba(112,93,0,0.4)', borderRadius: 8,
+                padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#705d00', cursor: 'pointer'
+              }}>
+                + Add Passenger
+              </button>
+            </div>
+            
+            {formError && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+                padding: '10px 14px', marginBottom: 12,
+                color: '#b91c1c', fontSize: 13,
+              }}>
+                <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {passengers.map((p, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.06)',
+                  borderRadius: 12, padding: '16px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#5e5e5e' }}>Passenger {i + 1}</span>
+                    {passengers.length > 1 && (
+                      <button type="button" onClick={() => removePassenger(i)} style={{
+                        background: 'none', border: 'none', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 600
+                      }}>Remove</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <input
+                      type="text" placeholder="Full Name" required
+                      value={p.name} onChange={(e) => handlePassengerChange(i, 'name', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                    <input
+                      type="number" placeholder="Age" required min="1" max="120"
+                      value={p.age} onChange={(e) => handlePassengerChange(i, 'age', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.04)', padding: 4, borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                      {[
+                        { id: 'M', label: 'Male' },
+                        { id: 'F', label: 'Female' },
+                        { id: 'O', label: 'Other' }
+                      ].map(g => (
+                        <button
+                          key={g.id} type="button"
+                          onClick={() => handlePassengerChange(i, 'gender', g.id)}
+                          style={{
+                            flex: 1, padding: '6px 0', border: 'none', borderRadius: 6, fontSize: 12,
+                            fontWeight: p.gender === g.id ? 700 : 500,
+                            background: p.gender === g.id ? '#fff' : 'transparent',
+                            color: p.gender === g.id ? '#705d00' : '#6b7280',
+                            boxShadow: p.gender === g.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="tel" placeholder="Phone (Optional)"
+                      value={p.phone_number} onChange={(e) => handlePassengerChange(i, 'phone_number', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div style={{
             background: 'rgba(255,255,255,0.55)',
             border: '1px solid rgba(255,255,255,0.7)',
-            borderRadius: 16, padding: '20px 22px',
+            borderRadius: 16,
+            padding: '16px',
             marginBottom: 20,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            fontSize: 11,
+            color: '#6b7280'
           }}>
-            <label
-              htmlFor="seat-count-select"
-              style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 700,
-                color: '#9e9488',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: 8
-              }}
-            >
-              Number of Seats to Reserve
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <select
-                id="seat-count-select"
-                value={seatCount}
-                onChange={(e) => setSeatCount(Number(e.target.value))}
-                style={{
-                  flex: 1,
-                  padding: '10px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(0,0,0,0.12)',
-                  background: 'rgba(255,255,255,0.8)',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  outline: 'none',
-                  color: '#1a1c1d'
-                }}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? 'Seat' : 'Seats'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: '1px solid rgba(0,0,0,0.06)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 8,
-              fontSize: 11,
-              color: '#6b7280'
-            }}>
-              <ShieldAlert size={14} style={{ color: '#b45309', flexShrink: 0, marginTop: 1 }} />
-              <div>
-                Auto-allocation is FIFO. If a booking is cancelled, seats will be allocated to the first waitlist entry that fits within the released capacity.
-              </div>
+            <ShieldAlert size={14} style={{ color: '#b45309', flexShrink: 0, marginTop: 1 }} />
+            <div>
+              Auto-allocation is FIFO. If a booking is cancelled, seats will be allocated to the first waitlist entry that fits within the released capacity.
             </div>
           </div>
 
@@ -205,7 +280,7 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#b45309', fontSize: 12, fontWeight: 700 }}>
-                <Users size={13} /> {seatCount} {seatCount === 1 ? 'seat' : 'seats'} requested
+                <Users size={13} /> {passengers.length} {passengers.length === 1 ? 'seat' : 'seats'} requested
               </div>
               <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>
                 Refundable processing

@@ -1,22 +1,16 @@
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Booking, BookingStatus
+from .models import Booking, BookingStatus, Passenger
 from apps.flights.models import Flight, FlightStatus
 from apps.waitlist.services import process_waitlist_allocations
 
-
-def create_booking(flight_id, user):
+def create_booking(flight_id, user, passengers_data):
     """
-    Creates a confirmed booking for the given user and flight.
-
-    All business-logic validation happens BEFORE the atomic block so that
-    ValidationError never escapes @transaction.atomic — which would poison
-    the DB connection and cause a 500 error in Django/SQLite environments.
-
-    The select_for_update() lock is retained for PostgreSQL concurrency safety
-    in production; on SQLite it is silently treated as a plain SELECT.
+    Creates a confirmed booking for the given user and flight, along with passenger details.
     """
+    seat_count = len(passengers_data)
+    
     # ── Pre-validate outside any transaction ───────────────────────────────
     try:
         flight = Flight.objects.get(id=flight_id)
@@ -29,37 +23,68 @@ def create_booking(flight_id, user):
     if flight.departure_time < timezone.now():
         raise ValidationError("Cannot book a flight that has already departed.")
 
-    if flight.available_seats <= 0:
-        raise ValidationError("No available seats on this flight.")
+    if flight.available_seats < seat_count:
+        raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
 
     if Booking.objects.filter(
         user=user, flight=flight, status=BookingStatus.CONFIRMED
     ).exists():
         raise ValidationError("You already have a confirmed booking for this flight.")
 
+    # Validate passenger data
+    for p in passengers_data:
+        name = p.get('name', '')
+        if isinstance(name, str):
+            name = name.strip()
+        age = p.get('age')
+        gender = p.get('gender')
+
+        if not name or not age or not gender:
+            raise ValidationError("Name, age, and gender are required for all passengers.")
+            
+        if len(name) < 2:
+            raise ValidationError("Passenger name must be at least 2 characters.")
+            
+        try:
+            age_int = int(age)
+            if age_int < 1 or age_int > 120:
+                raise ValidationError("Passenger age must be between 1 and 120.")
+        except (ValueError, TypeError):
+            raise ValidationError("Passenger age must be a valid number.")
+            
+        if gender not in ['M', 'F', 'O']:
+            raise ValidationError("Gender must be 'M', 'F', or 'O'.")
+
     # ── Atomic write: re-check with lock, then create ───────────────────────
     with transaction.atomic():
-        # Re-fetch with row-level lock (PostgreSQL) to guard concurrent writes.
-        # On SQLite this is a no-op select — the pre-check above is sufficient.
         try:
             flight = Flight.objects.select_for_update(nowait=False).get(id=flight_id)
         except (Flight.DoesNotExist, DatabaseError):
             flight = Flight.objects.get(id=flight_id)
 
         # Final guard inside the lock
-        if flight.available_seats <= 0:
-            raise ValidationError("No available seats on this flight.")
+        if flight.available_seats < seat_count:
+            raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
 
-        flight.available_seats -= 1
+        flight.available_seats -= seat_count
         flight.save()
 
         booking = Booking.objects.create(
             user=user,
             flight=flight,
             status=BookingStatus.CONFIRMED,
-            seat_count=1,
-            total_price=flight.base_fare,
+            seat_count=seat_count,
+            total_price=flight.base_fare * seat_count,
         )
+
+        for p_data in passengers_data:
+            Passenger.objects.create(
+                booking=booking,
+                name=p_data['name'],
+                age=p_data['age'],
+                gender=p_data['gender'],
+                phone_number=p_data.get('phone_number', '')
+            )
 
         try:
             from apps.notifications.services import NotificationService

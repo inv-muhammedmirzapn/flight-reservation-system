@@ -66,8 +66,11 @@ function InfoTile({ icon, label, value, sub }) {
 
 const DEFAULT_WAITLIST = { counts: {} };
 
+import { useTranslation } from 'react-i18next';
+
 /* ── Main Component ───────────────────────────────────────── */
 export default function UserFlightDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -158,11 +161,11 @@ export default function UserFlightDetail() {
 
   let unavailableReason = '';
   if (isUnbookableStatus) {
-    unavailableReason = `Flight ${flight.status.toLowerCase()}`;
+    unavailableReason = t(`flights.status_${flight.status.toLowerCase()}`, `Flight ${flight.status.toLowerCase()}`);
   } else if (isPastDeparture) {
-    unavailableReason = 'Past departure time';
+    unavailableReason = t('flights.pastDeparture', 'Past departure time');
   } else if (isSoldOut) {
-    unavailableReason = 'Sold out';
+    unavailableReason = t('flights.soldOut', 'Sold out');
   }
 
   return (
@@ -176,6 +179,7 @@ export default function UserFlightDetail() {
       {showModal && flight && (
         <BookingConfirmModal
           flight={flight}
+          totalPassengers={totalPassengers}
           onClose={() => setShowModal(false)}
         />
       )}
@@ -202,7 +206,7 @@ export default function UserFlightDetail() {
             fontSize: 14, marginBottom: 28, transition: 'color 0.2s',
           }}
         >
-          <ArrowLeft size={16} /> Back to Listings
+          <ArrowLeft size={16} /> {t('flights.backToListings', 'Back to Listings')}
         </a>
 
         {/* Main glass card */}
@@ -263,7 +267,7 @@ export default function UserFlightDetail() {
             {/* Departure */}
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#5e5e5e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-                Departure
+                {t('flights.departure', 'Departure')}
               </div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 52, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>
                 {fmtTime(flight.departure_time)}
@@ -295,13 +299,13 @@ export default function UserFlightDetail() {
                 </div>
                 <div style={{ flex: 1, height: 2, background: '#d0c6ab' }} />
               </div>
-              <div style={{ fontSize: 12, color: '#705d00', fontWeight: 600 }}>Non-stop</div>
+              <div style={{ fontSize: 12, color: '#705d00', fontWeight: 600 }}>{t('flights.nonStop', 'Non-stop')}</div>
             </div>
 
             {/* Arrival */}
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#5e5e5e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-                Arrival
+                {t('flights.arrival', 'Arrival')}
               </div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 52, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>
                 {fmtTime(flight.arrival_time)}
@@ -322,30 +326,30 @@ export default function UserFlightDetail() {
           }}>
             <InfoTile
               icon={<span style={{ fontSize: 20 }}>₹</span>}
-              label="Base Fare"
+              label={t('flights.baseFare', 'Base Fare')}
               value={INR(flight.base_fare)}
-              sub="Per person · Economy"
+              sub={t('flights.perPersonEconomy', 'Per person · Economy')}
             />
             <InfoTile
               icon={<Users size={20} color="#705d00" />}
-              label="Available Seats"
+              label={t('flights.availableSeats', 'Available Seats')}
               value={`${flight.available_seats} / ${flight.total_seats}`}
-              sub="Economy class"
+              sub={t('flights.economyClass', 'Economy class')}
             />
             <InfoTile
               icon={<Clock size={20} color="#705d00" />}
-              label="Flight Duration"
+              label={t('flights.flightDuration', 'Flight Duration')}
               value={duration}
-              sub="Estimated"
+              sub={t('flights.estimated', 'Estimated')}
             />
           </div>
 
           {/* ── Perks / Badges ── */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {[
-              { icon: <ShieldCheck size={14} />, label: 'Refundable Ticket' },
-              { icon: <Tag size={14} />, label: 'Best Price Guarantee' },
-              { icon: <Plane size={14} style={{ transform: 'rotate(-45deg)' }} />, label: 'Direct Flight' },
+              { icon: <ShieldCheck size={14} />, label: t('flights.refundableTicket', 'Refundable Ticket') },
+              { icon: <Tag size={14} />, label: t('flights.bestPriceGuarantee', 'Best Price Guarantee') },
+              { icon: <Plane size={14} style={{ transform: 'rotate(-45deg)' }} />, label: t('flights.directFlight', 'Direct Flight') },
             ].map(({ icon, label }) => (
               <div key={label} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -368,7 +372,7 @@ export default function UserFlightDetail() {
           }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Total per person
+                {t('flights.totalPerPerson', 'Total per person')}
               </div>
               <div style={{
                 fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
@@ -391,7 +395,7 @@ export default function UserFlightDetail() {
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}
               >
-                Book Now <ArrowRight size={16} />
+                {t('flights.bookNow', 'Book Now')} <ArrowRight size={16} />
               </button>
             ) : isSoldOut && !isPastDeparture && !isUnbookableStatus ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -403,7 +407,7 @@ export default function UserFlightDetail() {
                   fontSize: 13, fontWeight: 700, color: '#705d00',
                 }}>
                   <Users size={15} />
-                  <span>Waitlist Size: {counts[flight.id] !== undefined ? `${counts[flight.id]} passengers` : 'Checking...'}</span>
+                  <span>{t('flights.waitlistSize', 'Waitlist Size')}: {counts[flight.id] !== undefined ? `${counts[flight.id]} ${t('flights.passengers_lower', 'passengers')}` : t('flights.checking', 'Checking...')}</span>
                 </div>
 
                 <button
@@ -426,7 +430,7 @@ export default function UserFlightDetail() {
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}
                 >
-                  {isAuthenticated ? 'Join Waiting List' : 'Login to Join Waitlist'} <ArrowRight size={16} />
+                  {isAuthenticated ? t('flights.joinWaitingList', 'Join Waiting List') : t('flights.loginToJoinWaitlist', 'Login to Join Waitlist')} <ArrowRight size={16} />
                 </button>
               </div>
             ) : (
@@ -437,7 +441,7 @@ export default function UserFlightDetail() {
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <AlertCircle size={16} style={{ opacity: 0.7 }} />
-                <span>Not Available <span style={{ opacity: 0.6, fontWeight: 500, marginLeft: 4 }}>({unavailableReason})</span></span>
+                <span>{t('flights.notAvailable', 'Not Available')} <span style={{ opacity: 0.6, fontWeight: 500, marginLeft: 4 }}>({unavailableReason})</span></span>
               </div>
             )}
           </div>

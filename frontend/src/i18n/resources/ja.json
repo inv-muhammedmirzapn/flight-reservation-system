@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "エアログラス"
+    "name": "パッセンジャー"
   },
   "navbar": {
     "flights": "フライト",
@@ -134,7 +134,7 @@
     "termsOfService": "利用規約",
     "cookieSettings": "クッキー設定",
     "contact": "コンタクト",
-    "copyright": "© {{year}} AeroGlass Luxury Travel. 無断転載を禁じます。"
+    "copyright": "© {{year}} パッセンジャー. 無断転載を禁じます。"
   },
   "flights": {
     "filters": "フィルター",
@@ -174,7 +174,51 @@
     "childSummary": "子供",
     "childrenSummary": "子供",
     "infantSummary": "幼児",
-    "infantsSummary": "幼児"
+    "infantsSummary": "幼児",
+    "backToListings": "一覧に戻る",
+    "baseFare": "基本運賃",
+    "perPersonEconomy": "1名様あたり · エコノミー",
+    "availableSeats": "空席状況",
+    "economyClass": "エコノミークラス",
+    "flightDuration": "飛行時間",
+    "estimated": "目安",
+    "refundableTicket": "払い戻し可能チケット",
+    "bestPriceGuarantee": "最低価格保証",
+    "directFlight": "直行便",
+    "totalPerPerson": "1名様あたりの合計",
+    "bookNow": "今すぐ予約",
+    "waitlistSize": "キャンセル待ち人数",
+    "passengers_lower": "名",
+    "checking": "確認中...",
+    "joinWaitingList": "キャンセル待ちに参加",
+    "loginToJoinWaitlist": "ログインして参加",
+    "notAvailable": "予約不可",
+    "confirmBooking": "予約の確認",
+    "reviewFlightDetails": "確定する前にフライトの詳細を確認してください",
+    "flightLabel": "フライト",
+    "airlineLabel": "航空会社",
+    "aircraftLabel": "機材",
+    "passengerDetails": "搭乗者情報",
+    "addPassenger": "+ 搭乗者を追加",
+    "passenger": "搭乗者",
+    "fullName": "氏名",
+    "age": "年齢",
+    "male": "男性",
+    "female": "女性",
+    "other": "その他",
+    "phoneOptional": "電話番号 (任意)",
+    "totalFare": "合計運賃",
+    "seatsLeft": "席残り",
+    "bookingFailed": "予約に失敗しました。もう一度お試しください。",
+    "bookingProgress": "予約中...",
+    "fillRequiredFields": "搭乗者 {{index}} の必須項目をすべて入力してください",
+    "bookingConfirmed": "予約が確定しました！ ✈️",
+    "pastDeparture": "出発時刻を過ぎています",
+    "soldOut": "満席",
+    "status_cancelled": "フライトはキャンセルされました",
+    "status_departed": "フライトは出発しました",
+    "status_arrived": "フライトは到着しました",
+    "status_boarding": "搭乗中"
   },
   "admin": {
     "analytics": {

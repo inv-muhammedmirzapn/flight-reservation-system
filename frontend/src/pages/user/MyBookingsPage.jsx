@@ -110,6 +110,9 @@ function BookingListItem({ booking, isSelected, onClick }) {
           <span style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 16, fontWeight: 800, color: '#1a1c1d' }}>
             {flight.flight_number}
           </span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>
+            • {booking.seat_count} Ticket{booking.seat_count > 1 ? 's' : ''}
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {flight.status !== 'SCHEDULED' && <FlightStatusBadge status={flight.status} />}
@@ -169,6 +172,9 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
           </div>
           <span style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 16, fontWeight: 800, color: '#1a1c1d' }}>
             {flight.flight_number}
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>
+            • {entry.seat_count} Ticket{entry.seat_count > 1 ? 's' : ''}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -330,10 +336,14 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Fare Paid</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#1a1c1d' }}>{INR(booking.total_price || flight.base_fare)}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Total Fare</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{INR(booking.total_price || flight.base_fare * booking.seat_count)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Tickets</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{booking.seat_count}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Booked On</div>
@@ -804,33 +814,57 @@ export default function MyBookingsPage() {
         .booking-list-item { animation: fade-up 0.3s ease both; }
         
         /* Master-Detail Layout */
-        @media (min-width: 900px) {
+        @media (min-width: 860px) {
           .bookings-layout {
             display: grid;
-            grid-template-columns: 1fr 480px;
+            grid-template-columns: 1fr 440px;
             gap: 32px;
             align-items: start;
           }
           .booking-detail-wrapper {
             position: sticky;
-            top: 100px;
+            top: 90px;
           }
         }
-        @media (max-width: 899px) {
+        @media (min-width: 1100px) {
+          .bookings-layout {
+            grid-template-columns: 1fr 480px;
+            gap: 40px;
+          }
+        }
+        @media (min-width: 1400px) {
+          .bookings-layout {
+            grid-template-columns: 1fr 540px;
+            gap: 48px;
+          }
+        }
+        @media (max-width: 859px) {
           .bookings-layout {
             display: flex;
             flex-direction: column-reverse;
             gap: 24px;
           }
         }
+        /* Laptop-specific tightening */
+        @media (min-width: 860px) and (max-width: 1280px) {
+          .bookings-page-wrapper {
+            padding-top: 72px !important;
+          }
+          .bookings-page-header {
+            margin-bottom: 16px !important;
+          }
+          .bookings-tab-bar {
+            margin-bottom: 16px !important;
+          }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '88px 24px 64px' }}>
+      <div className="bookings-page-wrapper" style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: 'clamp(72px, 8vw, 88px) 0 64px' }}>
         {/* Page Header */}
-        <div style={{ marginBottom: 24 }}>
+        <div className="bookings-page-header" style={{ marginBottom: 24 }}>
           <h1 style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-            fontSize: 30, fontWeight: 800, color: '#1a1c1d',
+            fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 800, color: '#1a1c1d',
             letterSpacing: '-0.02em', margin: '0 0 6px',
           }}>
             My Bookings & Waitlist
@@ -841,7 +875,7 @@ export default function MyBookingsPage() {
         </div>
 
         {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: 24 }}>
+        <div className="bookings-tab-bar" style={{ display: 'flex', gap: 16, borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: 24 }}>
           <button
             id="tab-bookings"
             onClick={() => setActiveTab('BOOKINGS')}

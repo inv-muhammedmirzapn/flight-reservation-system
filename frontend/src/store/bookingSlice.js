@@ -5,9 +5,9 @@ import { bookingAPI } from '@/services/booking-service/bookingService';
 
 export const createBooking = createAsyncThunk(
   'bookings/create',
-  async (flightId, { rejectWithValue }) => {
+  async ({ flightId, passengers }, { rejectWithValue }) => {
     try {
-      return await bookingAPI.create(flightId);
+      return await bookingAPI.create(flightId, passengers);
     } catch (error) {
       let message = 'Booking failed';
       try {

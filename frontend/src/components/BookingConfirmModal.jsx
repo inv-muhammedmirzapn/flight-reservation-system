@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createBooking, clearCreateState } from '@/store/bookingSlice';
@@ -7,12 +7,24 @@ import toast from 'react-hot-toast';
 
 import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
+import { useTranslation } from 'react-i18next';
+
 /* ─────────────────────────────────────────────────── */
 
-export default function BookingConfirmModal({ flight, onClose }) {
+export default function BookingConfirmModal({ flight, totalPassengers = 1, onClose }) {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { createLoading, createError, lastCreated } = useSelector((s) => s.bookings);
+
+  const [passengers, setPassengers] = useState(
+    Array.from({ length: Math.max(1, totalPassengers) }, () => ({
+      name: '',
+      age: '',
+      gender: 'M',
+      phone_number: '',
+    }))
+  );
 
   // Clear any stale booking state when the modal opens or closes
   useEffect(() => {
@@ -23,17 +35,43 @@ export default function BookingConfirmModal({ flight, onClose }) {
   // Navigate to confirmation page on success
   useEffect(() => {
     if (lastCreated) {
-      toast.success('Booking confirmed! ✈️');
+      toast.success(t('flights.bookingConfirmed', 'Booking confirmed! ✈️'));
       dispatch(clearCreateState());
       navigate(`/bookings/${lastCreated.id}/confirmation`, {
         state: { booking: lastCreated, flight },
       });
     }
-  }, [lastCreated, dispatch, navigate, flight]);
+  }, [lastCreated, dispatch, navigate, flight, t]);
 
+  const [formError, setFormError] = useState(null);
   const handleConfirm = (e) => {
     e.preventDefault();
-    dispatch(createBooking(flight.id));
+    setFormError(null);
+    // Validate passengers
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+      if (!p.name || !p.age || !p.gender) {
+        setFormError(t('flights.fillRequiredFields', 'Please fill all required fields for Passenger {{index}}', { index: i + 1 }));
+        return;
+      }
+    }
+    dispatch(createBooking({ flightId: flight.id, passengers }));
+  };
+
+  const handlePassengerChange = (index, field, value) => {
+    const newPassengers = [...passengers];
+    newPassengers[index] = { ...newPassengers[index], [field]: value };
+    setPassengers(newPassengers);
+  };
+
+  const addPassenger = () => {
+    setPassengers([...passengers, { name: '', age: '', gender: 'M', phone_number: '' }]);
+  };
+
+  const removePassenger = (index) => {
+    if (passengers.length > 1) {
+      setPassengers(passengers.filter((_, i) => i !== index));
+    }
   };
 
   const handleBackdropClick = (e) => {
@@ -74,11 +112,14 @@ export default function BookingConfirmModal({ flight, onClose }) {
           aria-modal="true"
           aria-labelledby="booking-modal-title"
           style={{
-            width: '100%', maxWidth: 520,
+            width: '100%', maxWidth: 600,
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            boxSizing: 'border-box',
             borderRadius: 24, padding: '32px 36px',
             position: 'relative',
             boxShadow: '0 32px 80px rgba(0,0,0,0.18)',
-            overflow: 'hidden',
           }}
         >
           {/* Glow blob */}
@@ -123,11 +164,11 @@ export default function BookingConfirmModal({ flight, onClose }) {
                   letterSpacing: '-0.02em', margin: 0,
                 }}
               >
-                Confirm Booking
+                {t('flights.confirmBooking', 'Confirm Booking')}
               </h2>
             </div>
             <p style={{ fontSize: 13, color: '#5e5e5e', margin: 0 }}>
-              Review your flight details before confirming
+              {t('flights.reviewFlightDetails', 'Review your flight details before confirming')}
             </p>
           </div>
 
@@ -164,7 +205,7 @@ export default function BookingConfirmModal({ flight, onClose }) {
                   <Plane size={13} color="#705d00" />
                   <div style={{ flex: 1, height: 1.5, background: '#d0c6ab' }} />
                 </div>
-                <div style={{ fontSize: 10, color: '#705d00', fontWeight: 700 }}>Non-stop</div>
+                <div style={{ fontSize: 10, color: '#705d00', fontWeight: 700 }}>{t('flights.nonStop', 'Non-stop')}</div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
@@ -186,13 +227,98 @@ export default function BookingConfirmModal({ flight, onClose }) {
               paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.06)',
             }}>
               {[
-                { label: 'Flight', value: flight.flight_number },
-                { label: 'Airline', value: flight.airline },
-                { label: 'Aircraft', value: flight.aircraft },
+                { label: t('flights.flightLabel', 'FLIGHT'), value: flight.flight_number },
+                { label: t('flights.airlineLabel', 'AIRLINE'), value: flight.airline },
+                { label: t('flights.aircraftLabel', 'AIRCRAFT'), value: flight.aircraft },
               ].map(({ label, value }) => (
                 <div key={label} style={{ flex: '1 1 120px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#9e9488', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d' }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Passenger details */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#1a1c1d' }}>{t('flights.passengerDetails', 'Passenger Details')}</h3>
+              <button type="button" onClick={addPassenger} style={{
+                background: 'transparent', border: '1px dashed rgba(112,93,0,0.4)', borderRadius: 8,
+                padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#705d00', cursor: 'pointer'
+              }}>
+                {t('flights.addPassenger', '+ Add Passenger')}
+              </button>
+            </div>
+            
+            {formError && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+                padding: '10px 14px', marginBottom: 12,
+                color: '#b91c1c', fontSize: 13,
+              }}>
+                <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {passengers.map((p, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.06)',
+                  borderRadius: 12, padding: '16px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#5e5e5e' }}>{t('flights.passenger', 'Passenger')} {i + 1}</span>
+                    {passengers.length > 1 && (
+                      <button type="button" onClick={() => removePassenger(i)} style={{
+                        background: 'none', border: 'none', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 600
+                      }}>{t('common.remove', 'Remove')}</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <input
+                      type="text" placeholder={t('flights.fullName', 'Full Name')} required
+                      value={p.name} onChange={(e) => handlePassengerChange(i, 'name', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                    <input
+                      type="number" placeholder={t('flights.age', 'Age')} required min="1" max="120"
+                      value={p.age} onChange={(e) => handlePassengerChange(i, 'age', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.04)', padding: 4, borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                      {[
+                        { id: 'M', label: t('flights.male', 'Male') },
+                        { id: 'F', label: t('flights.female', 'Female') },
+                        { id: 'O', label: t('flights.other', 'Other') }
+                      ].map(g => (
+                        <button
+                          key={g.id} type="button"
+                          onClick={() => handlePassengerChange(i, 'gender', g.id)}
+                          style={{
+                            flex: 1, padding: '6px 0', border: 'none', borderRadius: 6, fontSize: 12,
+                            fontWeight: p.gender === g.id ? 700 : 500,
+                            background: p.gender === g.id ? '#fff' : 'transparent',
+                            color: p.gender === g.id ? '#705d00' : '#6b7280',
+                            boxShadow: p.gender === g.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="tel" placeholder={t('flights.phoneOptional', 'Phone (Optional)')}
+                      value={p.phone_number} onChange={(e) => handlePassengerChange(i, 'phone_number', e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -206,16 +332,16 @@ export default function BookingConfirmModal({ flight, onClose }) {
             border: '1px solid rgba(255,215,0,0.2)',
           }}>
             <div>
-              <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Fare</div>
+              <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('flights.totalFare', 'Total Fare')}</div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em' }}>
-                {INR(flight.base_fare)}
+                {INR(flight.base_fare * passengers.length)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#065f46', fontSize: 12, fontWeight: 700 }}>
-                <Users size={13} />{flight.available_seats} seats left
+                <Users size={13} />{flight.available_seats} {t('flights.seatsLeft', 'seats left')}
               </div>
-              <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>Economy class</div>
+              <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>{passengers.length} x {INR(flight.base_fare)}</div>
             </div>
           </div>
 
@@ -229,7 +355,7 @@ export default function BookingConfirmModal({ flight, onClose }) {
             }}>
               <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
               <span>
-                {typeof createError === 'string' ? createError : 'Booking failed. Please try again.'}
+                {typeof createError === 'string' ? createError : t('flights.bookingFailed', 'Booking failed. Please try again.')}
               </span>
             </div>
           )}
@@ -248,7 +374,7 @@ export default function BookingConfirmModal({ flight, onClose }) {
                 transition: 'all 0.2s',
               }}
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </button>
             <button
               id="booking-modal-confirm-btn"
@@ -267,11 +393,11 @@ export default function BookingConfirmModal({ flight, onClose }) {
               {createLoading ? (
                 <>
                   <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                  Booking...
+                  {t('flights.bookingProgress', 'Booking...')}
                 </>
               ) : (
                 <>
-                  Confirm Booking <ArrowRight size={16} />
+                  {t('flights.confirmBooking', 'Confirm Booking')} <ArrowRight size={16} />
                 </>
               )}
             </button>

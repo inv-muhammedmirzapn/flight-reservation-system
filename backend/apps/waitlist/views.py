@@ -12,6 +12,8 @@ from apps.flights.models import Flight
 from .models import WaitlistEntry, WaitlistStatus
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
 from .serializers import WaitlistEntrySerializer
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as rf_serializers
 
 
 class WaitlistJoinView(APIView):
@@ -23,21 +25,40 @@ class WaitlistJoinView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name='WaitlistJoinRequest',
+            fields={
+                'flight': rf_serializers.IntegerField(),
+                'passengers': rf_serializers.ListField(
+                    child=inline_serializer(
+                        name='WaitlistPassengerRequest',
+                        fields={
+                            'name': rf_serializers.CharField(),
+                            'age': rf_serializers.IntegerField(),
+                            'gender': rf_serializers.ChoiceField(choices=['M', 'F', 'O']),
+                            'phone_number': rf_serializers.CharField(required=False, allow_blank=True)
+                        }
+                    )
+                )
+            }
+        ),
+        responses={201: WaitlistEntrySerializer}
+    )
     def post(self, request, *args, **kwargs):
         flight_id = request.data.get("flight")
-        try:
-            seat_count = int(request.data.get("seat_count", 1))
-        except (ValueError, TypeError):
-            return Response(
-                {"error": "seat_count must be an integer."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        passengers_data = request.data.get("passengers", [])
 
         if not flight_id:
             return Response(
                 {"error": "flight is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+            
+        if not passengers_data or not isinstance(passengers_data, list) or len(passengers_data) == 0:
+            return Response({'error': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        seat_count = len(passengers_data)
 
         try:
             flight = Flight.objects.get(id=flight_id)
@@ -62,12 +83,35 @@ class WaitlistJoinView(APIView):
             )
 
         # Enforce that flight must be full
-        if flight.available_seats > 0:
+        if flight.available_seats >= seat_count:
             return Response(
-                {"error": "Waitlist tickets cannot be booked on the flight as there are still empty seats"},
+                {"error": "Waitlist tickets cannot be booked on the flight as there are enough available seats"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+            
+        # Validate passenger data
+        for p in passengers_data:
+            name = p.get('name', '')
+            if isinstance(name, str):
+                name = name.strip()
+            age = p.get('age')
+            gender = p.get('gender')
+    
+            if not name or not age or not gender:
+                return Response({'error': 'Name, age, and gender are required for all passengers.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            if len(name) < 2:
+                return Response({'error': 'Passenger name must be at least 2 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            try:
+                age_int = int(age)
+                if age_int < 1 or age_int > 120:
+                    return Response({'error': 'Passenger age must be between 1 and 120.'}, status=status.HTTP_400_BAD_REQUEST)
+            except (ValueError, TypeError):
+                return Response({'error': 'Passenger age must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            if gender not in ['M', 'F', 'O']:
+                return Response({'error': "Gender must be 'M', 'F', or 'O'."}, status=status.HTTP_400_BAD_REQUEST)
         # Check for duplicate pending waitlist entry
         if WaitlistEntry.objects.filter(
             user=request.user, flight=flight, status=WaitlistStatus.PENDING
@@ -88,6 +132,16 @@ class WaitlistJoinView(APIView):
             price=price,
             status=WaitlistStatus.PENDING,
         )
+        
+        from .models import WaitlistPassenger
+        for p_data in passengers_data:
+            WaitlistPassenger.objects.create(
+                waitlist_entry=entry,
+                name=p_data['name'],
+                age=p_data['age'],
+                gender=p_data['gender'],
+                phone_number=p_data.get('phone_number', '')
+            )
 
         serializer = WaitlistEntrySerializer(entry)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

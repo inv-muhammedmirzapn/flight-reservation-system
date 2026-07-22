@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-page-bg" />
+      <div className="auth-page-bg" style={{ backgroundImage: 'none', background: 'linear-gradient(135deg, #f0f4ff 0%, #e8edf8 50%, #f5f0ff 100%)' }} />
 
       <main className="auth-page-main">
         <div className="auth-split-card">
@@ -58,14 +58,11 @@ export default function ResetPasswordPage() {
           {/* ── Left: Brand panel ── */}
           <div className="auth-split-brand">
             <div>
-              <div className="auth-brand-logo-wrap">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#1a1c1d" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </div>
-              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })}</div>
-              <p className="auth-brand-tagline">
-                Create a new password <br /> & secure your account.
+              {/* Logo */}
+              <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "44px", objectFit: "contain", marginBottom: '1.25rem' }} />
+              <p className="auth-brand-tagline" style={{ fontSize: '1.05rem', lineHeight: 1.6, fontWeight: 500 }}>
+                Create a new password<br />
+                <span style={{ opacity: 0.65, fontSize: '0.9rem', fontWeight: 400 }}>&amp; secure your account.</span>
               </p>
             </div>
             <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>

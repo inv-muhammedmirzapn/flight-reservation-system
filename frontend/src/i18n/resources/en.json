@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "AeroGlass"
+    "name": "Passenger"
   },
   "navbar": {
     "flights": "Flights",
@@ -134,7 +134,7 @@
     "termsOfService": "Terms of Service",
     "cookieSettings": "Cookie Settings",
     "contact": "Contact",
-    "copyright": "© {{year}} AeroGlass Luxury Travel. All rights reserved."
+    "copyright": "© {{year}} Passenger. All rights reserved."
   },
   "flights": {
     "filters": "Filters",
@@ -174,7 +174,51 @@
     "childSummary": "Child",
     "childrenSummary": "Children",
     "infantSummary": "Infant",
-    "infantsSummary": "Infants"
+    "infantsSummary": "Infants",
+    "backToListings": "Back to Listings",
+    "baseFare": "Base Fare",
+    "perPersonEconomy": "Per person · Economy",
+    "availableSeats": "Available Seats",
+    "economyClass": "Economy class",
+    "flightDuration": "Flight Duration",
+    "estimated": "Estimated",
+    "refundableTicket": "Refundable Ticket",
+    "bestPriceGuarantee": "Best Price Guarantee",
+    "directFlight": "Direct Flight",
+    "totalPerPerson": "Total per person",
+    "bookNow": "Book Now",
+    "waitlistSize": "Waitlist Size",
+    "passengers_lower": "passengers",
+    "checking": "Checking...",
+    "joinWaitingList": "Join Waiting List",
+    "loginToJoinWaitlist": "Login to Join Waitlist",
+    "notAvailable": "Not Available",
+    "confirmBooking": "Confirm Booking",
+    "reviewFlightDetails": "Review your flight details before confirming",
+    "flightLabel": "FLIGHT",
+    "airlineLabel": "AIRLINE",
+    "aircraftLabel": "AIRCRAFT",
+    "passengerDetails": "Passenger Details",
+    "addPassenger": "+ Add Passenger",
+    "passenger": "Passenger",
+    "fullName": "Full Name",
+    "age": "Age",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other",
+    "phoneOptional": "Phone (Optional)",
+    "totalFare": "Total Fare",
+    "seatsLeft": "seats left",
+    "bookingFailed": "Booking failed. Please try again.",
+    "bookingProgress": "Booking...",
+    "fillRequiredFields": "Please fill all required fields for Passenger {{index}}",
+    "bookingConfirmed": "Booking confirmed! ✈️",
+    "pastDeparture": "Past departure time",
+    "soldOut": "Sold out",
+    "status_cancelled": "Flight cancelled",
+    "status_departed": "Flight departed",
+    "status_arrived": "Flight arrived",
+    "status_boarding": "Flight boarding"
   },
   "admin": {
     "analytics": {

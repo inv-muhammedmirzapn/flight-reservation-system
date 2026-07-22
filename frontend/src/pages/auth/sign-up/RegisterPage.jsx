@@ -27,13 +27,9 @@ export default function RegisterPage() {
           {/* ── Left: Brand panel ── */}
           <div className="auth-split-brand">
             <div>
-              <div className="auth-brand-logo-wrap">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#1a1c1d" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </div>
-              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })}</div>
-              <p className="auth-brand-tagline">
+              {/* Logo */}
+              <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "44px", objectFit: "contain", marginBottom: '1.25rem' }} />
+              <p className="auth-brand-tagline" style={{ fontSize: '1.05rem', lineHeight: 1.6, fontWeight: 500 }}>
                 {t("auth.joinMillions")}
               </p>
 

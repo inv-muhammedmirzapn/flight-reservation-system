@@ -35,6 +35,16 @@ def process_waitlist_allocations(flight):
                 status=BookingStatus.CONFIRMED,
             )
 
+            from apps.bookings.models import Passenger
+            for wp in entry.passengers.all():
+                Passenger.objects.create(
+                    booking=booking,
+                    name=wp.name,
+                    age=wp.age,
+                    gender=wp.gender,
+                    phone_number=wp.phone_number,
+                )
+
             # Confirm waitlist entry and link to new booking
             entry.status = WaitlistStatus.CONFIRMED
             entry.booking = booking

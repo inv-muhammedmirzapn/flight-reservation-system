@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { CheckCircle, Plane, Calendar, Clock, ArrowRight, List } from 'lucide-react';
+import { CheckCircle, Plane, Calendar, Clock, ArrowRight, List, Users } from 'lucide-react';
 
 import { INR, fmtTime, fmtDate } from '@/utils/formatters';
 
@@ -178,8 +178,9 @@ export default function BookingConfirmationPage() {
             {[
               { icon: <Plane size={14} color="#705d00" />,   label: 'Flight No.', value: flight.flight_number },
               { icon: <span style={{ fontSize: 14 }}>🛩️</span>, label: 'Airline',    value: flight.airline },
+              { icon: <Users size={14} color="#705d00" />,   label: 'Tickets',    value: `${booking.seat_count} Passenger${booking.seat_count > 1 ? 's' : ''}` },
               { icon: <Calendar size={14} color="#705d00" />, label: 'Booked On',  value: fmtBookingDate(booking.created_at) },
-              { icon: <span style={{ fontSize: 12 }}>₹</span>, label: 'Fare Paid',  value: INR(flight.base_fare) },
+              { icon: <span style={{ fontSize: 12 }}>₹</span>, label: 'Total Fare',  value: INR(booking.total_price || flight.base_fare * booking.seat_count) },
             ].map(({ icon, label, value }) => (
               <div key={label} style={{
                 background: 'rgba(255,255,255,0.5)', borderRadius: 12, padding: '12px 14px',

@@ -29,14 +29,10 @@ export default function LoginPage() {
           <div className="auth-split-brand">
             <div>
               {/* Logo */}
-              <div className="auth-brand-logo-wrap">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#1a1c1d" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </div>
-              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })}</div>
-              <p className="auth-brand-tagline">
-                {t("auth.travelSmarter")}<br />{t("auth.bookConfidence")}
+              <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "44px", objectFit: "contain", marginBottom: '1.25rem' }} />
+              <p className="auth-brand-tagline" style={{ fontSize: '1.05rem', lineHeight: 1.6, fontWeight: 500 }}>
+                {t("auth.travelSmarter")}<br />
+                <span style={{ opacity: 0.65, fontSize: '0.9rem', fontWeight: 400 }}>{t("auth.bookConfidence")}</span>
               </p>
 
               {/* Features */}
