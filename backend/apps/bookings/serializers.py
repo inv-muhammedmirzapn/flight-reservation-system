@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Booking
+from .models import Booking, Passenger
 from apps.flights.models import Flight
 
 
@@ -15,11 +15,17 @@ class FlightSummarySerializer(serializers.ModelSerializer):
         ]
 
 
+class PassengerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Passenger
+        fields = ['id', 'name', 'age', 'gender', 'phone_number']
+
 class BookingSerializer(serializers.ModelSerializer):
     """Full booking representation including nested flight summary."""
     flight_detail = FlightSummarySerializer(source='flight', read_only=True)
+    passengers = PassengerSerializer(many=True, read_only=True)
 
     class Meta:
         model = Booking
-        fields = ['id', 'flight', 'flight_detail', 'status', 'seat_count', 'total_price', 'created_at']
-        read_only_fields = ['id', 'status', 'seat_count', 'total_price', 'created_at', 'flight_detail']
+        fields = ['id', 'flight', 'flight_detail', 'status', 'seat_count', 'total_price', 'created_at', 'passengers']
+        read_only_fields = ['id', 'status', 'seat_count', 'total_price', 'created_at', 'flight_detail', 'passengers']

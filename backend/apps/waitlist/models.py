@@ -56,3 +56,18 @@ class WaitlistEntry(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.flight.flight_number} - {self.status}"
+
+class WaitlistPassenger(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other')
+    ]
+    waitlist_entry = models.ForeignKey(WaitlistEntry, on_delete=models.CASCADE, related_name='passengers')
+    name = models.CharField(max_length=255)
+    age = models.PositiveIntegerField()
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.waitlist_entry.flight.flight_number}"

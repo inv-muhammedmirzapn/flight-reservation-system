@@ -21,6 +21,8 @@ from rest_framework.views import APIView
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import os
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as rf_serializers
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -43,6 +45,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class GoogleLoginView(APIView):
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        request=inline_serializer(
+            name='GoogleLoginRequest',
+            fields={'token': rf_serializers.CharField()}
+        )
+    )
     def post(self, request, *args, **kwargs):
         token = request.data.get('token')
         if not token:
@@ -109,6 +117,7 @@ class GoogleLoginView(APIView):
 class ChangePasswordAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ChangePasswordSerializer, responses={200: inline_serializer('ChangePasswordResponse', {'detail': rf_serializers.CharField()})})
     def post(self, request, *args, **kwargs):
         serializer = ChangePasswordSerializer(data=request.data)
         if serializer.is_valid():
@@ -128,6 +137,7 @@ class ChangePasswordAPIView(APIView):
 class ForgotPasswordView(APIView):
     permission_classes = (AllowAny,)
 
+    @extend_schema(request=ForgotPasswordSerializer, responses={200: inline_serializer('ForgotPasswordResponse', {'detail': rf_serializers.CharField()})})
     def post(self, request, *args, **kwargs):
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
@@ -165,6 +175,7 @@ class ForgotPasswordView(APIView):
 class ResetPasswordView(APIView):
     permission_classes = (AllowAny,)
 
+    @extend_schema(request=ResetPasswordSerializer, responses={200: inline_serializer('ResetPasswordResponse', {'detail': rf_serializers.CharField()})})
     def post(self, request, *args, **kwargs):
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():

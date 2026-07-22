@@ -9,7 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as rf_serializers
 
 from .models import Flight
 from .serializers import FlightSerializer
@@ -32,6 +33,15 @@ class FlightStatsView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={200: inline_serializer('FlightStatsResponse', {
+        'total': rf_serializers.IntegerField(),
+        'scheduled': rf_serializers.IntegerField(),
+        'delayed': rf_serializers.IntegerField(),
+        'cancelled': rf_serializers.IntegerField(),
+        'boarding': rf_serializers.IntegerField(),
+        'departed': rf_serializers.IntegerField(),
+        'arrived': rf_serializers.IntegerField(),
+    })})
     def get(self, request, *args, **kwargs) -> Response:
         # Single efficient query: one row per status
         rows = (
@@ -348,6 +358,17 @@ class FlightBulkImportView(APIView):
     """
     permission_classes = [IsAdminOrSuperuser]
 
+    @extend_schema(
+        request=inline_serializer('FlightBulkImportRequest', {
+            'flights': rf_serializers.ListField(child=FlightSerializer(), required=False),
+            'file': rf_serializers.FileField(required=False)
+        }),
+        responses={200: inline_serializer('FlightBulkImportResponse', {
+            'created_count': rf_serializers.IntegerField(),
+            'created_flights': rf_serializers.ListField(child=FlightSerializer()),
+            'errors': rf_serializers.ListField(child=rf_serializers.DictField())
+        })}
+    )
     def post(self, request, *args, **kwargs) -> Response:
         # ── CSV path ────────────────────────────────────────────────
         csv_file = request.FILES.get('file')

@@ -31,3 +31,18 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.flight.flight_number} - {self.status}"
+
+class Passenger(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other')
+    ]
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='passengers')
+    name = models.CharField(max_length=255)
+    age = models.PositiveIntegerField()
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.booking.flight.flight_number}"

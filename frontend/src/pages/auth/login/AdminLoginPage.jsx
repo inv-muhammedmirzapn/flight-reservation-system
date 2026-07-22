@@ -19,13 +19,14 @@ export default function AdminLoginPage() {
           {/* ── Left: Brand panel ── */}
           <div className="auth-split-brand" style={{ background: '#1a1c1d', color: '#ffffff' }}>
             <div>
-              <div className="auth-brand-logo-wrap" style={{ background: 'rgba(255,215,0,0.2)', border: '1px solid rgba(255,215,0,0.4)' }}>
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#ffd700" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+              {/* Logo */}
+              <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "44px", objectFit: "contain", marginBottom: '1.25rem' }} />
+              {/* Workspace badge */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: '99px', padding: '3px 12px', marginBottom: '1rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ffd700', display: 'inline-block' }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', color: '#ffd700', textTransform: 'uppercase' }}>Admin Workspace</span>
               </div>
-              <div className="auth-brand-name">{t("brand.name", { defaultValue: "AeroGlass" })} Workspace</div>
-              <p className="auth-brand-tagline" style={{ color: '#d0c6ab' }}>
+              <p className="auth-brand-tagline" style={{ color: '#a0a0b0', fontSize: '0.95rem' }}>
                 Secure Admin Portal.<br />Authorized personnel only.
               </p>
 
