@@ -8,7 +8,8 @@ export default function RootLayout() {
     <>
       {/* Global toast notifications — AeroGlass themed */}
       <Toaster
-        position="bottom-center"
+        position="top-right"
+        containerStyle={{ top: '110px' }}
         gutter={10}
         toastOptions={{
           duration: 3500,

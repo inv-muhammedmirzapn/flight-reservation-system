@@ -71,7 +71,7 @@ export default function BookingConfirmationPage() {
         .sec-btn:hover    { background: rgba(0,0,0,0.05) !important; }
       `}</style>
 
-      <div style={{ maxWidth: 620, margin: '0 auto', padding: '88px 24px 64px' }}>
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '140px 24px 64px' }}>
 
         {/* Success hero */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>

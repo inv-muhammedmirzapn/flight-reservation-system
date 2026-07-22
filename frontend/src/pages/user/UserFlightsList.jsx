@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchFlights } from '@/store/flightSlice';
+import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
 import { Plane, Search, ArrowRight } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
@@ -568,12 +568,21 @@ export default function UserFlightsList() {
   };
 
   useEffect(() => {
+    let nextParams = null;
+    const todayStr = new Date().toISOString().split('T')[0];
+
     if (searchParams.toString() === '') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      setSearchParams(new URLSearchParams({
+      nextParams = new URLSearchParams({
         adults: '1',
         depDate: todayStr
-      }), { replace: true });
+      });
+    } else if (!searchParams.get('depDate')) {
+      nextParams = new URLSearchParams(searchParams);
+      nextParams.set('depDate', todayStr);
+    }
+
+    if (nextParams) {
+      setSearchParams(nextParams, { replace: true });
       return;
     }
 
@@ -593,7 +602,14 @@ export default function UserFlightsList() {
         passengers: adults + childrenCount + infants,
       }
     }));
-  }, [dispatch, pageParam, searchParams, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, adults, childrenCount, infants]);
+  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, adults, childrenCount, infants]);
+
+  // Clear flights on unmount to prevent showing old data briefly
+  useEffect(() => {
+    return () => {
+      dispatch(clearFlightsList());
+    };
+  }, [dispatch]);
 
   const handlePageChange = (page) => {
     setPage(page);
@@ -611,14 +627,6 @@ export default function UserFlightsList() {
   // Static bounds for server-side pagination slider
   const absMin = 0;
   const absMax = 100000;
-
-  useEffect(() => {
-    if (!searchParams.get('depDate')) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      setDepDate(todayStr);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
 
 
@@ -744,7 +752,7 @@ export default function UserFlightsList() {
                   {t("flights.fetching", { defaultValue: 'Fetching flight details...' })}
                 </div>
               </div>
-            ) : error ? (
+            ) : error ? (g
               <div className="glass-card" style={{ borderRadius: 16, padding: 24, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', textAlign: 'center' }}>
                 {error}
               </div>
