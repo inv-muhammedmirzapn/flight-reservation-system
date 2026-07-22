@@ -117,7 +117,7 @@ body {
   flex: 0 0 300px;
   background: linear-gradient(155deg, #1a1c1d 0%, #2a2d2e 100%);
   color: #fff;
-  padding: 2.5rem 2rem;
+  padding: 2rem 2rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -148,7 +148,7 @@ body {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.55);
   line-height: 1.5;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .auth-brand-features {
@@ -157,7 +157,7 @@ body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .auth-brand-feature {
@@ -215,7 +215,7 @@ body {
 /* ─── Right Form Panel ─── */
 .auth-split-form {
   flex: 1;
-  padding: 2.5rem 3rem;
+  padding: 2rem 2.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -311,7 +311,7 @@ body {
   position: relative;
   z-index: 10;
   min-height: 100vh;
-  padding: 5.5rem 1rem 1.5rem;
+  padding: 4.5rem 1rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,18 +334,18 @@ body {
 /* ─── Form Header ─────────────────────────────────────── */
 .form-header {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .form-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 12px;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
   background: #ffd700;
-  margin-bottom: 0.625rem;
+  margin-bottom: 0.5rem;
   box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
@@ -392,7 +392,7 @@ body {
 .form-fields {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.625rem;
 }
 
 .field-row {
@@ -556,7 +556,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0.75rem 0;
+  margin: 0.5rem 0;
 }
 
 .or-divider-line {
@@ -621,7 +621,7 @@ body {
   text-align: center;
   font-size: 0.8125rem;
   color: #5a5446;
-  margin-top: 0.875rem;
+  margin-top: 0.625rem;
 }
 
 .auth-toggle-btn {

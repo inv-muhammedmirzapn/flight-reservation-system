@@ -12,11 +12,58 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const fmtDate = (iso) =>
-  new Date(iso).toLocaleString('en-IN', {
+const fmtDate = (iso, lang) => {
+  const locale = lang === 'ja' ? 'ja-JP' : 'en-IN';
+  return new Date(iso).toLocaleString(locale, {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
+};
+
+const getLocalizedNotification = (notif, t) => {
+  let { title, message, notification_type: type } = notif;
+  try {
+    if (type === 'BOOKING_CONFIRMED') {
+      title = t('booking.notif.bookingConfirmedTitle', 'Booking Confirmation');
+      const match = message.match(/Dear (.*?),\s*Your booking for flight (.*?) from (.*?) to (.*?) is confirmed!\s*Safe travels!/);
+      if (match) message = t('booking.notif.bookingConfirmedMsg', 'Dear {{name}},\n\nYour booking for flight {{flight}} from {{source}} to {{dest}} is confirmed!\n\nSafe travels!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+    } else if (type === 'BOOKING_CANCELLED') {
+      title = t('booking.notif.bookingCancelledTitle', 'Booking Cancellation');
+      const match = message.match(/Dear (.*?),\s*Your booking for flight (.*?) from (.*?) to (.*?) has been successfully cancelled\.\s*We hope to see you again soon\./);
+      if (match) message = t('booking.notif.bookingCancelledMsg', 'Dear {{name}},\n\nYour booking for flight {{flight}} from {{source}} to {{dest}} has been successfully cancelled.\n\nWe hope to see you again soon.', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+    } else if (type === 'WAITLIST_ALLOCATED') {
+      title = t('booking.notif.waitlistTitle', 'Waitlist Confirmation: You are booked!');
+      const match = message.match(/Great news, (.*?)!\s*A seat became available on flight (.*?) from (.*?) to (.*?) and your waitlist entry was automatically upgraded to a confirmed booking\.\s*Enjoy your flight!/);
+      if (match) message = t('booking.notif.waitlistMsg', 'Great news, {{name}}!\n\nA seat became available on flight {{flight}} from {{source}} to {{dest}} and your waitlist entry was automatically upgraded to a confirmed booking.\n\nEnjoy your flight!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+    } else if (type === 'FLIGHT_DELAYED') {
+      const titleMatch = title.match(/Flight Delayed: (.*)/);
+      if (titleMatch) title = t('booking.notif.flightDelayedTitle', 'Flight Delayed: {{flight}}', { flight: titleMatch[1] });
+      const match = message.match(/Important update regarding your flight (.*?) from (.*?) to (.*?)\. The flight has been delayed and is now scheduled to depart at (.*?)\./);
+      if (match) message = t('booking.notif.flightDelayedMsg', 'Important update regarding your flight {{flight}} from {{source}} to {{dest}}. The flight has been delayed and is now scheduled to depart at {{time}}.', { flight: match[1], source: match[2], dest: match[3], time: match[4] });
+    } else if (type === 'FLIGHT_CANCELLED') {
+      const titleMatch = title.match(/Flight Cancelled: (.*)/);
+      if (titleMatch) title = t('booking.notif.flightCancelledTitle', 'Flight Cancelled: {{flight}}', { flight: titleMatch[1] });
+      const match = message.match(/We regret to inform you that your flight (.*?) from (.*?) to (.*?) has been cancelled\. Please contact support for rebooking or refunds\./);
+      if (match) message = t('booking.notif.flightCancelledMsg', 'We regret to inform you that your flight {{flight}} from {{source}} to {{dest}} has been cancelled. Please contact support for rebooking or refunds.', { flight: match[1], source: match[2], dest: match[3] });
+    } else if (type === 'FLIGHT_BOARDING') {
+      const titleMatch = title.match(/Flight Boarding: (.*)/);
+      if (titleMatch) title = t('booking.notif.flightBoardingTitle', 'Flight Boarding: {{flight}}', { flight: titleMatch[1] });
+      const match = message.match(/Flight (.*?) from (.*?) to (.*?) is now boarding\. Please proceed to the boarding gate\./);
+      if (match) message = t('booking.notif.flightBoardingMsg', 'Flight {{flight}} from {{source}} to {{dest}} is now boarding. Please proceed to the boarding gate.', { flight: match[1], source: match[2], dest: match[3] });
+    } else if (type === 'FLIGHT_DEPARTED') {
+      const titleMatch = title.match(/Flight Departed: (.*)/);
+      if (titleMatch) title = t('booking.notif.flightDepartedTitle', 'Flight Departed: {{flight}}', { flight: titleMatch[1] });
+      const match = message.match(/Flight (.*?) from (.*?) to (.*?) has departed\./);
+      if (match) message = t('booking.notif.flightDepartedMsg', 'Flight {{flight}} from {{source}} to {{dest}} has departed.', { flight: match[1], source: match[2], dest: match[3] });
+    } else if (type === 'FLIGHT_ARRIVED') {
+      const titleMatch = title.match(/Flight Arrived: (.*)/);
+      if (titleMatch) title = t('booking.notif.flightArrivedTitle', 'Flight Arrived: {{flight}}', { flight: titleMatch[1] });
+      const match = message.match(/Flight (.*?) from (.*?) to (.*?) has arrived safely\./);
+      if (match) message = t('booking.notif.flightArrivedMsg', 'Flight {{flight}} from {{source}} to {{dest}} has arrived safely.', { flight: match[1], source: match[2], dest: match[3] });
+    }
+  } catch(e) {}
+  return { title, message };
+};
 
 function getNotificationStyles(type) {
   const defaults = {
@@ -57,7 +104,7 @@ function getNotificationStyles(type) {
 }
 
 export default function NotificationsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const { list, listLoading, listError, unreadCount } = useSelector((state) => state.notifications);
   const [filter, setFilter] = useState('all'); // 'all' or 'unread'
@@ -69,14 +116,14 @@ export default function NotificationsPage() {
   const handleMarkRead = (id) => {
     dispatch(markNotificationRead(id))
       .unwrap()
-      .then(() => toast.success(t('notificationMarkedRead', 'Notification marked as read')))
+      .then(() => toast.success(t('booking.notificationMarkedRead', 'Notification marked as read')))
       .catch((err) => toast.error(err));
   };
 
   const handleMarkAllRead = () => {
     dispatch(markAllNotificationsRead())
       .unwrap()
-      .then(() => toast.success(t('allNotificationsMarkedRead', 'All notifications marked as read')))
+      .then(() => toast.success(t('booking.allNotificationsMarkedRead', 'All notifications marked as read')))
       .catch((err) => toast.error(err));
   };
 
@@ -87,10 +134,7 @@ export default function NotificationsPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       padding: '120px 24px 48px',
-      fontFamily: 'Inter, sans-serif',
       display: 'flex',
       justifyContent: 'center',
     }}>
@@ -108,14 +152,13 @@ export default function NotificationsPage() {
             <h1 style={{
               fontSize: '2rem',
               fontWeight: 800,
-              color: '#1a1c1d',
               letterSpacing: '-0.02em',
               margin: 0,
             }}>
-              {t('notificationsTitle', 'Notifications')}
+              {t('booking.notificationsTitle', 'Notifications')}
             </h1>
-            <p style={{ color: '#5e5e5e', margin: '4px 0 0', fontSize: '0.9rem' }}>
-              {t('notificationsSubtitle', 'Stay updated with real-time flight status alerts.')}
+            <p style={{ margin: '4px 0 0', fontSize: '0.9rem', opacity: 0.8 }}>
+              {t('booking.notificationsSubtitle', 'Stay updated with real-time flight status alerts.')}
             </p>
           </div>
 
@@ -141,7 +184,7 @@ export default function NotificationsPage() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.2)'; }}
             >
               <CheckCheck size={16} />
-              {t('markAllRead', 'Mark All as Read')}
+              {t('booking.markAllRead', 'Mark All as Read')}
             </button>
           )}
         </div>
@@ -159,14 +202,14 @@ export default function NotificationsPage() {
               borderRadius: '9999px',
               border: '1px solid rgba(255, 255, 255, 0.5)',
               background: filter === 'all' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.4)',
-              color: '#1a1c1d',
+              color: 'inherit',
               fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer',
               transition: 'background 0.2s',
             }}
           >
-            {t('all', 'All')} ({list.length})
+            {t('booking.all', 'All')} ({list.length})
           </button>
           <button
             onClick={() => setFilter('unread')}
@@ -175,14 +218,14 @@ export default function NotificationsPage() {
               borderRadius: '9999px',
               border: '1px solid rgba(255, 255, 255, 0.5)',
               background: filter === 'unread' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.4)',
-              color: '#1a1c1d',
+              color: 'inherit',
               fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer',
               transition: 'background 0.2s',
             }}
           >
-            {t('unread', 'Unread')} ({unreadCount})
+            {t('booking.unread', 'Unread')} ({unreadCount})
           </button>
         </div>
 
@@ -236,17 +279,18 @@ export default function NotificationsPage() {
               }}>
                 <Bell size={28} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1a1c1d', margin: '0 0 4px' }}>
-                {t('noNotifications', 'No notifications yet')}
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 4px' }}>
+                {t('booking.noNotifications', 'No notifications yet')}
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#5e5e5e', maxWidth: '320px', margin: 0 }}>
-                {t('noNotificationsDesc', "We'll let you know when there are updates regarding your flights.")}
+              <p style={{ fontSize: '0.875rem', opacity: 0.8, maxWidth: '320px', margin: 0 }}>
+                {t('booking.noNotificationsDesc', "We'll let you know when there are updates regarding your flights.")}
               </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredNotifications.map((notif) => {
                 const styles = getNotificationStyles(notif.notification_type);
+                const { title, message } = getLocalizedNotification(notif, t);
                 return (
                   <div
                     key={notif.id}
@@ -300,18 +344,18 @@ export default function NotificationsPage() {
                       <h4 style={{
                         fontSize: '0.95rem',
                         fontWeight: notif.is_read ? 600 : 700,
-                        color: '#1a1c1d',
                         margin: '0 0 4px',
                       }}>
-                        {notif.title}
+                        {title}
                       </h4>
                       <p style={{
                         fontSize: '0.875rem',
-                        color: '#4b5563',
+                        opacity: 0.8,
                         lineHeight: 1.5,
                         margin: '0 0 8px',
+                        whiteSpace: 'pre-wrap',
                       }}>
-                        {notif.message}
+                        {message}
                       </p>
                       <div style={{
                         display: 'flex',
@@ -321,7 +365,7 @@ export default function NotificationsPage() {
                         color: '#9ca3af',
                       }}>
                         <Calendar size={12} />
-                        <span>{fmtDate(notif.created_at)}</span>
+                        <span>{fmtDate(notif.created_at, i18n.language)}</span>
                       </div>
                     </div>
 
@@ -330,7 +374,7 @@ export default function NotificationsPage() {
                       <button
                         data-testid={`mark-read-${notif.id}`}
                         onClick={() => handleMarkRead(notif.id)}
-                        title={t('markAsRead', 'Mark as Read')}
+                        title={t('booking.markAsRead', 'Mark as Read')}
                         style={{
                           width: '32px',
                           height: '32px',

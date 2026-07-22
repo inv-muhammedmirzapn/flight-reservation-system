@@ -9,24 +9,29 @@ import {
   CheckCircle, XCircle, Search, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 import { INR, fmtTime, fmtDate } from '@/utils/formatters';
 
 /* ── helpers ─────────────────────────────────────── */
 
-const fmtBookingDate = (iso) =>
-  new Date(iso).toLocaleString('en-IN', {
+const fmtBookingDate = (iso, lang) => {
+  const locale = lang === 'ja' ? 'ja-JP' : 'en-IN';
+  return new Date(iso).toLocaleString(locale, {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
+};
 
 /* ── Status badges ────────────────────────────────── */
 function StatusBadge({ status }) {
+  const { t } = useTranslation();
   const styles = {
     CONFIRMED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7', icon: <CheckCircle size={11} /> },
     CANCELLED: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', icon: <XCircle size={11} /> },
   };
   const s = styles[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', icon: null };
+  const text = t(`booking.myBookings.${status?.toLowerCase()}`, status);
   return (
     <span style={{
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
@@ -34,12 +39,13 @@ function StatusBadge({ status }) {
       fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
       display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
-      {s.icon}{status}
+      {s.icon}{text}
     </span>
   );
 }
 
 function WaitlistStatusBadge({ status }) {
+  const { t } = useTranslation();
   const styles = {
     PENDING: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d', icon: <Clock size={11} /> },
     CONFIRMED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7', icon: <CheckCircle size={11} /> },
@@ -47,6 +53,7 @@ function WaitlistStatusBadge({ status }) {
     EXPIRED: { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd', icon: <XCircle size={11} /> },
   };
   const s = styles[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', icon: null };
+  const text = t(`booking.myBookings.${status?.toLowerCase()}`, status);
   return (
     <span style={{
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
@@ -54,12 +61,13 @@ function WaitlistStatusBadge({ status }) {
       fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
       display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
-      {s.icon}{status}
+      {s.icon}{text}
     </span>
   );
 }
 
 function FlightStatusBadge({ status }) {
+  const { t } = useTranslation();
   const styles = {
     SCHEDULED: { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', icon: <Clock size={11} /> },
     DELAYED: { bg: '#fffbeb', color: '#b45309', border: '#fcd34d', icon: <Clock size={11} /> },
@@ -69,6 +77,7 @@ function FlightStatusBadge({ status }) {
     ARRIVED: { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', icon: <CheckCircle size={11} /> },
   };
   const s = styles[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', icon: null };
+  const text = t(`booking.myBookings.${status?.toLowerCase()}`, status);
   return (
     <span style={{
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
@@ -76,13 +85,14 @@ function FlightStatusBadge({ status }) {
       fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
       display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
-      {s.icon}{status}
+      {s.icon}{text}
     </span>
   );
 }
 
 /* ── Booking List Item ───────────────────────────── */
 function BookingListItem({ booking, isSelected, onClick }) {
+  const { t } = useTranslation();
   const flight = booking.flight_detail;
   if (!flight) return null;
 
@@ -129,7 +139,7 @@ function BookingListItem({ booking, isSelected, onClick }) {
              <Plane size={10} color="#705d00" />
              <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
            </div>
-           <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>Direct</div>
+           <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>{t('booking.myBookings.direct', 'Direct')}</div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
@@ -143,6 +153,7 @@ function BookingListItem({ booking, isSelected, onClick }) {
 
 /* ── Waitlist List Item ──────────────────────────── */
 function WaitlistListItem({ entry, isSelected, onClick }) {
+  const { t } = useTranslation();
   const flight = entry.flight_detail;
   if (!flight) return null;
 
@@ -175,7 +186,7 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
           {flight.status !== 'SCHEDULED' && <FlightStatusBadge status={flight.status} />}
           {entry.status === 'PENDING' && entry.queue_position !== undefined && (
             <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309', background: '#fef3c7', padding: '2px 8px', borderRadius: 6 }}>
-              Pos #{entry.queue_position}
+              {t('booking.myBookings.posNum', 'Pos #{{num}}', { num: entry.queue_position })}
             </span>
           )}
           <WaitlistStatusBadge status={entry.status} />
@@ -195,7 +206,7 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
              <div style={{ flex: 1, height: 1, background: '#d0c6ab' }} />
            </div>
            <div style={{ fontSize: 9, color: '#705d00', fontWeight: 700, marginTop: 4 }}>
-             {entry.seat_count} {entry.seat_count === 1 ? 'seat' : 'seats'}
+             {t('booking.myBookings.seatCount', '{{count}} seat', { count: entry.seat_count })}
            </div>
         </div>
 
@@ -210,6 +221,7 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
 
 /* ── Booking Detail Card ─────────────────────────── */
 function BookingDetailCard({ booking, onCancel, cancellingId }) {
+  const { t, i18n } = useTranslation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => setShowCancelConfirm(false), [booking?.id]);
@@ -221,7 +233,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
       height: 400, color: '#9e9488'
     }}>
        <Plane size={32} opacity={0.2} style={{ marginBottom: 12 }} />
-       <p style={{ fontSize: 14, fontWeight: 600 }}>Select a booking to view details</p>
+       <p style={{ fontSize: 14, fontWeight: 600 }}>{t('booking.myBookings.selectBooking', 'Select a booking to view details')}</p>
     </div>
   );
 
@@ -260,7 +272,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
           marginBottom: 20
         }}>
           <div>
-            <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Booking Ref</div>
+            <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.bookingRef', 'Booking Ref')}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.04em' }}>{String(booking.id).slice(0, 8).toUpperCase()}</div>
           </div>
           <StatusBadge status={booking.status} />
@@ -276,14 +288,14 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
             <AlertCircle size={20} color={flight.status === 'CANCELLED' ? '#ef4444' : flight.status === 'DELAYED' ? '#f59e0b' : '#3b82f6'} style={{ marginTop: 2, flexShrink: 0 }} />
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: flight.status === 'CANCELLED' ? '#991b1b' : flight.status === 'DELAYED' ? '#92400e' : '#1e40af' }}>
-                Flight Status: {flight.status}
+                {t('booking.myBookings.flightStatus', 'Flight Status: {{status}}', { status: t(`booking.myBookings.${flight.status.toLowerCase()}`, flight.status) })}
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: flight.status === 'CANCELLED' ? '#b91c1c' : flight.status === 'DELAYED' ? '#b45309' : '#1e3a8a', lineHeight: 1.4 }}>
-                {flight.status === 'CANCELLED' && 'This flight has been cancelled. Please contact customer support for refund/rebooking options.'}
-                {flight.status === 'DELAYED' && 'This flight is delayed. Please check the updated departure and arrival times.'}
-                {flight.status === 'BOARDING' && 'This flight is boarding. Please proceed to the gate immediately.'}
-                {flight.status === 'DEPARTED' && 'This flight has departed.'}
-                {flight.status === 'ARRIVED' && 'This flight has arrived at its destination.'}
+                {flight.status === 'CANCELLED' && t('booking.myBookings.statusDescCancelled', 'This flight has been cancelled. Please contact customer support for refund/rebooking options.')}
+                {flight.status === 'DELAYED' && t('booking.myBookings.statusDescDelayed', 'This flight is delayed. Please check the updated departure and arrival times.')}
+                {flight.status === 'BOARDING' && t('booking.myBookings.statusDescBoarding', 'This flight is boarding. Please proceed to the gate immediately.')}
+                {flight.status === 'DEPARTED' && t('booking.myBookings.statusDescDeparted', 'This flight has departed.')}
+                {flight.status === 'ARRIVED' && t('booking.myBookings.statusDescArrived', 'This flight has arrived at its destination.')}
               </p>
             </div>
           </div>
@@ -308,7 +320,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         {/* Departure/Arrival Timeline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
            <div>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.departure', 'Departure')}</div>
              <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
              <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
              <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
@@ -323,7 +335,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
            </div>
 
            <div style={{ textAlign: 'right' }}>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.arrival', 'Arrival')}</div>
              <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
              <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
              <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
@@ -332,12 +344,12 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Fare Paid</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t('booking.myBookings.farePaid', 'Fare Paid')}</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#1a1c1d' }}>{INR(booking.total_price || flight.base_fare)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Booked On</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1c1d' }}>{fmtBookingDate(booking.created_at)}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t('booking.myBookings.bookedOn', 'Booked On')}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1c1d' }}>{fmtBookingDate(booking.created_at, i18n.language)}</div>
           </div>
         </div>
 
@@ -358,7 +370,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                 onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
                 onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
               >
-                <XCircle size={15} /> Cancel Reservation
+                <XCircle size={15} /> {t('booking.myBookings.cancelReservation', 'Cancel Reservation')}
               </button>
             ) : (
               <div style={{
@@ -368,9 +380,9 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
               }}>
                 <XCircle size={15} opacity={0.5} />
                 <span>
-                  {isFlightCancelled && 'Cancellation unavailable: Flight has been cancelled'}
-                  {isFlightDepartedOrArrived && 'Cancellation unavailable: Flight has departed/arrived'}
-                  {isFlightBoarding && 'Cancellation unavailable: Flight is currently boarding'}
+                  {isFlightCancelled && t('booking.myBookings.cancellationUnavailableCancelled', 'Cancellation unavailable: Flight has been cancelled')}
+                  {isFlightDepartedOrArrived && t('booking.myBookings.cancellationUnavailableDeparted', 'Cancellation unavailable: Flight has departed/arrived')}
+                  {isFlightBoarding && t('booking.myBookings.cancellationUnavailableBoarding', 'Cancellation unavailable: Flight is currently boarding')}
                 </span>
               </div>
             )}
@@ -390,13 +402,15 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                       <AlertCircle size={24} color="#e11d48" />
                     </div>
                   </div>
-                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>Cancel Reservation</h3>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>{t('booking.myBookings.cancelReservation', 'Cancel Reservation')}</h3>
                   <p style={{ margin: '0 0 16px', color: '#5e5e5e', fontSize: 14, textAlign: 'center', lineHeight: 1.5 }}>
-                    Are you sure you want to cancel booking <strong>{String(booking.id).slice(0, 8).toUpperCase()}</strong>? This action cannot be undone.
+                    {t('booking.myBookings.areYouSureCancelBooking', 'Are you sure you want to cancel booking ')}
+                    <strong>{String(booking.id).slice(0, 8).toUpperCase()}</strong>
+                    {t('booking.myBookings.cannotBeUndone', '? This action cannot be undone.')}
                   </p>
                   <div style={{ padding: '12px', background: '#fff1f2', borderRadius: 12, marginBottom: 24, textAlign: 'center' }}>
                     <p style={{ margin: 0, fontSize: 12, color: '#be123c', fontWeight: 600 }}>
-                      A 10% cancellation fee ({INR((booking.total_price || flight.base_fare) * 0.10)}) will be deducted from your refund.
+                      {t('booking.myBookings.cancellationFee', 'A 10% cancellation fee ({{amount}}) will be deducted from your refund.', { amount: INR((booking.total_price || flight.base_fare) * 0.10) })}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -411,7 +425,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                       onMouseOver={(e) => e.currentTarget.style.background = '#e5e7eb'}
                       onMouseOut={(e) => e.currentTarget.style.background = '#f3f4f6'}
                     >
-                      No, Keep it
+                      {t('booking.myBookings.noKeepIt', 'No, Keep it')}
                     </button>
                     <button
                       id={`cancel-confirm-yes-${booking.id}`}
@@ -426,7 +440,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
                       onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
                       onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
                     >
-                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
+                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : t('booking.myBookings.yesCancel', 'Yes, Cancel')}
                     </button>
                   </div>
                 </div>
@@ -437,7 +451,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         )}
         {isPast && isConfirmed && (
           <div style={{ textAlign: 'center', padding: '12px', background: '#f3f4f6', borderRadius: 12, color: '#5e5e5e', fontSize: 13, fontWeight: 600 }}>
-            This flight has departed
+            {t('booking.myBookings.flightDeparted', 'This flight has departed')}
           </div>
         )}
       </div>
@@ -447,6 +461,7 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
 
 /* ── Waitlist Detail Card ────────────────────────── */
 function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
+  const { t, i18n } = useTranslation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => setShowCancelConfirm(false), [entry?.id]);
@@ -458,7 +473,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
       height: 400, color: '#9e9488'
     }}>
        <Clock size={32} opacity={0.2} style={{ marginBottom: 12 }} />
-       <p style={{ fontSize: 14, fontWeight: 600 }}>Select a waitlist entry to view details</p>
+       <p style={{ fontSize: 14, fontWeight: 600 }}>{t('booking.myBookings.selectWaitlist', 'Select a waitlist entry to view details')}</p>
     </div>
   );
 
@@ -497,7 +512,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
           marginBottom: 20
         }}>
           <div>
-            <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Waitlist ID</div>
+            <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.waitlistId', 'Waitlist ID')}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1c1d', letterSpacing: '0.04em' }}>{String(entry.id).slice(0, 8).toUpperCase()}</div>
           </div>
           <WaitlistStatusBadge status={entry.status} />
@@ -513,14 +528,14 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
             <AlertCircle size={20} color={flight.status === 'CANCELLED' ? '#ef4444' : flight.status === 'DELAYED' ? '#f59e0b' : '#3b82f6'} style={{ marginTop: 2, flexShrink: 0 }} />
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: flight.status === 'CANCELLED' ? '#991b1b' : flight.status === 'DELAYED' ? '#92400e' : '#1e40af' }}>
-                Flight Status: {flight.status}
+                {t('booking.myBookings.flightStatus', 'Flight Status: {{status}}', { status: t(`booking.myBookings.${flight.status.toLowerCase()}`, flight.status) })}
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: flight.status === 'CANCELLED' ? '#b91c1c' : flight.status === 'DELAYED' ? '#b45309' : '#1e3a8a', lineHeight: 1.4 }}>
-                {flight.status === 'CANCELLED' && 'This flight has been cancelled. Please contact customer support for refund/rebooking options.'}
-                {flight.status === 'DELAYED' && 'This flight is delayed. Please check the updated departure and arrival times.'}
-                {flight.status === 'BOARDING' && 'This flight is boarding. Please proceed to the gate immediately.'}
-                {flight.status === 'DEPARTED' && 'This flight has departed.'}
-                {flight.status === 'ARRIVED' && 'This flight has arrived at its destination.'}
+                {flight.status === 'CANCELLED' && t('booking.myBookings.statusDescCancelled', 'This flight has been cancelled. Please contact customer support for refund/rebooking options.')}
+                {flight.status === 'DELAYED' && t('booking.myBookings.statusDescDelayed', 'This flight is delayed. Please check the updated departure and arrival times.')}
+                {flight.status === 'BOARDING' && t('booking.myBookings.statusDescBoarding', 'This flight is boarding. Please proceed to the gate immediately.')}
+                {flight.status === 'DEPARTED' && t('booking.myBookings.statusDescDeparted', 'This flight has departed.')}
+                {flight.status === 'ARRIVED' && t('booking.myBookings.statusDescArrived', 'This flight has arrived at its destination.')}
               </p>
             </div>
           </div>
@@ -537,7 +552,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} color="#d97706" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#b45309' }}>Current Queue Position</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#b45309' }}>{t('booking.myBookings.currentQueuePos', 'Current Queue Position')}</span>
             </div>
             <span style={{ fontSize: 18, fontWeight: 900, color: '#b45309' }}>#{entry.queue_position}</span>
           </div>
@@ -562,7 +577,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
         {/* Departure/Arrival Timeline */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
            <div>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departure</div>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.departure', 'Departure')}</div>
              <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.departure_time)}</div>
              <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.source_airport}</div>
              <div style={{ fontSize: 13, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
@@ -577,7 +592,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
            </div>
 
            <div style={{ textAlign: 'right' }}>
-             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Arrival</div>
+             <div style={{ fontSize: 12, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('booking.myBookings.arrival', 'Arrival')}</div>
              <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1c1d', margin: '2px 0' }}>{fmtTime(flight.arrival_time)}</div>
              <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{flight.destination_airport}</div>
              <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.arrival_time)}</div>
@@ -586,15 +601,15 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Base Fare</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t('booking.myBookings.baseFare', 'Base Fare')}</div>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{INR(flight.base_fare)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Seats</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t('booking.myBookings.seats', 'Seats')}</div>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{entry.seat_count}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Pre-auth Total</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{t('booking.myBookings.preAuthTotal', 'Pre-auth Total')}</div>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#705d00' }}>{INR(entry.price)}</div>
           </div>
         </div>
@@ -616,7 +631,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                 onMouseOver={(e) => e.currentTarget.style.background = '#ffe4e6'}
                 onMouseOut={(e) => e.currentTarget.style.background = '#fff1f2'}
               >
-                <XCircle size={15} /> Cancel Waitlist Request
+                <XCircle size={15} /> {t('booking.myBookings.cancelWaitlist', 'Cancel Waitlist Request')}
               </button>
             ) : (
               <div style={{
@@ -626,9 +641,9 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
               }}>
                 <XCircle size={15} opacity={0.5} />
                 <span>
-                  {isFlightCancelled && 'Cancellation unavailable: Flight has been cancelled'}
-                  {isFlightDepartedOrArrived && 'Cancellation unavailable: Flight has departed/arrived'}
-                  {isFlightBoarding && 'Cancellation unavailable: Flight is currently boarding'}
+                  {isFlightCancelled && t('booking.myBookings.cancellationUnavailableCancelled', 'Cancellation unavailable: Flight has been cancelled')}
+                  {isFlightDepartedOrArrived && t('booking.myBookings.cancellationUnavailableDeparted', 'Cancellation unavailable: Flight has departed/arrived')}
+                  {isFlightBoarding && t('booking.myBookings.cancellationUnavailableBoarding', 'Cancellation unavailable: Flight is currently boarding')}
                 </span>
               </div>
             )}
@@ -648,13 +663,15 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                       <AlertCircle size={24} color="#e11d48" />
                     </div>
                   </div>
-                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>Cancel Waitlist Request</h3>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1a1c1d', fontWeight: 800, textAlign: 'center' }}>{t('booking.myBookings.cancelWaitlist', 'Cancel Waitlist Request')}</h3>
                   <p style={{ margin: '0 0 16px', color: '#5e5e5e', fontSize: 14, textAlign: 'center', lineHeight: 1.5 }}>
-                    Are you sure you want to cancel waitlist request <strong>{String(entry.id).slice(0, 8).toUpperCase()}</strong>? This action cannot be undone.
+                    {t('booking.myBookings.areYouSureCancelWaitlist', 'Are you sure you want to cancel waitlist request ')}
+                    <strong>{String(entry.id).slice(0, 8).toUpperCase()}</strong>
+                    {t('booking.myBookings.cannotBeUndone', '? This action cannot be undone.')}
                   </p>
                   <div style={{ padding: '12px', background: '#fff1f2', borderRadius: 12, marginBottom: 24, textAlign: 'center' }}>
                     <p style={{ margin: 0, fontSize: 12, color: '#be123c', fontWeight: 600 }}>
-                      A 5% processing fee ({INR(entry.price * 0.05)}) will be deducted from your refund.
+                      {t('booking.myBookings.waitlistFee', 'A 5% processing fee ({{amount}}) will be deducted from your refund.', { amount: INR(entry.price * 0.05) })}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -669,7 +686,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                       onMouseOver={(e) => e.currentTarget.style.background = '#e5e7eb'}
                       onMouseOut={(e) => e.currentTarget.style.background = '#f3f4f6'}
                     >
-                      No, Keep it
+                      {t('booking.myBookings.noKeepIt', 'No, Keep it')}
                     </button>
                     <button
                       id={`cancel-waitlist-confirm-yes-${entry.id}`}
@@ -684,7 +701,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
                       onMouseOver={(e) => { if(!isCancelling) e.currentTarget.style.background = '#be123c' }}
                       onMouseOut={(e) => { if(!isCancelling) e.currentTarget.style.background = '#e11d48' }}
                     >
-                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes, Cancel'}
+                      {isCancelling ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : t('booking.myBookings.yesCancel', 'Yes, Cancel')}
                     </button>
                   </div>
                 </div>
@@ -695,7 +712,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
         )}
         {isPast && isPending && (
           <div style={{ textAlign: 'center', padding: '12px', background: '#f3f4f6', borderRadius: 12, color: '#5e5e5e', fontSize: 13, fontWeight: 600 }}>
-            This flight has departed
+            {t('booking.myBookings.flightDeparted', 'This flight has departed')}
           </div>
         )}
       </div>
@@ -705,6 +722,7 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
 
 /* ── Main Page ───────────────────────────────────── */
 export default function MyBookingsPage() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('BOOKINGS'); // BOOKINGS | WAITLIST
 
@@ -739,13 +757,13 @@ export default function MyBookingsPage() {
   // Cancel Handlers
   const handleCancelBooking = (bookingId) => {
     dispatch(cancelBooking(bookingId)).then((action) => {
-      if (!action.error) toast.success('Booking cancelled.');
+      if (!action.error) toast.success(t('booking.myBookings.bookingCancelledSuccess', 'Booking cancelled.'));
     });
   };
 
   const handleCancelWaitlist = (waitlistId) => {
     dispatch(cancelWaitlistEntry(waitlistId)).then((action) => {
-      if (!action.error) toast.success('Waitlist request cancelled.');
+      if (!action.error) toast.success(t('booking.myBookings.waitlistCancelledSuccess', 'Waitlist request cancelled.'));
     });
   };
 
@@ -825,10 +843,10 @@ export default function MyBookingsPage() {
             fontSize: 30, fontWeight: 800, color: '#1a1c1d',
             letterSpacing: '-0.02em', margin: '0 0 6px',
           }}>
-            My Bookings & Waitlist
+            {t('booking.myBookings.title', 'My Bookings & Waitlist')}
           </h1>
           <p style={{ fontSize: 14, color: '#5e5e5e', margin: 0 }}>
-            Manage your booked reservations and active queue positions in one place.
+            {t('booking.myBookings.subtitle', 'Manage your booked reservations and active queue positions in one place.')}
           </p>
         </div>
 
@@ -844,7 +862,7 @@ export default function MyBookingsPage() {
               cursor: 'pointer', transition: 'all 0.15s'
             }}
           >
-            My Bookings
+            {t('booking.myBookings.tabBookings', 'My Bookings')}
           </button>
           <button
             id="tab-waitlist"
@@ -856,7 +874,7 @@ export default function MyBookingsPage() {
               cursor: 'pointer', transition: 'all 0.15s'
             }}
           >
-            My Waitlist
+            {t('booking.myBookings.tabWaitlist', 'My Waitlist')}
           </button>
         </div>
 
@@ -867,9 +885,9 @@ export default function MyBookingsPage() {
             {isBookings ? (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
                 {[
-                  { key: 'ALL',       label: 'All Bookings' },
-                  { key: 'CONFIRMED', label: 'Confirmed' },
-                  { key: 'CANCELLED', label: 'Cancelled' },
+                  { key: 'ALL',       label: t('booking.myBookings.allBookings', 'All Bookings') },
+                  { key: 'CONFIRMED', label: t('booking.myBookings.confirmed', 'Confirmed') },
+                  { key: 'CANCELLED', label: t('booking.myBookings.cancelled', 'Cancelled') },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
@@ -900,11 +918,11 @@ export default function MyBookingsPage() {
             ) : (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
                 {[
-                  { key: 'ALL',       label: 'All Waitlist' },
-                  { key: 'PENDING',   label: 'Pending' },
-                  { key: 'CONFIRMED', label: 'Confirmed' },
-                  { key: 'CANCELLED', label: 'Cancelled' },
-                  { key: 'EXPIRED',   label: 'Expired' },
+                  { key: 'ALL',       label: t('booking.myBookings.allWaitlist', 'All Waitlist') },
+                  { key: 'PENDING',   label: t('booking.myBookings.pending', 'Pending') },
+                  { key: 'CONFIRMED', label: t('booking.myBookings.confirmed', 'Confirmed') },
+                  { key: 'CANCELLED', label: t('booking.myBookings.cancelled', 'Cancelled') },
+                  { key: 'EXPIRED',   label: t('booking.myBookings.expired', 'Expired') },
                 ].map(({ key, label }) => (
                   <button
                     key={key}
@@ -970,14 +988,14 @@ export default function MyBookingsPage() {
                 </div>
                 <h3 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 20, fontWeight: 700, color: '#1a1c1d', margin: '0 0 8px' }}>
                   {isBookings
-                    ? (bookingsFilter === 'ALL' ? 'No bookings yet' : `No ${bookingsFilter.toLowerCase()} bookings`)
-                    : (waitlistFilter === 'ALL' ? 'No waitlist requests yet' : `No ${waitlistFilter.toLowerCase()} waitlist requests`)
+                    ? (bookingsFilter === 'ALL' ? t('booking.myBookings.emptyBookingsAll', 'No bookings yet') : t('booking.myBookings.emptyBookingsFilter', 'No {{filter}} bookings', { filter: t(`booking.myBookings.${bookingsFilter.toLowerCase()}`) }))
+                    : (waitlistFilter === 'ALL' ? t('booking.myBookings.emptyWaitlistAll', 'No waitlist requests yet') : t('booking.myBookings.emptyWaitlistFilter', 'No {{filter}} waitlist requests', { filter: t(`booking.myBookings.${waitlistFilter.toLowerCase()}`) }))
                   }
                 </h3>
                 <p style={{ fontSize: 14, color: '#5e5e5e', marginBottom: 24 }}>
                   {isBookings
-                    ? (bookingsFilter === 'ALL' ? "Book a flight to see your reservations here." : "Switch filters or book a new flight.")
-                    : (waitlistFilter === 'ALL' ? "Join a flight waitlist to see your requests here." : "Switch filters or search for another flight.")
+                    ? (bookingsFilter === 'ALL' ? t('booking.myBookings.emptyBookingsAllDesc', "Book a flight to see your reservations here.") : t('booking.myBookings.emptyBookingsFilterDesc', "Switch filters or book a new flight."))
+                    : (waitlistFilter === 'ALL' ? t('booking.myBookings.emptyWaitlistAllDesc', "Join a flight waitlist to see your requests here.") : t('booking.myBookings.emptyWaitlistFilterDesc', "Switch filters or search for another flight."))
                   }
                 </p>
                 <Link
@@ -992,7 +1010,7 @@ export default function MyBookingsPage() {
                     boxShadow: '0 4px 16px rgba(255,215,0,0.35)',
                   }}
                 >
-                  Explore Flights <ArrowRight size={15} />
+                  {t('booking.myBookings.exploreFlights', 'Explore Flights')} <ArrowRight size={15} />
                 </Link>
               </div>
             )}
