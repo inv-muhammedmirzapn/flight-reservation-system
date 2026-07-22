@@ -72,8 +72,8 @@
     "airlines": "Airlines",
     "destinations": "Destinations",
     "placeholders": {
-      "first": "John",
-      "last": "Doe",
+      "first": "Enter first name",
+      "last": "Enter last name",
       "email": "you@example.com",
       "username": "Choose a username",
       "password": "Create a strong password",

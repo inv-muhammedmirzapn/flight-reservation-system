@@ -72,8 +72,8 @@
     "airlines": "航空会社",
     "destinations": "目的地",
     "placeholders": {
-      "first": "太郎",
-      "last": "山田",
+      "first": "名を入力",
+      "last": "姓を入力",
       "email": "you@example.com",
       "username": "ユーザーネームを選択",
       "password": "強力なパスワードを作成",

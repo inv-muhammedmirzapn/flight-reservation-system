@@ -752,7 +752,7 @@ export default function UserFlightsList() {
                   {t("flights.fetching", { defaultValue: 'Fetching flight details...' })}
                 </div>
               </div>
-            ) : error ? (g
+            ) : error ? (
               <div className="glass-card" style={{ borderRadius: 16, padding: 24, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', textAlign: 'center' }}>
                 {error}
               </div>
