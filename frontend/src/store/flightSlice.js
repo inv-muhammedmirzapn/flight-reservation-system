@@ -204,6 +204,10 @@ const flightSlice = createSlice({
     clearFilters: (state) => {
       state.filters = {};
     },
+    clearFlightsList: (state) => {
+      state.list = [];
+      state.count = 0;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -336,5 +340,5 @@ const flightSlice = createSlice({
   },
 });
 
-export const { clearFlightErrors, clearFlightDetail, setCurrentPage, setFilters, clearFilters } = flightSlice.actions;
+export const { clearFlightErrors, clearFlightDetail, setCurrentPage, setFilters, clearFilters, clearFlightsList } = flightSlice.actions;
 export default flightSlice.reducer;
