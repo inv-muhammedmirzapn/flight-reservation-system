@@ -568,6 +568,15 @@ export default function UserFlightsList() {
   };
 
   useEffect(() => {
+    if (searchParams.toString() === '') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      setSearchParams(new URLSearchParams({
+        adults: '1',
+        depDate: todayStr
+      }), { replace: true });
+      return;
+    }
+
     // Fetch flights for server-side filtering and pagination
     dispatch(fetchFlights({
       page: pageParam,

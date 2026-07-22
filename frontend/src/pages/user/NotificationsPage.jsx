@@ -26,15 +26,15 @@ const getLocalizedNotification = (notif, t) => {
     if (type === 'BOOKING_CONFIRMED') {
       title = t('booking.notif.bookingConfirmedTitle', 'Booking Confirmation');
       const match = message.match(/Dear (.*?),\s*Your booking for flight (.*?) from (.*?) to (.*?) is confirmed!\s*Safe travels!/);
-      if (match) message = t('booking.notif.bookingConfirmedMsg', 'Dear {{name}},\n\nYour booking for flight {{flight}} from {{source}} to {{dest}} is confirmed!\n\nSafe travels!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+      if (match) message = t('booking.notif.bookingConfirmedMsg', 'Dear {{name}}, Your booking for flight {{flight}} from {{source}} to {{dest}} is confirmed! Safe travels!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
     } else if (type === 'BOOKING_CANCELLED') {
       title = t('booking.notif.bookingCancelledTitle', 'Booking Cancellation');
       const match = message.match(/Dear (.*?),\s*Your booking for flight (.*?) from (.*?) to (.*?) has been successfully cancelled\.\s*We hope to see you again soon\./);
-      if (match) message = t('booking.notif.bookingCancelledMsg', 'Dear {{name}},\n\nYour booking for flight {{flight}} from {{source}} to {{dest}} has been successfully cancelled.\n\nWe hope to see you again soon.', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+      if (match) message = t('booking.notif.bookingCancelledMsg', 'Dear {{name}}, Your booking for flight {{flight}} from {{source}} to {{dest}} has been successfully cancelled. We hope to see you again soon.', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
     } else if (type === 'WAITLIST_ALLOCATED') {
       title = t('booking.notif.waitlistTitle', 'Waitlist Confirmation: You are booked!');
       const match = message.match(/Great news, (.*?)!\s*A seat became available on flight (.*?) from (.*?) to (.*?) and your waitlist entry was automatically upgraded to a confirmed booking\.\s*Enjoy your flight!/);
-      if (match) message = t('booking.notif.waitlistMsg', 'Great news, {{name}}!\n\nA seat became available on flight {{flight}} from {{source}} to {{dest}} and your waitlist entry was automatically upgraded to a confirmed booking.\n\nEnjoy your flight!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
+      if (match) message = t('booking.notif.waitlistMsg', 'Great news, {{name}}! A seat became available on flight {{flight}} from {{source}} to {{dest}} and your waitlist entry was automatically upgraded to a confirmed booking. Enjoy your flight!', { name: match[1], flight: match[2], source: match[3], dest: match[4] });
     } else if (type === 'FLIGHT_DELAYED') {
       const titleMatch = title.match(/Flight Delayed: (.*)/);
       if (titleMatch) title = t('booking.notif.flightDelayedTitle', 'Flight Delayed: {{flight}}', { flight: titleMatch[1] });
