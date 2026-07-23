@@ -1,10 +1,32 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authAPI } from '@/services/auth-service/authService';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Input } from '@/components/ui/Input';
+import { CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\,.?":{}|<>]).{8,}$/;
+
+function calcStrength(pwd) {
+  let score = 0;
+  if (!pwd) return score;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[a-z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[!@#$%^&*()\,.?":{}|<>]/.test(pwd)) score++;
+  return Math.min(score, 4);
+}
+
+const STRENGTH_META = [
+  { label: "Too weak", color: "#ef4444" },
+  { label: "Weak", color: "#f97316" },
+  { label: "Fair", color: "#eab308" },
+  { label: "Good", color: "#22c55e" },
+  { label: "Strong", color: "#16a34a" },
+];
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
@@ -17,6 +39,34 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({ password: false, confirmPassword: false });
+
+  const strength = useMemo(() => calcStrength(password), [password]);
+
+  const errors = useMemo(() => {
+    const e = {};
+    if (touched.password) {
+      if (!password) e.password = "New password is required.";
+      else if (password.length < 8) e.password = "Password must be at least 8 characters.";
+      else if (!PWD_REGEX.test(password)) e.password = "Must include uppercase, lowercase, number & special character.";
+    }
+    if (touched.confirmPassword) {
+      if (!confirmPassword) e.confirmPassword = "Please confirm your new password.";
+      else if (password && confirmPassword !== password) e.confirmPassword = "Passwords do not match.";
+    }
+    return e;
+  }, [password, confirmPassword, touched]);
+
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const isFormValid =
+    password &&
+    confirmPassword &&
+    Object.keys(errors).length === 0 &&
+    PWD_REGEX.test(password) &&
+    password === confirmPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,8 +74,9 @@ export default function ResetPasswordPage() {
       toast.error("Please provide your email address.");
       return;
     }
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match!");
+    setTouched({ password: true, confirmPassword: true });
+    if (!isFormValid) {
+      toast.error("Please ensure all password requirements are met.");
       return;
     }
 
@@ -109,8 +160,30 @@ export default function ResetPasswordPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => handleBlur('password')}
+                error={errors.password}
                 disabled={loading}
               />
+              {password && (
+                <div style={{ marginTop: "-0.5rem", marginBottom: "1.25rem" }}>
+                  <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        style={{
+                          flex: 1, height: "4px", borderRadius: "2px",
+                          background: i <= strength ? (STRENGTH_META[strength]?.color || STRENGTH_META[0].color) : "rgba(0,0,0,0.1)",
+                          transition: "background 0.3s",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: STRENGTH_META[strength]?.color || STRENGTH_META[0].color, fontWeight: "600" }}>
+                    {STRENGTH_META[strength]?.label || STRENGTH_META[0].label}
+                  </span>
+                </div>
+              )}
+
               <PasswordInput
                 id="confirmPassword"
                 label="Confirm Password"
@@ -118,8 +191,15 @@ export default function ResetPasswordPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                onBlur={() => handleBlur('confirmPassword')}
+                error={errors.confirmPassword}
                 disabled={loading}
               />
+              {touched.confirmPassword && confirmPassword && !errors.confirmPassword && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "#16a34a", fontSize: "0.78rem", fontWeight: "500", marginTop: "-0.5rem", marginBottom: "1.25rem" }}>
+                  <CheckCircle2 size={13} /> Passwords match ✓
+                </div>
+              )}
               <button disabled={loading} className="auth-btn" type="submit">
                 {loading ? <><div className="spinner" /> Resetting...</> : 'Reset Password'}
               </button>

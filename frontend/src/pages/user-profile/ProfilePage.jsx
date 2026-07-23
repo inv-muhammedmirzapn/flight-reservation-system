@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { profileAPI } from "@/services/profile-service/profileService";
 import {
-  User, Mail, Phone, Calendar, Flag, Map, MapPin, Lock,
-  CheckCircle2, AlertCircle, Edit2, ShieldAlert, Save, X, Key
+  User, Mail, Phone, Calendar, Flag, Map, MapPin,
+  Edit2, ShieldAlert, Save, X, Key
 } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
+import EmailOTPModal from "@/components/ui/EmailOTPModal";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 const REGISTRATION_FIELDS = ["username", "email", "first_name", "last_name"];
@@ -17,6 +19,8 @@ const GENDER_OPTIONS = [
   { value: "FEMALE", label: "Female" },
   { value: "OTHER", label: "Other" }
 ];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getFieldLabels = (t) => ({
   username: t("auth.username"), email: t("auth.email"), first_name: t("auth.firstName"),
@@ -259,16 +263,12 @@ const S = {
     alignItems: "center",
     justifyContent: "space-between",
   },
-  lockedBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    fontSize: "0.62rem",
-    fontWeight: "600",
-    color: "#b0a896",
-    background: "rgba(0,0,0,0.04)",
-    padding: "0.15rem 0.5rem",
-    borderRadius: "99px",
+  changeEmailBtn: {
+    display: "inline-flex", alignItems: "center", gap: "0.3rem",
+    fontSize: "0.72rem", fontWeight: "700", color: "#1a1c1d",
+    background: "#ffd700", border: "none", cursor: "pointer",
+    padding: "0.2rem 0.65rem", borderRadius: "99px",
+    fontFamily: "Inter, sans-serif",
   },
   inputWrap: {
     position: "relative",
@@ -374,15 +374,15 @@ function ViewField({ fieldKey, value, label }) {
   );
 }
 
-function FormField({ id, value, onChange, label, type = "text", readOnly = false, options = null }) {
+function FormField({ id, value, onChange, label, type = "text", readOnly = false, options = null, rightAddon = null }) {
   const Icon = FIELD_ICONS[id];
 
-  const lockedStyle = {
+  const readOnlyStyle = {
     ...S.inputBase,
     background: "rgba(0,0,0,0.03)",
     border: "1.5px solid rgba(0,0,0,0.07)",
-    color: "#a09888",
-    cursor: "not-allowed",
+    color: "#7a7060",
+    cursor: "default",
   };
   const editableStyle = {
     ...S.inputBase,
@@ -395,47 +395,35 @@ function FormField({ id, value, onChange, label, type = "text", readOnly = false
     <div style={S.formFieldWrap}>
       <label htmlFor={id} style={S.formLabel}>
         <span>{label}</span>
-        {readOnly && (
-          <span style={S.lockedBadge}>
-            <Lock size={9} /> Locked
-          </span>
-        )}
       </label>
       <div style={S.inputWrap}>
-        <span style={S.inputIcon}>
-          <Icon size={15} />
-        </span>
+        <span style={S.inputIcon}><Icon size={15} /></span>
         {options ? (
           <Select
-            id={id}
-            name={id}
-            value={value}
-            onChange={onChange}
+            id={id} name={id} value={value} onChange={onChange}
             disabled={readOnly}
             options={options}
-            style={{
-              ...(readOnly ? lockedStyle : editableStyle),
-              paddingRight: "2.5rem"
-            }}
+            style={{ ...(readOnly ? readOnlyStyle : editableStyle), paddingRight: "2.5rem" }}
             label=""
           />
         ) : (
           <input
-            id={id} name={id} type={type} value={value} onChange={onChange} readOnly={readOnly}
-            style={readOnly ? lockedStyle : editableStyle}
+            id={id} name={id} type={type} value={value}
+            onChange={readOnly ? undefined : onChange}
+            readOnly={readOnly}
+            style={{ ...(readOnly ? readOnlyStyle : editableStyle), paddingRight: rightAddon ? "6.5rem" : "1rem" }}
             onFocus={(e) => {
-              if (!readOnly) {
-                e.target.style.borderColor = "#ffd700";
-                e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)";
-              }
+              if (!readOnly) { e.target.style.borderColor = "#ffd700"; e.target.style.boxShadow = "0 0 0 3px rgba(255,215,0,0.18)"; }
             }}
             onBlur={(e) => {
-              if (!readOnly) {
-                e.target.style.borderColor = "rgba(0,0,0,0.12)";
-                e.target.style.boxShadow = "none";
-              }
+              if (!readOnly) { e.target.style.borderColor = "rgba(0,0,0,0.12)"; e.target.style.boxShadow = "none"; }
             }}
           />
+        )}
+        {rightAddon && (
+          <div style={{ position: "absolute", right: "0.35rem", top: "50%", transform: "translateY(-50%)" }}>
+            {rightAddon}
+          </div>
         )}
       </div>
     </div>
@@ -474,9 +462,10 @@ export default function ProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState({ type: "", text: "" });
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isEmailModalOpen,    setIsEmailModalOpen]    = useState(false);
   useEffect(() => { fetchProfile(); }, []);
 
   const fetchProfile = async () => {
@@ -505,29 +494,76 @@ export default function ProfilePage() {
 
   const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const handleVerifyEmail = async () => {
+    if (!EMAIL_REGEX.test(formData.email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setVerifyingEmail(true);
+    try {
+      await profileAPI.requestEmailOTP(formData.email);
+      setIsEmailModalOpen(true);
+      toast.success("OTP sent! Check your new email inbox.");
+    } catch (err) {
+      let msg = "Failed to send OTP.";
+      try {
+        const d = JSON.parse(err.message);
+        msg = d.new_email?.[0] || d.detail || msg;
+      } catch { msg = err.message || msg; }
+      toast.error(msg);
+    }
+    setVerifyingEmail(false);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setSaveMsg({ type: "", text: "" });
+
+    // Validate Basic Info (Mandatory Fields)
+    if (!formData.username?.trim() || !formData.first_name?.trim() || !formData.last_name?.trim() || !formData.email?.trim()) {
+      toast.error("Please fill in all basic information fields (Username, Email, First Name, Last Name).");
+      setSaving(false);
+      return;
+    }
+
+    if (formData.email !== profile?.email) {
+      toast.error("Please verify your new email before saving changes.");
+      setSaving(false);
+      return;
+    }
     try {
       const updated = await profileAPI.updateProfile({
-        email: formData.email, first_name: formData.first_name,
-        last_name: formData.last_name, phone_number: formData.phone_number,
-        gender: formData.gender, date_of_birth: formData.date_of_birth || null,
-        country: formData.country, state: formData.state, city: formData.city,
+        username: formData.username,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone_number: formData.phone_number,
+        gender: formData.gender,
+        date_of_birth: formData.date_of_birth || null,
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
       });
       setProfile(updated);
       setFormData((prev) => ({ ...prev, ...updated }));
       localStorage.setItem("firstName", updated.first_name || "");
       localStorage.setItem("lastName", updated.last_name || "");
       window.dispatchEvent(new Event("authChange"));
-      setSaveMsg({ type: "success", text: "Profile updated successfully!" });
+      toast.success("Profile updated successfully!");
       setEditMode(false);
-      setTimeout(() => setSaveMsg({ type: "", text: "" }), 3000);
     } catch (err) {
-      setSaveMsg({ type: "error", text: "Failed to save: " + err.message });
+      let msg = "Failed to save profile.";
+      try {
+        const d = JSON.parse(err.message);
+        msg = d.username?.[0] || d.detail || msg;
+      } catch { msg = err.message || msg; }
+      toast.error(msg);
     }
     setSaving(false);
+  };
+
+  const handleEmailUpdated = (newEmail) => {
+    setProfile((prev) => ({ ...prev, email: newEmail }));
+    setFormData((prev) => ({ ...prev, email: newEmail }));
   };
 
 
@@ -591,20 +627,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ── Alert Banner ── */}
-          {saveMsg.text && (
-            <div style={{
-              ...S.alertBase,
-              background: saveMsg.type === "error" ? "#fff2f2" : "#f0fdf4",
-              color: saveMsg.type === "error" ? "#b91c1c" : "#15803d",
-              borderColor: saveMsg.type === "error" ? "#fecaca" : "#bbf7d0",
-            }}>
-              {saveMsg.type === "error"
-                ? <AlertCircle size={16} />
-                : <CheckCircle2 size={16} />}
-              {saveMsg.text}
-            </div>
-          )}
+
 
           {/* ════════════ VIEW MODE ════════════ */}
           {!editMode && (
@@ -674,14 +697,39 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Account Information — locked */}
+              {/* Account Information — all editable */}
               <div style={S.sectionGroup}>
                 <div style={S.sectionLabel}>{t("profile.basicInfo")}</div>
                 <div style={S.fieldGrid2col}>
-                  <FormField id="username" label={fieldLabels.username} value={formData.username} onChange={handleChange} readOnly />
-                  <FormField id="email" label={fieldLabels.email} type="email" value={formData.email} onChange={handleChange} readOnly />
-                  <FormField id="first_name" label={fieldLabels.first_name} value={formData.first_name} onChange={handleChange} readOnly />
-                  <FormField id="last_name" label={fieldLabels.last_name} value={formData.last_name} onChange={handleChange} readOnly />
+                  <FormField id="username" label={fieldLabels.username} value={formData.username} onChange={handleChange} />
+                  <FormField
+                    id="email" label={fieldLabels.email} type="email"
+                    value={formData.email} onChange={handleChange}
+                    rightAddon={
+                      formData.email !== profile?.email ? (
+                        <button
+                          type="button"
+                          style={{
+                            ...S.changeEmailBtn,
+                            padding: "0.4rem 0.85rem",
+                            fontSize: "0.78rem",
+                            opacity: verifyingEmail ? 0.7 : 1
+                          }}
+                          onClick={handleVerifyEmail}
+                          disabled={verifyingEmail}
+                        >
+                          {verifyingEmail ? (
+                            <span style={{ width: "12px", height: "12px", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "#1a1c1d", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                          ) : (
+                            <ShieldAlert size={12} />
+                          )}
+                          Verify
+                        </button>
+                      ) : null
+                    }
+                  />
+                  <FormField id="first_name" label={fieldLabels.first_name} value={formData.first_name} onChange={handleChange} />
+                  <FormField id="last_name" label={fieldLabels.last_name} value={formData.last_name} onChange={handleChange} />
                 </div>
               </div>
 
@@ -704,7 +752,7 @@ export default function ProfilePage() {
               <div style={S.formActions}>
                 <button
                   type="button" disabled={saving}
-                  onClick={() => { setEditMode(false); setSaveMsg({ type: "", text: "" }); }}
+                  onClick={() => { setEditMode(false); }}
                   style={S.cancelBtn}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
@@ -738,6 +786,12 @@ export default function ProfilePage() {
       <ChangePasswordModal
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
+      />
+      <EmailOTPModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        emailToVerify={formData.email}
+        onEmailUpdated={handleEmailUpdated}
       />
     </>
   );
