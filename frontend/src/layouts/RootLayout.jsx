@@ -6,7 +6,7 @@ import { Footer } from '@/components/layout/Footer';
 export default function RootLayout() {
   return (
     <>
-      {/* Global toast notifications — AeroGlass themed */}
+      {/* Global toast notifications — Passenger themed */}
       <Toaster
         position="top-right"
         containerStyle={{ top: '110px' }}

@@ -23,7 +23,7 @@ vi.mock('react-router-dom', async () => {
 const mockFlightDetail = {
   id: '123',
   flight_number: 'AG-101',
-  airline: 'AeroGlass Gold',
+  airline: 'Passenger Gold',
   aircraft: 'Boeing 787',
   source_airport: 'COK',
   destination_airport: 'DEL',
@@ -116,7 +116,7 @@ describe('AdminFlightForm Component', () => {
     const flightNumberInput = screen.getByLabelText(/Flight Number/i);
     expect(flightNumberInput).toBeDisabled();
     expect(flightNumberInput.value).toBe('AG-101');
-    expect(screen.getByLabelText(/Airline/i).value).toBe('AeroGlass Gold');
+    expect(screen.getByLabelText(/Airline/i).value).toBe('Passenger Gold');
     expect(screen.getByLabelText(/Aircraft Model/i).value).toBe('Boeing 787');
   });
 

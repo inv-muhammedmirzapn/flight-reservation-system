@@ -55,7 +55,7 @@ function App() {
             color: '#1a1c1d',
             margin: 0,
           }}>
-            Loading AeroGlass...
+            Loading Passenger...
           </h2>
           <p style={{ fontSize: 13, color: '#5e5e5e', margin: 0 }}>
             Verifying secure session

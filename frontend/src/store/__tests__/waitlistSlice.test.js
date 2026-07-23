@@ -17,7 +17,7 @@ const makeStore = () =>
 const MOCK_FLIGHT = {
   id: 'flight-uuid-1',
   flight_number: 'AG-101',
-  airline: 'AeroGlass',
+  airline: 'Passenger',
 };
 
 const MOCK_ENTRY = {

@@ -43,7 +43,7 @@
   },
   "auth": {
     "welcomeBack": "おかえりなさい",
-    "signInSubtitle": "AeroGlassアカウントにログイン",
+    "signInSubtitle": "Passengerアカウントにログイン",
     "smartSearch": "スマートなフライト検索",
     "realTime": "リアルタイム追跡",
     "instantBooking": "即時予約",
@@ -84,7 +84,7 @@
     "travelSmarter": "スマートにトラベル",
     "bookConfidence": "安心して予約",
     "signOutPrompt": "ログアウトしますか？",
-    "signOutDesc": "AeroGlassアカウントからログアウトします。保存されていない変更は失われます。",
+    "signOutDesc": "Passengerアカウントからログアウトします。保存されていない変更は失われます。",
     "yesSignOut": "はい、ログアウトします",
     "cancel": "キャンセル",
     "forgotPassword": "パスワードをお忘れですか？",

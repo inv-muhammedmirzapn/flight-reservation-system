@@ -22,7 +22,7 @@ vi.mock('react-router-dom', async () => {
 const MOCK_FLIGHT = {
   id: 'flight-uuid-1',
   flight_number: 'AG-101',
-  airline: 'AeroGlass',
+  airline: 'Passenger',
   aircraft: 'Boeing 737',
   source_airport: 'DEL',
   destination_airport: 'BOM',
@@ -73,7 +73,7 @@ describe('BookingConfirmModal', () => {
     expect(screen.getByText('AG-101')).toBeTruthy();
     expect(screen.getByText('DEL')).toBeTruthy();
     expect(screen.getByText('BOM')).toBeTruthy();
-    expect(screen.getByText('AeroGlass')).toBeTruthy();
+    expect(screen.getByText('Passenger')).toBeTruthy();
   });
 
   it('renders confirm and cancel buttons', () => {

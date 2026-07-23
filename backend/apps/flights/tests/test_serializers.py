@@ -10,7 +10,7 @@ class FlightSerializerTests(TestCase):
         self.now = timezone.now()
         self.valid_data = {
             "flight_number": "AG-101",
-            "airline": "AeroGlass",
+            "airline": "Passenger",
             "aircraft": "Boeing 737",
             "source_airport": "COK",
             "destination_airport": "DEL",

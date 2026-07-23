@@ -17,7 +17,7 @@ const sampleFlights = [
   {
     id: 1,
     flight_number: 'AG-101',
-    airline: 'AeroGlass Gold',
+    airline: 'Passenger Gold',
     aircraft: 'Boeing 787',
     source_airport: 'COK',
     destination_airport: 'DEL',
@@ -33,7 +33,7 @@ const sampleFlights = [
   {
     id: 2,
     flight_number: 'AG-102',
-    airline: 'AeroGlass Silver',
+    airline: 'Passenger Silver',
     aircraft: 'Airbus A320',
     source_airport: 'COK',
     destination_airport: 'DEL',
@@ -48,7 +48,7 @@ const sampleFlights = [
   {
     id: 3,
     flight_number: 'AG-103',
-    airline: 'AeroGlass Deluxe',
+    airline: 'Passenger Deluxe',
     aircraft: 'Boeing 777',
     source_airport: 'COK',
     destination_airport: 'DEL',

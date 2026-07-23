@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 /**
  * LogoutConfirmDialog
  * A glassmorphism pop-up dialog that asks the user to confirm logout.
- * Matches the AeroGlass theme: gold accents, frosted glass, dark overlay.
+ * Matches the Passenger theme: gold accents, frosted glass, dark overlay.
  *
  * Props:
  *   open     – boolean, whether the dialog is visible

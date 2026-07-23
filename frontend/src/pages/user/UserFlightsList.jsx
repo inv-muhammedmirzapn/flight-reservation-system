@@ -699,7 +699,7 @@ export default function UserFlightsList() {
             Explore Flight Paths
           </h1>
           <p style={{ fontSize: 15, color: '#5e5e5e', marginTop: 10, maxWidth: 480, margin: '10px auto 0', position: 'relative' }}>
-            Search and track flights globally. Experience luxury flight details with AeroGlass.
+            Search and track flights globally. Experience luxury flight details with Passenger.
           </p>
         </div> */}
 
