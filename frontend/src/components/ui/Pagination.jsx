@@ -1,6 +1,6 @@
 /**
  * Pagination
- * A glassmorphism-styled page navigator matching the AeroGlass admin panel.
+ * A glassmorphism-styled page navigator matching the Passenger admin panel.
  *
  * Props:
  *   currentPage  – number (1-based)

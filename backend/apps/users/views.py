@@ -154,13 +154,20 @@ class ForgotPasswordView(APIView):
                 # Define email sending function
                 def send_otp_email(target_email, otp_code):
                     try:
-                        send_mail(
-                            subject="Your AeroGlass Password Reset OTP",
-                            message=f"Hello,\n\nYour password reset OTP is: {otp_code}\n\nThis OTP will expire in 5 minutes.\n\nIf you did not request this, please ignore this email.",
+                        from apps.notifications.email_templates import password_reset_otp
+                        from django.core.mail import EmailMultiAlternatives
+                        import re
+                        subject, html = password_reset_otp(otp_code)
+                        plain_text = re.sub(r'<[^>]+>', ' ', html)
+                        plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+                        msg = EmailMultiAlternatives(
+                            subject=subject,
+                            body=plain_text,
                             from_email=settings.EMAIL_HOST_USER,
-                            recipient_list=[target_email],
-                            fail_silently=False,
+                            to=[target_email],
                         )
+                        msg.attach_alternative(html, "text/html")
+                        msg.send(fail_silently=False)
                     except Exception as e:
                         print(f"Error sending password reset email: {e}")
 

@@ -43,7 +43,7 @@
   },
   "auth": {
     "welcomeBack": "Welcome back",
-    "signInSubtitle": "Sign in to your AeroGlass account",
+    "signInSubtitle": "Sign in to your Passenger account",
     "smartSearch": "Smart flight search",
     "realTime": "Real-time tracking",
     "instantBooking": "Instant booking",
@@ -84,7 +84,7 @@
     "travelSmarter": "Travel smarter.",
     "bookConfidence": "Book with confidence.",
     "signOutPrompt": "Sign Out?",
-    "signOutDesc": "You'll be signed out of your AeroGlass account. Any unsaved changes will be lost.",
+    "signOutDesc": "You'll be signed out of your Passenger account. Any unsaved changes will be lost.",
     "yesSignOut": "Yes, Sign Out",
     "cancel": "Cancel",
     "forgotPassword": "Forgot Password?",

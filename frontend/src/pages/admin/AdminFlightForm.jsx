@@ -249,7 +249,7 @@ export default function AdminFlightForm() {
               <Input
                 id="airline"
                 label={t("admin.form.airline", { defaultValue: 'Airline' })}
-                placeholder="e.g. AeroGlass Premium"
+                placeholder="e.g. Passenger Premium"
                 value={form.airline}
                 onChange={handleChange}
                 error={validationErrors?.airline?.[0] || localErrors.airline}

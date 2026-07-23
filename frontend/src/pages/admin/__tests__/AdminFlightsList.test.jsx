@@ -17,7 +17,7 @@ vi.mock('react-redux', async () => {
           {
             id: '123',
             flight_number: 'AG-101',
-            airline: 'AeroGlass Gold',
+            airline: 'Passenger Gold',
             aircraft: 'Boeing 787',
             source_airport: 'COK',
             destination_airport: 'DEL',
@@ -51,7 +51,7 @@ describe('AdminFlightsList Component', () => {
     );
 
     expect(screen.getByText('AG-101')).toBeInTheDocument();
-    expect(screen.getByText('AeroGlass Gold')).toBeInTheDocument();
+    expect(screen.getByText('Passenger Gold')).toBeInTheDocument();
   });
 
   it('asks for confirmation and dispatches deleteFlight when delete is clicked', () => {

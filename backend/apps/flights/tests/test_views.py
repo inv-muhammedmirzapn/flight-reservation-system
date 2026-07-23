@@ -540,7 +540,7 @@ class FlightBulkImportAPITests(APITestCase):
         self.valid_flights = [
             {
                 "flight_number": "IM101",
-                "airline": "AeroGlass Gold",
+                "airline": "Passenger Gold",
                 "aircraft": "Boeing 787",
                 "source_airport": "MIA",
                 "destination_airport": "LAX",
@@ -553,7 +553,7 @@ class FlightBulkImportAPITests(APITestCase):
             },
             {
                 "flight_number": "IM102",
-                "airline": "AeroGlass Premium",
+                "airline": "Passenger Premium",
                 "aircraft": "Airbus A350",
                 "source_airport": "JFK",
                 "destination_airport": "DEL",
@@ -595,7 +595,7 @@ class FlightBulkImportAPITests(APITestCase):
         # Flight with identical source and destination airport (invalid)
         invalid_flight = {
             "flight_number": "IM103",
-            "airline": "AeroGlass Premium",
+            "airline": "Passenger Premium",
             "aircraft": "Airbus A350",
             "source_airport": "JFK",
             "destination_airport": "JFK",
