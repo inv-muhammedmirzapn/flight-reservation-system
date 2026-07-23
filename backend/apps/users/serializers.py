@@ -72,10 +72,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source="user.username", read_only=True)
-    email = serializers.EmailField(source="user.email", required=False)
-    first_name = serializers.CharField(source="user.first_name", required=False, allow_blank=True)
-    last_name = serializers.CharField(source="user.last_name", required=False, allow_blank=True)
+    username = serializers.CharField(source="user.username", required=False)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", required=True, allow_blank=False)
+    last_name = serializers.CharField(source="user.last_name", required=True, allow_blank=False)
 
     class Meta:
         model = Profile
@@ -97,8 +97,23 @@ class ProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "role", "created_at", "updated_at"]
 
+    def validate(self, attrs):
+        user_data = attrs.get("user", {})
+        new_username = user_data.get("username")
+        if new_username:
+            request = self.context.get("request")
+            current_user = request.user if request else None
+            qs = User.objects.filter(username=new_username)
+            if current_user:
+                qs = qs.exclude(pk=current_user.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"username": "This username is already taken."})
+        return attrs
+
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
+        # email is managed separately via OTP flow — never update here
+        user_data.pop("email", None)
         user = instance.user
 
         for attr, value in user_data.items():
@@ -146,6 +161,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
+
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True, write_only=True)
     otp = serializers.CharField(required=True, write_only=True, max_length=6, min_length=6)
@@ -159,3 +175,20 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(list(e.messages))
         return value
 
+
+class RequestEmailOTPSerializer(serializers.Serializer):
+    new_email = serializers.EmailField(required=True)
+
+    def validate_new_email(self, value):
+        request = self.context.get("request")
+        current_email = request.user.email if request else None
+        if value.lower() == (current_email or "").lower():
+            raise serializers.ValidationError("This is already your current email address.")
+        if User.objects.filter(email__iexact=value).exclude(pk=request.user.pk if request else None).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+
+class VerifyEmailOTPSerializer(serializers.Serializer):
+    new_email = serializers.EmailField(required=True)
+    otp = serializers.CharField(required=True, max_length=6, min_length=6)

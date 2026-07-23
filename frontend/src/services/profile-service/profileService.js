@@ -18,4 +18,18 @@ export const profileAPI = {
       body: JSON.stringify(passwordData),
     });
   },
+
+  requestEmailOTP: async (newEmail) => {
+    return fetchWithAuth('/auth/email/request-otp/', {
+      method: 'POST',
+      body: JSON.stringify({ new_email: newEmail }),
+    });
+  },
+
+  verifyEmailOTP: async (newEmail, otp) => {
+    return fetchWithAuth('/auth/email/verify-otp/', {
+      method: 'POST',
+      body: JSON.stringify({ new_email: newEmail, otp }),
+    });
+  },
 };

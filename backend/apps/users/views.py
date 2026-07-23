@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
-from .serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
+from .serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, RequestEmailOTPSerializer, VerifyEmailOTPSerializer
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -203,3 +203,82 @@ class ResetPasswordView(APIView):
             
             return Response({"error": "The OTP is invalid or has expired."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RequestEmailOTPView(APIView):
+    """Send a 6-digit OTP to the user's *new* email address to verify ownership."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer('RequestEmailOTPRequest', {'new_email': rf_serializers.EmailField()}),
+        responses={200: inline_serializer('RequestEmailOTPResponse', {'detail': rf_serializers.CharField()})}
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = RequestEmailOTPSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        new_email = serializer.validated_data['new_email']
+        otp = str(random.randint(100000, 999999))
+        cache_key = f"email_otp_{request.user.id}_{new_email}"
+        cache.set(cache_key, otp, timeout=300)
+
+        def send_otp_email(target_email, otp_code):
+            try:
+                from apps.notifications.email_templates import email_change_otp
+                from django.core.mail import EmailMultiAlternatives
+                import re
+                subject, html = email_change_otp(otp_code, target_email)
+                plain_text = re.sub(r'<[^>]+>', ' ', html)
+                plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=plain_text,
+                    from_email=settings.EMAIL_HOST_USER,
+                    to=[target_email],
+                )
+                msg.attach_alternative(html, "text/html")
+                msg.send(fail_silently=False)
+            except Exception as e:
+                print(f"Error sending email change OTP: {e}")
+
+        threading.Thread(target=send_otp_email, args=(new_email, otp)).start()
+        return Response({"detail": "OTP sent to the new email address."}, status=status.HTTP_200_OK)
+
+
+class VerifyEmailOTPView(APIView):
+    """Verify the OTP and update the user's email address."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer('VerifyEmailOTPRequest', {
+            'new_email': rf_serializers.EmailField(),
+            'otp': rf_serializers.CharField()
+        }),
+        responses={200: inline_serializer('VerifyEmailOTPResponse', {
+            'detail': rf_serializers.CharField(),
+            'email': rf_serializers.EmailField()
+        })}
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = VerifyEmailOTPSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        new_email = serializer.validated_data['new_email']
+        otp = serializer.validated_data['otp']
+        cache_key = f"email_otp_{request.user.id}_{new_email}"
+        cached_otp = cache.get(cache_key)
+
+        if cached_otp and cached_otp == otp:
+            user = request.user
+            user.email = new_email
+            user.save()
+            cache.delete(cache_key)
+            return Response(
+                {"detail": "Email updated successfully.", "email": new_email},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {"error": "The OTP is invalid or has expired."},
+            status=status.HTTP_400_BAD_REQUEST
+        )

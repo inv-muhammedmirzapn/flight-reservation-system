@@ -157,6 +157,33 @@ def _flight_info_table(flight_number: str, origin: str, destination: str,
     </tr>"""
 
 
+def _otp_box(otp_code: str) -> str:
+    return """
+    <tr>
+      <td style="padding:24px 32px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0"
+               style="border:1px solid #e8e8e8;border-radius:4px;overflow:hidden;">
+          <tr>
+            <td style="background:#1a1c1d;padding:8px 16px;
+                       font-size:10px;font-weight:600;color:#c9aa2e;
+                       letter-spacing:1.5px;text-transform:uppercase;">
+              Verification Code
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;text-align:center;">
+              <span style="font-size:38px;font-weight:700;color:#1a1c1d;
+                           letter-spacing:14px;font-variant-numeric:tabular-nums;">""" + otp_code + """</span>
+              <p style="margin:14px 0 0;font-size:12px;color:#888888;">
+                This code expires in <strong>5 minutes</strong>.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>"""
+
+
 def _spacer(px: int = 32) -> str:
     return f"""
     <tr>
@@ -353,33 +380,28 @@ def password_reset_otp(otp_code: str) -> tuple[str, str]:
         _divider() +
         _body_text("We received a request to reset the password for your Passenger account. "
                    "Use the verification code below to proceed.") +
-        """
-    <tr>
-      <td style="padding:24px 32px 0;">
-        <table width="100%" cellpadding="0" cellspacing="0"
-               style="border:1px solid #e8e8e8;border-radius:4px;overflow:hidden;">
-          <tr>
-            <td style="background:#1a1c1d;padding:8px 16px;
-                       font-size:10px;font-weight:600;color:#c9aa2e;
-                       letter-spacing:1.5px;text-transform:uppercase;">
-              Verification Code
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px;text-align:center;">
-              <span style="font-size:38px;font-weight:700;color:#1a1c1d;
-                           letter-spacing:14px;font-variant-numeric:tabular-nums;">""" + otp_code + """</span>
-              <p style="margin:14px 0 0;font-size:12px;color:#888888;">
-                This code expires in <strong>5 minutes</strong>.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>""" +
+        _otp_box(otp_code) +
         _body_text("If you did not request a password reset, please disregard this email. "
                    "Your account remains secure and no changes have been made.") +
         _spacer(),
         preview_text="Your Passenger password reset code is ready."
+    )
+    return subject, html
+
+
+def email_change_otp(otp_code: str, new_email: str) -> tuple[str, str]:
+    subject = "Email Change — Verification Code"
+    html = _wrap(
+        _heading("Email Address Change",
+                 "A verification code has been sent to confirm your new email address.") +
+        _divider() +
+        _body_text(f"We received a request to change your Passenger account email to "
+                   f"<strong>{new_email}</strong>. "
+                   "Use the verification code below to confirm this change.") +
+        _otp_box(otp_code) +
+        _body_text("If you did not request this change, please ignore this email. "
+                   "Your current email address will remain unchanged.") +
+        _spacer(),
+        preview_text="Your Passenger email change verification code is ready."
     )
     return subject, html
