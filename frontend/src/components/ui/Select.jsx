@@ -36,9 +36,18 @@ export function Select({
   const updateDropdownPosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const dropdownHeight = Math.min(232, normalizedOptions.length * 38 + 12);
+    let top = rect.bottom + 5;
+    if (top + dropdownHeight > window.innerHeight) {
+      if (rect.top - dropdownHeight - 5 > 0) {
+        top = rect.top - dropdownHeight - 5;
+      } else {
+        top = Math.max(10, window.innerHeight - dropdownHeight - 10);
+      }
+    }
     setDropdownStyle({
       position: 'fixed',
-      top: rect.bottom + 5,
+      top: top,
       left: rect.left,
       width: rect.width,
       zIndex: 9999,
@@ -52,7 +61,7 @@ export function Select({
         containerRef.current && !containerRef.current.contains(event.target)
       ) {
         // also check the portal'd dropdown
-        const portal = document.getElementById(`${selectId}-portal`);
+        const portal = document.getElementById(`${selectId}-listbox`);
         if (portal && portal.contains(event.target)) return;
         setIsOpen(false);
       }

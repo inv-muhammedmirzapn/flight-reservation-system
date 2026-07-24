@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
 const getStats = (t) => [
-  { value: '2M+',   label: t("auth.travelers")   },
-  { value: '150+',  label: t("auth.airlines")    },
-  { value: '500+',  label: t("auth.destinations")},
+  { value: '2M+', label: t("auth.travelers") },
+  { value: '150+', label: t("auth.airlines") },
+  { value: '500+', label: t("auth.destinations") },
 ];
 
 export default function RegisterPage() {
@@ -44,7 +44,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2026 })}</div>
           </div>
 
           {/* ── Right: Register form ── */}

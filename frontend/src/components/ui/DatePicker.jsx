@@ -35,9 +35,21 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
       left = Math.max(10, rect.right - 280);
     }
     
+    // Check if dropdown goes offscreen vertically
+    const dropdownHeight = 310;
+    let top = rect.bottom + 5;
+    if (top + dropdownHeight > window.innerHeight) {
+      // Place above the input if there is space, otherwise constrain to viewport
+      if (rect.top - dropdownHeight - 5 > 0) {
+        top = rect.top - dropdownHeight - 5;
+      } else {
+        top = Math.max(10, window.innerHeight - dropdownHeight - 10);
+      }
+    }
+    
     setDropdownStyle({
       position: 'fixed',
-      top: rect.bottom + 5,
+      top: top,
       left: left,
       zIndex: 9999,
     });

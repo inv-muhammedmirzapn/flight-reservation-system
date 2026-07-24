@@ -163,7 +163,7 @@ export default function AdminFlightForm() {
     toast.promise(resultPromise, {
       loading: isEdit ? 'Updating flight route…' : 'Creating flight route…',
       success: () => {
-        navigate('/admin/flights');
+        navigate(isEdit ? `/admin/flights/${id}` : '/admin/flights');
         return isEdit ? 'Flight route updated successfully!' : 'Flight route added successfully!';
       },
       error: (err) => {
@@ -202,10 +202,9 @@ export default function AdminFlightForm() {
         }
       `}</style>
 
-      <div style={{ maxWidth: 840, margin: '0 auto', padding: '88px 24px 48px' }}>
-        {/* Back Link */}
-        <Link to="/admin/flights" className="back-lnk" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#1a1c1d', fontWeight: 700, textDecoration: 'none', fontSize: 14, marginBottom: 24, transition: 'color 0.2s' }}>
-          <ArrowLeft size={16} /> {t("admin.form.backToConsole", { defaultValue: 'Back to Console' })}
+      <div style={{ maxWidth: 840, margin: '0 auto', padding: '120px 24px 48px' }}>
+        <Link to={isEdit ? `/admin/flights/${id}` : '/admin/flights'} className="back-lnk" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#1a1c1d', fontWeight: 700, textDecoration: 'none', fontSize: 14, marginBottom: 24, transition: 'color 0.2s' }}>
+          <ArrowLeft size={16} /> {isEdit ? t("admin.form.backToDetail", { defaultValue: 'Back to Flight Details' }) : t("admin.form.backToConsole", { defaultValue: 'Back to Console' })}
         </Link>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
@@ -310,7 +309,7 @@ export default function AdminFlightForm() {
                 </label>
                 <DateTimePicker
                   value={form.departure_time}
-                  onChange={(iso) => handleDateChange('departure_time', iso)}
+                  onChange={(e) => handleDateChange('departure_time', e.target.value)}
                   data-testid="departure-time-picker"
                 />
                 {localErrors.departure_time && (
@@ -327,7 +326,7 @@ export default function AdminFlightForm() {
                 </label>
                 <DateTimePicker
                   value={form.arrival_time}
-                  onChange={(iso) => handleDateChange('arrival_time', iso)}
+                  onChange={(e) => handleDateChange('arrival_time', e.target.value)}
                   data-testid="arrival-time-picker"
                 />
                 {localErrors.arrival_time && (
@@ -380,7 +379,7 @@ export default function AdminFlightForm() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
             <button
               type="button"
-              onClick={() => navigate('/admin/flights')}
+              onClick={() => navigate(isEdit ? `/admin/flights/${id}` : '/admin/flights')}
               className="btn-cancel"
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.05)', color: '#1a1c1d', fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
             >

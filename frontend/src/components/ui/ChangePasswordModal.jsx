@@ -140,7 +140,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     if (touched.confirmPassword) {
       if (!pwdData.confirmPassword)
         e.confirmPassword = "Please confirm your new password.";
-      else if (pwdData.newPassword && pwdData.confirmPassword !== pwdData.newPassword)
+      else if (pwdData.confirmPassword !== pwdData.newPassword)
         e.confirmPassword = "Passwords do not match.";
     }
 

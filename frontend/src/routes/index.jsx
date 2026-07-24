@@ -13,6 +13,7 @@ const ResetPasswordPage = lazy(() => import('@/pages/auth/login/ResetPasswordPag
 const UserFlightsList = lazy(() => import('@/pages/user/UserFlightsList'));
 const UserFlightDetail = lazy(() => import('@/pages/user/UserFlightDetail'));
 const MyBookingsPage = lazy(() => import('@/pages/user/MyBookingsPage'));
+const TicketDetailPage = lazy(() => import('@/pages/user/TicketDetailPage'));
 const BookingConfirmationPage = lazy(() => import('@/pages/user/BookingConfirmationPage'));
 const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
 const NotificationsPage = lazy(() => import('@/pages/user/NotificationsPage'));
@@ -36,11 +37,9 @@ const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <ProtectedRoute guestOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <LandingPage />
-            </Suspense>
-          </ProtectedRoute>
+          <Suspense fallback={<LoadingFallback />}>
+            <LandingPage />
+          </Suspense>
         ),
       },
       {
@@ -127,6 +126,26 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <Suspense fallback={<LoadingFallback />}>
               <MyBookingsPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-bookings/booking/:id',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <TicketDetailPage />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-bookings/waitlist/:id',
+        element: (
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <TicketDetailPage />
             </Suspense>
           </ProtectedRoute>
         ),

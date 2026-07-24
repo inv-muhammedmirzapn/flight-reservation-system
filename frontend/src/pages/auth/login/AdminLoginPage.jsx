@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
                 ))}
               </ul>
             </div>
-            <div className="auth-brand-footer" style={{ color: '#5e5e5e' }}>{t("footer.copyright", { year: 2025 }).replace("All rights reserved.", "Internal Operations")}</div>
+            <div className="auth-brand-footer" style={{ color: '#5e5e5e' }}>{t("footer.copyright", { year: 2026 }).replace("All rights reserved.", "Internal Operations")}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

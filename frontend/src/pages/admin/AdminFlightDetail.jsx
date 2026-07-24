@@ -113,7 +113,7 @@ export default function AdminFlightDetail() {
   );
 
   if (error) return (
-    <div style={{ maxWidth:900, margin:'0 auto', padding:'88px 24px 48px' }}>
+    <div style={{ maxWidth:900, margin:'0 auto', padding:'120px 24px 48px' }}>
       <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:16, padding:24, color:'#b91c1c', textAlign:'center', marginBottom:24 }}>{error}</div>
       <Link to="/admin/flights" style={{ display:'inline-flex', alignItems:'center', gap:8, color:'#1a1c1d', fontWeight:700, textDecoration:'none', fontSize:14 }}>
         <ArrowLeft size={16}/> Back to Console
@@ -128,7 +128,7 @@ export default function AdminFlightDetail() {
   return (
     <>
       <style>{`.back-lnk:hover{color:#705d00!important}`}</style>
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'88px 24px 48px' }}>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'120px 24px 48px' }}>
 
         {/* Back */}
         <Link to="/admin/flights" className="back-lnk" style={{ display:'inline-flex', alignItems:'center', gap:8, color:'#1a1c1d', fontWeight:700, textDecoration:'none', fontSize:14, marginBottom:28, transition:'color 0.2s' }}>

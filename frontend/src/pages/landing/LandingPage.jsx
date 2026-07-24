@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
 import DatePicker from '@/components/ui/DatePicker';
 import PassengerSelector from '@/components/ui/PassengerSelector';
 
 export default function LandingPage() {
   const { t } = useTranslation();
+  const { isAuthenticated, isAdmin } = useSelector((state) => state.auth);
   const todayStr = new Date().toISOString().split('T')[0];
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -15,6 +17,12 @@ export default function LandingPage() {
   const [childrenCount, setChildrenCount] = useState(0);
   const [infants, setInfants] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated && isAdmin) {
+      navigate('/admin/flights', { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleSearch = (e) => {
     e.preventDefault();

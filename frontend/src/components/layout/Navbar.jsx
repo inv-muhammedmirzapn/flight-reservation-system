@@ -11,15 +11,11 @@ import { useTranslation } from "react-i18next";
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
   { labelKey: "bookings", href: "/my-bookings" },
-  { labelKey: "rewards", href: "/rewards" },
-  { labelKey: "support", href: "/#support" },
 ];
 
 const ADMIN_NAV_LINKS = [
   { labelKey: "flights", href: "/admin/flights" },
   { labelKey: "analytics", href: "/admin/analytics" },
-  { labelKey: "users", href: "/admin/users" },
-  { labelKey: "support", href: "/#support" },
 ];
 
 export function Navbar() {
@@ -103,7 +99,7 @@ export function Navbar() {
         <div
           className="landing-logo"
           style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-          onClick={() => navigate(isAuthenticated ? (isAdmin ? "/admin/flights" : "/flights") : "/")}
+          onClick={() => navigate(isAdmin ? "/admin/flights" : "/")}
         >
           <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "36px", objectFit: "contain" }} />
         </div>
@@ -112,7 +108,7 @@ export function Navbar() {
         <div className="landing-nav-links">
           {navLinks.map((link) => (
             <a
-              key={link.href}
+              key={link.labelKey}
               className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
               href={link.href}
               onClick={(e) => {
@@ -305,6 +301,46 @@ export function Navbar() {
                         {t("navbar.viewProfile")}
                       </button>
 
+                      {/* View Notifications */}
+                      {!isAdmin && (
+                        <button
+                          id="nav-view-notifications"
+                          onClick={() => { setDropdownOpen(false); navigate("/notifications"); }}
+                          style={{
+                            width: "100%", textAlign: "left", padding: "0.625rem 1.25rem",
+                            fontSize: "0.875rem", fontWeight: 600, color: "#1a1c1d",
+                            background: "none", border: "none", cursor: "pointer",
+                            transition: "all 0.15s ease",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#f8f9fa";
+                            e.currentTarget.style.color = "#705d00";
+                            e.currentTarget.style.paddingLeft = "1.5rem";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "none";
+                            e.currentTarget.style.color = "#1a1c1d";
+                            e.currentTarget.style.paddingLeft = "1.25rem";
+                          }}
+                        >
+                          <span>{t("navbar.notifications", "Notifications")}</span>
+                          {unreadCount > 0 && (
+                            <span style={{
+                              marginLeft: "auto",
+                              background: "#ef4444",
+                              color: "#ffffff",
+                              fontSize: "0.7rem",
+                              fontWeight: 700,
+                              borderRadius: "9999px",
+                              padding: "2px 6px",
+                            }}>
+                              {unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
 
                       {/* Sign Out */}
                       <button

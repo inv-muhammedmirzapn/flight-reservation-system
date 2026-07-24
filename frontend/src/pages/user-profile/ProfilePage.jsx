@@ -39,7 +39,7 @@ const FIELD_ICONS = {
 const S = {
   page: {
     minHeight: "100vh",
-    paddingTop: "100px",
+    paddingTop: "120px",
     paddingBottom: "3rem",
     paddingLeft: "1rem",
     paddingRight: "1rem",
