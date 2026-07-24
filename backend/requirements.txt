@@ -7,3 +7,5 @@ drf-spectacular
 google-auth
 requests
 python-dateutil
+django-filter
+Pillow

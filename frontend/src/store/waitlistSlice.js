@@ -48,6 +48,18 @@ export const cancelWaitlistEntry = createAsyncThunk(
   }
 );
 
+export const promoteWaitlistEntry = createAsyncThunk(
+  'waitlist/promote',
+  async (id, { rejectWithValue }) => {
+    try {
+      const data = await waitlistAPI.promote(id);
+      return { id, ...data };
+    } catch (error) {
+      return rejectWithValue(parseError(error, 'Failed to promote waitlist entry'));
+    }
+  }
+);
+
 export const fetchWaitlistFlightCount = createAsyncThunk(
   'waitlist/fetchFlightCount',
   async (flightId, { rejectWithValue }) => {
@@ -75,6 +87,10 @@ const initialState = {
   // Cancel flow
   cancelLoadingId: null,
   cancelError: null,
+
+  // Promote flow
+  promoteLoadingId: null,
+  promoteError: null,
 
   // Flight counts caching
   counts: {}, // flightId -> count
@@ -155,6 +171,23 @@ const waitlistSlice = createSlice({
       .addCase(cancelWaitlistEntry.rejected, (state, action) => {
         state.cancelLoadingId = null;
         state.cancelError = action.payload;
+      })
+
+      /* ── Promote ── */
+      .addCase(promoteWaitlistEntry.pending, (state, action) => {
+        state.promoteLoadingId = action.meta.arg;
+        state.promoteError = null;
+      })
+      .addCase(promoteWaitlistEntry.fulfilled, (state, action) => {
+        state.promoteLoadingId = null;
+        const idx = state.list.findIndex((w) => w.id === action.payload.id);
+        if (idx !== -1) {
+          state.list[idx] = { ...state.list[idx], status: 'CONFIRMED' };
+        }
+      })
+      .addCase(promoteWaitlistEntry.rejected, (state, action) => {
+        state.promoteLoadingId = null;
+        state.promoteError = action.payload;
       })
 
       /* ── Fetch Flight Count ── */

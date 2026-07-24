@@ -26,6 +26,12 @@ export const waitlistAPI = {
     });
   },
 
+  promote: async (id) => {
+    return fetchWithAuth(`/waitlist/${id}/promote/`, {
+      method: 'POST',
+    });
+  },
+
   flightCount: async (flightId) => {
     return fetchWithAuth(`/waitlist/flight/${flightId}/`);
   },
