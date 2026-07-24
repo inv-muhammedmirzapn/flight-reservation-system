@@ -5,9 +5,9 @@ import { LoginForm } from '@/components/auth/LoginForm';
 
 const getFeatures = (t) => [
   { icon: 'flight_takeoff', label: t("auth.smartSearch") },
-  { icon: 'radar',          label: t("auth.realTime")  },
-  { icon: 'bolt',           label: t("auth.instantBooking")     },
-  { icon: 'price_check',    label: t("auth.pricePredictions")   },
+  { icon: 'radar', label: t("auth.realTime") },
+  { icon: 'bolt', label: t("auth.instantBooking") },
+  { icon: 'price_check', label: t("auth.pricePredictions") },
 ];
 
 export default function LoginPage() {
@@ -46,7 +46,7 @@ export default function LoginPage() {
               </ul>
             </div>
 
-            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2026 })}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

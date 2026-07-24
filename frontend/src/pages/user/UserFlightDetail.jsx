@@ -131,7 +131,7 @@ export default function UserFlightDetail() {
   /* Error */
   if (error) {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '120px 24px 48px' }}>
         <div style={{
           background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 16,
           padding: 24, color: '#b91c1c', textAlign: 'center', marginBottom: 24,
@@ -193,7 +193,7 @@ export default function UserFlightDetail() {
         />
       )}
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '120px 24px 48px' }}>
 
         {/* Back link */}
         <a

@@ -6,7 +6,7 @@ import { fetchMyBookings, cancelBooking } from '@/store/bookingSlice';
 import { fetchWaitlistEntries, cancelWaitlistEntry } from '@/store/waitlistSlice';
 import {
   Plane, ArrowRight, AlertCircle, Loader,
-  CheckCircle, XCircle, Search, Clock,
+  CheckCircle, XCircle, Search, Clock, ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -124,6 +124,7 @@ function BookingListItem({ booking, isSelected, onClick }) {
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.departure_time)}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.source_airport}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{fmtDate(flight.departure_time)}</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 16px' }}>
@@ -138,7 +139,15 @@ function BookingListItem({ booking, isSelected, onClick }) {
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.arrival_time)}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.destination_airport}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{fmtDate(flight.arrival_time)}</div>
         </div>
+      </div>
+
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: '#5e5e5e', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Clock size={11} color="#705d00" />
+          <span>Booked on {fmtBookingDate(booking.created_at)}</span>
+        </span>
       </div>
     </div>
   );
@@ -192,6 +201,7 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.departure_time)}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.source_airport}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{fmtDate(flight.departure_time)}</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 16px' }}>
@@ -208,7 +218,15 @@ function WaitlistListItem({ entry, isSelected, onClick }) {
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1c1d', lineHeight: 1 }}>{fmtTime(flight.arrival_time)}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', marginTop: 2 }}>{flight.destination_airport}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{fmtDate(flight.arrival_time)}</div>
         </div>
+      </div>
+
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: '#5e5e5e', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Clock size={11} color="#705d00" />
+          <span>Requested on {fmtBookingDate(entry.created_at)}</span>
+        </span>
       </div>
     </div>
   );
@@ -352,6 +370,23 @@ function BookingDetailCard({ booking, onCancel, cancellingId }) {
         </div>
 
         {/* Action */}
+        <Link
+          to={`/my-bookings/booking/${booking.id}`}
+          id={`view-ticket-btn-${booking.id}`}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: '#ffd700', color: '#1a1c1d',
+            fontWeight: 700, fontSize: 13,
+            padding: '11px 16px', borderRadius: 12,
+            textDecoration: 'none', marginBottom: 10,
+            boxShadow: '0 4px 12px rgba(255,215,0,0.3)',
+            transition: 'all 0.2s',
+          }}
+          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 6px 18px rgba(255,215,0,0.45)'}
+          onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)'}
+        >
+          <ExternalLink size={14} /> View Ticket
+        </Link>
         {isConfirmed && !isPast && (
           <div style={{ marginTop: 4 }}>
             {canCancel ? (
@@ -594,22 +629,39 @@ function WaitlistDetailCard({ entry, onCancel, cancellingId }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Base Fare</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{INR(flight.base_fare)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Seats</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{entry.seat_count}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Base Fare / Seats</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#1a1c1d' }}>{INR(flight.base_fare)} × {entry.seat_count}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Pre-auth Total</div>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#705d00' }}>{INR(entry.price)}</div>
           </div>
+          <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 8, marginTop: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Requested On</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1c1d' }}>{fmtBookingDate(entry.created_at)}</div>
+          </div>
         </div>
 
         {/* Action */}
+        <Link
+          to={`/my-bookings/waitlist/${entry.id}`}
+          id={`view-waitlist-ticket-btn-${entry.id}`}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: '#ffd700', color: '#1a1c1d',
+            fontWeight: 700, fontSize: 13,
+            padding: '11px 16px', borderRadius: 12,
+            textDecoration: 'none', marginBottom: 10,
+            boxShadow: '0 4px 12px rgba(255,215,0,0.3)',
+            transition: 'all 0.2s',
+          }}
+          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 6px 18px rgba(255,215,0,0.45)'}
+          onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)'}
+        >
+          <ExternalLink size={14} /> View Ticket
+        </Link>
         {isPending && !isPast && (
           <div style={{ marginTop: 4 }}>
             {canCancel ? (
@@ -847,9 +899,6 @@ export default function MyBookingsPage() {
         }
         /* Laptop-specific tightening */
         @media (min-width: 860px) and (max-width: 1280px) {
-          .bookings-page-wrapper {
-            padding-top: 72px !important;
-          }
           .bookings-page-header {
             margin-bottom: 16px !important;
           }
@@ -859,7 +908,7 @@ export default function MyBookingsPage() {
         }
       `}</style>
 
-      <div className="bookings-page-wrapper" style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: 'clamp(72px, 8vw, 88px) 0 64px' }}>
+      <div className="bookings-page-wrapper" style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 0 64px' }}>
         {/* Page Header */}
         <div className="bookings-page-header" style={{ marginBottom: 24 }}>
           <h1 style={{

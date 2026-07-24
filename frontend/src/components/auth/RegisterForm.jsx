@@ -19,6 +19,11 @@ export function RegisterForm({ onSuccess }) {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
 
+  // Live confirm-password validation — only active once the user starts typing in the confirm field
+  const confirmTouched = formData.confirmPassword.length > 0;
+  const passwordsMatch = formData.password === formData.confirmPassword;
+  const confirmStatus = !confirmTouched ? null : passwordsMatch ? 'match' : 'mismatch';
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setMessage({ type: '', text: '' });
@@ -94,7 +99,28 @@ export function RegisterForm({ onSuccess }) {
 
         <div className="register-form-col">
           <PasswordInput id="password" label={t("auth.password")} placeholder={t("auth.placeholders.password")} required value={formData.password} onChange={handleChange} autoComplete="new-password" disabled={loading} />
-          <PasswordInput id="confirmPassword" label={t("auth.confirmPassword")} placeholder={t("auth.placeholders.confirm")} required value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" disabled={loading} />
+          <PasswordInput
+            id="confirmPassword"
+            label={t("auth.confirmPassword")}
+            placeholder={t("auth.placeholders.confirm")}
+            required
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            autoComplete="new-password"
+            disabled={loading}
+            error={confirmStatus === 'mismatch' ? 'Passwords do not match' : undefined}
+          />
+          {confirmStatus === 'match' && (
+            <p style={{
+              fontSize: '0.75rem', color: '#16a34a',
+              marginTop: '-0.5rem', display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Passwords match
+            </p>
+          )}
           <PasswordStrength password={formData.password} />
         </div>
 

@@ -77,7 +77,7 @@ export default function AdminFlightsList() {
   const [sourceFilter, setSourceFilter] = useState('');
   const [destFilter, setDestFilter] = useState('');
   const [sortBy, setSortBy] = useState('departure_time');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   // Input state for inline quick search
   const [searchInput, setSearchInput] = useState('');
@@ -93,7 +93,7 @@ export default function AdminFlightsList() {
   const [draftSource, setDraftSource] = useState('');
   const [draftDest, setDraftDest] = useState('');
   const [draftSortBy, setDraftSortBy] = useState('departure_time');
-  const [draftSortOrder, setDraftSortOrder] = useState('desc');
+  const [draftSortOrder, setDraftSortOrder] = useState('asc');
 
   const debounceRef = useRef(null);
 
@@ -177,7 +177,7 @@ export default function AdminFlightsList() {
     setSourceFilter('');
     setDestFilter('');
     setSortBy('departure_time');
-    setSortOrder('desc');
+    setSortOrder('asc');
 
     // Also reset drafts
     setDraftSearch('');
@@ -187,10 +187,10 @@ export default function AdminFlightsList() {
     setDraftSource('');
     setDraftDest('');
     setDraftSortBy('departure_time');
-    setDraftSortOrder('desc');
+    setDraftSortOrder('asc');
 
     dispatch(setCurrentPage(1));
-    dispatch(fetchFlights({ page: 1, params: buildParams('', '', '', '', '', '', 'departure_time', 'desc') }));
+    dispatch(fetchFlights({ page: 1, params: buildParams('', '', '', '', '', '', 'departure_time', 'asc') }));
     setFilterOpen(false);
   };
 
@@ -225,9 +225,9 @@ export default function AdminFlightsList() {
       setDestFilter('');
     } else if (filterKey === 'sort') {
       nextSortBy = 'departure_time';
-      nextSortOrder = 'desc';
+      nextSortOrder = 'asc';
       setSortBy('departure_time');
-      setSortOrder('desc');
+      setSortOrder('asc');
     }
 
     dispatch(setCurrentPage(1));
@@ -245,7 +245,7 @@ export default function AdminFlightsList() {
     sourceFilter ||
     destFilter ||
     sortBy !== 'departure_time' ||
-    sortOrder !== 'desc'
+    sortOrder !== 'asc'
   );
 
   const handlePageChange = (page) => {
@@ -330,7 +330,7 @@ export default function AdminFlightsList() {
   return (
     <>
       <style>{`.admin-row:hover{background:rgba(255,255,255,0.5)!important}.add-btn:hover{background:#ffe333!important}.act:hover{background:rgba(0,0,0,0.06)!important}.filter-input:focus{border-color:#705d00!important;box-shadow:0 0 0 3px rgba(112,93,0,0.1)!important}`}</style>
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 24px 48px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>

@@ -116,7 +116,7 @@ export default function ResetPasswordPage() {
                 <span style={{ opacity: 0.65, fontSize: '0.9rem', fontWeight: 400 }}>&amp; secure your account.</span>
               </p>
             </div>
-            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2026 })}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

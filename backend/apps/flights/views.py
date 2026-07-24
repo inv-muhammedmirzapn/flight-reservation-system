@@ -106,7 +106,7 @@ class FlightListCreateView(APIView):
         if ordering in allowed_orderings:
             qs = Flight.objects.all().order_by(ordering)
         else:
-            qs = Flight.objects.all().order_by('-departure_time')
+            qs = Flight.objects.all().order_by('departure_time')
 
         search = request.query_params.get('search', '').strip()
         if search:
@@ -277,8 +277,10 @@ class FlightUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            flight = serializer.save()
+            from apps.waitlist.services import process_waitlist_allocations
+            process_waitlist_allocations(flight)
+            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             # Gracefully handle database constraint exceptions
             return Response(
@@ -298,8 +300,10 @@ class FlightUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            flight = serializer.save()
+            from apps.waitlist.services import process_waitlist_allocations
+            process_waitlist_allocations(flight)
+            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             # Gracefully handle database constraint exceptions
             return Response(

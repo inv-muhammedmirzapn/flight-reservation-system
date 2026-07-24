@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -141,9 +141,25 @@ function FlightCard({ flight }) {
 
         {/* Flight meta */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
             <StatusBadge status={flight.status} />
+            {flight.available_seats === 0 && (
+              <span style={{
+                background: '#ffedd5',
+                color: '#9a3412',
+                border: '1px solid #fed7aa',
+                borderRadius: 9999,
+                padding: '2px 10px',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+              }}>
+                {t("flights.waitingList", { defaultValue: 'Waiting List' })}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
@@ -204,6 +220,29 @@ function Sidebar({
 }) {
   const { t } = useTranslation();
   const statuses = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'BOARDING', 'DEPARTED', 'ARRIVED'];
+
+  const [localMinFare, setLocalMinFare] = useState(minFare);
+  const [localMaxFare, setLocalMaxFare] = useState(maxFare);
+
+  useEffect(() => {
+    setLocalMinFare(minFare);
+  }, [minFare]);
+
+  useEffect(() => {
+    setLocalMaxFare(maxFare);
+  }, [maxFare]);
+
+  const commitMinFare = (val) => {
+    if (val !== minFare) {
+      setMinFare(val);
+    }
+  };
+
+  const commitMaxFare = (val) => {
+    if (val !== maxFare) {
+      setMaxFare(val);
+    }
+  };
 
   return (
     <aside className="sidebar-aside" style={{
@@ -331,34 +370,42 @@ function Sidebar({
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
+            <label htmlFor="min-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
             <input
+              id="min-price-slider"
               type="range"
               min={absMin}
-              max={maxFare}
-              value={minFare}
-              onChange={e => setMinFare(Number(e.target.value))}
+              max={localMaxFare}
+              value={localMinFare}
+              onChange={e => setLocalMinFare(Number(e.target.value))}
+              onMouseUp={() => commitMinFare(localMinFare)}
+              onTouchEnd={() => commitMinFare(localMinFare)}
+              onKeyUp={() => commitMinFare(localMinFare)}
               style={{ width: '100%', accentColor: '#705d00' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
               <span>{INR(absMin)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(minFare)}</span>
+              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMinFare)}</span>
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
+            <label htmlFor="max-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
             <input
+              id="max-price-slider"
               type="range"
-              min={minFare}
+              min={localMinFare}
               max={absMax}
-              value={maxFare}
-              onChange={e => setMaxFare(Number(e.target.value))}
+              value={localMaxFare}
+              onChange={e => setLocalMaxFare(Number(e.target.value))}
+              onMouseUp={() => commitMaxFare(localMaxFare)}
+              onTouchEnd={() => commitMaxFare(localMaxFare)}
+              onKeyUp={() => commitMaxFare(localMaxFare)}
               style={{ width: '100%', accentColor: '#705d00' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
-              <span>{INR(minFare)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(maxFare)}</span>
+              <span>{INR(localMinFare)}</span>
+              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMaxFare)}</span>
             </div>
           </div>
         </div>
@@ -435,6 +482,12 @@ export default function UserFlightsList() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
+
+  // Sorting fallback to ensure flight entries are sorted chronologically by departure time
+  const sortedFlights = useMemo(() => {
+    if (!flights) return [];
+    return [...flights].sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+  }, [flights]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const source = searchParams.get('from') || '';
@@ -606,10 +659,10 @@ export default function UserFlightsList() {
         min_fare: minFare || undefined,
         max_fare: maxFare || undefined,
         stops: stopsFilter.length > 0 ? stopsFilter.join(',') : undefined,
-        passengers: adults + childrenCount + infants,
+        ordering: 'departure_time',
       }
     }));
-  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, adults, childrenCount, infants]);
+  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter]);
 
   // Clear flights on unmount to prevent showing old data briefly
   useEffect(() => {
@@ -672,7 +725,7 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{
@@ -767,7 +820,7 @@ export default function UserFlightsList() {
               <div className="glass-card" style={{ borderRadius: 16, padding: 24, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', textAlign: 'center' }}>
                 {error}
               </div>
-            ) : flights.length === 0 ? (
+            ) : sortedFlights.length === 0 ? (
               <div className="glass-card" style={{ borderRadius: 20, padding: 64, textAlign: 'center' }}>
                 <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
                 <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>{t("flights.noFlightsFound", { defaultValue: 'No flights found matching your criteria.' })}</p>
@@ -775,7 +828,7 @@ export default function UserFlightsList() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
-                {flights.map(flight => (
+                {sortedFlights.map(flight => (
                   <FlightCard key={flight.id} flight={flight} />
                 ))}
 

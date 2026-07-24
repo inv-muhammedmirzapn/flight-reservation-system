@@ -30,7 +30,7 @@ export default function DateTimePicker({
   let dateVal = '';
   let timeVal = '12:00';
 
-  if (value) {
+  if (value && typeof value === 'string') {
     if (value.includes('T')) {
       const parts = value.split('T');
       dateVal = parts[0];
@@ -155,7 +155,7 @@ export default function DateTimePicker({
     return year === viewYear && month === viewMonth && date === day;
   };
 
-  const displayValue = value ? value.replace('T', ' ') : '';
+  const displayValue = value && typeof value === 'string' ? value.replace('T', ' ') : '';
 
   const triggerStyle = {
     width: '100%',
