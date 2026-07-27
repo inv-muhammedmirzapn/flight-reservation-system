@@ -41,6 +41,22 @@ export function RegisterForm({ onSuccess }) {
       return;
     }
 
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(formData.username.trim())) {
+      const msg = "Username must be 3-20 characters and contain only letters, numbers, and underscores.";
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
+      return;
+    }
+
+    const nameRegex = /^[a-zA-Z\s'-]+$/;
+    if (!nameRegex.test(formData.first_name.trim()) || !nameRegex.test(formData.last_name.trim())) {
+      const msg = "First and last name can only contain letters, spaces, hyphens, and apostrophes.";
+      setMessage({ type: 'error', text: msg });
+      toast.error(msg);
+      return;
+    }
+
     // Password complexity rules
     const rules = getPasswordRules(formData.password);
     const failed = rules.filter(r => !r.pass);

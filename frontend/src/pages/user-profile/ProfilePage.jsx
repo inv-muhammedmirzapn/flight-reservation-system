@@ -526,6 +526,51 @@ export default function ProfilePage() {
       return;
     }
 
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(formData.username.trim())) {
+      toast.error("Username must be 3-20 characters and contain only letters, numbers, and underscores.");
+      setSaving(false);
+      return;
+    }
+
+    const nameRegex = /^[a-zA-Z\s'-]+$/;
+    if (!nameRegex.test(formData.first_name.trim()) || !nameRegex.test(formData.last_name.trim())) {
+      toast.error("First and last name can only contain letters, spaces, hyphens, and apostrophes.");
+      setSaving(false);
+      return;
+    }
+
+    if (formData.phone_number?.trim()) {
+      const phoneRegex = /^\+?[0-9]{7,15}$/;
+      const cleanPhone = formData.phone_number.trim().replace(/[\s\-\(\)]/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        toast.error("Please enter a valid phone number (7-15 digits).");
+        setSaving(false);
+        return;
+      }
+    }
+
+    const locationRegex = /^[a-zA-Z\s\.\-']+$/;
+    if (
+      (formData.country?.trim() && !locationRegex.test(formData.country.trim())) ||
+      (formData.state?.trim() && !locationRegex.test(formData.state.trim())) ||
+      (formData.city?.trim() && !locationRegex.test(formData.city.trim()))
+    ) {
+      toast.error("Country, State, and City can only contain letters, spaces, hyphens, periods, and apostrophes.");
+      setSaving(false);
+      return;
+    }
+
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth);
+      const today = new Date();
+      if (dob > today) {
+        toast.error("Date of birth cannot be in the future.");
+        setSaving(false);
+        return;
+      }
+    }
+
     if (formData.email !== profile?.email) {
       toast.error("Please verify your new email before saving changes.");
       setSaving(false);

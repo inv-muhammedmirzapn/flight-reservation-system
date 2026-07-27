@@ -70,6 +70,15 @@ class BookingViewSet(mixins.CreateModelMixin,
         except Exception as e:
             return Response({'detail': 'Booking failed. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @extend_schema(
+        summary="Cancel Booking",
+        description="Cancel a booking. This increments the flight's available seats and triggers the waitlist auto-allocation logic.",
+        responses={200: inline_serializer('BookingCancelResponse', {
+            'detail': rf_serializers.CharField(),
+            'status': rf_serializers.CharField()
+        })},
+        tags=["Bookings"]
+    )
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
         """
