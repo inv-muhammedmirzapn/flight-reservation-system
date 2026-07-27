@@ -26,10 +26,10 @@ def create_booking(flight_id, user, passengers_data):
     if flight.available_seats < seat_count:
         raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
 
-    if Booking.objects.filter(
-        user=user, flight=flight, status=BookingStatus.CONFIRMED
-    ).exists():
-        raise ValidationError("You already have a confirmed booking for this flight.")
+    # if Booking.objects.filter(
+    #     user=user, flight=flight, status=BookingStatus.CONFIRMED
+    # ).exists():
+    #     raise ValidationError("You already have a confirmed booking for this flight.")
 
     # Validate passenger data
     for p in passengers_data:
