@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import LandingPage from "@/pages/landing/LandingPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
+import FlightsPage from "@/pages/flights/FlightsPage";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <main className="flex-1 flex flex-col">
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/flights" element={<FlightsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
             </Routes>
