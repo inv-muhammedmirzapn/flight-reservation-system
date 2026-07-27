@@ -13,15 +13,12 @@ class BookingViewSet(mixins.CreateModelMixin,
                      mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      viewsets.GenericViewSet):
-    """
-    ViewSet for handling M3 Bookings.
-    Includes the endpoint for cancelling a booking, which triggers auto-allocation.
-    """
+  
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.filter(user=self.request.user).select_related('flight').order_by('-created_at')
+        return Booking.objects.filter(user=self.request.user).select_related('flight').prefetch_related('passengers').order_by('-created_at')
 
     @extend_schema(
         request=inline_serializer(

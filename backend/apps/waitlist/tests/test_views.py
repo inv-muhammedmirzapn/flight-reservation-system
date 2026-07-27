@@ -67,7 +67,7 @@ class WaitlistTests(TestCase):
     def test_join_waitlist_when_seats_available(self):
         # Flight has 10 available seats. Attempting to join waitlist should fail.
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
@@ -81,7 +81,7 @@ class WaitlistTests(TestCase):
         self.flight.save()
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}, {"name": "B", "age": 22, "gender": "F"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}, {"name": "Bob", "age": 22, "gender": "F"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -107,7 +107,7 @@ class WaitlistTests(TestCase):
         )
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
@@ -122,7 +122,7 @@ class WaitlistTests(TestCase):
         url = reverse("waitlist-join")
 
         # Exceeds max seats of 9
-        passengers_10 = [{"name": "A", "age": 20, "gender": "M"}] * 10
+        passengers_10 = [{"name": "Alice", "age": 20, "gender": "M"}] * 10
         response = self.client_a.post(url, {"flight": str(self.flight.id), "passengers": passengers_10}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -140,7 +140,7 @@ class WaitlistTests(TestCase):
         self.flight.save()
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(

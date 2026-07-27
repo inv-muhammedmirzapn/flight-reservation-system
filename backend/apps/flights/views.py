@@ -280,6 +280,7 @@ class FlightUpdateView(APIView):
             flight = serializer.save()
             from apps.waitlist.services import process_waitlist_allocations
             process_waitlist_allocations(flight)
+            flight.refresh_from_db()
             return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             # Gracefully handle database constraint exceptions
@@ -303,6 +304,7 @@ class FlightUpdateView(APIView):
             flight = serializer.save()
             from apps.waitlist.services import process_waitlist_allocations
             process_waitlist_allocations(flight)
+            flight.refresh_from_db()
             return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             # Gracefully handle database constraint exceptions
