@@ -14,7 +14,8 @@
     "register": "登録",
     "myAccount": "マイアカウント",
     "viewProfile": "プロフィールを見る",
-    "signOut": "ログアウト"
+    "signOut": "ログアウト",
+    "notifications": "通知"
   },
   "landing": {
     "heroTitle": "次はどこへ？",
@@ -39,7 +40,9 @@
   },
   "common": {
     "show": "表示",
-    "hide": "非表示"
+    "hide": "非表示",
+    "remove": "削除",
+    "cancel": "キャンセル"
   },
   "auth": {
     "welcomeBack": "おかえりなさい",

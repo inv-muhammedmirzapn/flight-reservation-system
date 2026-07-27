@@ -323,7 +323,7 @@ export default function BookingConfirmModal({ flight, totalPassengers = 1, onClo
                       }}>{t('common.remove', 'Remove')}</button>
                     )}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div className="passenger-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                     <input
                       type="text" placeholder={t('flights.fullName', 'Full Name')} required
                       value={p.name} onChange={(e) => handlePassengerChange(i, 'name', e.target.value)}
@@ -335,7 +335,7 @@ export default function BookingConfirmModal({ flight, totalPassengers = 1, onClo
                       style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
                     />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="passenger-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.04)', padding: 4, borderRadius: 8, border: '1px solid #e5e7eb' }}>
                       {[
                         { id: 'M', label: t('flights.male', 'Male') },

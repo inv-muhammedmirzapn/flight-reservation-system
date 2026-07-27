@@ -651,7 +651,7 @@ export default function ProfilePage() {
         <div style={S.container}>
 
           {/* ── Header Card ── */}
-          <div style={S.headerCard}>
+          <div style={S.headerCard} className="profile-header-card">
             <div style={S.avatar}>{avatarChar}</div>
 
             <div style={S.headerInfo}>
@@ -659,7 +659,7 @@ export default function ProfilePage() {
               <p style={S.headerUsername}>@{profile?.username}</p>
             </div>
 
-            <div style={S.progressWrap}>
+            <div style={S.progressWrap} className="profile-progress-wrap">
               <CircleProgress pct={completeness} />
               <div>
                 <div style={S.progressLabel}>{t("profile.status")}</div>
@@ -709,9 +709,9 @@ export default function ProfilePage() {
               </div>
 
               {/* Account Information */}
-              <div style={S.sectionGroup}>
+              <div style={S.sectionGroup} className="profile-section-margin">
                 <div style={S.sectionLabel}>{t("profile.basicInfo")}</div>
-                <div style={S.fieldGrid2col}>
+                <div style={S.fieldGrid2col} className="profile-grid-2col">
                   {REGISTRATION_FIELDS.map((key) => (
                     <ViewField key={key} fieldKey={key} value={profile[key]} label={fieldLabels[key]} />
                   ))}
@@ -721,7 +721,7 @@ export default function ProfilePage() {
               <div style={S.divider} />
 
               {/* Personal Details */}
-              <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }}>
+              <div style={{ ...S.sectionGroup, ...S.sectionGroupLast, marginTop: "1.5rem" }} className="profile-section-margin">
                 <div style={S.sectionLabel}>{t("profile.contactDetails")}</div>
                 <div style={S.fieldGrid}>
                   {PROFILE_FIELDS.map((key) => (
@@ -745,7 +745,7 @@ export default function ProfilePage() {
               {/* Account Information — all editable */}
               <div style={S.sectionGroup}>
                 <div style={S.sectionLabel}>{t("profile.basicInfo")}</div>
-                <div style={S.fieldGrid2col}>
+                <div style={S.fieldGrid2col} className="profile-grid-2col">
                   <FormField id="username" label={fieldLabels.username} value={formData.username} onChange={handleChange} />
                   <FormField
                     id="email" label={fieldLabels.email} type="email"
