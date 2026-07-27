@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
-import { Plane, Search, ArrowRight } from 'lucide-react';
+import { Plane, Search, ArrowRight, Filter, X } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
 import PassengerSelector from '@/components/ui/PassengerSelector';
@@ -72,7 +72,7 @@ function FlightCard({ flight }) {
       className="flight-row-card"
     >
       {/* Left: Airline logo + route info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1, minWidth: 0 }}>
+      <div className="flight-card-main" style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1, minWidth: 0, width: '100%', flexWrap: 'wrap' }}>
         {/* Airline Icon placeholder */}
         <div style={{
           width: 56, height: 56,
@@ -85,7 +85,7 @@ function FlightCard({ flight }) {
         </div>
 
         {/* Route timeline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+        <div className="flight-card-timeline" style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 260px', minWidth: 260 }}>
           {/* Departure */}
           <div style={{ textAlign: 'center', minWidth: 70 }}>
             <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1c1d', lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
@@ -140,8 +140,8 @@ function FlightCard({ flight }) {
         </div>
 
         {/* Flight meta */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div className="flight-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
+          <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
             <StatusBadge status={flight.status} />
             {flight.available_seats === 0 && (
@@ -170,7 +170,7 @@ function FlightCard({ flight }) {
       </div>
 
       {/* Right: Price + Select button */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
+      <div className="flight-card-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
         <div style={{
           fontSize: 28, fontWeight: 800,
           color: '#1a1c1d',
@@ -216,7 +216,8 @@ function Sidebar({
   childrenCount, setChildrenCount,
   infants, setInfants,
   stopsFilter, setStopsFilter,
-  onClearFilters
+  onClearFilters,
+  mobileFiltersOpen, setMobileFiltersOpen
 }) {
   const { t } = useTranslation();
   const statuses = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'BOARDING', 'DEPARTED', 'ARRIVED'];
@@ -245,26 +246,44 @@ function Sidebar({
   };
 
   return (
-    <aside className="sidebar-aside" style={{
-      width: 260,
-      flexShrink: 0,
-      position: 'sticky',
-      top: 88,
-      alignSelf: 'flex-start',
-      zIndex: 10,
-    }}>
-      <div className="glass-card" style={{
-        borderRadius: 20,
-        maxHeight: 'calc(100vh - 120px)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
+    <>
+      {/* Overlay for mobile drawer */}
+      <div className={`sidebar-overlay ${mobileFiltersOpen ? 'open' : ''}`} onClick={() => setMobileFiltersOpen(false)} />
+      
+      <aside className={`sidebar-aside ${mobileFiltersOpen ? 'open' : ''}`} style={{
+        width: 260,
+        flexShrink: 0,
+        position: 'sticky',
+        top: 88,
+        alignSelf: 'flex-start',
+        zIndex: 10,
       }}>
-        <div className="sidebar-scroll" style={{
-          padding: 28,
-          overflowY: 'auto',
-          flex: 1,
+        <div className="glass-card" style={{
+          borderRadius: 20,
+          maxHeight: 'calc(100vh - 120px)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative'
         }}>
+          {/* Close button (mobile only) */}
+          <button 
+            className="mobile-close-btn" 
+            onClick={() => setMobileFiltersOpen(false)} 
+            style={{ 
+              display: 'none', background: 'rgba(0,0,0,0.05)', border: 'none', 
+              position: 'absolute', top: 12, right: 12, cursor: 'pointer',
+              borderRadius: '50%', padding: 6, zIndex: 10
+            }}
+          >
+            <X size={20} color="#1a1c1d" />
+          </button>
+
+          <div className="sidebar-scroll" style={{
+            padding: 28,
+            overflowY: 'auto',
+            flex: 1,
+          }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h2 style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
@@ -474,7 +493,8 @@ function Sidebar({
       </div>
     </div>
   </aside>
-);
+  </>
+  );
 }
 
 /* ── Main Component ───────────────────────────────────────── */
@@ -482,6 +502,8 @@ export default function UserFlightsList() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
+  
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Sorting fallback to ensure flight entries are sorted chronologically by departure time
   const sortedFlights = useMemo(() => {
@@ -662,7 +684,7 @@ export default function UserFlightsList() {
         ordering: 'departure_time',
       }
     }));
-  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter]);
+  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, searchParams]);
 
   // Clear flights on unmount to prevent showing old data briefly
   useEffect(() => {
@@ -717,11 +739,98 @@ export default function UserFlightsList() {
           scrollbar-width: thin;
           scrollbar-color: rgba(0,0,0,0.15) transparent;
         }
+        .mobile-filter-btn { display: none; }
+        .sidebar-overlay { display: none; }
+        
+        @media (max-width: 1150px) {
+          /* Medium screens: gracefully wrap the flight meta under the timeline */
+          .flight-card-main {
+            flex-wrap: wrap !important;
+            gap: 16px 24px !important; /* vertical gap 16, horizontal 24 */
+          }
+          .flight-card-timeline {
+            min-width: 200px !important;
+          }
+          .flight-card-meta {
+            flex: 0 0 100% !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding-top: 16px;
+            border-top: 1px dashed rgba(0,0,0,0.1);
+          }
+          .flight-card-meta > div:not(.flight-card-meta-top) {
+            /* Keep secondary meta info inline on medium screens */
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+        }
+        
         @media (max-width: 900px) {
           .flights-layout { flex-direction: column !important; }
-          .sidebar-aside { width: 100% !important; position: static !important; }
-          .flight-row-card { flex-direction: column !important; align-items: flex-start !important; }
-          .sidebar-scroll { max-height: none !important; overflow-y: visible !important; }
+          .flight-row-card { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+          
+          /* Flight Card Mobile Refinements */
+          .flight-card-meta {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          .flight-card-meta > div:not(.flight-card-meta-top) {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+          }
+          .flight-card-right {
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.06);
+          }
+          
+          /* Mobile Filter Button */
+          .mobile-filter-btn { display: flex !important; }
+          
+          /* Drawer Overlay */
+          .sidebar-overlay {
+            display: block;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 150;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+          }
+          .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+          
+          /* Drawer Panel */
+          .sidebar-aside { 
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 85vw !important; max-width: 340px !important;
+            height: 100vh !important;
+            background: rgba(255,255,255,0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            z-index: 200 !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 8px 0 32px rgba(0,0,0,0.1) !important;
+          }
+          .sidebar-aside.open {
+            transform: translateX(0);
+          }
+          .sidebar-aside .glass-card {
+            border-radius: 0 !important;
+            max-height: 100vh !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .mobile-close-btn { display: block !important; }
         }
       `}</style>
 
@@ -775,6 +884,7 @@ export default function UserFlightsList() {
             infants={infants} setInfants={setInfants}
             stopsFilter={stopsFilter} setStopsFilter={setStopsFilter}
             onClearFilters={handleClearFilters}
+            mobileFiltersOpen={mobileFiltersOpen} setMobileFiltersOpen={setMobileFiltersOpen}
           />
 
           {/* Flight list */}
@@ -790,9 +900,24 @@ export default function UserFlightsList() {
                 <Plane size={16} color="#705d00" />
                 <span>{destination || t("flights.anyDestination", { defaultValue: 'Any Destination' })}</span>
               </div>
-              <div style={{ fontSize: 13, color: '#5e5e5e' }}>
-                {t(count === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: count, defaultValue: `${count} flights found` })}
-                {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ fontSize: 13, color: '#5e5e5e' }}>
+                  {t(count === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: count, defaultValue: `${count} flights found` })}
+                  {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
+                </div>
+                {/* Mobile Filter Button */}
+                <button 
+                  className="mobile-filter-btn"
+                  onClick={() => setMobileFiltersOpen(true)}
+                  style={{
+                    display: 'none', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 10,
+                    background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)',
+                    color: '#705d00', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  <Filter size={14} /> Filters
+                </button>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -812,8 +812,13 @@ export default function MyBookingsPage() {
   };
 
   // Filter lists
-  const filteredBookings = bookingsList.filter((b) => bookingsFilter === 'ALL' || b.status === bookingsFilter);
-  const filteredWaitlist = waitlistList.filter((w) => waitlistFilter === 'ALL' || w.status === waitlistFilter);
+  const filteredBookings = useMemo(() => 
+    bookingsList.filter((b) => bookingsFilter === 'ALL' || b.status === bookingsFilter),
+  [bookingsList, bookingsFilter]);
+  
+  const filteredWaitlist = useMemo(() => 
+    waitlistList.filter((w) => waitlistFilter === 'ALL' || w.status === waitlistFilter),
+  [waitlistList, waitlistFilter]);
 
   // Auto-selection of first booking
   useEffect(() => {
