@@ -417,7 +417,7 @@
     "fare": "Fare",
     "booked": "Booked",
     "ref": "Ref.",
-    "loginRequired": "You need to login for booking",
+    "loginRequired": "Please Login to book flights.",
     "notificationsTitle": "Notifications",
     "notificationsSubtitle": "Stay updated with real-time flight status alerts.",
     "markAllRead": "Mark All as Read",

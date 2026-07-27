@@ -16,6 +16,8 @@ const APP_NAV_LINKS = [
 const ADMIN_NAV_LINKS = [
   { labelKey: "flights", href: "/admin/flights" },
   { labelKey: "analytics", href: "/admin/analytics" },
+  { labelKey: "users", href: "/admin/flights" },
+  { labelKey: "support", href: "/admin/flights" },
 ];
 
 export function Navbar() {
@@ -91,6 +93,8 @@ export function Navbar() {
     setLogoutDialogOpen(false);
   };
 
+  const isLandingPage = location.pathname === "/" && !isAdmin;
+
   return (
     <nav className="landing-nav">
       <div className="landing-nav-inner">
@@ -105,23 +109,25 @@ export function Navbar() {
         </div>
 
         {/* Centre nav links */}
-        <div className="landing-nav-links">
-          {navLinks.map((link) => (
-            <a
-              key={link.labelKey}
-              className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
-              href={link.href}
-              onClick={(e) => {
-                if (!link.href.includes("#")) {
-                  e.preventDefault();
-                  navigate(link.href);
-                }
-              }}
-            >
-              {link.label ?? t(`navbar.${link.labelKey}`)}
-            </a>
-          ))}
-        </div>
+        {!isLandingPage && (
+          <div className="landing-nav-links">
+            {navLinks.map((link) => (
+              <a
+                key={link.labelKey}
+                className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
+                href={link.href}
+                onClick={(e) => {
+                  if (!link.href.includes("#")) {
+                    e.preventDefault();
+                    navigate(link.href);
+                  }
+                }}
+              >
+                {link.label ?? t(`navbar.${link.labelKey}`)}
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* Right side */}
         <div className="landing-nav-actions">
@@ -158,10 +164,9 @@ export function Navbar() {
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
           </button>
           {!isAuthenticated ? (
-            <>
-              <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>
-              <button className="landing-nav-join" onClick={() => navigate("/register")}>{t("navbar.register")}</button>
-            </>
+              <button className="landing-nav-join pill-btn" onClick={() => navigate("/login")}>
+                {t("navbar.loginOrRegister", "Login or Register")}
+              </button>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               {/* Notifications Bell */}

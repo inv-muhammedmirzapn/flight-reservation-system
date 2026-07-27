@@ -136,6 +136,30 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
     return d.getFullYear() === viewYear && d.getMonth() === viewMonth && d.getDate() === day;
   };
 
+  const getOrdinalSuffix = (day) => {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+      case 1:  return "st";
+      case 2:  return "nd";
+      case 3:  return "rd";
+      default: return "th";
+    }
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const day = date.getDate();
+      const month = date.toLocaleDateString('en-US', { month: 'long' });
+      const year = date.getFullYear();
+      return `${day}${getOrdinalSuffix(day)} ${month}, ${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <div ref={containerRef} className={`datepicker-container ${className}`} style={{ position: 'relative', width: '100%' }}>
       {label && !isTransparent && (
@@ -156,7 +180,7 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
         <input
           type="text"
           placeholder={placeholder}
-          value={value || ''}
+          value={isTransparent ? formatDisplayDate(value) : (value || '')}
           readOnly
           onClick={handleOpen}
           style={{

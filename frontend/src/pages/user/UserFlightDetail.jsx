@@ -109,7 +109,7 @@ export default function UserFlightDetail() {
   const handleBookNow = (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      toast.error('You need to login for booking');
+      toast.error('Please Login to book flights.');
       navigate('/login');
       return;
     }
@@ -415,7 +415,7 @@ export default function UserFlightDetail() {
                   onClick={(e) => {
                     e.preventDefault();
                     if (!isAuthenticated) {
-                      toast.error('You need to login to join the waitlist');
+                      toast.error('Please Login to book flights.');
                       navigate('/login');
                       return;
                     }

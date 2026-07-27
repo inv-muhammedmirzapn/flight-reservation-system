@@ -67,7 +67,7 @@ describe('UserFlightDetail Component', () => {
     const bookNowBtn = screen.getByText(/Book Now/i);
     fireEvent.click(bookNowBtn);
 
-    expect(toast.error).toHaveBeenCalledWith('You need to login for booking');
+    expect(toast.error).toHaveBeenCalledWith('Please Login to book flights.');
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 
