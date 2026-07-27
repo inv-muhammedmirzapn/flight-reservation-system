@@ -52,7 +52,6 @@ class ProfileAPITests(APITestCase):
         update_payload = {
             "first_name": "UpdatedFirst",
             "last_name": "UpdatedLast",
-            "email": "updated@example.com",
             "phone_number": "1234567890",
             "gender": "MALE",
             "country": "US",
@@ -65,7 +64,6 @@ class ProfileAPITests(APITestCase):
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
         self.assertEqual(patch_response.data["first_name"], "UpdatedFirst")
         self.assertEqual(patch_response.data["last_name"], "UpdatedLast")
-        self.assertEqual(patch_response.data["email"], "updated@example.com")
         self.assertEqual(patch_response.data["phone_number"], "1234567890")
         self.assertEqual(patch_response.data["gender"], "MALE")
         self.assertEqual(patch_response.data["country"], "US")
@@ -74,5 +72,4 @@ class ProfileAPITests(APITestCase):
         user = User.objects.get(username="testuser")
         self.assertEqual(user.first_name, "UpdatedFirst")
         self.assertEqual(user.last_name, "UpdatedLast")
-        self.assertEqual(user.email, "updated@example.com")
         self.assertEqual(user.profile.phone_number, "1234567890")

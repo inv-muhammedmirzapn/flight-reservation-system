@@ -35,6 +35,10 @@ export function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.username.trim() || !formData.password.trim()) {
+      toast.error(t('Please enter both username and password.'));
+      return;
+    }
     const res = await dispatch(loginUser({ credentials: formData, requireCustomer: true }));
     if (res.meta.requestStatus === 'fulfilled') {
       const p = res.payload.profile;

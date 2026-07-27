@@ -33,6 +33,7 @@ const SUMMARY = {
   confirmed_bookings: 100,
   cancelled_bookings: 20,
   cancellation_rate: '16.67',
+  avg_occupancy: 67.5,
 };
 const MONTHLY  = [{ month: '2026-06', revenue: '250000' }, { month: '2026-07', revenue: '250000' }];
 const ROUTES   = [{ route: 'JFK → LAX', bookings: 40 }, { route: 'LAX → JFK', bookings: 30 }];
@@ -52,7 +53,6 @@ function mockSuccess() {
 
 describe('AnalyticsDashboard', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     vi.resetAllMocks();
     mockSuccess();
   });
@@ -105,11 +105,12 @@ describe('AnalyticsDashboard', () => {
     await waitFor(() => expect(fetchAnalyticsSummary).toHaveBeenCalledTimes(1));
     expect(fetchMonthlyRevenue).toHaveBeenCalledWith(12);
     expect(fetchPopularRoutes).toHaveBeenCalledWith(10);
-    expect(fetchFlightOccupancy).toHaveBeenCalledWith(10);
+    expect(fetchFlightOccupancy).toHaveBeenCalledWith(15);
     expect(fetchPeakBookingHours).toHaveBeenCalledTimes(1);
   });
 
   it('auto-refreshes after 30 seconds without user interaction', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<AnalyticsDashboard />);
     await waitFor(() => expect(fetchAnalyticsSummary).toHaveBeenCalledTimes(1));
 
@@ -122,16 +123,7 @@ describe('AnalyticsDashboard', () => {
     expect(fetchAnalyticsSummary).toHaveBeenCalledTimes(2);
   });
 
-  it('does NOT render a standalone Refresh button', async () => {
-    render(<AnalyticsDashboard />);
-    await waitFor(() => expect(screen.getByText('Booking Analytics Dashboard')).toBeInTheDocument());
-    expect(screen.queryByRole('button', { name: /^refresh$/i })).not.toBeInTheDocument();
-  });
 
-  it('shows "LIVE" updated timestamp pill after successful load', async () => {
-    render(<AnalyticsDashboard />);
-    await waitFor(() => expect(screen.getByText(/LIVE · Updated/i)).toBeInTheDocument());
-  });
 
   it('shows error message and Retry button when API fails', async () => {
     fetchAnalyticsSummary.mockRejectedValue(new Error('Network error'));

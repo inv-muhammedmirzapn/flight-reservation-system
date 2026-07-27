@@ -188,7 +188,7 @@ class WaitlistListView(APIView):
         else:
             queryset = WaitlistEntry.objects.filter(user=request.user)
 
-        queryset = queryset.order_by('-created_at')
+        queryset = queryset.select_related('flight', 'user').prefetch_related('passengers').order_by('-created_at')
 
         serializer = WaitlistEntrySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -119,8 +119,8 @@ def cancel_booking(booking_id, user):
     except Exception:
         pass
 
-    # Increment available seats on the flight
-    flight = booking.flight
+    # Increment available seats on the flight (lock row to prevent race conditions)
+    flight = Flight.objects.select_for_update().get(id=booking.flight_id)
     flight.available_seats += booking.seat_count
     flight.save()
 

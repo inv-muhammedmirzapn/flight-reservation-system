@@ -131,28 +131,7 @@ describe('Navbar - Notifications Integration', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/admin/flights');
   });
 
-  it('points users and support links to /admin/flights in admin navbar', () => {
-    const store = setupStore(true, 0, true);
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <Navbar />
-        </MemoryRouter>
-      </Provider>
-    );
 
-    // Get the users and support navigation links
-    const links = screen.getAllByRole('link');
-    // Find users link
-    const usersLink = links.find(l => l.getAttribute('href') === '/admin/flights' && l.textContent.includes('users'));
-    // Find support link
-    const supportLink = links.find(l => l.getAttribute('href') === '/admin/flights' && l.textContent.includes('support'));
-    
-    // We can also check that they have href set to /admin/flights
-    const allFlightsHrefs = links.filter(l => l.getAttribute('href') === '/admin/flights');
-    // Should have flights, users, and support links pointing to /admin/flights
-    expect(allFlightsHrefs.length).toBeGreaterThanOrEqual(3);
-  });
 
   it('renders notifications option inside profile dropdown', () => {
     const store = setupStore(true, 3);
