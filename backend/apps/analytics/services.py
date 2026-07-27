@@ -1,8 +1,3 @@
-"""
-Analytics services — aggregation logic for the M7 admin dashboard.
-All functions query the existing Booking and Flight models at run-time.
-No additional database tables are required.
-"""
 from django.db.models import (
     Count, Sum, Avg, FloatField, ExpressionWrapper, F, Q
 )

@@ -1,12 +1,3 @@
-"""
-Professional HTML email templates for the Passenger flight reservation system.
-Design principles:
-  - No emojis
-  - Minimal colour palette: white body, #1a1c1d dark text, #c9aa2e gold accent only for dividers/labels
-  - Clean typography, generous whitespace
-  - Plain-text alternative is always provided by the caller (services.py)
-"""
-
 import base64
 import os
 
