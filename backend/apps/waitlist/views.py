@@ -43,7 +43,8 @@ class WaitlistJoinView(APIView):
                 )
             }
         ),
-        responses={201: WaitlistEntrySerializer}
+        responses={201: WaitlistEntrySerializer},
+        tags=["Waitlist"]
     )
     def post(self, request, *args, **kwargs):
         flight_id = request.data.get("flight")

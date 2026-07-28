@@ -9,6 +9,7 @@ from .models import Booking
 from .serializers import BookingSerializer
 from .services import cancel_booking, create_booking
 
+@extend_schema(tags=["Bookings"])
 class BookingViewSet(mixins.CreateModelMixin,
                      mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
@@ -38,7 +39,8 @@ class BookingViewSet(mixins.CreateModelMixin,
                 )
             }
         ),
-        responses={201: BookingSerializer}
+        responses={201: BookingSerializer},
+        tags=["Bookings"]
     )
     def create(self, request, *args, **kwargs):
         """
