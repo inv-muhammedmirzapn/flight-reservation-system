@@ -52,7 +52,7 @@ export function Select({
         containerRef.current && !containerRef.current.contains(event.target)
       ) {
         // also check the portal'd dropdown
-        const portal = document.getElementById(`${selectId}-portal`);
+        const portal = document.getElementById(`${selectId}-listbox`);
         if (portal && portal.contains(event.target)) return;
         setIsOpen(false);
       }

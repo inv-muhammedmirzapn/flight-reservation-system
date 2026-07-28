@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import '@/styles/admin-system.css';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
@@ -149,6 +150,7 @@ export default function FlightInstancesPage() {
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
   return (
+    <>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <div>

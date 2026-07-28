@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link } from 'react-router-dom';
+import '@/styles/admin-system.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import {

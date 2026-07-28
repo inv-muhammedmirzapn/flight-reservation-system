@@ -221,15 +221,17 @@ class FlightRouteSerializer(serializers.ModelSerializer):
 
 class FlightInstanceSerializer(serializers.ModelSerializer):
     flight_no = serializers.CharField(source="flight.flight_no", read_only=True)
+    flight_number = serializers.CharField(source="flight.flight_no", read_only=True)
     aircraft_registration = serializers.CharField(
         source="aircraft.registration", read_only=True
     )
+    route = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
         fields = [
-            "id", "flight", "flight_no", "date",
-            "aircraft", "aircraft_registration",
+            "id", "flight", "flight_no", "flight_number", "date",
+            "aircraft", "aircraft_registration", "route",
             "status",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",
@@ -238,6 +240,15 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_route(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        if not legs.exists():
+            return None
+        return {
+            "source": {"iata_code": legs.first().departure_airport.iata_code},
+            "destination": {"iata_code": legs.last().arrival_airport.iata_code}
+        }
 
     def validate(self, attrs):
         dep = attrs.get("scheduled_departure", getattr(self.instance, "scheduled_departure", None))

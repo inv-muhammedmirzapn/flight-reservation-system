@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link } from 'react-router-dom';
+import '@/styles/admin-system.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, updateSeat, generateSeats } from '@/store/adminSlices';
@@ -39,33 +40,49 @@ export default function SeatMapPage() {
   const [selectedInstanceId, setSelectedInstanceId] = useState(instanceParam);
   const [editSeat, setEditSeat] = useState(null);
   const [seatForm, setSeatForm] = useState({});
+  const [showMap, setShowMap] = useState(!!instanceParam);
 
   useEffect(() => {
     dispatch(fetchFlightInstances({ page_size: 500 }));
     if (instanceParam) {
       loadSeats(instanceParam);
+      setShowMap(true);
     }
   }, [dispatch, instanceParam]);
 
   const loadSeats = (id) => {
     if (!id) return;
-    dispatch(fetchSeats({ flight_instance: id, page_size: 500 }));
+    return dispatch(fetchSeats({ flight_instance: id, page_size: 500 })).unwrap();
   };
 
   const handleInstanceChange = (id) => {
     setSelectedInstanceId(id);
     setEditSeat(null);
-    loadSeats(id);
+    setShowMap(false);
   };
 
-  const handleGenerateSeats = () => {
+  const handleGenerateSeats = async () => {
     if (!selectedInstanceId) return;
+
+    try {
+      const res = await loadSeats(selectedInstanceId);
+      const fetchedSeats = res.results || res;
+      if (fetchedSeats && fetchedSeats.length > 0) {
+        setShowMap(true);
+        toast.success('Seats loaded.');
+        return;
+      }
+    } catch (err) {
+      // ignore
+    }
+
     toast.promise(
       dispatch(generateSeats(selectedInstanceId)).unwrap(),
       {
         loading: 'Generating seats…',
         success: (res) => {
           loadSeats(selectedInstanceId);
+          setShowMap(true);
           return res?.detail || 'Seats generated!';
         },
         error: (err) => String(err),
@@ -170,9 +187,11 @@ export default function SeatMapPage() {
               onChange={(e) => handleInstanceChange(e.target.value)}
             />
           </div>
-          <button className="btn-primary" onClick={handleGenerateSeats} disabled={!selectedInstanceId} id="generate-seats-btn">
-            <Zap size={15} /> Generate Seats
-          </button>
+          {!showMap && (
+            <button className="btn-primary" onClick={handleGenerateSeats} disabled={!selectedInstanceId || seatsLoading} id="generate-seats-btn">
+              <Zap size={15} /> Generate Seats
+            </button>
+          )}
         </div>
 
         {/* Legend */}
@@ -186,7 +205,7 @@ export default function SeatMapPage() {
         </div>
 
         {/* Seat grid */}
-        {selectedInstanceId ? (
+        {selectedInstanceId && showMap ? (
           seatsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
               <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
@@ -208,7 +227,7 @@ export default function SeatMapPage() {
           )
         ) : (
           <div className="admin-card" style={{ textAlign: 'center', color: '#aaa', padding: '48px 0', fontSize: 15 }}>
-            Select a flight instance above to view or generate its seat map.
+            Select a flight instance above and click "Generate Seats" to view or generate its seat map.
           </div>
         )}
       </div>

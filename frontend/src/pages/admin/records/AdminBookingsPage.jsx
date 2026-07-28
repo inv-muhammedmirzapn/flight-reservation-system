@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 import '@/styles/admin-system.css';
 
 const STATUS_COLORS = {
@@ -59,16 +60,21 @@ export default function AdminBookingsPage() {
         <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', marginBottom: 8 }}>Bookings</h1>
         <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Search by PNR and filter by booking status.</p>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888', zIndex: 2 }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PNR…"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.8)' }} />
+              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', fontSize: 14, fontWeight: 500, outline: 'none', background: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }} />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', fontSize: 13, background: '#fff', outline: 'none' }}>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
-          </select>
+          <div style={{ minWidth: 160 }}>
+            <Select
+              id="status-filter"
+              options={STATUS_OPTIONS.map(s => ({ value: s, label: s || 'All statuses' }))}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ padding: '9px 14px' }}
+            />
+          </div>
           <button type="submit" className="btn-primary" style={{ padding: '9px 16px' }}>Search</button>
         </form>
 
