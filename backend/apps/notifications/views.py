@@ -5,6 +5,7 @@ from drf_spectacular.utils import extend_schema
 from .models import Notification
 from .serializers import NotificationSerializer
 
+@extend_schema(tags=["Notifications"])
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows users to view and manage their notifications.
@@ -15,7 +16,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user)
 
-    @extend_schema(responses={200: NotificationSerializer})
+    @extend_schema(responses={200: NotificationSerializer}, tags=["Notifications"])
     @action(detail=True, methods=['patch'])
     def read(self, request, pk=None):
         """Mark a specific notification as read."""
@@ -26,7 +27,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(notification)
         return Response(serializer.data)
 
-    @extend_schema(responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}})
+    @extend_schema(responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}}, tags=["Notifications"])
     @action(detail=False, methods=['post'], url_path='mark-all-read')
     def mark_all_read(self, request):
         """Mark all notifications as read for the current user."""
