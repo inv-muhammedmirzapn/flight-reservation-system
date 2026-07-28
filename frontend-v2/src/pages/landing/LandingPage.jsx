@@ -125,7 +125,7 @@ export default function LandingPage() {
           <form onSubmit={handleSearch} className="w-full flex flex-col items-center">
 
             {/* Route Selection Card (From / Swap / To) */}
-            <div className="w-full max-w-2xl glass-card shadow-none shadow-[rgba(50,50,93,0.25)_0px_2px_5px_-1px,rgba(0,0,0,0.3)_0px_1px_3px_-1px] rounded-3xl flex flex-col md:flex-row items-center relative z-20 p-2 md:p-0">
+            <div className="w-full max-w-2xl glass-card shadow-none shadow rounded-3xl flex flex-col md:flex-row items-center relative z-20 p-2 md:p-0">
 
               {/* From Box */}
               <div
@@ -257,7 +257,7 @@ export default function LandingPage() {
 
             {/* Date Display Bar */}
             <div
-              className="w-full max-w-md glass-card shadow-[rgba(50,50,93,0.25)_0px_2px_5px_-1px,rgba(0,0,0,0.3)_0px_1px_3px_-1px] rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
+              className="w-full max-w-md glass-card shadow rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
             >
               {/* Departure Display */}
               <div
