@@ -11,8 +11,11 @@ export default function FlightCard({ flight, onViewDetails }) {
     departure_time,
     arrival_time,
     base_fare = 500,
+    available_seats = 0,
     stops = []
   } = flight;
+
+  const isWaitlisted = available_seats === 0;
 
   // Format Departure & Arrival Date and Time
   const formatDateTime = (isoString) => {
@@ -49,12 +52,25 @@ export default function FlightCard({ flight, onViewDetails }) {
   const stopsStr = stopCount === 0 ? "Non-stop" : `${stopCount} Stop${stopCount > 1 ? "s" : ""}`;
 
   return (
-    <div className="w-full mx-auto plain-card rounded-3xl px-4 sm:px-5 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 shadow-2xs hover:shadow-xs transition-all mb-4 animate-fade-in">
+    <div
+      className={`w-full mx-auto rounded-3xl px-4 sm:px-5 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 transition-all mb-4 animate-fade-in ${
+        isWaitlisted
+          ? "bg-amber-50/80 border border-amber-200/80 shadow-2xs hover:shadow-xs hover:border-amber-300/90"
+          : "plain-card shadow-2xs hover:shadow-xs"
+      }`}
+    >
       {/* 1. Airline & Flight Info */}
       <div className="flex flex-col items-center md:items-start min-w-[150px] py-3">
-        <span className="text-xs font-semibold text-slate-500 mb-1">
-          {flight_number}
-        </span>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-xs font-semibold text-slate-500">
+            {flight_number}
+          </span>
+          {isWaitlisted && (
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+              Waitlist Only
+            </span>
+          )}
+        </div>
         <span className="text-xs font-semibold text-slate-800">
           {airline}
         </span>
@@ -83,8 +99,12 @@ export default function FlightCard({ flight, onViewDetails }) {
         </span>
       </div>
 
-      {/* 4. White Center Box (Duration & Stops) */}
-      <div className="bg-[#f3f3f3] px-3 py-5 shadow-2xs flex flex-col items-center justify-center min-w-[10%]">
+      {/* 4. Center Box (Duration & Stops) */}
+      <div
+        className={`px-3 py-5 shadow-2xs flex flex-col items-center justify-center min-w-[10%] ${
+          isWaitlisted ? "bg-amber-100/70" : "bg-[#f3f3f3]"
+        }`}
+      >
         <span className="material-symbols-outlined text-slate-900 text-lg select-none font-semibold">
           schedule
         </span>
@@ -104,7 +124,7 @@ export default function FlightCard({ flight, onViewDetails }) {
         <button
           type="button"
           onClick={() => onViewDetails && onViewDetails(flight)}
-          className="btn-primary px-3 py-1 text-xs rounded-lg"
+          className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-primary`}
         >
           View Details
         </button>

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import FlightSearchHeader from "@/components/flights/FlightSearchHeader";
 import DateStripCarousel from "@/components/flights/DateStripCarousel";
 import FlightCard from "@/components/flights/FlightCard";
+import FlightFilterDrawer from "@/components/flights/FlightFilterDrawer";
 import { flightsAPI } from "@/services/flight-service/flightService";
 
 export default function FlightsPage() {
@@ -18,7 +19,31 @@ export default function FlightsPage() {
   const [error, setError] = useState(null);
   const [isFilteredResult, setIsFilteredResult] = useState(true);
 
-  // Fetch flights from database whenever search parameters change
+  // Filter drawer state
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    ordering: "base_fare",
+    stops: "",
+    airlines: [],
+    waitlistMode: "all",
+    maxFare: 100000
+  });
+
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleResetFilters = (defaultFilters) => {
+    setFilters(defaultFilters || {
+      ordering: "base_fare",
+      stops: "",
+      airlines: [],
+      waitlistMode: "all",
+      maxFare: 100000
+    });
+  };
+
+  // Fetch flights from database whenever search parameters or applied filters change
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -26,15 +51,38 @@ export default function FlightsPage() {
 
     async function loadFlights() {
       try {
-        // Try fetching filtered flights based on search criteria
-        const response = await flightsAPI.list(1, {
+        const queryParams = {
           source: from,
           destination: to,
           date: depDate,
           page_size: 20
-        });
+        };
 
-        const results = response.results || response || [];
+        if (filters.ordering) queryParams.ordering = filters.ordering;
+        if (filters.stops !== "") queryParams.stops = filters.stops;
+        if (filters.maxFare && filters.maxFare < 100000) {
+          queryParams.max_fare = filters.maxFare;
+        }
+
+        const response = await flightsAPI.list(1, queryParams);
+        let results = response.results || response || [];
+
+        // 1. Waitlist Mode Filter (All / Hide Waitlisted / Waitlist Only)
+        if (filters.waitlistMode === "available_only") {
+          results = results.filter((f) => Number(f.available_seats) > 0);
+        } else if (filters.waitlistMode === "waitlisted_only") {
+          results = results.filter((f) => Number(f.available_seats) === 0);
+        }
+
+        // 2. Client-side Max Fare Filter
+        if (filters.maxFare && filters.maxFare < 100000) {
+          results = results.filter((f) => Number(f.base_fare) <= filters.maxFare);
+        }
+
+        // 3. Client-side Airline Filter
+        if (filters.airlines && filters.airlines.length > 0) {
+          results = results.filter((f) => filters.airlines.includes(f.airline));
+        }
 
         if (isMounted) {
           setFlights(results);
@@ -55,7 +103,7 @@ export default function FlightsPage() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, depDate]);
+  }, [from, to, depDate, filters]);
 
   const handleViewDetails = (flight) => {
     if (flight && flight.id) {
@@ -64,7 +112,28 @@ export default function FlightsPage() {
   };
 
   return (
-    <div className="flex-1 min-h-screen bg-slate-50/60 mt-3 pt-16 pb-12 px-4 md:px-6 max-w-6xl mx-auto w-full">
+    <div className="flex-1 min-h-screen bg-slate-50/60 mt-3 pt-16 pb-12 px-4 md:px-6 max-w-6xl mx-auto w-full relative">
+      {/* Fixed Pop-out Filters Button on Left Edge */}
+      <button
+        type="button"
+        onClick={() => setIsFilterDrawerOpen(true)}
+        className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-slate-900 hover:bg-slate-950 text-white font-bold text-xs px-3.5 py-3 rounded-r-2xl shadow-xl flex items-center gap-2 hover:pl-4.5 transition-all duration-200 cursor-pointer border-y border-r border-slate-700/50 group"
+        title="Open Filters"
+      >
+        <span className="material-symbols-outlined text-[#ffeb00] text-lg font-bold group-hover:rotate-12 transition-transform">
+          tune
+        </span>
+      </button>
+
+      {/* Slide-in Filter Drawer Modal */}
+      <FlightFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={filters}
+        onApplyFilters={handleApplyFilters}
+        onResetFilters={handleResetFilters}
+      />
+
       {/* Top Search Header Component */}
       <div className="mb-6">
         <FlightSearchHeader />

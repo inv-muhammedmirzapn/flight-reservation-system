@@ -258,5 +258,70 @@
     "total_seats": 256,
     "available_seats": 36,
     "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "EY-2001",
+    "airline": "Etihad Airways",
+    "aircraft": "Boeing 787-9",
+    "source_airport": "COK",
+    "destination_airport": "AUH",
+    "departure_time": "2026-08-09T01:30:00Z",
+    "arrival_time": "2026-08-09T05:05:00Z",
+    "base_fare": 11800.00,
+    "total_seats": 290,
+    "available_seats": 0,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "EY-2002",
+    "airline": "Etihad Airways",
+    "aircraft": "Airbus A321",
+    "source_airport": "COK",
+    "destination_airport": "AUH",
+    "departure_time": "2026-08-09T05:45:00Z",
+    "arrival_time": "2026-08-09T09:15:00Z",
+    "base_fare": 11250.00,
+    "total_seats": 196,
+    "available_seats": 18,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "AI-2003",
+    "airline": "Air India",
+    "aircraft": "Airbus A320neo",
+    "source_airport": "COK",
+    "destination_airport": "AUH",
+    "departure_time": "2026-08-09T09:10:00Z",
+    "arrival_time": "2026-08-09T12:50:00Z",
+    "base_fare": 10900.00,
+    "total_seats": 180,
+    "available_seats": 73,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "EY-2004",
+    "airline": "Etihad Airways",
+    "aircraft": "Boeing 787-10",
+    "source_airport": "COK",
+    "destination_airport": "AUH",
+    "departure_time": "2026-08-09T13:50:00Z",
+    "arrival_time": "2026-08-09T17:25:00Z",
+    "base_fare": 12600.00,
+    "total_seats": 327,
+    "available_seats": 124,
+    "status": "SCHEDULED"
+  },
+  {
+    "flight_number": "IX-2005",
+    "airline": "Air India Express",
+    "aircraft": "Boeing 737 Max 8",
+    "source_airport": "COK",
+    "destination_airport": "AUH",
+    "departure_time": "2026-08-09T18:40:00Z",
+    "arrival_time": "2026-08-09T22:15:00Z",
+    "base_fare": 9800.00,
+    "total_seats": 189,
+    "available_seats": 41,
+    "status": "SCHEDULED"
   }
 ]
