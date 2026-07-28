@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as rf_serializers
-from .models import Booking
-from .serializers import BookingSerializer
+from .models import Booking, Passenger
+from .serializers import BookingSerializer, PassengerSerializer
 from .services import cancel_booking, create_booking
 
 class BookingViewSet(mixins.CreateModelMixin,
@@ -21,7 +21,15 @@ class BookingViewSet(mixins.CreateModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.filter(user=self.request.user).select_related('flight').order_by('-created_at')
+        user = self.request.user
+        qs = Booking.objects.all() if (user.is_staff or user.is_superuser) else Booking.objects.filter(user=user)
+        pnr = self.request.query_params.get('pnr')
+        status_param = self.request.query_params.get('status')
+        if pnr:
+            qs = qs.filter(id__icontains=pnr)
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs.select_related('flight', 'user').order_by('-created_at')
 
     @extend_schema(
         request=inline_serializer(
@@ -62,7 +70,6 @@ class BookingViewSet(mixins.CreateModelMixin,
             serializer = self.get_serializer(booking)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            # e.message is the clean string; str(e) would give "['message']"
             msg = e.message if isinstance(getattr(e, 'message', None), str) else (
                 e.messages[0] if getattr(e, 'messages', None) else str(e)
             )
@@ -84,3 +91,16 @@ class BookingViewSet(mixins.CreateModelMixin,
             )
         except ValidationError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PassengerViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = PassengerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Passenger.objects.all() if (user.is_staff or user.is_superuser) else Passenger.objects.filter(booking__user=user)
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(name__icontains=search)
+        return qs.order_by('-id')

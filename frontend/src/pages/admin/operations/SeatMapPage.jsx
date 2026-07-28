@@ -7,12 +7,12 @@
  */
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '@/styles/admin-system.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, updateSeat, generateSeats } from '@/store/adminSlices';
-import { Zap, Save, X } from 'lucide-react';
+import { Zap, Save, X, ArrowLeft, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const STATUS_COLORS = {
@@ -31,6 +31,7 @@ const STATUS_OPTIONS = [
 
 export default function SeatMapPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { items: instances } = useSelector((s) => s.flightInstance);
   const { items: seats, loading: seatsLoading, actionLoading } = useSelector((s) => s.seat);
 
@@ -44,11 +45,15 @@ export default function SeatMapPage() {
 
   useEffect(() => {
     dispatch(fetchFlightInstances({ page_size: 500 }));
-    if (instanceParam) {
-      loadSeats(instanceParam);
-      setShowMap(true);
+  }, [dispatch]);
+
+  // Once instances are loaded, if URL has ?instance=X, select it and load seats
+  useEffect(() => {
+    if (instanceParam && instances.length > 0) {
+      setSelectedInstanceId(instanceParam);
+      loadSeats(instanceParam).then(() => setShowMap(true)).catch(() => {});
     }
-  }, [dispatch, instanceParam]);
+  }, [instanceParam, instances.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSeats = (id) => {
     if (!id) return;
@@ -58,7 +63,20 @@ export default function SeatMapPage() {
   const handleInstanceChange = (id) => {
     setSelectedInstanceId(id);
     setEditSeat(null);
-    setShowMap(false);
+    if (id) {
+      loadSeats(id).then(() => setShowMap(true)).catch(() => {});
+    } else {
+      setShowMap(false);
+    }
+  };
+
+  const handleSearchClick = () => {
+    if (!selectedInstanceId) {
+      toast.error('Please select a flight instance first.');
+      return;
+    }
+    setEditSeat(null);
+    loadSeats(selectedInstanceId).then(() => setShowMap(true)).catch(() => {});
   };
 
   const handleGenerateSeats = async () => {
@@ -171,12 +189,23 @@ export default function SeatMapPage() {
             <span>Seats (Instance #{instanceParam})</span>
           </div>
         )}
-        <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', marginBottom: 8 }}>
-          Seat Map
-        </h1>
+        {/* Back button + title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer', transition: 'background 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+          >
+            <ArrowLeft size={15} /> Back
+          </button>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>
+            Seat Map
+          </h1>
+        </div>
         <p style={{ color: '#888', fontSize: 14, marginBottom: 28 }}>Select a flight instance, generate seats, and click any seat to edit its status.</p>
 
-        {/* Instance selector + generate */}
+        {/* Instance selector + search / generate */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 28, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 280 }}>
             <Select
@@ -187,8 +216,18 @@ export default function SeatMapPage() {
               onChange={(e) => handleInstanceChange(e.target.value)}
             />
           </div>
-          {!showMap && (
-            <button className="btn-primary" onClick={handleGenerateSeats} disabled={!selectedInstanceId || seatsLoading} id="generate-seats-btn">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleSearchClick}
+            disabled={!selectedInstanceId || seatsLoading}
+            id="search-seats-btn"
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+          >
+            <Search size={15} /> Search Seats
+          </button>
+          {selectedInstanceId && seats.length === 0 && !seatsLoading && (
+            <button className="btn-secondary" onClick={handleGenerateSeats} disabled={actionLoading} id="generate-seats-btn" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <Zap size={15} /> Generate Seats
             </button>
           )}

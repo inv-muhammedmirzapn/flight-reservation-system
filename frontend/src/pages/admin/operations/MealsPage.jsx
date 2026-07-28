@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '@/styles/admin-system.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
@@ -13,14 +13,16 @@ import {
   fetchFlightInstances, fetchFoodItems, fetchAirlines,
   fetchFlightRoutes,
 } from '@/store/adminSlices';
-import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
+import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const EMPTY_ITEM = { food_item: '', quantity: 1 };
 
 export default function MealsPage() {
   const dispatch = useDispatch();
-  const { items: meals, loading, actionLoading, error } = useSelector((s) => s.flightMeal);
+  const navigate = useNavigate();
+  const { items: meals, loading, actionLoading, count, error } = useSelector((s) => s.flightMeal);
   const { items: instances } = useSelector((s) => s.flightInstance);
   const { items: foodItems } = useSelector((s) => s.foodItem);
   const { items: routes } = useSelector((s) => s.flightRoute);
@@ -32,13 +34,19 @@ export default function MealsPage() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] });
   const [localErrors, setLocalErrors] = useState({});
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const loadMeals = (p) => {
+    dispatch(fetchFlightMeals({ page: p, page_size: PAGE_SIZE, ...(instanceParam ? { flight_instance: instanceParam } : {}) }));
+  };
 
   useEffect(() => {
-    dispatch(fetchFlightMeals(instanceParam ? { flight_instance: instanceParam } : {}));
+    loadMeals(page);
     dispatch(fetchFlightInstances({ page_size: 500 }));
     dispatch(fetchFoodItems({ page_size: 500 }));
     dispatch(fetchFlightRoutes({ page_size: 500 }));
-  }, [dispatch]);
+  }, [dispatch, instanceParam, page]);
 
   const instanceOptions = instances.map((i) => ({
     value: i.id,
@@ -122,8 +130,18 @@ export default function MealsPage() {
             <span>Meals (Instance #{instanceParam})</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>Flight Meals</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28, justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button
+              onClick={() => navigate(-1)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer', transition: 'background 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+            >
+              <ArrowLeft size={15} /> Back
+            </button>
+            <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>Flight Meals</h1>
+          </div>
           <button className="btn-primary" onClick={openCreate}><Plus size={15} /> Add Meal</button>
         </div>
 
@@ -167,6 +185,14 @@ export default function MealsPage() {
             </table>
           )}
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil((count || meals.length) / PAGE_SIZE) || 1}
+          totalCount={count || meals.length || 0}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => setPage(p)}
+          entityLabel="meals"
+        />
       </div>
 
       {showForm && (

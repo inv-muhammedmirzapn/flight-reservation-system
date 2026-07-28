@@ -59,7 +59,7 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #f7f4ee 0%, #edeade 50%, #f0ede4 100%);
   font-family: var(--font-ui);
-  padding: 80px 0 60px;
+  padding: 88px 0 60px;
 }
 
 .admin-container {
@@ -187,41 +187,65 @@
 }
 .admin-toolbar-search {
   position: relative;
-  flex: 1;
-  min-width: 200px;
+  width: 280px;
+  max-width: 100%;
 }
-.admin-toolbar-search svg {
+.admin-toolbar-search .search-icon {
   position: absolute;
-  left: 12px;
+  left: 11px;
   top: 50%;
   transform: translateY(-50%);
-  color: #aaa;
+  color: #888;
   pointer-events: none;
 }
 .admin-toolbar-search input {
   width: 100%;
-  padding: 9px 12px 9px 34px;
-  border-radius: var(--admin-radius-sm);
-  border: 1px solid rgba(0,0,0,0.11);
-  font-size: var(--text-sm);
+  padding: 7px 30px 7px 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.12);
+  font-size: 13px;
   background: rgba(255,255,255,0.85);
   outline: none;
   font-family: var(--font-ui);
   color: #1a1c1d;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .admin-toolbar-search input:focus {
   border-color: var(--admin-accent-dark);
   box-shadow: 0 0 0 3px rgba(112,93,0,0.1);
+  background: #fff;
+}
+.admin-toolbar-search .clear-search-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 2px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.admin-toolbar-search .clear-search-btn:hover {
+  color: #1a1c1d;
+  background: rgba(0,0,0,0.06);
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .admin-table-wrap {
   overflow-x: auto;
   border-radius: var(--admin-radius-lg);
+  /* Ensure proper scroll on small screens */
+  -webkit-overflow-scrolling: touch;
 }
 .admin-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
 }
 .admin-table thead th {

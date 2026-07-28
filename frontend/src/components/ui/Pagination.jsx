@@ -9,7 +9,7 @@
  *   pageSize     – number (items per page, default 10)
  *   onPageChange – (page: number) => void
  */
-export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10, onPageChange }) {
+export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10, onPageChange, entityLabel = 'records' }) {
   if (totalPages <= 1) return null;
 
   const from = (currentPage - 1) * pageSize + 1;
@@ -83,7 +83,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
         fontWeight: 500,
       }}>
         Showing <strong style={{ color: '#1a1c1d' }}>{from}–{to}</strong> of{' '}
-        <strong style={{ color: '#1a1c1d' }}>{totalCount}</strong> flights
+        <strong style={{ color: '#1a1c1d' }}>{totalCount}</strong> {entityLabel}
       </p>
 
       {/* Right — page buttons */}

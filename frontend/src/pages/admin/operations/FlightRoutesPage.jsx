@@ -14,6 +14,7 @@ import {
   fetchAirlines, fetchAirports,
   flightRouteActions,
 } from '@/store/adminSlices';
+import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronLeft, ChevronRight,
   Search, PlusCircle, MinusCircle, MapPin,
@@ -45,7 +46,7 @@ export default function FlightRoutesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   const load = (s, p) => dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
 
@@ -90,7 +91,27 @@ export default function FlightRoutesPage() {
   const addLeg = () => setForm((f) => {
     const newLeg = { ...EMPTY_LEG };
     if (f.legs.length > 0) {
-      newLeg.departure_airport = f.legs[f.legs.length - 1].arrival_airport;
+      const prevLeg = f.legs[f.legs.length - 1];
+      newLeg.departure_airport = prevLeg.arrival_airport;
+      
+      // Auto-set the new leg's departure time to 1 hour after previous leg's arrival
+      if (prevLeg.scheduled_arrival) {
+        try {
+          const arrDate = new Date(prevLeg.scheduled_arrival);
+          arrDate.setHours(arrDate.getHours() + 1);
+          
+          // Format as YYYY-MM-DD HH:mm for the DateTimePicker input
+          const yyyy = arrDate.getFullYear();
+          const mm = String(arrDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(arrDate.getDate()).padStart(2, '0');
+          const hh = String(arrDate.getHours()).padStart(2, '0');
+          const mns = String(arrDate.getMinutes()).padStart(2, '0');
+          
+          newLeg.scheduled_departure = `${yyyy}-${mm}-${dd} ${hh}:${mns}`;
+        } catch (err) {
+          // Ignore parsing errors
+        }
+      }
     }
     return { ...f, legs: [...f.legs, newLeg] };
   });
@@ -253,17 +274,14 @@ export default function FlightRoutesPage() {
           )}
         </div>
 
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-            <button className="btn-secondary" disabled={page === 1} onClick={() => { setPage(page - 1); load(search, page - 1); }}>
-              <ChevronLeft size={15} /> Prev
-            </button>
-            <span style={{ lineHeight: '34px', fontSize: 13, color: '#888' }}>Page {page} / {totalPages}</span>
-            <button className="btn-secondary" disabled={page === totalPages} onClick={() => { setPage(page + 1); load(search, page + 1); }}>
-              Next <ChevronRight size={15} />
-            </button>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalCount={count || routes?.length || 0}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => { setPage(p); load(search, p); }}
+          entityLabel="routes"
+        />
       </div>
 
       {/* Form Modal */}
@@ -337,12 +355,12 @@ export default function FlightRoutesPage() {
                         error={localErrors[`leg_${i}_arr_apt`]} />
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
-                        <DateTimePicker value={leg.scheduled_departure} onChange={(e) => updateLeg(i, 'scheduled_departure', e.target.value)} />
+                        <DateTimePicker value={leg.scheduled_departure} onChange={(e) => updateLeg(i, 'scheduled_departure', e.target.value)} error={localErrors[`leg_${i}_dep_time`]} />
                         {localErrors[`leg_${i}_dep_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_dep_time`]}</p>}
                       </div>
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
-                        <DateTimePicker value={leg.scheduled_arrival} onChange={(e) => updateLeg(i, 'scheduled_arrival', e.target.value)} />
+                        <DateTimePicker value={leg.scheduled_arrival} onChange={(e) => updateLeg(i, 'scheduled_arrival', e.target.value)} error={localErrors[`leg_${i}_arr_time`]} />
                         {localErrors[`leg_${i}_arr_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_arr_time`]}</p>}
                       </div>
                     </div>

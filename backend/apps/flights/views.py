@@ -34,13 +34,7 @@ from .serializers import (
 from .permissions import IsAdminOrSuperuser
 
 
-# ─── Shared helpers ─────────────────────────────────────────────────────────────
-
-class StandardPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 500
-    page_query_param = "page"
+from .pagination import StandardPagination
 
 
 class AdminModelViewSet(viewsets.ModelViewSet):
@@ -51,6 +45,25 @@ class AdminModelViewSet(viewsets.ModelViewSet):
         if self.action in ("list", "retrieve"):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save()
+        except DjangoValidationError as exc:
+            # Convert Django ValidationError (from model.full_clean()) to DRF 400
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            if hasattr(exc, 'message_dict'):
+                raise DRFValidationError(exc.message_dict)
+            raise DRFValidationError(exc.messages)
+
+    def perform_update(self, serializer):
+        try:
+            serializer.save()
+        except DjangoValidationError as exc:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            if hasattr(exc, 'message_dict'):
+                raise DRFValidationError(exc.message_dict)
+            raise DRFValidationError(exc.messages)
 
 
 # ─── Legacy Flight views (UNCHANGED) ───────────────────────────────────────────

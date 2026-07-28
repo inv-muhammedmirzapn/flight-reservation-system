@@ -16,9 +16,11 @@ class FlightSummarySerializer(serializers.ModelSerializer):
 
 
 class PassengerSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='name', read_only=True)
+
     class Meta:
         model = Passenger
-        fields = ['id', 'name', 'age', 'gender', 'phone_number']
+        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number']
 
 class BookingSerializer(serializers.ModelSerializer):
     """Full booking representation including nested flight summary."""

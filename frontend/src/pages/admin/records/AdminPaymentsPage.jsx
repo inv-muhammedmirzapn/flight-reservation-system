@@ -3,7 +3,8 @@
  */
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
-import { Search, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 import '@/styles/admin-system.css';
 
 export default function AdminPaymentsPage() {
@@ -14,7 +15,7 @@ export default function AdminPaymentsPage() {
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(null);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   const load = async (s, p) => {
     setLoading(true);
@@ -95,13 +96,14 @@ export default function AdminPaymentsPage() {
           )}
         </div>
 
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-            <button className="btn-secondary" disabled={page === 1} onClick={() => { setPage(page - 1); load(search, page - 1); }}><ChevronLeft size={15} /> Prev</button>
-            <span style={{ lineHeight: '34px', fontSize: 13, color: '#888' }}>Page {page} / {totalPages}</span>
-            <button className="btn-secondary" disabled={page === totalPages} onClick={() => { setPage(page + 1); load(search, page + 1); }}>Next <ChevronRight size={15} /></button>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalCount={count}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => { setPage(p); load(search, p); }}
+          entityLabel="payments"
+        />
 
         {selected && (
           <div className="detail-card">

@@ -85,6 +85,11 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   }
 
   const data = await getResponseData(response);
-  if (!response.ok) throw new Error(extractErrorMessage(data));
+  if (!response.ok) {
+    console.error('[API Error]', response.status, response.url, data);
+    const error = new Error(extractErrorMessage(data));
+    error.data = data;
+    throw error;
+  }
   return data;
 };

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import '@/styles/admin-system.css';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { ComboInput } from '@/components/ui/ComboInput';
 import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
   fetchFlightInstances, fetchFlightInstanceDetail, addFlightInstance,
@@ -16,8 +17,10 @@ import {
   fetchFlightRoutes, fetchAircraft, fetchAirports,
 } from '@/store/adminSlices';
 import { fetchWithAuth } from '@/services/apiClient';
+import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, Search, ChevronLeft, ChevronRight,
+  Banknote, Armchair, Utensils
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,7 +58,7 @@ export default function FlightInstancesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   const load = (s, p) => dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
 
@@ -76,10 +79,13 @@ export default function FlightInstancesPage() {
       if (legs.length > 0) {
         const firstLeg = legs[0];
         const lastLeg = legs[legs.length - 1];
+        const depTime = firstLeg.scheduled_departure || '';
+        const opDate = depTime ? (depTime.includes('T') ? depTime.split('T')[0] : depTime.split(' ')[0]) : '';
         setForm((f) => ({
           ...f,
           flight: flightId,
-          scheduled_departure: firstLeg.scheduled_departure || '',
+          date: opDate || f.date,
+          scheduled_departure: depTime,
           scheduled_arrival: lastLeg.scheduled_arrival || '',
         }));
       }
@@ -104,6 +110,14 @@ export default function FlightInstancesPage() {
   const depTerminalOptions = (depAirport?.terminals || []).map(t => ({ value: t, label: t }));
   const arrTerminalOptions = (arrAirport?.terminals || []).map(t => ({ value: t, label: t }));
 
+  // Gate suggestions from existing instances on the same route, or generic gate list
+  const usedGates = [...new Set(
+    instances.filter((i) => i.boarding_gate && String(i.flight) === String(form.flight)).map((i) => i.boarding_gate)
+  )].map((g) => ({ value: g, label: g }));
+  const GENERIC_GATES = ['A1','A2','A3','A4','B1','B2','B3','B4','C1','C2','D1','D2',
+    'G1','G2','G3','G4','G5','G6','G10','G11','G12','G13','G14'].map((g) => ({ value: g, label: g }));
+  const gateOptions = usedGates.length > 0 ? usedGates : GENERIC_GATES;
+
   const openCreate = () => { setEditId(null); setForm(EMPTY_FORM); setLocalErrors({}); setShowForm(true); };
   const openEdit = (inst) => {
     setEditId(inst.id);
@@ -122,10 +136,15 @@ export default function FlightInstancesPage() {
   };
   const closeForm = () => { setShowForm(false); setEditId(null); };
 
+  // Clear a single field error as soon as the user provides a value
+  const clearError = (field) => setLocalErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
+
   const validateForm = () => {
     const e = {};
     if (!form.flight) e.flight = 'Flight route is required.';
-    if (!form.date) e.date = 'Date is required.';
+    if (!form.date) {
+      e.date = 'Date is required.';
+    }
     if (!form.aircraft) e.aircraft = 'Aircraft is required.';
     if (!form.scheduled_departure) e.scheduled_departure = 'Scheduled departure is required.';
     if (!form.scheduled_arrival) e.scheduled_arrival = 'Scheduled arrival is required.';
@@ -134,21 +153,53 @@ export default function FlightInstancesPage() {
         e.scheduled_arrival = 'Arrival must be after departure.';
       }
     }
+    if (!form.boarding_gate || !form.boarding_gate.trim()) e.boarding_gate = 'Boarding gate is required.';
+    if (!form.departure_terminal || !form.departure_terminal.trim()) e.departure_terminal = 'Departure terminal is required.';
+    if (!form.arrival_terminal || !form.arrival_terminal.trim()) e.arrival_terminal = 'Arrival terminal is required.';
     setLocalErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) { toast.error('Fix validation errors.'); return; }
-    const promise = editId
-      ? dispatch(updateFlightInstance({ id: editId, data: form })).unwrap()
-      : dispatch(addFlightInstance(form)).unwrap();
-    toast.promise(promise, {
-      loading: editId ? 'Updating…' : 'Creating…',
-      success: () => { closeForm(); load(search, page); return 'Flight instance saved!'; },
-      error: (err) => err?.non_field_errors?.[0] || 'Failed to save.',
+    if (!validateForm()) return; // inline errors already shown via localErrors
+
+    // Optional datetime fields must be null (not empty string "") for the backend
+    const OPTIONAL_DATETIMES = ['checkin_open', 'boarding_time', 'actual_departure', 'actual_arrival'];
+    const payload = { ...form };
+    OPTIONAL_DATETIMES.forEach(field => {
+      if (!payload[field]) payload[field] = null;
     });
+
+    const action = editId
+      ? updateFlightInstance({ id: editId, data: payload })
+      : addFlightInstance(payload);
+
+    try {
+      await dispatch(action).unwrap();
+      toast.success('Flight instance saved!');
+      closeForm();
+      load(search, page);
+    } catch (err) {
+      // DRF field errors come as { fieldName: ["msg", ...] | "msg" }
+      // Normalise every value to a plain string so input error props work
+      if (err && typeof err === 'object') {
+        const normalised = {};
+        Object.entries(err).forEach(([key, val]) => {
+          if (Array.isArray(val)) normalised[key] = val[0];
+          else if (typeof val === 'string') normalised[key] = val;
+        });
+        setLocalErrors(prev => ({ ...prev, ...normalised }));
+        // Show non-field errors (cross-field / global) as a toast only
+        if (err.non_field_errors) {
+          toast.error(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
+        } else if (!Object.keys(normalised).length) {
+          toast.error('Failed to save. Please try again.');
+        }
+      } else {
+        toast.error('Failed to save. Please try again.');
+      }
+    }
   };
 
   const handleDelete = (id) => {
@@ -172,12 +223,25 @@ export default function FlightInstancesPage() {
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.8)' }} />
+          <div className="admin-toolbar-search">
+            <Search size={14} className="search-icon" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by flight number…"
+            />
+            {search && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => { setSearch(''); setPage(1); load('', 1); }}
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <button type="submit" className="btn-primary" style={{ padding: '9px 16px' }}>Search</button>
+          <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
         </form>
 
         {error && (
@@ -213,12 +277,27 @@ export default function FlightInstancesPage() {
                       <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
                       <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn-secondary" onClick={() => openEdit(inst)}><Pencil size={13} /> Edit</button>
-                          <Link to={`/admin/operations/fares?instance=${inst.id}`} className="btn-secondary">Fares</Link>
-                          <Link to={`/admin/operations/seat-map?instance=${inst.id}`} className="btn-secondary">Seats</Link>
-                          <Link to={`/admin/operations/meals?instance=${inst.id}`} className="btn-secondary">Meals</Link>
-                          <button className="btn-danger" onClick={() => handleDelete(inst.id)}><Trash2 size={13} /> Delete</button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
+                            <Link to={`/admin/operations/fares?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                              <Banknote size={13} /> Fares
+                            </Link>
+                            <Link to={`/admin/operations/seat-map?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                              <Armchair size={13} /> Seats
+                            </Link>
+                            <Link to={`/admin/operations/meals?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                              <Utensils size={13} /> Meals
+                            </Link>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+                            <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
+                              <Pencil size={14} />
+                            </button>
+                            <button className="btn-danger" title="Delete" onClick={() => handleDelete(inst.id)} style={{ padding: '6px 8px' }}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -229,13 +308,14 @@ export default function FlightInstancesPage() {
           )}
         </div>
 
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-            <button className="btn-secondary" disabled={page === 1} onClick={() => { setPage(page - 1); load(search, page - 1); }}><ChevronLeft size={15} /> Prev</button>
-            <span style={{ lineHeight: '34px', fontSize: 13, color: '#888' }}>Page {page} / {totalPages}</span>
-            <button className="btn-secondary" disabled={page === totalPages} onClick={() => { setPage(page + 1); load(search, page + 1); }}>Next <ChevronRight size={15} /></button>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalCount={count || instances?.length || 0}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => { setPage(p); load(search, p); }}
+          entityLabel="instances"
+        />
       </div>
 
       {showForm && (
@@ -257,11 +337,11 @@ export default function FlightInstancesPage() {
             <form onSubmit={handleSubmit}>
               <div className="admin-form-grid" style={{ marginBottom: 20 }}>
                 <Select id="fi_flight" label="Flight Route" options={routeOptions} value={form.flight}
-                  onChange={(e) => handleFlightChange(e.target.value)} error={localErrors.flight} />
+                  onChange={(e) => { handleFlightChange(e.target.value); clearError('flight'); }} error={localErrors.flight} />
                 <Input id="fi_date" label="Date" type="date" value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} error={localErrors.date} />
+                  onChange={(e) => { setForm((f) => ({ ...f, date: e.target.value })); clearError('date'); }} error={localErrors.date} />
                 <Select id="fi_aircraft" label="Aircraft (filtered by airline)" options={aircraftOptions}
-                  value={form.aircraft} onChange={(e) => setForm((f) => ({ ...f, aircraft: e.target.value }))}
+                  value={form.aircraft} onChange={(e) => { setForm((f) => ({ ...f, aircraft: e.target.value })); clearError('aircraft'); }}
                   error={localErrors.aircraft} />
                 <Select id="fi_status" label="Status" options={STATUS_OPTIONS} value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} />
@@ -270,30 +350,34 @@ export default function FlightInstancesPage() {
               <div className="admin-form-grid" style={{ marginBottom: 20 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
-                  <DateTimePicker value={form.scheduled_departure} onChange={(e) => setForm((f) => ({ ...f, scheduled_departure: e.target.value }))} />
+                  <DateTimePicker value={form.scheduled_departure} error={localErrors.scheduled_departure} onChange={(e) => {
+                    const depTime = e.target.value;
+                    const opDate = depTime ? (depTime.includes('T') ? depTime.split('T')[0] : depTime.split(' ')[0]) : '';
+                    setForm((f) => ({ ...f, scheduled_departure: depTime, date: opDate || f.date }));
+                    if (depTime) clearError('scheduled_departure');
+                  }} />
                   {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
-                  <DateTimePicker value={form.scheduled_arrival} onChange={(e) => setForm((f) => ({ ...f, scheduled_arrival: e.target.value }))} />
+                  <DateTimePicker value={form.scheduled_arrival} error={localErrors.scheduled_arrival} onChange={(e) => {
+                    setForm((f) => ({ ...f, scheduled_arrival: e.target.value }));
+                    if (e.target.value) clearError('scheduled_arrival');
+                  }} />
                   {localErrors.scheduled_arrival && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_arrival}</p>}
                 </div>
-                <Input id="fi_gate" label="Boarding Gate" placeholder="e.g. G12" value={form.boarding_gate}
-                  onChange={(e) => setForm((f) => ({ ...f, boarding_gate: e.target.value }))} />
-                {depTerminalOptions.length > 0 ? (
-                  <Select id="fi_dep_term" label="Departure Terminal" options={depTerminalOptions} value={form.departure_terminal}
-                    onChange={(e) => setForm((f) => ({ ...f, departure_terminal: e.target.value }))} />
-                ) : (
-                  <Input id="fi_dep_term" label="Departure Terminal" placeholder="e.g. T1" value={form.departure_terminal}
-                    onChange={(e) => setForm((f) => ({ ...f, departure_terminal: e.target.value }))} />
-                )}
-                {arrTerminalOptions.length > 0 ? (
-                  <Select id="fi_arr_term" label="Arrival Terminal" options={arrTerminalOptions} value={form.arrival_terminal}
-                    onChange={(e) => setForm((f) => ({ ...f, arrival_terminal: e.target.value }))} />
-                ) : (
-                  <Input id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. T2" value={form.arrival_terminal}
-                    onChange={(e) => setForm((f) => ({ ...f, arrival_terminal: e.target.value }))} />
-                )}
+                <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12"
+                  value={form.boarding_gate} options={gateOptions}
+                  onChange={(e) => { setForm((f) => ({ ...f, boarding_gate: e.target.value })); if (e.target.value) clearError('boarding_gate'); }}
+                  error={localErrors.boarding_gate} />
+                <ComboInput id="fi_dep_term" label="Departure Terminal" placeholder="e.g. Terminal 1"
+                  value={form.departure_terminal} options={depTerminalOptions}
+                  onChange={(e) => { setForm((f) => ({ ...f, departure_terminal: e.target.value })); if (e.target.value) clearError('departure_terminal'); }}
+                  error={localErrors.departure_terminal} />
+                <ComboInput id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. Terminal 2"
+                  value={form.arrival_terminal} options={arrTerminalOptions}
+                  onChange={(e) => { setForm((f) => ({ ...f, arrival_terminal: e.target.value })); if (e.target.value) clearError('arrival_terminal'); }}
+                  error={localErrors.arrival_terminal} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>

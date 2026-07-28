@@ -115,6 +115,9 @@ class FlightV2APITest(TestCase):
             "date": new_dep.date().isoformat(),
             "scheduled_departure": new_dep.isoformat(),
             "scheduled_arrival": new_arr.isoformat(),
+            "boarding_gate": "G1",
+            "departure_terminal": "T1",
+            "arrival_terminal": "T2",
             "status": "SCHEDULED"
         }
         

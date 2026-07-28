@@ -82,8 +82,6 @@ export default function FlightOverviewPage() {
     const [draftSortBy, setDraftSortBy] = useState('scheduled_departure');
     const [draftSortOrder, setDraftSortOrder] = useState('desc');
 
-    const debounceRef = useRef(null);
-
     const buildParams = useCallback((search, status, date, arrivalDate, source, dest, sortingBy, sortingOrder) => {
         const p = {};
         if (search) p.search = search;
@@ -109,16 +107,9 @@ export default function FlightOverviewPage() {
         fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Debounce quick search input → trigger fetch
+    // Quick search input change handler (only updates local state, fetching happens on submit/clear)
     const handleSearchChange = (e) => {
-        const val = e.target.value;
-        setSearchInput(val);
-        clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            setActiveSearch(val);
-            setCurrentPage(1);
-            fetchFiltered(1, buildParams(val, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-        }, 300);
+        setSearchInput(e.target.value);
     };
 
     const handleOpenFilters = () => {
@@ -150,7 +141,6 @@ export default function FlightOverviewPage() {
     };
 
     const handleClearFilters = () => {
-        clearTimeout(debounceRef.current);
         setSearchInput('');
         setActiveSearch('');
         setStatusFilter('');
@@ -266,17 +256,48 @@ export default function FlightOverviewPage() {
                 {/* Main Control & Search Bar */}
                 <div className="glass-card" style={{ borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
                     {/* Quick Search */}
-                    <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: 450 }}>
-                        <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
-                        <input
-                            className="filter-input"
-                            type="text"
-                            placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
-                            value={searchInput}
-                            onChange={handleSearchChange}
-                            style={{ width: '100%', padding: '10px 16px 10px 40px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
-                        />
-                    </div>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setActiveSearch(searchInput);
+                            setCurrentPage(1);
+                            fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 300px', maxWidth: 480 }}
+                    >
+                        <div className="admin-toolbar-search" style={{ flex: 1, width: 'auto' }}>
+                            <Search size={14} className="search-icon" />
+                            <input
+                                className="filter-input"
+                                type="text"
+                                placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
+                                value={searchInput}
+                                onChange={handleSearchChange}
+                            />
+                            {searchInput && (
+                                <button
+                                    type="button"
+                                    className="clear-search-btn"
+                                    onClick={() => {
+                                        setSearchInput('');
+                                        setActiveSearch('');
+                                        setCurrentPage(1);
+                                        fetchFiltered(1, buildParams('', statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                    }}
+                                    title="Clear search"
+                                >
+                                    <X size={13} />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            className="btn-primary"
+                            style={{ padding: '7px 14px', fontSize: 13, flexShrink: 0 }}
+                        >
+                            {t("admin.search", { defaultValue: 'Search' })}
+                        </button>
+                    </form>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {/* Filter & Sort Modal Button */}
@@ -291,7 +312,6 @@ export default function FlightOverviewPage() {
                             {hasActiveFilters && (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
                                     {
-                                        (activeSearch ? 1 : 0) +
                                         (statusFilter ? 1 : 0) +
                                         (dateFilter ? 1 : 0) +
                                         (arrivalDateFilter ? 1 : 0) +
@@ -321,12 +341,6 @@ export default function FlightOverviewPage() {
                 {hasActiveFilters && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginRight: 4 }}>{t("admin.activeFilters", { defaultValue: 'Active Filters:' })}</span>
-                        {activeSearch && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>Search: "{activeSearch}"</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('search')} />
-                            </div>
-                        )}
                         {statusFilter && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
                                 <span>Status: {statusFilter}</span>
@@ -464,16 +478,25 @@ export default function FlightOverviewPage() {
                         {/* Flight Search */}
                         <div>
                             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.searchQuery", { defaultValue: 'Search Query' })}</label>
-                            <div style={{ position: 'relative' }}>
-                                <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
+                            <div className="admin-toolbar-search" style={{ width: '100%' }}>
+                                <Search size={14} className="search-icon" />
                                 <input
                                     className="filter-input"
                                     type="text"
                                     placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
                                     value={draftSearch}
                                     onChange={(e) => setDraftSearch(e.target.value)}
-                                    style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
                                 />
+                                {draftSearch && (
+                                    <button
+                                        type="button"
+                                        className="clear-search-btn"
+                                        onClick={() => setDraftSearch('')}
+                                        title="Clear search"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                )}
                             </div>
                         </div>
 

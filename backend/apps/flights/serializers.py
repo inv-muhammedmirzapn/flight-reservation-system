@@ -257,6 +257,23 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
             )
+
+        errors = {}
+        boarding_gate = attrs.get("boarding_gate", getattr(self.instance, "boarding_gate", None))
+        if not boarding_gate or not str(boarding_gate).strip():
+            errors["boarding_gate"] = "Boarding gate is required."
+
+        dep_terminal = attrs.get("departure_terminal", getattr(self.instance, "departure_terminal", None))
+        if not dep_terminal or not str(dep_terminal).strip():
+            errors["departure_terminal"] = "Departure terminal is required."
+
+        arr_terminal = attrs.get("arrival_terminal", getattr(self.instance, "arrival_terminal", None))
+        if not arr_terminal or not str(arr_terminal).strip():
+            errors["arrival_terminal"] = "Arrival terminal is required."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
         return attrs
 
 

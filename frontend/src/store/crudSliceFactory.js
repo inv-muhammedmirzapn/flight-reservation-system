@@ -53,11 +53,10 @@ export function createCrudSlice(entityName, apiBasePath) {
           headers: isFormData ? {} : { 'Content-Type': 'application/json' },
         });
       } catch (err) {
-        try {
-          return rejectWithValue(JSON.parse(err.message));
-        } catch (_) {
-          return rejectWithValue({ non_field_errors: [`Failed to create ${entityName}`] });
+        if (err.data && typeof err.data === 'object') {
+          return rejectWithValue(err.data);
         }
+        return rejectWithValue({ non_field_errors: [err.message || `Failed to create ${entityName}`] });
       }
     }
   );
@@ -73,11 +72,10 @@ export function createCrudSlice(entityName, apiBasePath) {
           headers: isFormData ? {} : { 'Content-Type': 'application/json' },
         });
       } catch (err) {
-        try {
-          return rejectWithValue(JSON.parse(err.message));
-        } catch (_) {
-          return rejectWithValue({ non_field_errors: [`Failed to update ${entityName}`] });
+        if (err.data && typeof err.data === 'object') {
+          return rejectWithValue(err.data);
         }
+        return rejectWithValue({ non_field_errors: [err.message || `Failed to update ${entityName}`] });
       }
     }
   );

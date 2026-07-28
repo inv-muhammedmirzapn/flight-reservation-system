@@ -3,11 +3,12 @@
  */
 import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
-import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
+import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '@/styles/admin-system.css';
 
@@ -26,6 +27,7 @@ export default function AdminCrudPage({
   filterBar,
 }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const state = useSelector((s) => s[entityName]);
   const { items, loading, actionLoading, error, validationErrors } = state || {};
 
@@ -36,7 +38,7 @@ export default function AdminCrudPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   const loadList = (searchVal, pg) => {
     dispatch(thunks.fetchList({ search: searchVal, page: pg, page_size: PAGE_SIZE }));
@@ -174,12 +176,24 @@ export default function AdminCrudPage({
 
         {/* Header */}
         <div className="admin-page-header">
-          <div>
-            <h1 className="admin-page-title">{title}</h1>
-            {subtitle && <p className="admin-page-subtitle">{subtitle}</p>}
-            {!subtitle && state?.count !== undefined && (
-              <p className="admin-page-subtitle">{state.count} total records found</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {breadcrumb && breadcrumb.length > 0 && (
+              <button
+                onClick={() => navigate(-1)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+              >
+                <ArrowLeft size={15} /> Back
+              </button>
             )}
+            <div>
+              <h1 className="admin-page-title">{title}</h1>
+              {subtitle && <p className="admin-page-subtitle">{subtitle}</p>}
+              {!subtitle && state?.count !== undefined && (
+                <p className="admin-page-subtitle">{state.count} total records found</p>
+              )}
+            </div>
           </div>
           <button className="btn-primary" onClick={openCreate} id={`add-${entityName}-btn`}>
             <Plus size={15} /> Add New
@@ -188,16 +202,26 @@ export default function AdminCrudPage({
 
         {/* Toolbar */}
         <div className="admin-toolbar">
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, flex: 1, maxWidth: 400 }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8 }}>
             <div className="admin-toolbar-search">
-              <Search size={14} />
+              <Search size={14} className="search-icon" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={`Search ${title.toLowerCase()}…`}
               />
+              {search && (
+                <button
+                  type="button"
+                  className="clear-search-btn"
+                  onClick={() => { setSearch(''); setPage(1); loadList('', 1); }}
+                  title="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
-            <button type="submit" className="btn-secondary">Search</button>
+            <button type="submit" className="btn-secondary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
           </form>
           {filterBar}
         </div>
@@ -248,7 +272,7 @@ export default function AdminCrudPage({
                       )}
                     </th>
                   ))}
-                  <th style={{ width: 120 }}>Actions</th>
+                  <th style={{ width: 100, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,8 +283,8 @@ export default function AdminCrudPage({
                         {col.render ? col.render(item) : item[col.key] ?? '—'}
                       </td>
                     ))}
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                         <button className="btn-icon" onClick={() => openEdit(item)} title="Edit">
                           <Pencil size={15} />
                         </button>
@@ -278,17 +302,14 @@ export default function AdminCrudPage({
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="admin-pagination">
-            <button className="btn-secondary" disabled={page === 1} onClick={() => handlePage(page - 1)}>
-              <ChevronLeft size={15} /> Prev
-            </button>
-            <span className="admin-pagination-info">Page {page} of {totalPages}</span>
-            <button className="btn-secondary" disabled={page === totalPages} onClick={() => handlePage(page + 1)}>
-              Next <ChevronRight size={15} />
-            </button>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalCount={state?.count || items?.length || 0}
+          pageSize={PAGE_SIZE}
+          onPageChange={handlePage}
+          entityLabel={title.toLowerCase()}
+        />
       </div>
 
       {/* Form Modal */}
