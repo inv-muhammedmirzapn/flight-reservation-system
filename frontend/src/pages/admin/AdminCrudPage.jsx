@@ -328,7 +328,7 @@ export default function AdminCrudPage({
                         <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
                           {field.label}
                         </label>
-                        <DateTimePicker value={form[field.name] ?? ''} onChange={(iso) => handleDateChange(field.name, iso)} />
+                        <DateTimePicker value={form[field.name] ?? ''} onChange={(e) => handleDateChange(field.name, e.target.value)} />
                         {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
                       </div>
                     );
@@ -359,6 +359,44 @@ export default function AdminCrudPage({
                           {field.label}
                         </label>
                         <textarea name={field.name} value={form[field.name] ?? ''} onChange={handleChange} rows={3} style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--admin-radius-sm)', border: '1px solid rgba(0,0,0,0.15)', fontSize: 13, resize: 'vertical', outline: 'none' }} />
+                        {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
+                      </div>
+                    );
+                  }
+                  if (field.type === 'string-array') {
+                    const arr = Array.isArray(form[field.name]) ? form[field.name] : [];
+                    return (
+                      <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>
+                            {field.label}
+                          </label>
+                          <button type="button" onClick={() => setForm(f => ({ ...f, [field.name]: [...arr, ''] }))} style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-accent-dark)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Plus size={12} /> Add
+                          </button>
+                        </div>
+                        {arr.length === 0 && <p style={{ fontSize: 12, color: '#888', margin: '4px 0 8px' }}>No items added.</p>}
+                        {arr.map((val, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                            <div style={{ flex: 1 }}>
+                              <Input
+                                value={val}
+                                placeholder={field.placeholder || ''}
+                                onChange={(e) => {
+                                  const newArr = [...arr];
+                                  newArr[idx] = e.target.value;
+                                  setForm(f => ({ ...f, [field.name]: newArr }));
+                                }}
+                              />
+                            </div>
+                            <button type="button" onClick={() => {
+                              const newArr = arr.filter((_, i) => i !== idx);
+                              setForm(f => ({ ...f, [field.name]: newArr }));
+                            }} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
                         {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
                       </div>
                     );

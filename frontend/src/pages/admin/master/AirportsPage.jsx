@@ -11,12 +11,12 @@ const COLUMNS = [
   { key: 'airport_name', label: 'Airport Name' },
   { key: 'city', label: 'City' },
   { key: 'country_name', label: 'Country' },
-  { key: 'timezone', label: 'Timezone' },
+  { key: 'terminals', label: 'Terminals', render: (r) => (r.terminals && r.terminals.length > 0 ? `${r.terminals.length} Terminal${r.terminals.length > 1 ? 's' : ''}` : '—') },
 ];
 
 const EMPTY_FORM = {
   iata_code: '', airport_name: '', city: '', timezone: 'UTC',
-  latitude: '', longitude: '', country: '',
+  latitude: '', longitude: '', country: '', terminals: [],
 };
 
 const validateForm = (form) => {
@@ -46,6 +46,7 @@ export default function AirportsPage() {
     { name: 'timezone', label: 'Timezone', placeholder: 'e.g. America/New_York' },
     { name: 'latitude', label: 'Latitude', type: 'number', placeholder: 'e.g. 40.6413' },
     { name: 'longitude', label: 'Longitude', type: 'number', placeholder: 'e.g. -73.7781' },
+    { name: 'terminals', label: 'Terminals', type: 'string-array', placeholder: 'e.g. T1' },
   ];
 
   return (

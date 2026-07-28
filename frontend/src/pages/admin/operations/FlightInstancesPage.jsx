@@ -13,7 +13,7 @@ import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
   fetchFlightInstances, fetchFlightInstanceDetail, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
-  fetchFlightRoutes, fetchAircraft,
+  fetchFlightRoutes, fetchAircraft, fetchAirports,
 } from '@/store/adminSlices';
 import { fetchWithAuth } from '@/services/apiClient';
 import {
@@ -47,6 +47,7 @@ export default function FlightInstancesPage() {
   const { items: instances, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightInstance);
   const { items: routes } = useSelector((s) => s.flightRoute);
   const { items: allAircraft } = useSelector((s) => s.aircraft);
+  const { items: airports } = useSelector((s) => s.airport);
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -62,6 +63,7 @@ export default function FlightInstancesPage() {
     load(search, page);
     dispatch(fetchFlightRoutes({ page_size: 500 }));
     dispatch(fetchAircraft({ page_size: 500 }));
+    dispatch(fetchAirports({ page_size: 500 }));
   }, []);
 
   // Auto-suggest times when flight selected
@@ -92,6 +94,15 @@ export default function FlightInstancesPage() {
 
   const routeOptions = routes.map((r) => ({ value: r.id, label: `${r.flight_no} (${r.airline_name || r.airline})` }));
   const aircraftOptions = filteredAircraft.map((a) => ({ value: a.id, label: `${a.registration} – ${a.model_display || ''}` }));
+
+  // Find terminals from departure/arrival airports
+  const firstLeg = selectedRoute?.legs?.[0];
+  const lastLeg = selectedRoute?.legs?.[(selectedRoute?.legs?.length || 1) - 1];
+  const depAirport = airports.find(a => String(a.id) === String(firstLeg?.departure_airport));
+  const arrAirport = airports.find(a => String(a.id) === String(lastLeg?.arrival_airport));
+
+  const depTerminalOptions = (depAirport?.terminals || []).map(t => ({ value: t, label: t }));
+  const arrTerminalOptions = (arrAirport?.terminals || []).map(t => ({ value: t, label: t }));
 
   const openCreate = () => { setEditId(null); setForm(EMPTY_FORM); setLocalErrors({}); setShowForm(true); };
   const openEdit = (inst) => {
@@ -259,20 +270,30 @@ export default function FlightInstancesPage() {
               <div className="admin-form-grid" style={{ marginBottom: 20 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
-                  <DateTimePicker value={form.scheduled_departure} onChange={(iso) => setForm((f) => ({ ...f, scheduled_departure: iso }))} />
+                  <DateTimePicker value={form.scheduled_departure} onChange={(e) => setForm((f) => ({ ...f, scheduled_departure: e.target.value }))} />
                   {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
-                  <DateTimePicker value={form.scheduled_arrival} onChange={(iso) => setForm((f) => ({ ...f, scheduled_arrival: iso }))} />
+                  <DateTimePicker value={form.scheduled_arrival} onChange={(e) => setForm((f) => ({ ...f, scheduled_arrival: e.target.value }))} />
                   {localErrors.scheduled_arrival && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_arrival}</p>}
                 </div>
                 <Input id="fi_gate" label="Boarding Gate" placeholder="e.g. G12" value={form.boarding_gate}
                   onChange={(e) => setForm((f) => ({ ...f, boarding_gate: e.target.value }))} />
-                <Input id="fi_dep_term" label="Departure Terminal" placeholder="e.g. T1" value={form.departure_terminal}
-                  onChange={(e) => setForm((f) => ({ ...f, departure_terminal: e.target.value }))} />
-                <Input id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. T2" value={form.arrival_terminal}
-                  onChange={(e) => setForm((f) => ({ ...f, arrival_terminal: e.target.value }))} />
+                {depTerminalOptions.length > 0 ? (
+                  <Select id="fi_dep_term" label="Departure Terminal" options={depTerminalOptions} value={form.departure_terminal}
+                    onChange={(e) => setForm((f) => ({ ...f, departure_terminal: e.target.value }))} />
+                ) : (
+                  <Input id="fi_dep_term" label="Departure Terminal" placeholder="e.g. T1" value={form.departure_terminal}
+                    onChange={(e) => setForm((f) => ({ ...f, departure_terminal: e.target.value }))} />
+                )}
+                {arrTerminalOptions.length > 0 ? (
+                  <Select id="fi_arr_term" label="Arrival Terminal" options={arrTerminalOptions} value={form.arrival_terminal}
+                    onChange={(e) => setForm((f) => ({ ...f, arrival_terminal: e.target.value }))} />
+                ) : (
+                  <Input id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. T2" value={form.arrival_terminal}
+                    onChange={(e) => setForm((f) => ({ ...f, arrival_terminal: e.target.value }))} />
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>

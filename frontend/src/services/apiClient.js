@@ -33,10 +33,19 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
 
   const headers = {
-    'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
+
+  // Default to application/json unless body is FormData
+  if (!('Content-Type' in headers) && !(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // If a caller explicitly passed null or undefined to remove the default, clean it up
+  if (headers['Content-Type'] === null || headers['Content-Type'] === undefined) {
+    delete headers['Content-Type'];
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,

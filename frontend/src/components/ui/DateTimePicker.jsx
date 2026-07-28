@@ -254,7 +254,7 @@ export default function DateTimePicker({
             className="glass-card"
             style={{
               position: 'absolute',
-              top: 'calc(100% + 5px)',
+              bottom: 'calc(100% + 5px)',
               left: 0,
               zIndex: 2000,
               width: 280,

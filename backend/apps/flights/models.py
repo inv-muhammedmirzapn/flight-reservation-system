@@ -1,4 +1,5 @@
 import uuid
+# trigger reload
 from django.db import models
 from django.core.exceptions import ValidationError
 
@@ -143,6 +144,7 @@ class Airport(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="airports")
+    terminals = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["iata_code"]

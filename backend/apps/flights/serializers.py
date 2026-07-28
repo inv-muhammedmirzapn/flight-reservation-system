@@ -79,7 +79,7 @@ class AirportSerializer(serializers.ModelSerializer):
         fields = [
             "id", "iata_code", "airport_name", "city",
             "timezone", "latitude", "longitude",
-            "country", "country_name"
+            "country", "country_name", "terminals"
         ]
 
     def validate_iata_code(self, value):

@@ -87,7 +87,13 @@ export default function FlightRoutesPage() {
   const closeForm = () => { setShowForm(false); setEditId(null); };
 
   // ─── Leg management ─────────────────────────────────────────────────────────
-  const addLeg = () => setForm((f) => ({ ...f, legs: [...f.legs, { ...EMPTY_LEG }] }));
+  const addLeg = () => setForm((f) => {
+    const newLeg = { ...EMPTY_LEG };
+    if (f.legs.length > 0) {
+      newLeg.departure_airport = f.legs[f.legs.length - 1].arrival_airport;
+    }
+    return { ...f, legs: [...f.legs, newLeg] };
+  });
   const removeLeg = (i) => setForm((f) => ({ ...f, legs: f.legs.filter((_, idx) => idx !== i) }));
   const updateLeg = (i, key, val) =>
     setForm((f) => ({
@@ -331,12 +337,12 @@ export default function FlightRoutesPage() {
                         error={localErrors[`leg_${i}_arr_apt`]} />
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
-                        <DateTimePicker value={leg.scheduled_departure} onChange={(iso) => updateLeg(i, 'scheduled_departure', iso)} />
+                        <DateTimePicker value={leg.scheduled_departure} onChange={(e) => updateLeg(i, 'scheduled_departure', e.target.value)} />
                         {localErrors[`leg_${i}_dep_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_dep_time`]}</p>}
                       </div>
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
-                        <DateTimePicker value={leg.scheduled_arrival} onChange={(iso) => updateLeg(i, 'scheduled_arrival', iso)} />
+                        <DateTimePicker value={leg.scheduled_arrival} onChange={(e) => updateLeg(i, 'scheduled_arrival', e.target.value)} />
                         {localErrors[`leg_${i}_arr_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_arr_time`]}</p>}
                       </div>
                     </div>
