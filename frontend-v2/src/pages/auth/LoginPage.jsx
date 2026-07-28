@@ -159,10 +159,7 @@ export default function LoginPage() {
               className="btn-primary px-5 py-2 rounded-xl text-sm"
             >
               {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                  Signing in...
-                </>
+                "Signing in..."
               ) : (
                 "Sign In"
               )}

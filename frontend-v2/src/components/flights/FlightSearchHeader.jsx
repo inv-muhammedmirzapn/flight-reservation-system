@@ -170,16 +170,16 @@ export default function FlightSearchHeader({ onSearchChange }) {
             setTimeout(() => fromInputRef.current?.focus(), 50);
           }}
         >
-          <span className="text-[10px] font-medium text-slate-400 select-none block">
+          <span className="text-[10px] font-bold text-slate-400 select-none block mb-1">
             From
           </span>
 
           {isFromFocused ? (
-            <div className="mt-0.5">
+            <div className="mt-1">
               <input
                 ref={fromInputRef}
                 type="text"
-                className="w-full bg-white border border-amber-400 rounded-md px-2 py-2 text-xs font-bold text-slate-900 outline-none shadow-xs"
+                className="airport-input-field text-lg"
                 value={fromSearch}
                 onChange={(e) => setFromSearch(e.target.value)}
                 onBlur={() => setTimeout(() => setIsFromFocused(false), 200)}
@@ -188,11 +188,11 @@ export default function FlightSearchHeader({ onSearchChange }) {
               />
             </div>
           ) : (
-            <div className="mt-0.5">
-              <div className="text-sm font-bold text-slate-900 truncate leading-snug">
+            <div className="mt-1">
+              <div className="text-lg font-medium text-slate-900 truncate">
                 {fromAirport ? fromAirport.city : from}
               </div>
-              <div className="text-[11px] text-slate-500 font-normal truncate">
+              <div className="text-[10px] text-slate-500 truncate mt-0.5">
                 {fromAirport ? `${fromAirport.code}, ${fromAirport.name} ${fromAirport.country || ''}` : from}
               </div>
             </div>
@@ -244,16 +244,16 @@ export default function FlightSearchHeader({ onSearchChange }) {
             setTimeout(() => toInputRef.current?.focus(), 50);
           }}
         >
-          <span className="text-[10px] font-medium text-slate-400 select-none block">
+          <span className="text-[10px] font-bold text-slate-400 select-none block mb-1">
             To
           </span>
 
           {isToFocused ? (
-            <div className="mt-0.5">
+            <div className="mt-1">
               <input
                 ref={toInputRef}
                 type="text"
-                className="w-full bg-white border border-amber-400 rounded-md px-2 py-0.5 text-xs font-bold text-slate-900 outline-none shadow-xs"
+                className="airport-input-field text-lg"
                 value={toSearch}
                 onChange={(e) => setToSearch(e.target.value)}
                 onBlur={() => setTimeout(() => setIsToFocused(false), 200)}
@@ -262,11 +262,11 @@ export default function FlightSearchHeader({ onSearchChange }) {
               />
             </div>
           ) : (
-            <div className="mt-0.5">
-              <div className="text-sm font-bold text-slate-900 truncate leading-snug">
+            <div className="mt-1">
+              <div className="text-lg font-medium text-slate-900 truncate">
                 {toAirport ? toAirport.city : to}
               </div>
-              <div className="text-[11px] text-slate-500 font-normal truncate">
+              <div className="text-[10px] text-slate-500 mt-0.5 truncate">
                 {toAirport ? `${toAirport.code}, ${toAirport.name} ${toAirport.country || ''}` : to}
               </div>
             </div>
@@ -303,14 +303,14 @@ export default function FlightSearchHeader({ onSearchChange }) {
             setIsCalendarOpen(true);
           }}
         >
-          <span className="text-[10px] font-medium text-slate-400 select-none block">
+          <span className="text-[10px] font-bold text-slate-400 select-none block">
             Departure
           </span>
-          <div className="mt-0.5">
-            <div className="text-sm font-bold text-slate-900 truncate leading-snug">
+          <div className="mt-1">
+            <div className="text-lg font-medium text-slate-900 truncate">
               {depFormatted.main}
             </div>
-            <div className="text-[11px] text-slate-500 font-normal truncate min-h-[0.875rem]">
+            <div className="text-[10px] text-slate-500 truncate mt-0.5">
               {depFormatted.sub}
             </div>
           </div>
@@ -324,14 +324,14 @@ export default function FlightSearchHeader({ onSearchChange }) {
             setIsCalendarOpen(true);
           }}
         >
-          <span className="text-[10px] font-medium text-slate-400 select-none block">
+          <span className="text-[10px] font-bold text-slate-400 select-none block">
             Return
           </span>
-          <div className="mt-0.5">
-            <div className="text-sm font-bold text-slate-900 truncate leading-snug">
+          <div className="mt-1">
+            <div className="text-lg font-medium text-slate-900 truncate">
               {arrFormatted.main}
             </div>
-            <div className="text-[11px] text-slate-500 font-normal truncate min-h-[0.875rem]">
+            <div className="text-[10px] text-slate-50 truncate mt-0.5">
               {arrFormatted.sub}
             </div>
           </div>
@@ -343,14 +343,14 @@ export default function FlightSearchHeader({ onSearchChange }) {
           className="flex-1 px-4 py-2 relative cursor-pointer hover:bg-slate-200/40 transition-colors rounded-b-xl lg:rounded-r-xl lg:rounded-bl-none"
           onClick={() => setIsCabinOpen(!isCabinOpen)}
         >
-          <span className="text-[10px] font-medium text-slate-400 select-none block">
+          <span className="text-[10px] font-bold text-slate-400 select-none block mb-1">
             Cabin Class
           </span>
-          <div className="mt-0.5">
-            <div className="text-sm font-bold text-slate-900 truncate leading-snug">
+          <div className="mt-1">
+            <div className="text-lg font-medium text-slate-900 truncate">
               {cabinClass}
             </div>
-            <div className="text-[11px] text-slate-500 font-normal truncate min-h-[0.875rem]">
+            <div className="text-[10px] text-slate-500 font-normal truncate">
               &nbsp;
             </div>
           </div>
