@@ -357,6 +357,60 @@ class FlightAPITests(APITestCase):
         response = self.client.patch(url, {"status": "DELAYED"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_update_flight_allocates_waitlist_seats(self):
+        """PUT /api/flights/<id>/update/ that increases available_seats triggers waitlist allocation."""
+        # 1. Create a flight with 0 available seats
+        flight = Flight.objects.create(
+            flight_number="FL999",
+            airline="SpaceX Airline",
+            aircraft="Starship v2",
+            source_airport="MIA",
+            destination_airport="LAX",
+            departure_time=self.departure_time,
+            arrival_time=self.arrival_time,
+            base_fare=Decimal("500.00"),
+            total_seats=200,
+            available_seats=0,
+            status="SCHEDULED"
+        )
+        
+        # 2. Add customer to waitlist for 2 seats
+        from apps.waitlist.models import WaitlistEntry, WaitlistStatus
+        from apps.bookings.models import Booking, BookingStatus
+        
+        waitlist_entry = WaitlistEntry.objects.create(
+            user=self.customer_user,
+            flight=flight,
+            seat_count=2,
+            price=Decimal("1000.00"),
+            status=WaitlistStatus.PENDING
+        )
+        
+        # 3. Authenticate admin and update available_seats to 2
+        self.client.force_authenticate(user=self.admin_user)
+        payload = self._make_update_payload()
+        payload["available_seats"] = 2
+        payload["total_seats"] = 200
+        
+        url = f"/api/flights/{flight.id}/update/"
+        response = self.client.put(url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # 4. Verify waitlist entry is CONFIRMED and booking is created
+        waitlist_entry.refresh_from_db()
+        self.assertEqual(waitlist_entry.status, WaitlistStatus.CONFIRMED)
+        self.assertIsNotNone(waitlist_entry.booking)
+        self.assertEqual(waitlist_entry.booking.user, self.customer_user)
+        self.assertEqual(waitlist_entry.booking.seat_count, 2)
+        self.assertEqual(waitlist_entry.booking.status, BookingStatus.CONFIRMED)
+        
+        # 5. Flight available seats should be 0 (since the 2 seats were immediately allocated)
+        flight.refresh_from_db()
+        self.assertEqual(flight.available_seats, 0)
+        
+        # 6. Check response data matches actual state (should serialize final available_seats = 0)
+        self.assertEqual(response.data["available_seats"], 0)
+
     # ------------------------------------------------------------------ #
     # GET /api/flights/ — list (public)                                   #
     # ------------------------------------------------------------------ #

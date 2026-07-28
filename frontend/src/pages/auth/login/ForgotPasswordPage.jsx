@@ -19,8 +19,14 @@ export default function ForgotPasswordPage() {
       toast.success(res.detail || "Password reset OTP sent!");
       navigate('/reset-password', { state: { email } });
     } catch (err) {
-      const errorMsg = JSON.parse(err.message);
-      toast.error(errorMsg.email?.[0] || errorMsg.detail || "An error occurred.");
+      let errMsg = "An error occurred.";
+      try {
+        const errorMsg = JSON.parse(err.message);
+        errMsg = errorMsg.email?.[0] || errorMsg.detail || errMsg;
+      } catch {
+        errMsg = err.message || errMsg;
+      }
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -43,7 +49,7 @@ export default function ForgotPasswordPage() {
                 <span style={{ opacity: 0.65, fontSize: '0.9rem', fontWeight: 400 }}>Securely &amp; quickly.</span>
               </p>
             </div>
-            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2026 })}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

@@ -10,6 +10,10 @@ def process_waitlist_allocations(flight):
     Scans the waitlist queue in FIFO order (by created_at) and allocates
     seats to pending entries that can be fully accommodated by the available seats.
     """
+    # Lock the flight row to ensure available_seats is accurate and not modified concurrently
+    from apps.flights.models import Flight
+    flight = Flight.objects.select_for_update().get(id=flight.id)
+
     if flight.available_seats <= 0:
         return
 

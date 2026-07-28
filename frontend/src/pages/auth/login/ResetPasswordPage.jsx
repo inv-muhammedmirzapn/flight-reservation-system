@@ -86,14 +86,16 @@ export default function ResetPasswordPage() {
       toast.success(res.detail || "Password has been successfully updated!");
       navigate('/login');
     } catch (err) {
-      const errorMsg = JSON.parse(err.message);
-      if (errorMsg.new_password) {
-        toast.error(errorMsg.new_password[0]);
-      } else if (errorMsg.error) {
-        toast.error(errorMsg.error);
-      } else {
-        toast.error("An error occurred while resetting the password.");
+      let errMsg = "An error occurred while resetting the password.";
+      try {
+        const errorMsg = JSON.parse(err.message);
+        if (errorMsg.new_password) errMsg = errorMsg.new_password[0];
+        else if (errorMsg.error) errMsg = errorMsg.error;
+        else if (errorMsg.detail) errMsg = errorMsg.detail;
+      } catch {
+        errMsg = err.message || errMsg;
       }
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -116,7 +118,7 @@ export default function ResetPasswordPage() {
                 <span style={{ opacity: 0.65, fontSize: '0.9rem', fontWeight: 400 }}>&amp; secure your account.</span>
               </p>
             </div>
-            <div className="auth-brand-footer">{t("footer.copyright", { year: 2025 })}</div>
+            <div className="auth-brand-footer">{t("footer.copyright", { year: 2026 })}</div>
           </div>
 
           {/* ── Right: Form panel ── */}

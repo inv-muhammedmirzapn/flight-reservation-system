@@ -1,17 +1,35 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, it, expect, vi } from 'vitest';
 import UserFlightsList from '../UserFlightsList';
+import { fetchFlights } from '@/store/flightSlice';
 
-// Mock components that might be problematic or that we want to simplify, if any.
-// In our case, DatePicker and DateSwitcher are simple and don't need mocking.
-
-// Build today's date string in local time (not UTC) to match what the filter now computes
+// Build today's date string in local time (not UTC) to match what the filter computes
 const now = new Date();
 const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+vi.mock('@/store/flightSlice', () => {
+  const makeThunkMock = (type) => {
+    return vi.fn((arg) => {
+      const promise = Promise.resolve({ payload: { count: 3, results: [] } });
+      promise.unwrap = () => Promise.resolve({ count: 3, results: [] });
+      promise.type = type;
+      promise.payload = arg;
+      const thunkFn = (dispatch) => promise;
+      thunkFn.type = type;
+      thunkFn.payload = arg;
+      return thunkFn;
+    });
+  };
+
+  return {
+    fetchFlights: makeThunkMock('fetchFlights'),
+    clearFlightsList: vi.fn(() => ({ type: 'clearFlightsList' })),
+  };
+});
 
 const sampleFlights = [
   {
@@ -68,7 +86,7 @@ const sampleFlights = [
 const renderComponent = (initialEntries = ['/flights'], preloadedFlights = sampleFlights) => {
   const store = configureStore({
     reducer: {
-      flights: (state = { list: preloadedFlights, loading: false, error: null }) => state,
+      flights: (state = { list: preloadedFlights, count: preloadedFlights.length, totalPages: 1, loading: false, error: null }) => state,
       auth: (state = { user: null }) => state
     }
   });
@@ -83,7 +101,7 @@ const renderComponent = (initialEntries = ['/flights'], preloadedFlights = sampl
 };
 
 describe('UserFlightsList Component', () => {
-  it('renders all flights initially when no filters are set', () => {
+  it('renders all flights initially', () => {
     renderComponent();
     expect(screen.getByText('AG-101')).toBeInTheDocument();
     expect(screen.getByText('AG-102')).toBeInTheDocument();
@@ -91,38 +109,92 @@ describe('UserFlightsList Component', () => {
     expect(screen.getByText('3 flights found')).toBeInTheDocument();
   });
 
-  it('filters flights by search parameters in URL query parameters', () => {
-    // Search for non-stop only by setting stops in URL
-    renderComponent(['/flights?stops=0']);
-    expect(screen.getByText('AG-101')).toBeInTheDocument();
-    expect(screen.queryByText('AG-102')).not.toBeInTheDocument();
-    expect(screen.queryByText('AG-103')).not.toBeInTheDocument();
-    expect(screen.getByText('1 flight found')).toBeInTheDocument();
+  it('sorts flights chronologically by departure time on the client-side', () => {
+    // Provide unsorted flights (AG-103 departs at 14:00, AG-101 departs at 12:00, AG-102 departs at 13:00)
+    const unsortedFlights = [sampleFlights[2], sampleFlights[0], sampleFlights[1]];
+    renderComponent(['/flights'], unsortedFlights);
+
+    // Verify they are rendered in chronological order: AG-101 (12:00), AG-102 (13:00), AG-103 (14:00)
+    const flightElements = screen.getAllByText(/AG-10/);
+    expect(flightElements[0]).toHaveTextContent('AG-101');
+    expect(flightElements[1]).toHaveTextContent('AG-102');
+    expect(flightElements[2]).toHaveTextContent('AG-103');
   });
 
-  it('filters flights when the stops checkbox is clicked', () => {
+  it('dispatches fetchFlights with correct query parameters from the URL', () => {
+    vi.clearAllMocks();
+    renderComponent(['/flights?stops=0&adults=2&children=1&minFare=6000&maxFare=10000']);
+    expect(fetchFlights).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          stops: '0',
+          min_fare: 6000,
+          max_fare: 10000,
+          ordering: 'departure_time'
+        })
+      })
+    );
+  });
+
+  it('dispatches fetchFlights when filter options are interacted with', () => {
+    vi.clearAllMocks();
     renderComponent();
-    // Initially all 3 display. Click "Non-stop" checkbox
+    // Click "Non-stop" checkbox
     const nonstopCheckbox = screen.getByLabelText('Non-stop');
     fireEvent.click(nonstopCheckbox);
 
-    // After clicking Non-stop, only AG-101 should match
-    expect(screen.getByText('AG-101')).toBeInTheDocument();
-    expect(screen.queryByText('AG-102')).not.toBeInTheDocument();
+    // It should dispatch fetchFlights with stops: '0' and ordering: 'departure_time'
+    expect(fetchFlights).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          stops: '0',
+          ordering: 'departure_time'
+        })
+      })
+    );
   });
 
-  it('filters flights by passenger selector seat constraints', () => {
-    // 3 passengers total (2 adults, 1 child) -> should filter out AG-102 (2 seats available)
-    renderComponent(['/flights?adults=2&children=1']);
-    expect(screen.getByText('AG-101')).toBeInTheDocument();
-    expect(screen.queryByText('AG-102')).not.toBeInTheDocument(); // excluded: total passengers (3) > available seats (2)
-    expect(screen.getByText('AG-103')).toBeInTheDocument();
+  it('does not dispatch fetchFlights on slider change, but dispatches immediately on mouse release', () => {
+    vi.clearAllMocks();
+
+    renderComponent();
+
+    // Find the Min Price input slider
+    const minPriceSlider = screen.getByLabelText('Min Price');
+    
+    // Simulate dragging the slider
+    fireEvent.change(minPriceSlider, { target: { value: '4000' } });
+
+    // Since the change event alone doesn't commit, fetchFlights should NOT have been called with 4000 yet
+    expect(fetchFlights).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          min_fare: 4000
+        })
+      })
+    );
+
+    // Simulate mouse release
+    fireEvent.mouseUp(minPriceSlider);
+
+    // Now it should have been called immediately with the committed value
+    expect(fetchFlights).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          min_fare: 4000
+        })
+      })
+    );
   });
 
-  it('filters flights by dual min/max fare bounds', () => {
-    renderComponent(['/flights?minFare=6000&maxFare=10000']);
-    expect(screen.queryByText('AG-101')).not.toBeInTheDocument(); // 5000 is too low
-    expect(screen.getByText('AG-102')).toBeInTheDocument(); // 7500 matches
-    expect(screen.queryByText('AG-103')).not.toBeInTheDocument(); // 12000 is too high
+  it('renders a "Waiting List" badge if a flight has 0 available seats', () => {
+    const waitlistedFlight = {
+      ...sampleFlights[0],
+      id: 99,
+      flight_number: 'AG-999',
+      available_seats: 0
+    };
+    renderComponent(['/flights'], [waitlistedFlight]);
+    expect(screen.getByText('Waiting List')).toBeInTheDocument();
   });
 });

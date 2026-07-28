@@ -40,16 +40,54 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
     setFormError(null);
     for (let i = 0; i < passengers.length; i++) {
       const p = passengers[i];
-      if (!p.name || !p.age || !p.gender) {
+      
+      if (!p.name?.trim() || !p.age || !p.gender) {
         setFormError(`Please fill all required fields for Passenger ${i + 1}`);
         return;
       }
+      
+      const nameRegex = /^[a-zA-Z\s'-]+$/;
+      if (!nameRegex.test(p.name.trim())) {
+        setFormError(`Please enter a valid name for Passenger ${i + 1} (only letters, spaces, hyphens, and apostrophes)`);
+        return;
+      }
+      
+      const ageVal = parseInt(p.age, 10);
+      if (isNaN(ageVal) || ageVal < 1 || ageVal > 120) {
+        setFormError(`Age must be between 1 and 120 for Passenger ${i + 1}`);
+        return;
+      }
+      
+      if (p.phone_number?.trim()) {
+        const phoneRegex = /^\+?[0-9]{7,15}$/;
+        const cleanPhone = p.phone_number.trim().replace(/[\s\-\(\)]/g, '');
+        if (!phoneRegex.test(cleanPhone)) {
+          setFormError(`Please enter a valid phone number (7-15 digits) for Passenger ${i + 1}`);
+          return;
+        }
+      }
     }
-    dispatch(joinWaitlist({ flightId: flight.id, passengers }));
+    
+    const cleanedPassengers = passengers.map(p => ({
+      ...p,
+      name: p.name.trim(),
+      phone_number: p.phone_number?.trim() || ''
+    }));
+    
+    dispatch(joinWaitlist({ flightId: flight.id, passengers: cleanedPassengers }));
   };
 
   const handlePassengerChange = (index, field, value) => {
     const newPassengers = [...passengers];
+    
+    if (field === 'age') {
+      if (value !== '' && !/^\d+$/.test(value)) return;
+    }
+
+    if (field === 'phone_number') {
+      if (value !== '' && !/^[\d\s\+\-\(\)]+$/.test(value)) return;
+    }
+    
     newPassengers[index] = { ...newPassengers[index], [field]: value };
     setPassengers(newPassengers);
   };
@@ -200,19 +238,19 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
                       }}>Remove</button>
                     )}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div className="passenger-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                     <input
                       type="text" placeholder="Full Name" required
                       value={p.name} onChange={(e) => handlePassengerChange(i, 'name', e.target.value)}
                       style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
                     />
                     <input
-                      type="number" placeholder="Age" required min="1" max="120"
+                      type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Age" required
                       value={p.age} onChange={(e) => handlePassengerChange(i, 'age', e.target.value)}
                       style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }}
                     />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="passenger-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.04)', padding: 4, borderRadius: 8, border: '1px solid #e5e7eb' }}>
                       {[
                         { id: 'M', label: 'Male' },

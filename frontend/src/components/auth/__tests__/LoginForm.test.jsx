@@ -117,7 +117,7 @@ describe('LoginForm Component', () => {
         requireCustomer: true,
       });
       expect(mockDispatch).toHaveBeenCalled();
-      expect(toast.success).toHaveBeenCalledWith('Welcome back, John!');
+      expect(toast.success).toHaveBeenCalledWith('auth.welcomeBackName');
       expect(mockNavigate).toHaveBeenCalledWith('/flights');
     });
   });

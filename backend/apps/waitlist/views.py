@@ -46,7 +46,8 @@ class WaitlistJoinView(APIView):
                 )
             }
         ),
-        responses={201: WaitlistEntrySerializer}
+        responses={201: WaitlistEntrySerializer},
+        tags=["Waitlist"]
     )
     def post(self, request, *args, **kwargs):
         flight_id = request.data.get("flight")
@@ -161,6 +162,15 @@ class WaitlistListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="List Waitlist Entries",
+        description="Lists waitlist entries for the current user. Admins can see all entries and filter by flight.",
+        responses={200: WaitlistEntrySerializer(many=True)},
+        tags=["Waitlist"],
+        parameters=[
+            rf_serializers.IntegerField(default=None, help_text="Filter by flight ID (Admins only)")
+        ]
+    )
     def get(self, request, *args, **kwargs):
         is_admin = IsAdminOrSuperuser().has_permission(request, self)
 
@@ -182,7 +192,7 @@ class WaitlistListView(APIView):
         else:
             queryset = WaitlistEntry.objects.filter(user=request.user)
 
-        queryset = queryset.order_by('-created_at')
+        queryset = queryset.select_related('flight', 'user').prefetch_related('passengers').order_by('-created_at')
 
         serializer = WaitlistEntrySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -205,6 +215,12 @@ class WaitlistDetailView(APIView):
         except (WaitlistEntry.DoesNotExist, ValueError):
             raise Http404
 
+    @extend_schema(
+        summary="Waitlist Entry Details",
+        description="Retrieves details of a specific waitlist entry.",
+        responses={200: WaitlistEntrySerializer},
+        tags=["Waitlist"]
+    )
     def get(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
@@ -237,6 +253,17 @@ class WaitlistCancelView(APIView):
         except (WaitlistEntry.DoesNotExist, ValueError):
             raise Http404
 
+    @extend_schema(
+        summary="Cancel Waitlist Entry",
+        description="Cancels a pending waitlist entry and returns refund details.",
+        responses={200: inline_serializer('WaitlistCancelResponse', {
+            'message': rf_serializers.CharField(),
+            'refund_amount': rf_serializers.DecimalField(max_digits=10, decimal_places=2),
+            'processing_fee': rf_serializers.DecimalField(max_digits=10, decimal_places=2),
+            'status': rf_serializers.CharField(),
+        })},
+        tags=["Waitlist"]
+    )
     def post(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
@@ -329,6 +356,12 @@ class WaitlistFlightCountView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        summary="Waitlist Flight Count",
+        description="Returns the total number of passengers currently on the waitlist (pending) for a specific flight.",
+        responses={200: inline_serializer('WaitlistCountResponse', {'waitlist_count': rf_serializers.IntegerField()})},
+        tags=["Waitlist"]
+    )
     def get(self, request, flight_id, *args, **kwargs):
         try:
             # Aggregate seat counts of PENDING waitlist entries

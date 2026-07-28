@@ -8,10 +8,16 @@ from apps.notifications.services import NotificationService
 from datetime import timedelta
 from django.utils import timezone
 
+import threading
+
 User = get_user_model()
 
 class NotificationServiceTests(TestCase):
     def setUp(self):
+        # Run threads synchronously for testing
+        self.original_thread_start = threading.Thread.start
+        threading.Thread.start = threading.Thread.run
+
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
@@ -36,6 +42,9 @@ class NotificationServiceTests(TestCase):
             flight=self.flight,
             status=BookingStatus.CONFIRMED
         )
+
+    def tearDown(self):
+        threading.Thread.start = self.original_thread_start
 
     def test_send_booking_confirmation(self):
         NotificationService.send_booking_confirmation(self.booking)

@@ -242,7 +242,7 @@ export default function AnalyticsDashboard() {
         }
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 24px 48px' }}>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>

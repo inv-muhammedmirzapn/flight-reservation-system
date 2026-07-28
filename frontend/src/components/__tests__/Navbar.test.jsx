@@ -21,12 +21,12 @@ vi.mock('@/store/notificationsSlice', () => ({
 }));
 
 describe('Navbar - Notifications Integration', () => {
-  const setupStore = (isAuthenticated = true, unreadCount = 0) => {
+  const setupStore = (isAuthenticated = true, unreadCount = 0, isAdmin = false) => {
     return configureStore({
       reducer: {
         auth: (state = {
           isAuthenticated,
-          isAdmin: false,
+          isAdmin,
           profile: { first_name: 'John', username: 'john' }
         }) => state,
         notifications: (state = {
@@ -98,6 +98,40 @@ describe('Navbar - Notifications Integration', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/notifications');
   });
+
+  it('navigates to landing page when logo is clicked for non-admin users', () => {
+    const store = setupStore(true, 0, false);
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Navbar />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    const logoEl = document.querySelector('.landing-logo');
+    fireEvent.click(logoEl);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('navigates to admin flights page when logo is clicked for admin users', () => {
+    const store = setupStore(true, 0, true);
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Navbar />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    const logoEl = document.querySelector('.landing-logo');
+    fireEvent.click(logoEl);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/flights');
+  });
+
+
 
   it('renders notifications option inside profile dropdown', () => {
     const store = setupStore(true, 3);
