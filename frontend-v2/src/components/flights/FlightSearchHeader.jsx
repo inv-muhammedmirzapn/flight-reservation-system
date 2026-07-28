@@ -84,6 +84,21 @@ export default function FlightSearchHeader({ onSearchChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Synchronize state with URL searchParams (e.g. when selected via DateStripCarousel)
+  useEffect(() => {
+    const urlFrom = searchParams.get("from");
+    const urlTo = searchParams.get("to");
+    const urlDep = searchParams.get("depDate");
+    const urlArr = searchParams.get("arrDate") || "";
+    const urlCabin = searchParams.get("cabinClass");
+
+    if (urlFrom && urlFrom !== from) setFrom(urlFrom);
+    if (urlTo && urlTo !== to) setTo(urlTo);
+    if (urlDep && urlDep !== depDate) setDepDate(urlDep);
+    if (urlArr !== arrDate) setArrDate(urlArr);
+    if (urlCabin && urlCabin !== cabinClass) setCabinClass(urlCabin);
+  }, [searchParams]);
+
   const findAirport = (codeOrQuery) => {
     if (!codeOrQuery) return null;
     const query = codeOrQuery.trim().toUpperCase();
@@ -133,7 +148,13 @@ export default function FlightSearchHeader({ onSearchChange }) {
   const formatHeaderDate = (dateStr) => {
     if (!dateStr) return { main: "-", sub: "" };
     try {
-      const d = new Date(dateStr);
+      const parts = String(dateStr).trim().split("-");
+      let d;
+      if (parts.length === 3) {
+        d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        d = new Date(dateStr);
+      }
       if (isNaN(d.getTime())) return { main: "-", sub: "" };
       
       const day = d.getDate();
@@ -159,7 +180,7 @@ export default function FlightSearchHeader({ onSearchChange }) {
   return (
     <div className="w-full mx-auto">
       {/* Compact Horizontal Header Container */}
-      <div className="w-full bg-[#f3f4f6] border border-slate-200/80 shadow-xs flex flex-col lg:flex-row items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 relative">
+      <div className="w-full shadow-sm flex flex-col lg:flex-row items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-200/80 relative">
         
         {/* FROM BOX */}
         <div
@@ -311,7 +332,7 @@ export default function FlightSearchHeader({ onSearchChange }) {
               {depFormatted.main}
             </div>
             <div className="text-[10px] text-slate-500 truncate mt-0.5">
-              {depFormatted.sub}
+              {depFormatted.sub || "\u00A0"}
             </div>
           </div>
         </div>
@@ -331,8 +352,8 @@ export default function FlightSearchHeader({ onSearchChange }) {
             <div className="text-lg font-medium text-slate-900 truncate">
               {arrFormatted.main}
             </div>
-            <div className="text-[10px] text-slate-50 truncate mt-0.5">
-              {arrFormatted.sub}
+            <div className="text-[10px] text-slate-500 truncate mt-0.5">
+              {arrFormatted.sub || "\u00A0"}
             </div>
           </div>
         </div>
