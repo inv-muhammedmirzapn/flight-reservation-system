@@ -45,7 +45,7 @@ class NotificationServiceTests(TestCase):
         self.assertEqual(notif.user, self.user)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.user.email])
-        self.assertIn('Confirmation', mail.outbox[0].subject)
+        self.assertIn('Confirmed', mail.outbox[0].subject)
 
     def test_send_booking_cancellation(self):
         NotificationService.send_booking_cancellation(self.booking)

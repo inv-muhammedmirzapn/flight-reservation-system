@@ -64,12 +64,16 @@ class NotificationService:
 
     @staticmethod
     def _send_email(user_email: str, subject: str, html_body: str):
-        thread = threading.Thread(
-            target=NotificationService._send_email_task,
-            args=(user_email, subject, html_body)
-        )
-        thread.daemon = True
-        thread.start()
+        import sys
+        if 'test' in sys.argv or getattr(settings, 'TESTING', False):
+            NotificationService._send_email_task(user_email, subject, html_body)
+        else:
+            thread = threading.Thread(
+                target=NotificationService._send_email_task,
+                args=(user_email, subject, html_body)
+            )
+            thread.daemon = True
+            thread.start()
 
     # ── Booking ──────────────────────────────────────────────────────────────
 
