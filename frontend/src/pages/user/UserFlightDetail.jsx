@@ -193,7 +193,7 @@ export default function UserFlightDetail() {
         />
       )}
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '120px 24px 48px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '88px 24px 48px' }}>
 
         {/* Back link */}
         <a

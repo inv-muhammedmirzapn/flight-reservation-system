@@ -8,6 +8,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
 import PassengerSelector from '@/components/ui/PassengerSelector';
 import { Pagination } from '@/components/ui/Pagination';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 
 import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
@@ -320,11 +321,10 @@ function Sidebar({
               borderRadius: 10, padding: '8px 12px',
             }}>
               <Search size={14} color="#5e5e5e" />
-              <input
-                type="text"
+              <LocationAutocomplete
                 placeholder={t("flights.fromLabel", { defaultValue: 'From (e.g. COK)' })}
                 value={source}
-                onChange={e => setSource(e.target.value)}
+                onChange={setSource}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
@@ -337,11 +337,10 @@ function Sidebar({
               borderRadius: 10, padding: '8px 12px',
             }}>
               <Search size={14} color="#5e5e5e" />
-              <input
-                type="text"
+              <LocationAutocomplete
                 placeholder={t("flights.toLabel", { defaultValue: 'To (e.g. DEL)' })}
                 value={destination}
-                onChange={e => setDestination(e.target.value)}
+                onChange={setDestination}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
@@ -834,7 +833,7 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{

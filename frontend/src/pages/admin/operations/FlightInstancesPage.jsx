@@ -213,7 +213,7 @@ export default function FlightInstancesPage() {
 
   return (
     <>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <div>
             <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>Flight Instances</h1>

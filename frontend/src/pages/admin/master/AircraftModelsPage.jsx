@@ -18,8 +18,8 @@ const EMPTY_FORM = { manufacturer: '', model_name: '' };
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.manufacturer) e.manufacturer = 'Manufacturer is required.';
-  if (!form.model_name) e.model_name = 'Model name is required.';
+  if (!form.manufacturer || form.manufacturer.trim().length < 2) e.manufacturer = 'Manufacturer must be at least 2 characters.';
+  if (!form.model_name || form.model_name.trim().length < 2) e.model_name = 'Model name must be at least 2 characters.';
   return e;
 };
 

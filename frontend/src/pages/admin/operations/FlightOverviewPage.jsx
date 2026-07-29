@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
 
+import '@/styles/admin-system.css';
 import { INR } from '@/utils/formatters';
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 

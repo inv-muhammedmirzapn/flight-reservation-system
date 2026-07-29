@@ -31,9 +31,8 @@ const EMPTY_FORM = {
 const validateForm = (form) => {
   const e = {};
   if (!form.airline) e.airline = 'Airline is required.';
-  if (!form.name) e.name = 'Name is required.';
-  if (form.price === '') e.price = 'Price is required.';
-  if (Number(form.price) < 0) e.price = 'Price cannot be negative.';
+  if (!form.name || form.name.trim().length < 2) e.name = 'Name must be at least 2 characters.';
+  if (form.price === '' || Number(form.price) < 0) e.price = 'Price must be a valid non-negative number.';
   return e;
 };
 

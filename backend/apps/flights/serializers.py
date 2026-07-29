@@ -67,8 +67,16 @@ class CountrySerializer(serializers.ModelSerializer):
         model = Country
         fields = ["id", "name", "iso_code"]
 
+    def validate_name(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Country name must be at least 2 characters.")
+        return value.strip()
+
     def validate_iso_code(self, value):
-        return value.strip().upper()
+        v = value.strip().upper()
+        if not v.isalpha() or len(v) not in (2, 3):
+            raise serializers.ValidationError("ISO code must be 2-3 alphabetic characters.")
+        return v
 
 
 class AirportSerializer(serializers.ModelSerializer):
@@ -84,9 +92,29 @@ class AirportSerializer(serializers.ModelSerializer):
 
     def validate_iata_code(self, value):
         v = value.strip().upper()
-        if len(v) != 3:
-            raise serializers.ValidationError("Airport IATA code must be exactly 3 characters.")
+        if not v.isalpha() or len(v) != 3:
+            raise serializers.ValidationError("Airport IATA code must be exactly 3 alphabetic characters.")
         return v
+        
+    def validate_airport_name(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError("Airport name must be at least 3 characters.")
+        return value.strip()
+        
+    def validate_city(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("City name must be at least 2 characters.")
+        return value.strip()
+        
+    def validate_latitude(self, value):
+        if value is not None and (value < -90 or value > 90):
+            raise serializers.ValidationError("Latitude must be between -90 and 90.")
+        return value
+        
+    def validate_longitude(self, value):
+        if value is not None and (value < -180 or value > 180):
+            raise serializers.ValidationError("Longitude must be between -180 and 180.")
+        return value
 
 
 class AirlineSerializer(serializers.ModelSerializer):
@@ -96,15 +124,30 @@ class AirlineSerializer(serializers.ModelSerializer):
 
     def validate_iata_airline_code(self, value):
         v = value.strip().upper()
-        if len(v) != 2:
-            raise serializers.ValidationError("Airline IATA code must be exactly 2 characters.")
+        if not v.isalnum() or len(v) != 2:
+            raise serializers.ValidationError("Airline IATA code must be exactly 2 alphanumeric characters.")
         return v
+        
+    def validate_airline_name(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Airline name must be at least 2 characters.")
+        return value.strip()
 
 
 class AircraftModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = AircraftModel
         fields = ["id", "manufacturer", "model_name"]
+        
+    def validate_manufacturer(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Manufacturer must be at least 2 characters.")
+        return value.strip()
+        
+    def validate_model_name(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Model name must be at least 2 characters.")
+        return value.strip()
 
 
 class AircraftSerializer(serializers.ModelSerializer):
@@ -122,6 +165,13 @@ class AircraftSerializer(serializers.ModelSerializer):
 
     def get_model_display(self, obj):
         return str(obj.aircraft_model)
+        
+    def validate_registration(self, value):
+        v = value.strip().upper()
+        import re
+        if not re.match(r'^[A-Z0-9\-]+$', v):
+            raise serializers.ValidationError("Registration must be alphanumeric with hyphens.")
+        return v
 
 
 # ─── Flight Route (with nested legs) ───────────────────────────────────────────
@@ -289,6 +339,11 @@ class SeatSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def validate_seat_fee(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Seat fee cannot be negative.")
+        return value
+
 
 # ─── Fare ──────────────────────────────────────────────────────────────────────
 
@@ -342,6 +397,11 @@ class FoodItemSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+        
+    def validate_name(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Item name must be at least 2 characters.")
+        return value.strip()
 
 
 # ─── Flight Meal (with nested items) ───────────────────────────────────────────

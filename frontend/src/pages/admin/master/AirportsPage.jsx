@@ -21,10 +21,12 @@ const EMPTY_FORM = {
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.iata_code || form.iata_code.length !== 3) e.iata_code = 'IATA code must be exactly 3 characters.';
-  if (!form.airport_name) e.airport_name = 'Airport name is required.';
-  if (!form.city) e.city = 'City is required.';
+  if (!form.iata_code || !/^[A-Za-z]{3}$/.test(form.iata_code.trim())) e.iata_code = 'IATA code must be exactly 3 alphabetic characters.';
+  if (!form.airport_name || form.airport_name.trim().length < 3) e.airport_name = 'Airport name must be at least 3 characters.';
+  if (!form.city || form.city.trim().length < 2) e.city = 'City name must be at least 2 characters.';
   if (!form.country) e.country = 'Country is required.';
+  if (form.latitude !== '' && (Number(form.latitude) < -90 || Number(form.latitude) > 90)) e.latitude = 'Must be between -90 and 90.';
+  if (form.longitude !== '' && (Number(form.longitude) < -180 || Number(form.longitude) > 180)) e.longitude = 'Must be between -180 and 180.';
   return e;
 };
 
