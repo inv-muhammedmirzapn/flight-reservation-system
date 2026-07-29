@@ -57,7 +57,7 @@ export default function AdminBookingsPage() {
         .kv dd { color:#1a1c1d; margin:0; }
       `}</style>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
         <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', marginBottom: 8 }}>Bookings</h1>
         <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Search by PNR and filter by booking status.</p>
 

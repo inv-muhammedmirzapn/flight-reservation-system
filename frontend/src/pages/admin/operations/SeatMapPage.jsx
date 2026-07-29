@@ -119,6 +119,10 @@ export default function SeatMapPage() {
   };
 
   const handleSaveSeat = () => {
+    if (seatForm.seat_fee === '' || Number(seatForm.seat_fee) < 0) {
+      toast.error('Seat fee must be a non-negative number.');
+      return;
+    }
     toast.promise(
       dispatch(updateSeat({ id: editSeat.id, data: { ...editSeat, ...seatForm } })).unwrap(),
       {
@@ -179,7 +183,7 @@ export default function SeatMapPage() {
         .legend-dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
       `}</style>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
         {instanceParam && (
           <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
             <span>

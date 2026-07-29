@@ -22,13 +22,14 @@ const EMPTY_FORM = {
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.registration) e.registration = 'Registration is required.';
+  if (!form.registration || !/^[A-Za-z0-9-]+$/.test(form.registration.trim())) e.registration = 'Registration must be alphanumeric with hyphens.';
   if (!form.airline) e.airline = 'Airline is required.';
   if (!form.aircraft_model) e.aircraft_model = 'Aircraft model is required.';
-  if (form.economy_capacity === '') e.economy_capacity = 'Economy capacity is required.';
-  if (Number(form.economy_capacity) < 0) e.economy_capacity = 'Cannot be negative.';
-  if (Number(form.business_capacity) < 0) e.business_capacity = 'Cannot be negative.';
-  if (Number(form.first_class_capacity) < 0) e.first_class_capacity = 'Cannot be negative.';
+  
+  const isInt = (val) => val !== '' && Number.isInteger(Number(val)) && Number(val) >= 0;
+  if (!isInt(form.economy_capacity)) e.economy_capacity = 'Must be a non-negative integer.';
+  if (!isInt(form.business_capacity)) e.business_capacity = 'Must be a non-negative integer.';
+  if (!isInt(form.first_class_capacity)) e.first_class_capacity = 'Must be a non-negative integer.';
   return e;
 };
 

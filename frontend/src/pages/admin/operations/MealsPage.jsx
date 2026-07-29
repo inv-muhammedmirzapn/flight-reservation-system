@@ -85,7 +85,7 @@ export default function MealsPage() {
   const validateForm = () => {
     const e = {};
     if (!form.flight_instance) e.flight_instance = 'Flight instance required.';
-    if (!form.name) e.name = 'Meal name required.';
+    if (!form.name || form.name.trim().length < 2) e.name = 'Meal name must be at least 2 characters.';
     form.items.forEach((item, i) => {
       if (!item.food_item) e[`item_${i}`] = 'Food item required.';
       if (!item.quantity || Number(item.quantity) < 1) e[`item_qty_${i}`] = 'Quantity must be ≥ 1.';
@@ -102,7 +102,7 @@ export default function MealsPage() {
       : dispatch(addFlightMeal(form)).unwrap();
     toast.promise(promise, {
       loading: 'Saving meal…',
-      success: () => { closeForm(); dispatch(fetchFlightMeals({})); return 'Meal saved!'; },
+      success: () => { closeForm(); loadMeals(page); return 'Meal saved!'; },
       error: (err) => err?.non_field_errors?.[0] || 'Failed.',
     });
   };
@@ -120,7 +120,7 @@ export default function MealsPage() {
         .item-row { background:rgba(112,93,0,0.04); border:1px solid rgba(112,93,0,0.12); border-radius:10px; padding:12px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:end; }
       `}</style>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
         {instanceParam && (
           <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
             <span>

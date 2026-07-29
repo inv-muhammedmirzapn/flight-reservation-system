@@ -125,9 +125,11 @@ export default function FlightRoutesPage() {
   // ─── Validation ──────────────────────────────────────────────────────────────
   const validateForm = () => {
     const e = {};
-    if (!form.flight_no) e.flight_no = 'Flight number is required.';
+    if (!form.flight_no || form.flight_no.trim().length < 2) e.flight_no = 'Flight number must be at least 2 characters.';
     if (!form.airline) e.airline = 'Airline is required.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
+    if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
+    if (Number(form.handbag_weight_allowed_per_person) < 0) e.handbag_weight_allowed_per_person = 'Cannot be negative.';
 
     form.legs.forEach((leg, i) => {
       if (!leg.departure_airport) e[`leg_${i}_dep_apt`] = 'Departure airport required.';
@@ -200,7 +202,7 @@ export default function FlightRoutesPage() {
         @media(max-width:600px){ .leg-grid { grid-template-columns:1fr; } }
       `}</style>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <div>
             <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>

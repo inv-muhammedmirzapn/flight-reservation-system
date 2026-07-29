@@ -36,11 +36,11 @@ const EMPTY_FORM = {
 const validateForm = (form) => {
   const e = {};
   if (!form.flight_instance) e.flight_instance = 'Flight instance is required.';
-  if (!form.fare_code) e.fare_code = 'Fare code is required.';
+  if (!form.fare_code || form.fare_code.trim().length < 2) e.fare_code = 'Fare code must be at least 2 characters.';
   if (!form.cabin_class) e.cabin_class = 'Cabin class is required.';
-  if (form.price === '') e.price = 'Price is required.';
-  if (Number(form.price) < 0) e.price = 'Price cannot be negative.';
-  if (Number(form.change_fee) < 0) e.change_fee = 'Change fee cannot be negative.';
+  if (form.price === '' || Number(form.price) < 0) e.price = 'Price must be a non-negative number.';
+  if (form.change_fee === '' || Number(form.change_fee) < 0) e.change_fee = 'Change fee must be a non-negative number.';
+  if (form.baggage_allowance !== '' && Number(form.baggage_allowance) < 0) e.baggage_allowance = 'Baggage cannot be negative.';
   return e;
 };
 

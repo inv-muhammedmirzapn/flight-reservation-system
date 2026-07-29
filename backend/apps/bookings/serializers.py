@@ -22,6 +22,11 @@ class PassengerSerializer(serializers.ModelSerializer):
         model = Passenger
         fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number']
 
+    def validate_age(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Age cannot be negative.")
+        return value
+
 class BookingSerializer(serializers.ModelSerializer):
     """Full booking representation including nested flight summary."""
     flight_detail = FlightSummarySerializer(source='flight', read_only=True)

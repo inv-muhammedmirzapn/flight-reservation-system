@@ -17,8 +17,8 @@ const EMPTY_FORM = { iata_airline_code: '', airline_name: '' };
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.iata_airline_code || form.iata_airline_code.length !== 2) e.iata_airline_code = 'IATA code must be exactly 2 characters.';
-  if (!form.airline_name) e.airline_name = 'Airline name is required.';
+  if (!form.iata_airline_code || !/^[A-Za-z0-9]{2}$/.test(form.iata_airline_code.trim())) e.iata_airline_code = 'IATA code must be exactly 2 alphanumeric characters.';
+  if (!form.airline_name || form.airline_name.trim().length < 2) e.airline_name = 'Airline name must be at least 2 characters.';
   return e;
 };
 

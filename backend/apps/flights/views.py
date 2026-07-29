@@ -325,17 +325,31 @@ class CountryViewSet(AdminModelViewSet):
 class AirportViewSet(AdminModelViewSet):
     queryset = Airport.objects.select_related("country").all()
     serializer_class = AirportSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["iata_code", "airport_name", "city"]
+    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["iata_code", "airport_name", "city"]
-    filterset_fields = ["country"]
 
     def get_queryset(self):
         qs = super().get_queryset()
         country_id = self.request.query_params.get("country")
         if country_id:
             qs = qs.filter(country_id=country_id)
-        return qs
+        # ?q= does prefix search (startswith) across city, iata_code, airport_name
+        q = self.request.query_params.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                Q(city__istartswith=q) |
+                Q(iata_code__istartswith=q) |
+                Q(airport_name__istartswith=q)
+            )
+        # fallback: ?search= still works (contains) for admin pages
+        search = self.request.query_params.get("search", "").strip()
+        if search and not q:
+            qs = qs.filter(
+                Q(city__icontains=search) |
+                Q(iata_code__icontains=search) |
+                Q(airport_name__icontains=search)
+            )
+        return qs.order_by("city")
 
 
 class AirlineViewSet(AdminModelViewSet):

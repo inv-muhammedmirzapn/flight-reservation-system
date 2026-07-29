@@ -18,8 +18,8 @@ const EMPTY_FORM = { name: '', iso_code: '' };
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.name) e.name = 'Country name is required.';
-  if (!form.iso_code) e.iso_code = 'ISO code is required.';
+  if (!form.name || form.name.trim().length < 2) e.name = 'Country name must be at least 2 characters.';
+  if (!form.iso_code || !/^[A-Za-z]{2,3}$/.test(form.iso_code.trim())) e.iso_code = 'ISO code must be 2-3 alphabetic characters.';
   return e;
 };
 
