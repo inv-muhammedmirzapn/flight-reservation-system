@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
-import { Plane, Search, ArrowRight, Filter, X } from 'lucide-react';
+import { Plane, Search, ArrowRight, Filter, X, ArrowLeftRight, Users, ChevronDown } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
 import PassengerSelector from '@/components/ui/PassengerSelector';
@@ -204,19 +204,173 @@ function FlightCard({ flight }) {
   );
 }
 
+/* ── Fixed Top Search Bar ────────────────────────────────── */
+function SearchBar({ source, setSource, destination, setDestination, depDate, setDepDate, arrDate, setArrDate, adults, setAdults, childrenCount, setChildrenCount, infants, setInfants }) {
+  const [showPax, setShowPax] = useState(false);
+  const paxRef = useRef(null);
+
+  useEffect(() => {
+    function outside(e) { if (paxRef.current && !paxRef.current.contains(e.target)) setShowPax(false); }
+    document.addEventListener('mousedown', outside);
+    return () => document.removeEventListener('mousedown', outside);
+  }, []);
+
+  const paxLabel = `${adults} Adult${adults > 1 ? 's' : ''}${childrenCount ? `, ${childrenCount} Child` : ''}${infants ? `, ${infants} Infant` : ''}`;
+
+  const swap = () => { const t = source; setSource(destination); setDestination(t); };
+
+  const FieldWrap = ({ label, children, center }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: center ? 'center' : 'flex-start', textAlign: center ? 'center' : 'left' }}>
+      <span style={{ fontSize: 10, fontWeight: 800, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{label}</span>
+      {children}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 'calc(1rem + 64px + 10px)',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '95%',
+      maxWidth: 1800,
+      zIndex: 49,
+      borderRadius: '1rem',
+      border: '1px solid rgba(255,255,255,0.4)',
+      background: 'rgba(255,255,255,0.92)',
+      backdropFilter: 'blur(30px)',
+      WebkitBackdropFilter: 'blur(30px)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+      height: 64,
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 1rem',
+      gap: 0,
+    }}>
+        {/* All search fields in one flex row */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', minWidth: 0 }}>
+
+          {/* FROM */}
+          <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FieldWrap label="From" center>
+              <LocationAutocomplete
+                placeholder="City or Airport"
+                value={source}
+                onChange={setSource}
+                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+              />
+            </FieldWrap>
+          </div>
+
+          {/* Swap Button — inline flex item */}
+          <button onClick={swap} style={{
+            flexShrink: 0, width: 32, alignSelf: 'center',
+            background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.4)',
+            borderRadius: '50%', height: 32,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 4px',
+          }}>
+            <ArrowLeftRight size={13} color="#705d00" />
+          </button>
+
+          {/* TO */}
+          <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FieldWrap label="To" center>
+              <LocationAutocomplete
+                placeholder="City or Airport"
+                value={destination}
+                onChange={setDestination}
+                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+              />
+            </FieldWrap>
+          </div>
+
+          {/* DEPARTURE DATE */}
+          <div style={{ flex: 1.4, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+            <FieldWrap label="Departure">
+              <DatePicker
+                value={depDate}
+                onChange={setDepDate}
+                placeholder="Add date"
+                variant="transparent"
+              />
+            </FieldWrap>
+          </div>
+
+          {/* RETURN DATE */}
+          <div style={{ flex: 1.2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+            <FieldWrap label="Return">
+              <DatePicker
+                value={arrDate}
+                onChange={setArrDate}
+                placeholder="Add return"
+                variant="transparent"
+              />
+            </FieldWrap>
+          </div>
+
+          {/* PASSENGERS */}
+          <div ref={paxRef} style={{ flex: 1.2, minWidth: 0, padding: '0 14px', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowPax(v => !v)}>
+            <FieldWrap label="Travellers">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{paxLabel}</span>
+                <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
+              </div>
+            </FieldWrap>
+            {showPax && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
+                background: '#fff', borderRadius: 16, padding: 20, minWidth: 280,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
+              }} onClick={e => e.stopPropagation()}>
+                {[['Adults', adults, setAdults, [1,2,3,4,5,6,7,8,9], 'Age 12+'], ['Children', childrenCount, setChildrenCount, [0,1,2,3,4,5,6], 'Age 2-11'], ['Infants', infants, setInfants, [0,1,2,3,4,5,6], 'Under 2']].map(([lbl, val, setter, opts, sub]) => (
+                  <div key={lbl} style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1c1d' }}>{lbl} <span style={{ fontSize: 10, color: '#9e9488', fontWeight: 400 }}>({sub})</span></div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                      {opts.map(o => (
+                        <button key={o} onClick={() => setter(o)} style={{
+                          width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer',
+                          background: val === o ? '#ffd700' : '#f5f5f5',
+                          color: val === o ? '#1a1c1d' : '#5e5e5e',
+                          fontWeight: 700, fontSize: 13,
+                        }}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* SEARCH BUTTON */}
+        <button style={{
+          marginLeft: 12, padding: '0 20px', height: 42, borderRadius: 10,
+          background: '#ffd700', border: 'none', cursor: 'pointer',
+          fontWeight: 800, fontSize: 14, color: '#1a1c1d',
+          boxShadow: '0 4px 16px rgba(255,215,0,0.4)',
+          display: 'flex', alignItems: 'center', gap: 6,
+          flexShrink: 0, whiteSpace: 'nowrap',
+          transition: 'background 0.2s',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
+          onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
+        >
+          <Search size={14} /> Search
+        </button>
+    </div>
+  );
+}
+
 /* ── Sidebar Filters ──────────────────────────────────────── */
 function Sidebar({
-  source, setSource,
-  destination, setDestination,
   statusFilter, setStatusFilter,
   minFare, setMinFare, absMin,
   maxFare, setMaxFare, absMax,
-  depDate, setDepDate,
-  arrDate, setArrDate,
-  adults, setAdults,
-  childrenCount, setChildrenCount,
-  infants, setInfants,
   stopsFilter, setStopsFilter,
+  airlinesFilter, setAirlinesFilter,
+  baggageFilter, setBaggageFilter,
+  availableAirlines,
   onClearFilters,
   mobileFiltersOpen, setMobileFiltersOpen
 }) {
@@ -311,76 +465,48 @@ function Sidebar({
           </button>
         </div>
 
-        {/* Route inputs */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.route", { defaultValue: 'Route' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.7)',
-              borderRadius: 10, padding: '8px 12px',
-            }}>
-              <Search size={14} color="#5e5e5e" />
-              <LocationAutocomplete
-                placeholder={t("flights.fromLabel", { defaultValue: 'From (e.g. COK)' })}
-                value={source}
-                onChange={setSource}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
-                }}
-              />
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.7)',
-              borderRadius: 10, padding: '8px 12px',
-            }}>
-              <Search size={14} color="#5e5e5e" />
-              <LocationAutocomplete
-                placeholder={t("flights.toLabel", { defaultValue: 'To (e.g. DEL)' })}
-                value={destination}
-                onChange={setDestination}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
-                }}
-              />
+        {/* Airline Filter */}
+        {availableAirlines.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Airlines</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {availableAirlines.map(airline => (
+                <label key={airline} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={airlinesFilter.includes(airline)}
+                    onChange={() => {
+                      if (airlinesFilter.includes(airline)) setAirlinesFilter(airlinesFilter.filter(a => a !== airline));
+                      else setAirlinesFilter([...airlinesFilter, airline]);
+                    }}
+                    style={{ accentColor: '#705d00' }}
+                  />
+                  <span style={{ color: '#1a1c1d' }}>{airline}</span>
+                </label>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Dates filter */}
+        {/* Baggage Filter */}
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.dates", { defaultValue: 'Dates' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <DatePicker
-              label={t("flights.departure", { defaultValue: 'Departure' })}
-              placeholder={t("flights.addDeparture", { defaultValue: 'Add departure' })}
-              value={depDate}
-              onChange={setDepDate}
-            />
-            <DatePicker
-              label={t("flights.arrival", { defaultValue: 'Arrival' })}
-              placeholder={t("flights.addArrival", { defaultValue: 'Add arrival' })}
-              value={arrDate}
-              onChange={setArrDate}
-            />
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Baggage</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[{ label: 'Check-in Baggage', value: 'checkin' }, { label: 'Cabin Baggage', value: 'cabin' }].map(opt => (
+              <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={baggageFilter.includes(opt.value)}
+                  onChange={() => {
+                    if (baggageFilter.includes(opt.value)) setBaggageFilter(baggageFilter.filter(b => b !== opt.value));
+                    else setBaggageFilter([...baggageFilter, opt.value]);
+                  }}
+                  style={{ accentColor: '#705d00' }}
+                />
+                <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+              </label>
+            ))}
           </div>
-        </div>
-
-        {/* Passengers Selector */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.passengers", { defaultValue: 'Passengers' })}</h3>
-          <PassengerSelector
-            adults={adults}
-            setAdults={setAdults}
-            childrenCount={childrenCount}
-            setChildrenCount={setChildrenCount}
-            infants={infants}
-            setInfants={setInfants}
-            variant="default"
-          />
         </div>
 
         {/* Price Range */}
@@ -503,11 +629,21 @@ export default function UserFlightsList() {
   const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [airlinesFilter, setAirlinesFilter] = useState([]);
+  const [baggageFilter, setBaggageFilter] = useState([]);
 
   // Sorting fallback to ensure flight entries are sorted chronologically by departure time
   const sortedFlights = useMemo(() => {
     if (!flights) return [];
-    return [...flights].sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+    let result = [...flights].sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+    if (airlinesFilter.length > 0) result = result.filter(f => airlinesFilter.includes(f.airline));
+    return result;
+  }, [flights, airlinesFilter]);
+
+  // Derive available airlines from current flight list
+  const availableAirlines = useMemo(() => {
+    if (!flights) return [];
+    return [...new Set(flights.map(f => f.airline).filter(Boolean))].sort();
   }, [flights]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -650,16 +786,11 @@ export default function UserFlightsList() {
 
   useEffect(() => {
     let nextParams = null;
-    const todayStr = new Date().toISOString().split('T')[0];
 
     if (searchParams.toString() === '') {
       nextParams = new URLSearchParams({
-        adults: '1',
-        depDate: todayStr
+        adults: '1'
       });
-    } else if (!searchParams.get('depDate')) {
-      nextParams = new URLSearchParams(searchParams);
-      nextParams.set('depDate', todayStr);
     }
 
     if (nextParams) {
@@ -698,10 +829,10 @@ export default function UserFlightsList() {
   };
 
   const handleClearFilters = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    setAirlinesFilter([]);
+    setBaggageFilter([]);
     setSearchParams(new URLSearchParams({
-      adults: '1',
-      depDate: todayStr
+      adults: '1'
     }), { replace: true });
   };
 
@@ -833,7 +964,16 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <SearchBar
+        source={source} setSource={setSource}
+        destination={destination} setDestination={setDestination}
+        depDate={depDate} setDepDate={setDepDate}
+        arrDate={arrDate} setArrDate={setArrDate}
+        adults={adults} setAdults={setAdults}
+        childrenCount={childrenCount} setChildrenCount={setChildrenCount}
+        infants={infants} setInfants={setInfants}
+      />
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '170px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{
@@ -869,19 +1009,15 @@ export default function UserFlightsList() {
 
           {/* Sidebar */}
           <Sidebar
-            source={source} setSource={setSource}
-            destination={destination} setDestination={setDestination}
             statusFilter={statusFilter} setStatusFilter={setStatusFilter}
             minFare={minFare ?? absMin} setMinFare={setMinFare}
             absMin={absMin}
             maxFare={maxFare ?? absMax} setMaxFare={setMaxFare}
             absMax={absMax}
-            depDate={depDate} setDepDate={setDepDate}
-            arrDate={arrDate} setArrDate={setArrDate}
-            adults={adults} setAdults={setAdults}
-            childrenCount={childrenCount} setChildrenCount={setChildrenCount}
-            infants={infants} setInfants={setInfants}
             stopsFilter={stopsFilter} setStopsFilter={setStopsFilter}
+            airlinesFilter={airlinesFilter} setAirlinesFilter={setAirlinesFilter}
+            baggageFilter={baggageFilter} setBaggageFilter={setBaggageFilter}
+            availableAirlines={availableAirlines}
             onClearFilters={handleClearFilters}
             mobileFiltersOpen={mobileFiltersOpen} setMobileFiltersOpen={setMobileFiltersOpen}
           />
@@ -894,12 +1030,15 @@ export default function UserFlightsList() {
               borderRadius: 16, padding: '14px 24px', marginBottom: 24,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15, color: '#1a1c1d' }}>
+              {/* Spacer to balance the right-side count */}
+              <div style={{ flex: 1 }} />
+              {/* Centered route label */}
+              <div style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 700, fontSize: 15, color: '#1a1c1d' }}>
                 <span>{source || t("flights.anyOrigin", { defaultValue: 'Any Origin' })}</span>
                 <Plane size={16} color="#705d00" />
                 <span>{destination || t("flights.anyDestination", { defaultValue: 'Any Destination' })}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}>
                 <div style={{ fontSize: 13, color: '#5e5e5e' }}>
                   {t(count === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: count, defaultValue: `${count} flights found` })}
                   {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
@@ -924,6 +1063,8 @@ export default function UserFlightsList() {
             <DateSwitcher
               activeDate={depDate}
               onDateChange={setDepDate}
+              source={source}
+              destination={destination}
             />
 
             {/* States */}
