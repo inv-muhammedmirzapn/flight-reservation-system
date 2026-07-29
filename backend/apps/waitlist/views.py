@@ -111,16 +111,7 @@ class WaitlistJoinView(APIView):
                 return Response({'error': 'Passenger age must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
                     
             if gender not in ['M', 'F', 'O', 'Male', 'Female', 'Other']:
-                raise Response("Please select a valid option for Gender.")
-                
-        # Check for duplicate pending waitlist entry
-        if WaitlistEntry.objects.filter(
-            user=request.user, flight=flight, status=WaitlistStatus.PENDING
-        ).exists():
-            return Response(
-                {"error": "You are already on the waitlist for this flight"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+                return Response({'error': "Please select a valid option for Gender."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Calculate price based on seat count
         price = flight.base_fare * seat_count

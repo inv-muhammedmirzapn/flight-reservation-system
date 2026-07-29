@@ -125,7 +125,7 @@ export default function LandingPage() {
           <form onSubmit={handleSearch} className="w-full flex flex-col items-center">
 
             {/* Route Selection Card (From / Swap / To) */}
-            <div className="w-full max-w-2xl glass-card shadow-none shadow rounded-3xl flex flex-col md:flex-row items-center relative z-20 p-2 md:p-0">
+            <div className="w-full max-w-2xl glass-card shadow hover:shadow rounded-3xl flex flex-col md:flex-row items-center relative z-20 p-2 md:p-0">
 
               {/* From Box */}
               <div
@@ -257,7 +257,7 @@ export default function LandingPage() {
 
             {/* Date Display Bar */}
             <div
-              className="w-full max-w-md glass-card shadow rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
+              className="w-full max-w-lg glass-card shadow hover:shadow rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
             >
               {/* Departure Display */}
               <div
@@ -267,7 +267,7 @@ export default function LandingPage() {
                 }}
                 className="flex-1 px-5 py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-5">
                   <span className="material-symbols-outlined text-slate-400 select-none text-xl">flight_takeoff</span>
                   <div className="text-left">
                     <div className="text-[10px] font-bold tracking-wider text-slate-400 select-none">Departure</div>
@@ -287,7 +287,7 @@ export default function LandingPage() {
                 }}
                 className="flex-1 px-5 py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-5">
                   <span className="material-symbols-outlined text-slate-400 select-none text-xl">flight_land</span>
                   <div className="text-left">
                     <div className="text-[10px] font-bold tracking-wider text-slate-400 select-none">Return</div>
@@ -303,7 +303,7 @@ export default function LandingPage() {
             {/* Search Button */}
             <button
               type="submit"
-              className="btn-primary mt-6 font-bold text-lg px-8 py-3 rounded-2xl shadow-lg shadow-yellow-500/15 hover:shadow-xl hover:shadow-yellow-500/25"
+              className="btn-primary mt-8 font-bold text-lg px-8 py-3 rounded-2xl shadow-lg shadow-yellow-500/35 hover:shadow-xl hover:shadow-yellow-500/25"
             >
               {t("landing.searchFlights", "Search Flights")}
             </button>

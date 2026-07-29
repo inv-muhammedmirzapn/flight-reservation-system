@@ -13,6 +13,7 @@ export default function BookingConfirmationPage() {
   const isWaitlist = location.pathname.includes("/waitlist");
 
   const auth = useSelector((state) => state?.auth) || {};
+  const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
   const userEmail = auth.profile?.email || auth.decodedToken?.email || "your registered email";
 
   const [detailData, setDetailData] = useState(location.state?.booking || location.state?.waitlist || null);
@@ -20,6 +21,11 @@ export default function BookingConfirmationPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
     if (detailData) {
       setLoading(false);
       return;
