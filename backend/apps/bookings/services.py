@@ -52,8 +52,8 @@ def create_booking(flight_id, user, passengers_data):
         except (ValueError, TypeError):
             raise ValidationError("Passenger age must be a valid number.")
             
-        if gender not in ['M', 'F', 'O']:
-            raise ValidationError("Gender must be 'M', 'F', or 'O'.")
+        if gender not in ['M', 'F', 'O', 'Male', 'Female', 'Other']:
+            raise ValidationError("Please select a valid option for Gender.")
 
     # ── Atomic write: re-check with lock, then create ───────────────────────
     with transaction.atomic():

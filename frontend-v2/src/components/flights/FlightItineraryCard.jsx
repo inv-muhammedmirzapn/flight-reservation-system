@@ -1,7 +1,7 @@
 import React from "react";
 import { getAirportInfo } from "@/utils/airportHelpers";
 
-export default function FlightItineraryCard({ flight }) {
+export default function FlightItineraryCard({ flight, showBadge = true, isWaitlistedOverride }) {
   if (!flight) return null;
 
   const {
@@ -17,7 +17,7 @@ export default function FlightItineraryCard({ flight }) {
     stops = []
   } = flight;
 
-  const isWaitlisted = Number(available_seats) === 0;
+  const isWaitlisted = isWaitlistedOverride !== undefined ? Boolean(isWaitlistedOverride) : Number(available_seats) === 0;
   const queueCount = waitlist_count;
 
   const sourceInfo = getAirportInfo(source_airport);
@@ -55,33 +55,35 @@ export default function FlightItineraryCard({ flight }) {
 
   return (
     <div className="booking-container-card animate-fade-in transition-all duration-300 relative">
-      {/* Top Header Row: Route Title & Seat/Waitlist Status Badge */}
+      {/* Top Header Row: Route Title & Optional Seat/Waitlist Status Badge */}
       <div className="flex items-start justify-between gap-4 mb-2">
         <h2 className="text-xl font-bold text-slate-950">
           {sourceInfo.city} &rarr; {destInfo.city}
         </h2>
 
         {/* Status Badge on Top Right */}
-        {isWaitlisted ? (
-          <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
-            <span>Waitlist</span>
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">
-                people
+        {showBadge && (
+          isWaitlisted ? (
+            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+              <span>Waitlist</span>
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">
+                  people
+                </span>
+                <span className="font-bold text-lg">{queueCount}</span>
               </span>
-              <span className="font-bold text-lg">{queueCount}</span>
-            </span>
-          </div>
-        ) : (
-          <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
-            <span>Available</span>
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">
-                event_seat
+            </div>
+          ) : (
+            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+              <span>Available</span>
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">
+                  event_seat
+                </span>
+                <span className="font-bold text-lg">{available_seats}</span>
               </span>
-              <span className="font-bold text-lg">{available_seats}</span>
-            </span>
-          </div>
+            </div>
+          )
         )}
       </div>
 

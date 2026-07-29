@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { bookingAPI } from "@/services/booking-service/bookingService";
+import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
 import PassengerListSection from "@/components/flights/PassengerListSection";
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
@@ -119,18 +120,21 @@ export default function FlightDetailPage() {
 
     try {
       if (isWaitlisted) {
+        const res = await waitlistAPI.join(flight.id, passengers);
         toast.success(`Request submitted to join Waitlist for flight ${flight.flight_number}!`);
+        navigate(`/booking-confirmation/waitlist/${res.id}`, {
+          state: { waitlist: res, flight, passengers }
+        });
       } else {
-        await bookingAPI.create(flight.id, passengers);
+        const res = await bookingAPI.create(flight.id, passengers);
         toast.success("Booking confirmed successfully!");
+        navigate(`/booking-confirmation/${res.id}`, {
+          state: { booking: res, flight, passengers }
+        });
       }
     } catch (err) {
       console.error("Booking error:", err);
-      if (isWaitlisted) {
-        toast.success(`Waitlist entry created for ${flight.flight_number}!`);
-      } else {
-        toast.success(`Booking request received for ${flight.flight_number}!`);
-      }
+      toast.error(err?.message || "Booking failed. Please try again.");
     }
   };
 

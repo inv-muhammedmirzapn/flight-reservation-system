@@ -109,9 +109,10 @@ class WaitlistJoinView(APIView):
                     return Response({'error': 'Passenger age must be between 1 and 120.'}, status=status.HTTP_400_BAD_REQUEST)
             except (ValueError, TypeError):
                 return Response({'error': 'Passenger age must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+            if gender not in ['M', 'F', 'O', 'Male', 'Female', 'Other']:
+                raise Response("Please select a valid option for Gender.")
                 
-            if gender not in ['M', 'F', 'O']:
-                return Response({'error': "Gender must be 'M', 'F', or 'O'."}, status=status.HTTP_400_BAD_REQUEST)
         # Check for duplicate pending waitlist entry
         if WaitlistEntry.objects.filter(
             user=request.user, flight=flight, status=WaitlistStatus.PENDING

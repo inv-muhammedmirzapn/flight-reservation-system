@@ -8,6 +8,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import FlightsPage from "@/pages/flights/FlightsPage";
 import FlightDetailPage from "@/pages/flights/FlightDetailPage";
+import BookingConfirmationPage from "@/pages/bookings/BookingConfirmationPage";
 
 export default function App() {
   return (
@@ -24,6 +25,8 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/flights" element={<FlightsPage />} />
               <Route path="/flights/:id" element={<FlightDetailPage />} />
+              <Route path="/booking-confirmation/:id" element={<BookingConfirmationPage />} />
+              <Route path="/booking-confirmation/waitlist/:id" element={<BookingConfirmationPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
             </Routes>
