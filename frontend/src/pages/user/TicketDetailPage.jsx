@@ -291,7 +291,7 @@ export default function TicketDetailPage() {
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:14 }}>
                     <thead>
                       <tr style={{ background:'#f8f9fa' }}>
-                        {['#', 'Name', 'Age', 'Gender', 'Phone'].map((h) => (
+                        {['#', 'Name', 'Age', 'Gender', 'Phone', 'Class', 'Seat'].map((h) => (
                           <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#9e9488', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -311,6 +311,8 @@ export default function TicketDetailPage() {
                           <td style={{ padding:'12px 16px', color:'#374151', display:'flex', alignItems:'center', gap:5 }}>
                             <Phone size={12} color="#9e9488" />{p.phone_number || '—'}
                           </td>
+                          <td style={{ padding:'12px 16px', color:'#374151', fontWeight: 600 }}>{p.seat_class ? (p.seat_class.charAt(0) + p.seat_class.slice(1).toLowerCase()) : 'Economy'}</td>
+                          <td style={{ padding:'12px 16px', color:'#374151', fontWeight: 700 }}>{p.seat_number || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

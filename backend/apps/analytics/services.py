@@ -7,7 +7,7 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
 from apps.bookings.models import Booking, BookingStatus
-from apps.flights.models import Flight, FlightStatus
+from apps.flights.models import FlightInstance, InstanceStatus, Seat, SeatStatus, FlightRoute
 
 
 def get_summary_stats() -> dict:
@@ -31,20 +31,17 @@ def get_summary_stats() -> dict:
     revenue_result = (
         Booking.objects
         .filter(status=BookingStatus.CONFIRMED)
-        .aggregate(total=Sum("flight__base_fare"))
+        .aggregate(total=Sum("total_price"))
     )
     total_revenue = float(revenue_result["total"] or 0)
 
     # Fleet stats
-    total_flights = Flight.objects.count()
-    scheduled_flights = Flight.objects.filter(status=FlightStatus.SCHEDULED).count()
+    total_flights = FlightInstance.objects.count()
+    scheduled_flights = FlightInstance.objects.filter(status=InstanceStatus.SCHEDULED).count()
 
     # Average occupancy across all flights that have at least one seat
-    flights_qs = Flight.objects.filter(total_seats__gt=0)
-    total_booked_seats = sum(
-        (f.total_seats - f.available_seats) for f in flights_qs
-    )
-    total_capacity = sum(f.total_seats for f in flights_qs)
+    total_capacity = Seat.objects.count()
+    total_booked_seats = Seat.objects.filter(status=SeatStatus.BOOKED).count()
     avg_occupancy = round((total_booked_seats / total_capacity * 100), 1) if total_capacity > 0 else 0.0
 
     return {
@@ -71,7 +68,7 @@ def get_monthly_revenue(months: int = 12) -> list:
         .filter(status=BookingStatus.CONFIRMED, created_at__gte=cutoff)
         .annotate(month=TruncMonth("created_at"))
         .values("month")
-        .annotate(revenue=Sum("flight__base_fare"))
+        .annotate(revenue=Sum("total_price"))
         .order_by("month")
     )
 
@@ -92,20 +89,28 @@ def get_popular_routes(top_n: int = 10) -> list:
     qs = (
         Booking.objects
         .filter(status=BookingStatus.CONFIRMED)
-        .values(
-            source=F("flight__source_airport"),
-            destination=F("flight__destination_airport"),
-        )
+        .values(route_id=F("flight__flight"))
         .annotate(bookings=Count("id"))
         .order_by("-bookings")[:top_n]
     )
 
+    route_ids = [item["route_id"] for item in qs]
+    routes = FlightRoute.objects.filter(id__in=route_ids).prefetch_related('legs__departure_airport', 'legs__arrival_airport')
+    route_map = {}
+    for r in routes:
+        first_leg = r.legs.order_by('leg_order').first()
+        last_leg = r.legs.order_by('leg_order').last()
+        route_map[r.id] = {
+            "source": first_leg.departure_airport.iata_code if first_leg else "N/A",
+            "destination": last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        }
+
     return [
         {
-            "source": item["source"],
-            "destination": item["destination"],
+            "source": route_map[item["route_id"]]["source"],
+            "destination": route_map[item["route_id"]]["destination"],
             "bookings": item["bookings"],
-            "route": f"{item['source']} → {item['destination']}",
+            "route": f"{route_map[item['route_id']]['source']} → {route_map[item['route_id']]['destination']}",
         }
         for item in qs
     ]
@@ -121,23 +126,32 @@ def get_flight_occupancy(top_n: int = 15) -> list:
     # Fetch a wider pool (top_n * 4) by booking count, then re-rank by occupancy_rate
     pool = top_n * 4
     qs = (
-        Flight.objects
-        .annotate(booking_count=Count("bookings", filter=Q(bookings__status=BookingStatus.CONFIRMED)))
-        .filter(total_seats__gt=0)
+        FlightInstance.objects
+        .annotate(
+            booking_count=Count("bookings", filter=Q(bookings__status=BookingStatus.CONFIRMED)),
+            total_seats_annotated=Count("seats"),
+            booked_seats_annotated=Count("seats", filter=Q(seats__status=SeatStatus.BOOKED))
+        )
+        .filter(total_seats_annotated__gt=0)
         .order_by("-booking_count")[:pool]
     )
 
     results = []
     for flight in qs:
-        booked_seats = flight.total_seats - flight.available_seats
-        occupancy_rate = round((booked_seats / flight.total_seats) * 100, 2)
+        occupancy_rate = round((flight.booked_seats_annotated / flight.total_seats_annotated) * 100, 2)
+        
+        first_leg = flight.flight.legs.order_by('leg_order').first()
+        last_leg = flight.flight.legs.order_by('leg_order').last()
+        source = first_leg.departure_airport.iata_code if first_leg else "N/A"
+        dest = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+
         results.append({
-            "flight_number": flight.flight_number,
-            "airline": flight.airline,
-            "route": f"{flight.source_airport} → {flight.destination_airport}",
-            "total_seats": flight.total_seats,
-            "booked_seats": booked_seats,
-            "available_seats": flight.available_seats,
+            "flight_number": flight.flight.flight_no,
+            "airline": flight.flight.airline.airline_name,
+            "route": f"{source} → {dest}",
+            "total_seats": flight.total_seats_annotated,
+            "booked_seats": flight.booked_seats_annotated,
+            "available_seats": flight.total_seats_annotated - flight.booked_seats_annotated,
             "occupancy_rate": occupancy_rate,
         })
 

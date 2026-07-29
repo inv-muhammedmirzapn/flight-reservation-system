@@ -2,10 +2,11 @@ from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Booking, BookingStatus, Passenger
-from apps.flights.models import Flight, FlightStatus
+from apps.flights.models import FlightInstance, InstanceStatus, Seat, SeatStatus, Fare, CabinClass
+from decimal import Decimal
 from apps.waitlist.services import process_waitlist_allocations
 
-def create_booking(flight_id, user, passengers_data):
+def create_booking(flight_id, user, passengers_data, requested_class=None):
     """
     Creates a confirmed booking for the given user and flight, along with passenger details.
     """
@@ -13,18 +14,15 @@ def create_booking(flight_id, user, passengers_data):
     
     # ── Pre-validate outside any transaction ───────────────────────────────
     try:
-        flight = Flight.objects.get(id=flight_id)
-    except Flight.DoesNotExist:
+        flight = FlightInstance.objects.get(id=flight_id)
+    except FlightInstance.DoesNotExist:
         raise ValidationError("Flight not found.")
 
-    if flight.status in [FlightStatus.CANCELLED, FlightStatus.DEPARTED, FlightStatus.ARRIVED, FlightStatus.BOARDING]:
+    if flight.status in [InstanceStatus.CANCELLED, InstanceStatus.DEPARTED, InstanceStatus.ARRIVED, InstanceStatus.BOARDING]:
         raise ValidationError(f"Cannot book a flight that is already {flight.status.lower()}.")
 
-    if flight.departure_time < timezone.now():
+    if flight.scheduled_departure < timezone.now():
         raise ValidationError("Cannot book a flight that has already departed.")
-
-    if flight.available_seats < seat_count:
-        raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
 
     if Booking.objects.filter(
         user=user, flight=flight, status=BookingStatus.CONFIRMED
@@ -58,32 +56,57 @@ def create_booking(flight_id, user, passengers_data):
     # ── Atomic write: re-check with lock, then create ───────────────────────
     with transaction.atomic():
         try:
-            flight = Flight.objects.select_for_update(nowait=False).get(id=flight_id)
-        except (Flight.DoesNotExist, DatabaseError):
-            flight = Flight.objects.get(id=flight_id)
+            flight = FlightInstance.objects.select_for_update(nowait=False).get(id=flight_id)
+        except (FlightInstance.DoesNotExist, DatabaseError):
+            flight = FlightInstance.objects.get(id=flight_id)
 
-        # Final guard inside the lock
-        if flight.available_seats < seat_count:
-            raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
+        seats_to_book = []
+        total_price = Decimal("0.00")
 
-        flight.available_seats -= seat_count
-        flight.save()
+        for p_data in passengers_data:
+            seat_id = p_data.get('seat_id')
+            if seat_id:
+                try:
+                    seat = Seat.objects.select_for_update().get(id=seat_id, flight_instance=flight, status=SeatStatus.AVAILABLE)
+                except Seat.DoesNotExist:
+                    raise ValidationError(f"Seat {seat_id} is not available.")
+            else:
+                query_class = requested_class if requested_class else CabinClass.ECONOMY
+                seat = Seat.objects.filter(flight_instance=flight, status=SeatStatus.AVAILABLE, seat_class=query_class).select_for_update().first()
+                if not seat:
+                    raise ValidationError(f"Not enough {query_class} seats available on this flight.")
+            
+            seats_to_book.append(seat)
+            
+            fare = Fare.objects.filter(flight_instance=flight, cabin_class=seat.seat_class).first()
+            if fare:
+                total_price += fare.price
+            else:
+                total_price += Decimal("5000.00")
+                
+            seat.status = SeatStatus.BOOKED
+            seat.save(update_fields=['status'])
+
+        for fare in flight.fares.all():
+            fare.available_seats = flight.seats.filter(seat_class=fare.cabin_class, status=SeatStatus.AVAILABLE).count()
+            fare.save(update_fields=["available_seats"])
 
         booking = Booking.objects.create(
             user=user,
             flight=flight,
             status=BookingStatus.CONFIRMED,
             seat_count=seat_count,
-            total_price=flight.base_fare * seat_count,
+            total_price=total_price,
         )
 
-        for p_data in passengers_data:
+        for p_data, seat in zip(passengers_data, seats_to_book):
             Passenger.objects.create(
                 booking=booking,
                 name=p_data['name'],
                 age=p_data['age'],
                 gender=p_data['gender'],
-                phone_number=p_data.get('phone_number', '')
+                phone_number=p_data.get('phone_number', ''),
+                seat=seat
             )
 
         try:
@@ -120,9 +143,17 @@ def cancel_booking(booking_id, user):
         pass
 
     # Increment available seats on the flight (lock row to prevent race conditions)
-    flight = Flight.objects.select_for_update().get(id=booking.flight_id)
-    flight.available_seats += booking.seat_count
-    flight.save()
+    flight = FlightInstance.objects.select_for_update().get(id=booking.flight_id)
+    
+    for passenger in booking.passengers.all():
+        if passenger.seat:
+            seat = Seat.objects.select_for_update().get(id=passenger.seat.id)
+            seat.status = SeatStatus.AVAILABLE
+            seat.save(update_fields=['status'])
+            
+    for fare in flight.fares.all():
+        fare.available_seats = flight.seats.filter(seat_class=fare.cabin_class, status=SeatStatus.AVAILABLE).count()
+        fare.save(update_fields=["available_seats"])
 
     # Trigger waitlist auto-allocation
     process_waitlist_allocations(flight)

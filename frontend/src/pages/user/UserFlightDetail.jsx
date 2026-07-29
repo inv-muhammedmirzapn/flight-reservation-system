@@ -48,6 +48,7 @@ export default function UserFlightDetail() {
   const [showModal, setShowModal] = useState(false);
   const { counts } = useSelector(state => state.waitlist || DEFAULT_WAITLIST);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
 
   const [searchParams] = useSearchParams();
   const adults = Number(searchParams.get('adults')) || 1;
@@ -58,6 +59,11 @@ export default function UserFlightDetail() {
   useEffect(() => {
     if (flight && flight.id) {
       dispatch(fetchWaitlistFlightCount(flight.id));
+      if (flight.classes && flight.classes.length > 0 && !selectedClass) {
+        const urlClass = searchParams.get('class');
+        const match = urlClass ? flight.classes.find(c => c.class_name.toUpperCase() === urlClass.toUpperCase()) : null;
+        setSelectedClass(match || flight.classes[0]);
+      }
     }
   }, [dispatch, flight]);
 
@@ -138,8 +144,9 @@ export default function UserFlightDetail() {
   }
 
   // Fare calculations
-  const baseFareTotal = flight.base_fare * totalPassengers;
-  const taxesAndSurcharges = Math.round(flight.base_fare * 0.1111) * totalPassengers;
+  const activeFare = selectedClass ? parseFloat(selectedClass.price) : (flight.base_fare || 0);
+  const baseFareTotal = activeFare * totalPassengers;
+  const taxesAndSurcharges = Math.round(activeFare * 0.1111) * totalPassengers;
   const totalAmount = baseFareTotal + taxesAndSurcharges;
 
   // Cancellation penalty calculations (visual simulation)
@@ -274,10 +281,11 @@ export default function UserFlightDetail() {
       `}</style>
 
       {/* Modals */}
-      {showModal && flight && (
+      {showModal && flight && selectedClass && (
         <BookingConfirmModal
           flight={flight}
           totalPassengers={totalPassengers}
+          selectedClass={selectedClass}
           onClose={() => setShowModal(false)}
         />
       )}
@@ -313,7 +321,9 @@ export default function UserFlightDetail() {
                     </div>
                     <div>
                       <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#1a1c1d' }}>{flight.airline} {flight.flight_number}</h2>
-                      <div style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>Economy Class</div>
+                      <div style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>
+                        {selectedClass ? (selectedClass.class_name.charAt(0) + selectedClass.class_name.slice(1).toLowerCase()) : 'Economy'} Class
+                      </div>
                     </div>
                   </div>
                   <StatusBadge status={flight.status} />
@@ -370,7 +380,7 @@ export default function UserFlightDetail() {
                     </div>
                     <div>
                       <div className="info-label">Base Fare</div>
-                      <div className="info-value">{INR(flight.base_fare)}</div>
+                      <div className="info-value">{INR(activeFare)}</div>
                     </div>
                   </div>
                   
@@ -380,7 +390,7 @@ export default function UserFlightDetail() {
                     </div>
                     <div>
                       <div className="info-label">Available Seats</div>
-                      <div className="info-value">{flight.available_seats}</div>
+                      <div className="info-value">{selectedClass ? selectedClass.available_seats : flight.available_seats}</div>
                     </div>
                   </div>
                   
@@ -454,6 +464,51 @@ export default function UserFlightDetail() {
 
             {/* RIGHT COLUMN: Fare Summary & Booking */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+              {/* Class Selection */}
+              {flight.classes && flight.classes.length > 0 && (
+                <div className="glass-panel" style={{ padding: 24 }}>
+                  <h3 style={{ fontSize: 18, margin: '0 0 16px', fontWeight: 800, color: '#1a1c1d' }}>Travel Class</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {flight.classes.map((cls) => {
+                      const isSelected = selectedClass?.fare_id === cls.fare_id;
+                      const isSoldOutCls = cls.available_seats <= 0;
+                      return (
+                        <div
+                          key={cls.fare_id}
+                          onClick={() => {
+                            if (!isSoldOutCls) {
+                              setSelectedClass(cls);
+                              setSearchParams(prev => {
+                                const next = new URLSearchParams(prev);
+                                next.set('class', cls.class_name);
+                                return next;
+                              }, { replace: true });
+                            }
+                          }}
+                          style={{
+                            padding: 16,
+                            borderRadius: 12,
+                            border: `2px solid ${isSelected ? '#ffd700' : 'rgba(112,93,0,0.1)'}`,
+                            background: isSelected ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.5)',
+                            cursor: isSoldOutCls ? 'not-allowed' : 'pointer',
+                            opacity: isSoldOutCls ? 0.6 : 1,
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: 15, color: '#1a1c1d' }}>{cls.class_name.charAt(0) + cls.class_name.slice(1).toLowerCase()}</span>
+                            <span style={{ fontWeight: 800, fontSize: 16, color: '#1a1c1d' }}>{INR(cls.price)}</span>
+                          </div>
+                          <div style={{ fontSize: 13, color: isSoldOutCls ? '#ef4444' : '#5e5e5e', marginTop: 4, fontWeight: 600 }}>
+                            {isSoldOutCls ? 'Sold Out' : `${cls.available_seats} seats left`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               
               {/* Fare Summary Panel */}
               <div className="glass-panel" style={{ padding: 24 }}>

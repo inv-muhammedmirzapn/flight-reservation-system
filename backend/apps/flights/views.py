@@ -93,8 +93,8 @@ class FlightStatsView(APIView):
         "arrived": rf_serializers.IntegerField(),
     })})
     def get(self, request, *args, **kwargs) -> Response:
-        rows = Flight.objects.values("status").annotate(count=Count("id"))
-        stats = {"total": Flight.objects.count(), "scheduled": 0, "delayed": 0,
+        rows = FlightInstance.objects.values("status").annotate(count=Count("id"))
+        stats = {"total": FlightInstance.objects.count(), "scheduled": 0, "delayed": 0,
                  "cancelled": 0, "boarding": 0, "departed": 0, "arrived": 0}
         for row in rows:
             key = row["status"].lower()

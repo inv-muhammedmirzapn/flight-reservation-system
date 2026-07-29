@@ -306,18 +306,36 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         source="aircraft.registration", read_only=True
     )
     route = serializers.SerializerMethodField()
+    airline = serializers.CharField(source="flight.airline.airline_name", read_only=True)
+    source_airport = serializers.SerializerMethodField()
+    destination_airport = serializers.SerializerMethodField()
+    departure_time = serializers.DateTimeField(source="scheduled_departure", read_only=True)
+    arrival_time = serializers.DateTimeField(source="scheduled_arrival", read_only=True)
+    base_fare = serializers.SerializerMethodField()
+    available_seats = serializers.SerializerMethodField()
+    total_seats = serializers.SerializerMethodField()
+    source_terminals = serializers.SerializerMethodField()
+    destination_terminals = serializers.SerializerMethodField()
+    source_airport_name = serializers.SerializerMethodField()
+    destination_airport_name = serializers.SerializerMethodField()
+    classes = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
-            "aircraft", "aircraft_registration", "route",
+            "aircraft", "aircraft_registration", "route", "airline",
+            "source_airport", "destination_airport",
+            "source_terminals", "destination_terminals",
+            "source_airport_name", "destination_airport_name",
+            "departure_time", "arrival_time", "base_fare",
+            "available_seats", "total_seats",
             "status",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",
             "checkin_open", "boarding_time",
             "boarding_gate", "departure_terminal", "arrival_terminal",
-            "created_at", "updated_at"
+            "created_at", "updated_at", "classes"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
@@ -329,6 +347,55 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             "source": {"iata_code": legs.first().departure_airport.iata_code},
             "destination": {"iata_code": legs.last().arrival_airport.iata_code}
         }
+
+    def get_source_airport(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.first().departure_airport.iata_code if legs.exists() else ""
+
+    def get_destination_airport(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.last().arrival_airport.iata_code if legs.exists() else ""
+
+    def get_base_fare(self, obj):
+        fare = obj.fares.order_by('price').first()
+        return fare.price if fare else 5000
+
+    def get_available_seats(self, obj):
+        return obj.seats.filter(status="AVAILABLE").count()
+
+    def get_total_seats(self, obj):
+        return obj.seats.count()
+
+    def get_source_terminals(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.first().departure_airport.terminals if legs.exists() else []
+
+    def get_destination_terminals(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.last().arrival_airport.terminals if legs.exists() else []
+
+    def get_source_airport_name(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.first().departure_airport.airport_name if legs.exists() else ""
+
+    def get_destination_airport_name(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        return legs.last().arrival_airport.airport_name if legs.exists() else ""
+
+    def get_classes(self, obj):
+        fares = obj.fares.all()
+        classes_info = []
+        for fare in fares:
+            total_seats = obj.seats.filter(seat_class=fare.cabin_class).count()
+            available_seats = fare.available_seats
+            classes_info.append({
+                "class_name": fare.cabin_class,
+                "price": fare.price,
+                "available_seats": available_seats,
+                "total_seats": total_seats,
+                "fare_id": fare.id
+            })
+        return classes_info
 
     def validate(self, attrs):
         dep = attrs.get("scheduled_departure", getattr(self.instance, "scheduled_departure", None))

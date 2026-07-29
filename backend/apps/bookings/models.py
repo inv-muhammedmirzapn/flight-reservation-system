@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from apps.flights.models import Flight
+from apps.flights.models import Flight, FlightInstance, Seat
 
 class BookingStatus(models.TextChoices):
     CONFIRMED = "CONFIRMED", "Confirmed"
@@ -15,7 +15,7 @@ class Booking(models.Model):
         related_name="bookings"
     )
     flight = models.ForeignKey(
-        Flight,
+        FlightInstance,
         on_delete=models.CASCADE,
         related_name="bookings"
     )
@@ -30,7 +30,7 @@ class Booking(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user} - {self.flight.flight_number} - {self.status}"
+        return f"{self.user} - {self.flight.flight.flight_no} - {self.status}"
 
 class Passenger(models.Model):
     GENDER_CHOICES = [
@@ -43,6 +43,7 @@ class Passenger(models.Model):
     age = models.PositiveIntegerField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
+    seat = models.ForeignKey(Seat, on_delete=models.SET_NULL, null=True, blank=True, related_name='passengers')
 
     def __str__(self):
-        return f"{self.name} - {self.booking.flight.flight_number}"
+        return f"{self.name} - {self.booking.flight.flight.flight_no}"
