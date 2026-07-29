@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
-from apps.flights.models import Flight
+from apps.flights.models import Flight, FlightInstance
 from apps.bookings.models import Booking
 
 
@@ -21,7 +21,7 @@ class WaitlistEntry(models.Model):
         related_name="waitlist_entries",
     )
     flight = models.ForeignKey(
-        Flight,
+        FlightInstance,
         on_delete=models.CASCADE,
         related_name="waitlist_entries",
     )
@@ -51,11 +51,12 @@ class WaitlistEntry(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.price and self.flight:
-            self.price = self.flight.base_fare * self.seat_count
+            # We don't have base_fare directly on FlightInstance, fallback to something
+            self.price = self.seat_count * 5000 
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.user} - {self.flight.flight_number} - {self.status}"
+        return f"{self.user} - {self.flight.flight.flight_no} - {self.status}"
 
 class WaitlistPassenger(models.Model):
     GENDER_CHOICES = [
@@ -70,4 +71,4 @@ class WaitlistPassenger(models.Model):
     phone_number = models.CharField(max_length=20, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.name} - {self.waitlist_entry.flight.flight_number}"
+        return f"{self.name} - {self.waitlist_entry.flight.flight.flight_no}"

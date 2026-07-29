@@ -46,7 +46,8 @@ class BookingViewSet(mixins.CreateModelMixin,
                             'phone_number': rf_serializers.CharField(required=False, allow_blank=True)
                         }
                     )
-                )
+                ),
+                'fare_class': rf_serializers.CharField(required=False)
             }
         ),
         responses={201: BookingSerializer}
@@ -59,6 +60,7 @@ class BookingViewSet(mixins.CreateModelMixin,
         """
         flight_id = request.data.get('flight')
         passengers_data = request.data.get('passengers', [])
+        fare_class = request.data.get('fare_class')
 
         if not flight_id:
             return Response({'detail': 'flight field is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -66,7 +68,7 @@ class BookingViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            booking = create_booking(flight_id=flight_id, user=request.user, passengers_data=passengers_data)
+            booking = create_booking(flight_id=flight_id, user=request.user, passengers_data=passengers_data, requested_class=fare_class)
             serializer = self.get_serializer(booking)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:

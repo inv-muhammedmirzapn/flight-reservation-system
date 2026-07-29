@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
 
-from apps.flights.models import Flight
+from apps.flights.models import FlightInstance, SeatStatus
 from apps.bookings.models import Booking, BookingStatus
 from .models import WaitlistEntry, WaitlistStatus
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
@@ -65,15 +65,15 @@ class WaitlistJoinView(APIView):
         seat_count = len(passengers_data)
 
         try:
-            flight = Flight.objects.get(id=flight_id)
-        except (Flight.DoesNotExist, ValueError):
+            flight = FlightInstance.objects.get(id=flight_id)
+        except (FlightInstance.DoesNotExist, ValueError):
             return Response(
                 {"error": "Flight not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         # Validate flight departure
-        if flight.departure_time <= timezone.now():
+        if flight.scheduled_departure <= timezone.now():
             return Response(
                 {"error": "Cannot join the waitlist for a flight that has already departed."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -87,7 +87,7 @@ class WaitlistJoinView(APIView):
             )
 
         # Enforce that flight must be full
-        if flight.available_seats >= seat_count:
+        if flight.seats.filter(status=SeatStatus.AVAILABLE).count() >= seat_count:
             return Response(
                 {"error": "Waitlist tickets cannot be booked on the flight as there are enough available seats"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -126,7 +126,9 @@ class WaitlistJoinView(APIView):
             )
 
         # Calculate price based on seat count
-        price = flight.base_fare * seat_count
+        fare = flight.fares.first()
+        base_price = fare.price if fare else Decimal("5000.00")
+        price = base_price * seat_count
 
         # Create waitlist entry
         entry = WaitlistEntry.objects.create(
@@ -177,7 +179,7 @@ class WaitlistListView(APIView):
         # Auto-expire pending entries whose flights have already departed
         now = timezone.now()
         expired_qs = WaitlistEntry.objects.filter(
-            status=WaitlistStatus.PENDING, flight__departure_time__lte=now
+            status=WaitlistStatus.PENDING, flight__scheduled_departure__lte=now
         )
         if not is_admin:
             expired_qs = expired_qs.filter(user=request.user)
@@ -227,7 +229,7 @@ class WaitlistDetailView(APIView):
         # Auto-expire if flight has departed
         if (
             entry.status == WaitlistStatus.PENDING
-            and entry.flight.departure_time <= timezone.now()
+            and entry.flight.scheduled_departure <= timezone.now()
         ):
             entry.status = WaitlistStatus.EXPIRED
             entry.save()
@@ -321,15 +323,21 @@ class WaitlistPromoteView(APIView):
 
         with transaction.atomic():
             # Refresh flight to get the latest seats with a lock
-            flight = Flight.objects.select_for_update().get(id=flight.id)
-            if flight.available_seats < entry.seat_count:
+            flight = FlightInstance.objects.select_for_update().get(id=flight.id)
+            if flight.seats.filter(status=SeatStatus.AVAILABLE).count() < entry.seat_count:
                 return Response(
                     {"error": "Not enough available seats to promote this waitlist entry."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            flight.available_seats = F('available_seats') - entry.seat_count
-            flight.save(update_fields=['available_seats'])
+            seats_to_book = list(flight.seats.filter(status=SeatStatus.AVAILABLE).select_for_update()[:entry.seat_count])
+            for seat in seats_to_book:
+                seat.status = SeatStatus.BOOKED
+                seat.save(update_fields=['status'])
+
+            for fare in flight.fares.all():
+                fare.available_seats = flight.seats.filter(seat_class=fare.cabin_class, status=SeatStatus.AVAILABLE).count()
+                fare.save(update_fields=["available_seats"])
 
             # Create the booking manually
             booking = Booking.objects.create(
@@ -339,6 +347,17 @@ class WaitlistPromoteView(APIView):
                 total_price=entry.price,
                 status=BookingStatus.CONFIRMED,
             )
+            
+            from apps.bookings.models import Passenger
+            for wp, seat in zip(entry.passengers.all(), seats_to_book):
+                Passenger.objects.create(
+                    booking=booking,
+                    name=wp.name,
+                    age=wp.age,
+                    gender=wp.gender,
+                    phone_number=wp.phone_number,
+                    seat=seat
+                )
 
             entry.status = WaitlistStatus.CONFIRMED
             entry.booking = booking

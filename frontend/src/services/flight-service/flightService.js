@@ -16,11 +16,11 @@ export const flightsAPI = {
     if (params.passengers)   qs.set('passengers', params.passengers);
     if (params.class)        qs.set('class', params.class);
     if (params.page_size)    qs.set('page_size', params.page_size);
-    return fetchWithAuth(`/flights/?${qs.toString()}`);
+    return fetchWithAuth(`/flights/v2/flight-instances/?${qs.toString()}`);
   },
 
   retrieve: async (id) => {
-    return fetchWithAuth(`/flights/${id}/`);
+    return fetchWithAuth(`/flights/v2/flight-instances/${id}/`);
   },
 
   create: async (flightData) => {

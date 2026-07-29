@@ -50,6 +50,10 @@ function FlightCard({ flight }) {
   const depTime = fmtTime(flight.departure_time);
   const arrTime = fmtTime(flight.arrival_time);
   const duration = diffHM(flight.departure_time, flight.arrival_time);
+  const cabinClass = searchParams.get('class') || 'Economy';
+  const selectedClassObj = flight.classes?.find(c => c.class_name.toUpperCase() === cabinClass.toUpperCase()) || flight.classes?.[0];
+  const displayPrice = selectedClassObj ? parseFloat(selectedClassObj.price) : flight.base_fare;
+  const displaySeats = selectedClassObj ? selectedClassObj.available_seats : flight.available_seats;
 
   return (
     <Link
@@ -156,7 +160,7 @@ function FlightCard({ flight }) {
           <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
             <StatusBadge status={flight.status} />
-            {flight.available_seats === 0 && (
+            {displaySeats === 0 && (
               <span style={{
                 background: '#ffedd5',
                 color: '#9a3412',
@@ -176,7 +180,7 @@ function FlightCard({ flight }) {
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e', marginTop: 2 }}>
-            💺 {flight.available_seats} / {flight.total_seats} seats
+            💺 {displaySeats} {selectedClassObj ? (selectedClassObj.class_name.charAt(0) + selectedClassObj.class_name.slice(1).toLowerCase()) : ''} seats available
           </div>
         </div>
       </div>
@@ -189,7 +193,7 @@ function FlightCard({ flight }) {
           fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
           letterSpacing: '-0.01em',
         }}>
-          {INR(flight.base_fare)}
+          {INR(displayPrice)}
         </div>
         <div style={{
           background: '#ffd700',
