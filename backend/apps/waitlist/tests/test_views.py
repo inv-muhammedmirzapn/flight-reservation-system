@@ -282,7 +282,7 @@ class WaitlistTests(TestCase):
         # Original price = 200.00. Processing fee 5% = 10.00. Refund = 190.00.
         self.assertEqual(float(response.data["refund_amount"]), 190.00)
         self.assertEqual(float(response.data["processing_fee"]), 10.00)
-        self.assertEqual(response.data["message"], "Waitlist entry cancelled. A 95% refund of $190.00 has been processed (after a 5% processing fee of $10.00).")
+        self.assertEqual(response.data["message"], "Waitlist entry cancelled. A 95% refund of ₹190.00 has been processed (after a 5% processing fee of ₹10.00).")
 
         entry.refresh_from_db()
         self.assertEqual(entry.status, WaitlistStatus.CANCELLED)

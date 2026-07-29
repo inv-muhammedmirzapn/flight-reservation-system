@@ -16,9 +16,9 @@ const parseError = (error, defaultMsg) => {
 
 export const joinWaitlist = createAsyncThunk(
   'waitlist/join',
-  async ({ flightId, passengers }, { rejectWithValue }) => {
+  async ({ flightId, passengers, cabinClass }, { rejectWithValue }) => {
     try {
-      return await waitlistAPI.join(flightId, passengers);
+      return await waitlistAPI.join(flightId, passengers, cabinClass);
     } catch (error) {
       return rejectWithValue(parseError(error, 'Failed to join waitlist'));
     }

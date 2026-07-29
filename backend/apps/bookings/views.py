@@ -36,6 +36,7 @@ class BookingViewSet(mixins.CreateModelMixin,
             name='BookingCreateRequest',
             fields={
                 'flight': rf_serializers.IntegerField(),
+                'cabin_class': rf_serializers.ChoiceField(choices=['ECONOMY', 'BUSINESS', 'FIRST'], required=False, allow_null=True),
                 'passengers': rf_serializers.ListField(
                     child=inline_serializer(
                         name='BookingPassengerRequest',
@@ -59,14 +60,25 @@ class BookingViewSet(mixins.CreateModelMixin,
         """
         flight_id = request.data.get('flight')
         passengers_data = request.data.get('passengers', [])
+        cabin_class = request.data.get('cabin_class', None)
 
         if not flight_id:
             return Response({'detail': 'flight field is required.'}, status=status.HTTP_400_BAD_REQUEST)
         if not passengers_data or not isinstance(passengers_data, list) or len(passengers_data) == 0:
             return Response({'detail': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate cabin_class if provided
+        valid_classes = {'ECONOMY', 'BUSINESS', 'FIRST'}
+        if cabin_class and cabin_class not in valid_classes:
+            return Response({'detail': f'Invalid cabin_class. Must be one of: {", ".join(valid_classes)}'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            booking = create_booking(flight_id=flight_id, user=request.user, passengers_data=passengers_data)
+            booking = create_booking(
+                flight_id=flight_id,
+                user=request.user,
+                passengers_data=passengers_data,
+                cabin_class=cabin_class,
+            )
             serializer = self.get_serializer(booking)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:

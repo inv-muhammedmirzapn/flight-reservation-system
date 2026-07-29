@@ -44,12 +44,22 @@ function StatusBadge({ status }) {
 }
 
 /* ── FlightCard (horizontal Stitch style) ─────────────────── */
-function FlightCard({ flight }) {
+function FlightCard({ flight, cabinClass }) {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const depTime = fmtTime(flight.departure_time);
   const arrTime = fmtTime(flight.arrival_time);
   const duration = diffHM(flight.departure_time, flight.arrival_time);
+
+  // Resolve displayed price: use per-class fare if available
+  const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+  const classKey = CLASS_MAP[cabinClass] || 'ECONOMY';
+  const isEnriched = !!flight.fares;
+  const faresData = flight.fares || {};
+  const selectedFare = faresData[classKey];
+  const displayPrice = selectedFare ? selectedFare.price : parseFloat(flight.base_fare);
+  // Use per-class available seats if available, otherwise if it's enriched but missing this class, it's 0.
+  const displaySeats = selectedFare ? selectedFare.available_seats : (isEnriched ? 0 : flight.available_seats);
 
   return (
     <Link
@@ -156,7 +166,7 @@ function FlightCard({ flight }) {
           <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
             <StatusBadge status={flight.status} />
-            {flight.available_seats === 0 && (
+            {displaySeats <= 0 && (
               <span style={{
                 background: '#ffedd5',
                 color: '#9a3412',
@@ -176,7 +186,7 @@ function FlightCard({ flight }) {
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e', marginTop: 2 }}>
-            💺 {flight.available_seats} / {flight.total_seats} seats
+            💺 {displaySeats} seats · {cabinClass}
           </div>
         </div>
       </div>
@@ -189,8 +199,11 @@ function FlightCard({ flight }) {
           fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
           letterSpacing: '-0.01em',
         }}>
-          {INR(flight.base_fare)}
+          {INR(displayPrice)}
         </div>
+        {selectedFare && (
+          <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, marginTop: -6 }}>{cabinClass} Class</div>
+        )}
         <div style={{
           background: '#ffd700',
           color: '#1a1c1d',
@@ -223,7 +236,29 @@ const FieldWrap = ({ label, children, center }) => (
 );
 
 /* ── Fixed Top Search Bar ────────────────────────────────── */
-function SearchBar({ source, setSource, destination, setDestination, depDate, setDepDate, arrDate, setArrDate, adults, setAdults, childrenCount, setChildrenCount, infants, setInfants, cabinClass, setCabinClass }) {
+function SearchBar({ 
+  initialSource, initialDestination, initialDepDate, initialArrDate, 
+  initialAdults, initialChildrenCount, initialInfants, initialCabinClass,
+  onSearch 
+}) {
+  const [source, setSource] = useState(initialSource);
+  const [destination, setDestination] = useState(initialDestination);
+  const [depDate, setDepDate] = useState(initialDepDate);
+  const [arrDate, setArrDate] = useState(initialArrDate);
+  const [adults, setAdults] = useState(initialAdults);
+  const [childrenCount, setChildrenCount] = useState(initialChildrenCount);
+  const [infants, setInfants] = useState(initialInfants);
+  const [cabinClass, setCabinClass] = useState(initialCabinClass);
+
+  useEffect(() => setSource(initialSource), [initialSource]);
+  useEffect(() => setDestination(initialDestination), [initialDestination]);
+  useEffect(() => setDepDate(initialDepDate), [initialDepDate]);
+  useEffect(() => setArrDate(initialArrDate), [initialArrDate]);
+  useEffect(() => setAdults(initialAdults), [initialAdults]);
+  useEffect(() => setChildrenCount(initialChildrenCount), [initialChildrenCount]);
+  useEffect(() => setInfants(initialInfants), [initialInfants]);
+  useEffect(() => setCabinClass(initialCabinClass), [initialCabinClass]);
+
   const [showPax, setShowPax] = useState(false);
   const paxRef = useRef(null);
   const [showClass, setShowClass] = useState(false);
@@ -402,6 +437,7 @@ function SearchBar({ source, setSource, destination, setDestination, depDate, se
         flexShrink: 0, whiteSpace: 'nowrap',
         transition: 'background 0.2s',
       }}
+        onClick={() => onSearch({ source, destination, depDate, arrDate, adults, childrenCount, infants, cabinClass })}
         onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
         onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
       >
@@ -716,21 +752,18 @@ export default function UserFlightsList() {
   const stopsParam = searchParams.get('stops');
   const stopsFilter = useMemo(() => stopsParam ? stopsParam.split(',').map(Number) : [], [stopsParam]);
 
-  const setSource = (val) => {
+  const handleSearch = (params) => {
+    setCabinClass(params.cabinClass);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (val) next.set('from', val);
-      else next.delete('from');
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setDestination = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (val) next.set('to', val);
-      else next.delete('to');
+      if (params.source) next.set('from', params.source); else next.delete('from');
+      if (params.destination) next.set('to', params.destination); else next.delete('to');
+      if (params.depDate) next.set('depDate', params.depDate); else next.delete('depDate');
+      if (params.arrDate) next.set('arrDate', params.arrDate); else next.delete('arrDate');
+      if (params.adults > 0) next.set('adults', params.adults.toString()); else next.delete('adults');
+      if (params.childrenCount >= 0) next.set('children', params.childrenCount.toString()); else next.delete('children');
+      if (params.infants >= 0) next.set('infants', params.infants.toString()); else next.delete('infants');
+      if (params.cabinClass) next.set('class', params.cabinClass); else next.delete('class');
       next.delete('page');
       return next;
     }, { replace: true });
@@ -771,53 +804,6 @@ export default function UserFlightsList() {
       const next = new URLSearchParams(prev);
       if (val) next.set('depDate', val);
       else next.delete('depDate');
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setArrDate = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (val) next.set('arrDate', val);
-      else next.delete('arrDate');
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setAdults = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('adults', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setChildrenCount = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('children', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setInfants = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('infants', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const updateCabinClass = (val) => {
-    setCabinClass(val);
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('class', val);
       next.delete('page');
       return next;
     }, { replace: true });
@@ -910,6 +896,7 @@ export default function UserFlightsList() {
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
         if (depDate) params.set('date', depDate);
+        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
         params.set('page_size', '1');
 
         // Fetch Min fare
@@ -944,7 +931,7 @@ export default function UserFlightsList() {
 
     fetchBounds();
     return () => { active = false; };
-  }, [source, destination, depDate]);
+  }, [source, destination, depDate, cabinClass]);
 
 
 
@@ -1071,14 +1058,15 @@ export default function UserFlightsList() {
       `}</style>
 
       <SearchBar
-        source={source} setSource={setSource}
-        destination={destination} setDestination={setDestination}
-        depDate={depDate} setDepDate={setDepDate}
-        arrDate={arrDate} setArrDate={setArrDate}
-        adults={adults} setAdults={setAdults}
-        childrenCount={childrenCount} setChildrenCount={setChildrenCount}
-        infants={infants} setInfants={setInfants}
-        cabinClass={cabinClass} setCabinClass={updateCabinClass}
+        initialSource={source}
+        initialDestination={destination}
+        initialDepDate={depDate}
+        initialArrDate={arrDate}
+        initialAdults={adults}
+        initialChildrenCount={childrenCount}
+        initialInfants={infants}
+        initialCabinClass={cabinClass}
+        onSearch={handleSearch}
       />
       <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '170px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
@@ -1166,12 +1154,12 @@ export default function UserFlightsList() {
               </div>
             </div>
 
-            {/* Quick Date Switcher */}
             <DateSwitcher
               activeDate={depDate}
               onDateChange={setDepDate}
               source={source}
               destination={destination}
+              cabinClass={cabinClass}
             />
 
             {/* States */}
@@ -1201,7 +1189,7 @@ export default function UserFlightsList() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
                 {sortedFlights.map(flight => (
-                  <FlightCard key={flight.id} flight={flight} />
+                  <FlightCard key={flight.id} flight={flight} cabinClass={cabinClass || 'Economy'} />
                 ))}
 
                 {/* Server-side pagination bar */}

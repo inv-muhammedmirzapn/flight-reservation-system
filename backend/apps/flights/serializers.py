@@ -17,6 +17,12 @@ class FlightSerializer(serializers.ModelSerializer):
     destination_airport_name = serializers.SerializerMethodField()
     source_terminals = serializers.SerializerMethodField()
     destination_terminals = serializers.SerializerMethodField()
+    # New fields pulled from the normalised schema
+    baggage_weight_kg = serializers.SerializerMethodField()
+    baggage_number_allowed = serializers.SerializerMethodField()
+    handbag_weight_kg = serializers.SerializerMethodField()
+    fares = serializers.SerializerMethodField()
+    flight_instance_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Flight
@@ -26,9 +32,47 @@ class FlightSerializer(serializers.ModelSerializer):
             "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
             "base_fare", "total_seats", "available_seats",
-            "status", "external_id", "sync_source", "stops"
+            "status", "external_id", "sync_source", "stops",
+            # Enriched fields from normalised schema
+            "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
+            "fares", "flight_instance_id",
         ]
         read_only_fields = ["id"]
+
+    def _get_route(self, obj):
+        """Cached lookup of the linked FlightRoute."""
+        if not hasattr(self, '_route_cache'):
+            self._route_cache = {}
+        if obj.pk not in self._route_cache:
+            try:
+                self._route_cache[obj.pk] = FlightRoute.objects.get(flight_no=obj.flight_number)
+            except FlightRoute.DoesNotExist:
+                self._route_cache[obj.pk] = None
+        return self._route_cache[obj.pk]
+
+    def _get_instance(self, obj):
+        """Cached lookup of FlightInstance closest to the requested search date."""
+        if not hasattr(self, '_instance_cache'):
+            self._instance_cache = {}
+        if obj.pk not in self._instance_cache:
+            route = self._get_route(obj)
+            if route:
+                qs = FlightInstance.objects.filter(flight=route)
+                # If a search date is in the request context, prefer the instance on that date
+                request = self.context.get('request')
+                search_date = request.query_params.get('date') if request else None
+                if search_date:
+                    from datetime import date as date_type
+                    inst = qs.filter(date=search_date).first()
+                    if not inst:
+                        # Fall back to nearest upcoming
+                        inst = qs.order_by('date').first()
+                else:
+                    inst = qs.order_by('date').first()
+                self._instance_cache[obj.pk] = inst
+            else:
+                self._instance_cache[obj.pk] = None
+        return self._instance_cache[obj.pk]
 
     def get_source_airport_name(self, obj):
         try:
@@ -53,6 +97,53 @@ class FlightSerializer(serializers.ModelSerializer):
             return Airport.objects.get(iata_code=obj.destination_airport).terminals
         except Airport.DoesNotExist:
             return []
+
+    def get_baggage_weight_kg(self, obj):
+        route = self._get_route(obj)
+        if route:
+            return float(route.baggage_weight_allowed_per_person)
+        return 15.0  # sensible default
+
+    def get_baggage_number_allowed(self, obj):
+        route = self._get_route(obj)
+        if route:
+            return route.baggage_number_allowed_per_person
+        return 1
+
+    def get_handbag_weight_kg(self, obj):
+        route = self._get_route(obj)
+        if route:
+            return float(route.handbag_weight_allowed_per_person)
+        return 7.0  # sensible default
+
+    def get_fares(self, obj):
+        """Return per-class fare info from the Fare model if available."""
+        instance = self._get_instance(obj)
+        if not instance:
+            return {}
+        from .models import SeatStatus
+        fares = {}
+        for fare in instance.fares.all():
+            # Count physical AVAILABLE seats — this is the single source of truth
+            real_available = instance.seats.filter(
+                seat_class=fare.cabin_class,
+                status=SeatStatus.AVAILABLE
+            ).count()
+            fares[fare.cabin_class] = {
+                'price': float(fare.price),
+                'currency': fare.currency,
+                'available_seats': real_available,
+                'fare_code': fare.fare_code,
+                'refund_type': fare.refund_type,
+                'change_fee': float(fare.change_fee),
+                'meal_included': fare.meal_included,
+                'baggage_allowance': float(fare.baggage_allowance) if fare.baggage_allowance else None,
+            }
+        return fares
+
+    def get_flight_instance_id(self, obj):
+        instance = self._get_instance(obj)
+        return instance.id if instance else None
 
     def validate(self, attrs):
         instance = self.instance

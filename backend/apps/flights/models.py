@@ -327,12 +327,22 @@ class FlightInstance(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-        # Sync status to legacy Flight model for backwards compatibility with customer frontend
+        # Sync status to legacy Flight model for backwards compatibility with customer frontend.
+        # NOTE: We must NOT call legacy_flight.save(update_fields=...) because that skips
+        # Flight.save() and its notification hook.  Instead we grab the old status, do a
+        # targeted UPDATE, then fire the notification service ourselves.
         try:
             legacy_flight = Flight.objects.filter(flight_number=self.flight.flight_no).first()
             if legacy_flight and legacy_flight.status != self.status:
+                old_status = legacy_flight.status
+                # Use queryset update to avoid triggering Flight.save()'s full_clean + notification
+                # We then fire the notification manually below.
+                Flight.objects.filter(pk=legacy_flight.pk).update(status=self.status)
+                # Refresh local object so it reflects the new status
                 legacy_flight.status = self.status
-                legacy_flight.save(update_fields=['status'])
+                # Fire the notification that Flight.save() would have sent
+                from apps.notifications.services import NotificationService
+                NotificationService.send_flight_status_notification(legacy_flight, old_status, self.status)
         except Exception:
             pass
 

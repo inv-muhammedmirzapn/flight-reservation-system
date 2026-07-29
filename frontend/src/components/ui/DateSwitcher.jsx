@@ -29,7 +29,7 @@ function formatFare(raw) {
 const VISIBLE = 7;
 
 /* ── Component ────────────────────────────────────────────── */
-export default function DateSwitcher({ activeDate, onDateChange, source, destination }) {
+export default function DateSwitcher({ activeDate, onDateChange, source, destination, cabinClass }) {
   const todayStr = new Date().toISOString().split('T')[0];
   const current = activeDate || todayStr;
 
@@ -66,13 +66,20 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
         });
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
+        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
 
         const res = await fetch(`${API_BASE_URL}/flights/?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        // base_fare is returned as a decimal string e.g. "38000.00"
-        const rawFare = data.results?.[0]?.base_fare ?? null;
+        const flight = data.results?.[0];
+        let rawFare = null;
+        if (flight) {
+          const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+          const classKey = CLASS_MAP[cabinClass || 'Economy'] || 'ECONOMY';
+          const selectedFare = flight.fares?.[classKey];
+          rawFare = selectedFare ? selectedFare.price : flight.base_fare;
+        }
 
         // Discard if a newer effect has already run
         if (versionRef.current !== myVersion) return;
@@ -84,12 +91,10 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowStart, source, destination]);
+  }, [windowStart, source, destination, cabinClass]);
 
-  // Shift window by n days; 7 = next week, -7 = previous week, ±1 for fine scroll
   const shiftWindow = (n) => {
     setWindowStart(prev => addDays(prev, n));
-    // setFares({}) is handled inside the effect to avoid race conditions
   };
 
   // Re-center window when activeDate moves outside the visible strip
@@ -136,9 +141,9 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
       {/* Day pills */}
       {days.map((dateStr, idx) => {
         const isActive = dateStr === current;
-        const fareVal = fares[dateStr];            // undefined = loading, null = no flights, string = fare
+        const fareVal = fares[dateStr];            // undefined = loading, null = no flights, string/number = fare
         const isLoading = fareVal === undefined;
-        const hasFare = typeof fareVal === 'string' && fareVal !== null;
+        const hasFare = fareVal !== null && fareVal !== undefined;
 
         return (
           <button

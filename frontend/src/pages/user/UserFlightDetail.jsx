@@ -48,23 +48,36 @@ export default function UserFlightDetail() {
   const [showModal, setShowModal] = useState(false);
   const { counts } = useSelector(state => state.waitlist || DEFAULT_WAITLIST);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+  const [showCancelDetails, setShowCancelDetails] = useState(false);
 
   const [searchParams] = useSearchParams();
   const adults = Number(searchParams.get('adults')) || 1;
   const children = Number(searchParams.get('children')) || 0;
   const infants = Number(searchParams.get('infants')) || 0;
   const totalPassengers = adults + children + infants;
+  const selectedClass = searchParams.get('class') || 'Economy';
 
-  useEffect(() => {
-    if (flight && flight.id) {
-      dispatch(fetchWaitlistFlightCount(flight.id));
-    }
-  }, [dispatch, flight]);
+  // Map display class name to model value
+  const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+  const classKey = CLASS_MAP[selectedClass] || 'ECONOMY';
+
+  // Compute isSoldOut early so we can trigger waitlist count fetch
+  const isEnriched = !!flight?.fares;
+  const faresData = flight?.fares || {};
+  const selectedFare = faresData[classKey];
+  const classAvailableSeats = selectedFare ? selectedFare.available_seats : (isEnriched ? 0 : (flight?.available_seats || 0));
+  const isSoldOut = flight && classAvailableSeats <= 0;
 
   useEffect(() => {
     dispatch(fetchFlightDetail(id));
     return () => { dispatch(clearFlightDetail()); };
   }, [dispatch, id]);
+
+  useEffect(() => {
+    if (flight && isSoldOut) {
+      dispatch(fetchWaitlistFlightCount(flight.id));
+    }
+  }, [dispatch, flight, isSoldOut]);
 
   const handleBack = (e) => {
     e.preventDefault();
@@ -124,7 +137,9 @@ export default function UserFlightDetail() {
   const isPastDeparture = new Date(flight.departure_time) < new Date();
   const unbookableStatuses = ['CANCELLED', 'DEPARTED', 'ARRIVED', 'BOARDING'];
   const isUnbookableStatus = unbookableStatuses.includes(flight.status);
-  const isSoldOut = flight.available_seats <= 0;
+  
+  // Use per-class price if available, fall back to base_fare
+  const pricePerPax = selectedFare ? selectedFare.price : parseFloat(flight.base_fare);
   
   const canBook = !isPastDeparture && !isUnbookableStatus && !isSoldOut;
 
@@ -137,14 +152,44 @@ export default function UserFlightDetail() {
     unavailableReason = t('flights.soldOut', 'Sold out');
   }
 
-  // Fare calculations
-  const baseFareTotal = flight.base_fare * totalPassengers;
-  const taxesAndSurcharges = Math.round(flight.base_fare * 0.1111) * totalPassengers;
+
+  // Baggage from real route data
+  const baggageWeightKg = flight.baggage_weight_kg || 15;
+  const baggageNumAllowed = flight.baggage_number_allowed || 1;
+  const handbagWeightKg = flight.handbag_weight_kg || 7;
+
+  // Fare calculations using per-class price
+  const baseFareTotal = pricePerPax * totalPassengers;
+  const taxesAndSurcharges = Math.round(pricePerPax * 0.1111) * totalPassengers;
   const totalAmount = baseFareTotal + taxesAndSurcharges;
 
-  // Cancellation penalty calculations (visual simulation)
-  const penaltyAmount1 = Math.round(totalAmount * 0.56);
-  const penaltyAmount2 = totalAmount;
+  // Cancellation penalty calculations based on backend Fare data
+  let penaltyAmount1 = 0;
+  let penaltyAmount2 = 0;
+  
+  if (selectedFare) {
+    if (selectedFare.refund_type === 'NON_REFUNDABLE') {
+      penaltyAmount1 = totalAmount;
+      penaltyAmount2 = totalAmount;
+    } else if (selectedFare.refund_type === 'REFUNDABLE') {
+      // For refundable, the penalty is simply the change_fee
+      penaltyAmount1 = (selectedFare.change_fee || 0) * totalPassengers;
+      penaltyAmount2 = (selectedFare.change_fee || 0) * totalPassengers;
+    } else {
+      // PARTIAL: base penalty is change_fee, increases closer to departure
+      penaltyAmount1 = (selectedFare.change_fee || 0) * totalPassengers;
+      penaltyAmount2 = Math.min(totalAmount, (selectedFare.change_fee || 0) * 1.5 * totalPassengers);
+    }
+  } else {
+    // Fallback if no specific Fare model data is available
+    penaltyAmount1 = Math.round(totalAmount * 0.56);
+    penaltyAmount2 = totalAmount;
+  }
+  
+  // Calculate cancellation timeline dates (e.g., 24 hours prior to departure)
+  const departureDateObj = flight ? new Date(flight.departure_time) : new Date();
+  const timelineDateObj = new Date(departureDateObj.getTime() - (24 * 60 * 60 * 1000));
+  const timelineIsoString = timelineDateObj.toISOString();
 
   return (
     <>
@@ -279,6 +324,9 @@ export default function UserFlightDetail() {
           flight={flight}
           totalPassengers={totalPassengers}
           onClose={() => setShowModal(false)}
+          selectedClass={selectedClass}
+          pricePerPax={pricePerPax}
+          classAvailableSeats={classAvailableSeats}
         />
       )}
       {showWaitlistModal && flight && (
@@ -286,6 +334,8 @@ export default function UserFlightDetail() {
           flight={flight}
           onClose={() => setShowWaitlistModal(false)}
           initialSeatCount={Math.max(1, Math.min(9, totalPassengers))}
+          selectedClass={selectedClass}
+          pricePerPax={pricePerPax}
         />
       )}
 
@@ -313,7 +363,7 @@ export default function UserFlightDetail() {
                     </div>
                     <div>
                       <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#1a1c1d' }}>{flight.airline} {flight.flight_number}</h2>
-                      <div style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>Economy Class</div>
+                      <div style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>{selectedClass} Class</div>
                     </div>
                   </div>
                   <StatusBadge status={flight.status} />
@@ -369,8 +419,8 @@ export default function UserFlightDetail() {
                       <span style={{ fontSize: 18, fontWeight: 800, color: '#705d00' }}>₹</span>
                     </div>
                     <div>
-                      <div className="info-label">Base Fare</div>
-                      <div className="info-value">{INR(flight.base_fare)}</div>
+                      <div className="info-label">{selectedClass} Fare</div>
+                      <div className="info-value">{INR(pricePerPax)}</div>
                     </div>
                   </div>
                   
@@ -380,7 +430,7 @@ export default function UserFlightDetail() {
                     </div>
                     <div>
                       <div className="info-label">Available Seats</div>
-                      <div className="info-value">{flight.available_seats}</div>
+                      <div className="info-value">{classAvailableSeats}</div>
                     </div>
                   </div>
                   
@@ -395,13 +445,13 @@ export default function UserFlightDetail() {
                   </div>
                 </div>
 
-                {/* Baggage Info (Integrated as requested) */}
+                {/* Baggage Info — real data from FlightRoute */}
                 <div style={{ display: 'flex', gap: 24, padding: '20px 24px', background: 'rgba(255,255,255,0.4)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.6)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Briefcase size={20} color="#705d00" />
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e' }}>CABIN BAGGAGE</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>7 Kgs (1 piece only) / Adult</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{handbagWeightKg} Kgs (1 piece only) / Adult</div>
                     </div>
                   </div>
                   <div style={{ width: 1, background: 'rgba(112,93,0,0.1)' }}></div>
@@ -409,17 +459,33 @@ export default function UserFlightDetail() {
                     <Luggage size={20} color="#705d00" />
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e' }}>CHECK-IN BAGGAGE</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>15 Kgs (1 piece only) / Adult</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>
+                        {selectedFare?.baggage_allowance || baggageWeightKg} Kgs ({baggageNumAllowed} piece{baggageNumAllowed > 1 ? 's' : ''}) / Adult
+                      </div>
                     </div>
                   </div>
+                  {selectedFare?.meal_included && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Gift size={20} color="#705d00" />
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e' }}>MEAL</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>Included</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Cancellation Policy (Brand Style) */}
-              <div className="glass-panel" style={{ padding: 24 }}>
+              <div className="glass-panel" style={{ padding: 24, transition: 'all 0.3s ease' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 18, margin: 0, fontWeight: 800, color: '#1a1c1d' }}>Cancellation Policy</h3>
-                  <div style={{ color: '#705d00', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>View Details</div>
+                  <div 
+                    onClick={() => setShowCancelDetails(!showCancelDetails)}
+                    style={{ color: '#705d00', fontSize: 13, fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    {showCancelDetails ? 'Hide Details' : 'View Details'}
+                  </div>
                 </div>
                 
                 <div style={{ position: 'relative', paddingTop: 8 }}>
@@ -439,14 +505,39 @@ export default function UserFlightDetail() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: '#5e5e5e', fontWeight: 600 }}>
                     <span>Cancel Between (IST): Now</span>
                     <span style={{ textAlign: 'center' }}>
-                      <div style={{ color: '#1a1c1d' }}>{fmtDate(flight.departure_time)}</div>
-                      <div>{fmtTime(flight.departure_time)}</div>
+                      <div style={{ color: '#1a1c1d' }}>{fmtDate(timelineIsoString)}</div>
+                      <div>{fmtTime(timelineIsoString)}</div>
                     </span>
                     <span style={{ textAlign: 'right' }}>
                       <div style={{ color: '#1a1c1d' }}>{fmtDate(flight.departure_time)}</div>
                       <div>{fmtTime(flight.departure_time)}</div>
                     </span>
                   </div>
+                  
+                  {/* Expanded Details */}
+                  {showCancelDetails && (
+                    <div style={{ 
+                      marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.05)',
+                      fontSize: 13, color: '#5e5e5e', lineHeight: 1.6, animation: 'fadeIn 0.3s ease'
+                    }}>
+                      <div style={{ fontWeight: 700, color: '#1a1c1d', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <AlertCircle size={14} style={{ color: '#705d00' }} /> Important Information
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        <li>The penalties shown above apply to the total booking amount for all {totalPassengers} passengers.</li>
+                        {selectedFare?.refund_type === 'NON_REFUNDABLE' && (
+                          <li>This is a strictly <strong>Non-Refundable</strong> ticket. Cancellations will result in a 100% penalty.</li>
+                        )}
+                        {selectedFare?.refund_type === 'REFUNDABLE' && (
+                          <li>This is a <strong>Refundable</strong> ticket. The penalty shown represents the fixed airline cancellation fee.</li>
+                        )}
+                        {selectedFare?.refund_type === 'PARTIAL' && (
+                          <li>This is a <strong>Partially Refundable</strong> ticket. Penalties increase significantly as it gets closer to departure.</li>
+                        )}
+                        <li>A standard 5% payment processing fee is deducted from the final refunded amount during processing.</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -177,6 +177,30 @@ class FlightListCreateView(APIView):
             except ValueError:
                 pass
 
+        # Cabin class filter — find legacy flights that have a Fare for the given class
+        cabin_class = request.query_params.get("class", "").strip()
+        if cabin_class:
+            # Map display names to model values
+            class_map = {
+                "Economy": "ECONOMY",
+                "Business": "BUSINESS",
+                "First": "FIRST",
+                "ECONOMY": "ECONOMY",
+                "BUSINESS": "BUSINESS",
+                "FIRST": "FIRST",
+            }
+            cabin_value = class_map.get(cabin_class)
+            if cabin_value:
+                from .models import FlightInstance, Fare
+                # Find flight_numbers that have an instance with a fare for this class
+                matching_flight_nos = (
+                    Fare.objects
+                    .filter(cabin_class=cabin_value)
+                    .values_list('flight_instance__flight__flight_no', flat=True)
+                    .distinct()
+                )
+                qs = qs.filter(flight_number__in=list(matching_flight_nos))
+
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         serializer = FlightSerializer(page, many=True)
@@ -229,24 +253,34 @@ class FlightUpdateView(APIView):
     @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
     def put(self, request, id, *args, **kwargs) -> Response:
         flight = self.get_object(id)
+        old_available = flight.available_seats
         serializer = FlightSerializer(flight, data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            flight = serializer.save()
+            if flight.available_seats > old_available:
+                from apps.waitlist.services import process_waitlist_allocations
+                process_waitlist_allocations(flight)
+                flight.refresh_from_db()
+            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
     def patch(self, request, id, *args, **kwargs) -> Response:
         flight = self.get_object(id)
+        old_available = flight.available_seats
         serializer = FlightSerializer(flight, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            flight = serializer.save()
+            if flight.available_seats > old_available:
+                from apps.waitlist.services import process_waitlist_allocations
+                process_waitlist_allocations(flight)
+                flight.refresh_from_db()
+            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -491,6 +525,64 @@ class SeatViewSet(AdminModelViewSet):
             qs = qs.filter(flight_instance_id=instance_id)
         return qs
 
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        new_status = serializer.validated_data.get('status', old_status)
+        
+        seat = serializer.save()
+        
+        if old_status != new_status:
+            from .models import Fare, SeatStatus, Flight as LegacyFlight
+            fare = Fare.objects.filter(
+                flight_instance=seat.flight_instance,
+                cabin_class=seat.seat_class
+            ).first()
+            
+            flight_no = seat.flight_instance.flight.flight_no
+            legacy_flight = LegacyFlight.objects.filter(flight_number=flight_no).first()
+
+            if new_status == SeatStatus.AVAILABLE and old_status != SeatStatus.AVAILABLE:
+                if fare:
+                    total_physical = seat.flight_instance.seats.filter(seat_class=seat.seat_class).count()
+                    fare.available_seats = min(fare.available_seats + 1, total_physical)
+                    fare.save(update_fields=["available_seats"])
+                if legacy_flight:
+                    legacy_flight.available_seats = min(legacy_flight.available_seats + 1, legacy_flight.total_seats)
+                    legacy_flight.save(update_fields=["available_seats"])
+                
+                # Trigger waitlist auto-allocation for the freed cabin class
+                if legacy_flight:
+                    try:
+                        from apps.waitlist.services import process_waitlist_allocations
+                        process_waitlist_allocations(legacy_flight, cancelled_cabin_class=seat.seat_class)
+                    except Exception:
+                        pass
+                        
+            elif old_status == SeatStatus.AVAILABLE and new_status != SeatStatus.AVAILABLE:
+                if fare:
+                    fare.available_seats = max(fare.available_seats - 1, 0)
+                    fare.save(update_fields=["available_seats"])
+                if legacy_flight:
+                    legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
+                    legacy_flight.save(update_fields=["available_seats"])
+
+    def perform_destroy(self, instance):
+        from .models import Fare, SeatStatus, Flight as LegacyFlight
+        if instance.status == SeatStatus.AVAILABLE:
+            fare = Fare.objects.filter(
+                flight_instance=instance.flight_instance,
+                cabin_class=instance.seat_class
+            ).first()
+            if fare:
+                fare.available_seats = max(fare.available_seats - 1, 0)
+                fare.save(update_fields=["available_seats"])
+            
+            flight_no = instance.flight_instance.flight.flight_no
+            legacy_flight = LegacyFlight.objects.filter(flight_number=flight_no).first()
+            if legacy_flight:
+                legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
+                legacy_flight.save(update_fields=["available_seats"])
+        instance.delete()
 
 class FareViewSet(AdminModelViewSet):
     queryset = Fare.objects.select_related("flight_instance").all()

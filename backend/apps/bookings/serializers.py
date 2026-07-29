@@ -20,7 +20,7 @@ class PassengerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Passenger
-        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number']
+        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number', 'seat_number']
 
     def validate_age(self, value):
         if value < 0:
@@ -34,5 +34,5 @@ class BookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ['id', 'flight', 'flight_detail', 'status', 'seat_count', 'total_price', 'created_at', 'passengers']
+        fields = ['id', 'flight', 'flight_detail', 'cabin_class', 'status', 'seat_count', 'total_price', 'created_at', 'passengers']
         read_only_fields = ['id', 'status', 'seat_count', 'total_price', 'created_at', 'flight_detail', 'passengers']
