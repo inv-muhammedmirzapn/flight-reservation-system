@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
@@ -10,15 +11,18 @@ import toast from "react-hot-toast";
 export default function FlightDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const auth = useSelector((state) => state?.auth) || {};
+  const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
 
   const [flight, setFlight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Passengers state
+  // Passengers state & Validation errors
   const [passengers, setPassengers] = useState([
     { id: 1, name: "", age: "", gender: "Male" }
   ]);
+  const [passengerErrors, setPassengerErrors] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -50,17 +54,68 @@ export default function FlightDetailPage() {
     };
   }, [id]);
 
+  const validatePassengers = () => {
+    const errorsMap = {};
+    let isValid = true;
+
+    passengers.forEach((p, index) => {
+      const pErr = {};
+
+      // Name validation: max 40 chars, only alphabets
+      if (!p.name || !p.name.trim()) {
+        pErr.name = "Full name is required";
+        isValid = false;
+      } else if (p.name.length > 40) {
+        pErr.name = "Name cannot exceed 40 characters";
+        isValid = false;
+      } else if (!/^[A-Za-z\s]+$/.test(p.name)) {
+        pErr.name = "Only alphabets allowed";
+        isValid = false;
+      }
+
+      // Age validation: only digits, 1-120 max
+      if (!p.age) {
+        pErr.age = "Age is required";
+        isValid = false;
+      } else {
+        const ageNum = Number(p.age);
+        if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+          pErr.age = "Age must be between 1 and 120";
+          isValid = false;
+        }
+      }
+
+      if (Object.keys(pErr).length > 0) {
+        errorsMap[index] = pErr;
+      }
+    });
+
+    setPassengerErrors(errorsMap);
+    return isValid;
+  };
+
+  const handlePassengersChange = (updated) => {
+    setPassengers(updated);
+    // Clear errors when user modifies input
+    if (Object.keys(passengerErrors).length > 0) {
+      setPassengerErrors({});
+    }
+  };
+
   const handleBookingAction = async () => {
     if (!flight) return;
 
-    const isWaitlisted = Number(flight.available_seats) === 0;
-
-    // Basic validation
-    const invalidPassenger = passengers.find((p) => !p.name.trim());
-    if (invalidPassenger) {
-      toast.error("Please enter the full name for all passengers.");
+    if (!isAuthenticated) {
+      navigate("/login");
       return;
     }
+
+    if (!validatePassengers()) {
+      toast.error("Please fix passenger form errors before proceeding.");
+      return;
+    }
+
+    const isWaitlisted = Number(flight.available_seats) === 0;
 
     try {
       if (isWaitlisted) {
@@ -71,7 +126,6 @@ export default function FlightDetailPage() {
       }
     } catch (err) {
       console.error("Booking error:", err);
-      // Fallback notification for mock demo if unauthenticated
       if (isWaitlisted) {
         toast.success(`Waitlist entry created for ${flight.flight_number}!`);
       } else {
@@ -116,11 +170,11 @@ export default function FlightDetailPage() {
   }
 
   return (
-    <div className="flex-1 min-h-screen mt-8 pt-12 pb-16 px-4 md:px-6 max-w-6xl mx-auto w-full">
+    <div className="flex-1 min-h-screen mt-12 pt-12 pb-8 px-4 md:px-6 max-w-6xl mx-auto w-full">
       {/* Top Header Navigation */}
-      <div className="flex items-center justify-between mb-6 ml-3">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-950">
-          Booking Page
+      <div className="flex items-center justify-between mb-6 ml-4">
+        <h1 className="text-xl font-bold text-slate-950">
+          Confirm Booking
         </h1>
       </div>
 
@@ -134,7 +188,8 @@ export default function FlightDetailPage() {
           {/* Add Passengers Section */}
           <PassengerListSection
             passengers={passengers}
-            onChangePassengers={setPassengers}
+            onChangePassengers={handlePassengersChange}
+            errors={passengerErrors}
           />
         </div>
 

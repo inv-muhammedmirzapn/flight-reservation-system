@@ -1,6 +1,12 @@
 import React from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 export default function FareDetailsCard({ flight, passengerCount = 1, onBookingAction }) {
+  const navigate = useNavigate();
+  const auth = useSelector((state) => state?.auth) || {};
+  const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
+
   if (!flight) return null;
 
   const { base_fare = 0, available_seats = 0 } = flight;
@@ -11,22 +17,38 @@ export default function FareDetailsCard({ flight, passengerCount = 1, onBookingA
   const taxesAndOther = Math.round(totalBaseFare * 0.12);
   const grandTotal = totalBaseFare + taxesAndOther;
 
+  const handleClick = () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    } else {
+      onBookingAction();
+    }
+  };
+
+  const buttonText = !isAuthenticated
+    ? isWaitlisted
+      ? "Login to Join Waitlist"
+      : "Login to Book Ticket"
+    : isWaitlisted
+    ? "Join Waitlist"
+    : "Book Ticket";
+
   return (
-    <div className="booking-container-card w-full shadow-xs">
-      <h3 className="text-xl font-extrabold text-slate-950 mb-6 tracking-tight">
+    <div className="booking-container-card w-full shadow-xs animate-fade-in transition-all duration-300">
+      <h3 className="text-xl font-bold text-slate-950 mb-6">
         Fare Details
       </h3>
 
       {/* Breakdown Rows */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+        <div className="flex items-center justify-between text-xs font-medium text-slate-700">
           <span>Base Fare {passengerCount > 1 ? `(${passengerCount} passengers)` : ""}</span>
           <span className="font-bold text-slate-950">
             ₹ {totalBaseFare.toLocaleString("en-IN")}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+        <div className="flex items-center justify-between text-xs font-medium text-slate-700">
           <span>Taxes and Other</span>
           <span className="font-bold text-slate-950">
             ₹ {taxesAndOther.toLocaleString("en-IN")}
@@ -39,7 +61,7 @@ export default function FareDetailsCard({ flight, passengerCount = 1, onBookingA
 
       {/* Total Amount */}
       <div className="flex flex-col items-end gap-1">
-        <span className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight">
+        <span className="text-2xl font-bold text-slate-950">
           ₹ {grandTotal.toLocaleString("en-IN")}
         </span>
       </div>
@@ -47,14 +69,10 @@ export default function FareDetailsCard({ flight, passengerCount = 1, onBookingA
       {/* Booking Action Button */}
       <button
         type="button"
-        onClick={onBookingAction}
-        className={`w-full mt-6 py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider cursor-pointer transition-all shadow-md active:scale-95 ${
-          isWaitlisted
-            ? "bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-amber-400/20"
-            : "btn-primary text-slate-950"
-        }`}
+        onClick={handleClick}
+        className={`w-full mt-6 p-2.5 text-base sm:text-lg rounded-2xl font-bold cursor-pointer transition-all duration-200 active:scale-95 btn-primary`}
       >
-        {isWaitlisted ? "Join Waitlist" : "Book Ticket"}
+        {buttonText}
       </button>
     </div>
   );

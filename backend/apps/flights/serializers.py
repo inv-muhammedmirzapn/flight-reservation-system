@@ -1,10 +1,13 @@
 from rest_framework import serializers
+from django.db.models import Sum
 from .models import Flight
 
 class FlightSerializer(serializers.ModelSerializer):
     """
     Serializer for the Flight model, handling representation and validation.
     """
+    waitlist_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Flight
         fields = [
@@ -22,9 +25,20 @@ class FlightSerializer(serializers.ModelSerializer):
             "status",
             "external_id",
             "sync_source",
-            "stops"
+            "stops",
+            "waitlist_count",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "waitlist_count"]
+
+    def get_waitlist_count(self, obj) -> int:
+        """
+        Calculate total pending waitlisted seats for this flight.
+        """
+        try:
+            result = obj.waitlist_entries.filter(status="PENDING").aggregate(total=Sum("seat_count"))
+            return result["total"] or 0
+        except Exception:
+            return 0
 
     def validate(self, attrs: dict) -> dict:
         """
