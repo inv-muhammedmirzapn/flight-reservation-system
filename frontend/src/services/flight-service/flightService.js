@@ -14,6 +14,7 @@ export const flightsAPI = {
     if (params.max_fare)     qs.set('max_fare', params.max_fare);
     if (params.stops)        qs.set('stops', params.stops);
     if (params.passengers)   qs.set('passengers', params.passengers);
+    if (params.class)        qs.set('class', params.class);
     if (params.page_size)    qs.set('page_size', params.page_size);
     return fetchWithAuth(`/flights/?${qs.toString()}`);
   },

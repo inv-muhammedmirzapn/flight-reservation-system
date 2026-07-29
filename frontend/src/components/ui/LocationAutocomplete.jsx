@@ -12,13 +12,12 @@ export default function LocationAutocomplete({
   onSelect
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  
   const containerRef = useRef(null);
   const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
   const debounceRef = useRef(null);
 
   // Close on outside click
@@ -51,17 +50,12 @@ export default function LocationAutocomplete({
     }
   }, [open]);
 
-  // Auto focus search input when opened
-  useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
-  }, [open]);
-
   const fetchOptions = async (searchQuery = '') => {
     setLoading(true);
     try {
       const endpoint = searchQuery
-        ? `/flights/master/airports/?q=${encodeURIComponent(searchQuery)}`
-        : `/flights/master/airports/`;
+        ? `/flights/v2/airports/?q=${encodeURIComponent(searchQuery)}`
+        : `/flights/v2/airports/`;
       const data = await fetchWithAuth(endpoint);
       setOptions(data?.results || data || []);
     } catch (err) {
@@ -72,18 +66,22 @@ export default function LocationAutocomplete({
     }
   };
 
-  const handleOpen = () => {
+  const handleFocus = () => {
     if (!open) {
       updateCoords();
       setOpen(true);
-      setQuery(''); // reset search when reopening
-      if (options.length === 0) fetchOptions('');
+      if (options.length === 0 || value === '') fetchOptions(value || '');
     }
   };
 
-  const handleSearchInput = (e) => {
+  const handleInputChange = (e) => {
     const val = e.target.value;
-    setQuery(val);
+    onChange(val);
+    
+    if (!open) {
+      updateCoords();
+      setOpen(true);
+    }
     
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -100,15 +98,14 @@ export default function LocationAutocomplete({
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: style?.width || '100%', flex: style?.flex }}>
-      {/* TRIGGER - Acts like the original input but opens dropdown */}
       <input
         type="text"
-        readOnly
         value={value}
-        onClick={handleOpen}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
         placeholder={placeholder}
         className={className}
-        style={{ ...style, cursor: 'pointer', flex: 'unset', width: '100%', background: 'transparent' }}
+        style={{ ...style, flex: 'unset', width: '100%', background: 'transparent' }}
         autoComplete={autoComplete}
       />
       
@@ -130,26 +127,6 @@ export default function LocationAutocomplete({
             flexDirection: 'column',
           }}
         >
-          {/* POPUP SEARCH INPUT */}
-          <div style={{ padding: '16px', borderBottom: '1px solid rgba(0,0,0,0.06)', background: '#f8f9fa' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1.5px solid #705d00', 
-              borderRadius: 10, padding: '10px 14px', boxShadow: '0 2px 10px rgba(112,93,0,0.08)'
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#705d00' }}>search</span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={handleSearchInput}
-                placeholder="Search airports or cities..."
-                style={{
-                  border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: 14, color: '#1a1c1d', fontWeight: 600, fontFamily: 'Inter, sans-serif'
-                }}
-              />
-            </div>
-          </div>
-
           {/* LIST */}
           <ul style={{
             margin: 0,
@@ -190,7 +167,7 @@ export default function LocationAutocomplete({
                 </li>
               ))
             ) : (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#5e5e5e', fontSize: 13, fontWeight: 600 }}>No airports found for "{query}".</div>
+              <div style={{ padding: '24px', textAlign: 'center', color: '#5e5e5e', fontSize: 13, fontWeight: 600 }}>No airports found for "{value}".</div>
             )}
           </ul>
         </div>,

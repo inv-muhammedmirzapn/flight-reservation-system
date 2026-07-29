@@ -327,6 +327,14 @@ class FlightInstance(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        # Sync status to legacy Flight model for backwards compatibility with customer frontend
+        try:
+            legacy_flight = Flight.objects.filter(flight_number=self.flight.flight_no).first()
+            if legacy_flight and legacy_flight.status != self.status:
+                legacy_flight.status = self.status
+                legacy_flight.save(update_fields=['status'])
+        except Exception:
+            pass
 
     def __str__(self):
         return f"{self.flight.flight_no} / {self.date}"

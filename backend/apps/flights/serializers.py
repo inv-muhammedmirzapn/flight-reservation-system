@@ -13,16 +13,46 @@ from .models import (
 
 class FlightSerializer(serializers.ModelSerializer):
     """Serializer for the legacy Flight model."""
+    source_airport_name = serializers.SerializerMethodField()
+    destination_airport_name = serializers.SerializerMethodField()
+    source_terminals = serializers.SerializerMethodField()
+    destination_terminals = serializers.SerializerMethodField()
+
     class Meta:
         model = Flight
         fields = [
             "id", "flight_number", "airline", "aircraft",
-            "source_airport", "destination_airport",
+            "source_airport", "source_airport_name", "source_terminals",
+            "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
             "base_fare", "total_seats", "available_seats",
             "status", "external_id", "sync_source", "stops"
         ]
         read_only_fields = ["id"]
+
+    def get_source_airport_name(self, obj):
+        try:
+            return Airport.objects.get(iata_code=obj.source_airport).airport_name
+        except Airport.DoesNotExist:
+            return obj.source_airport
+
+    def get_destination_airport_name(self, obj):
+        try:
+            return Airport.objects.get(iata_code=obj.destination_airport).airport_name
+        except Airport.DoesNotExist:
+            return obj.destination_airport
+
+    def get_source_terminals(self, obj):
+        try:
+            return Airport.objects.get(iata_code=obj.source_airport).terminals
+        except Airport.DoesNotExist:
+            return []
+
+    def get_destination_terminals(self, obj):
+        try:
+            return Airport.objects.get(iata_code=obj.destination_airport).terminals
+        except Airport.DoesNotExist:
+            return []
 
     def validate(self, attrs):
         instance = self.instance
@@ -308,21 +338,7 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
                 {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
             )
 
-        errors = {}
-        boarding_gate = attrs.get("boarding_gate", getattr(self.instance, "boarding_gate", None))
-        if not boarding_gate or not str(boarding_gate).strip():
-            errors["boarding_gate"] = "Boarding gate is required."
 
-        dep_terminal = attrs.get("departure_terminal", getattr(self.instance, "departure_terminal", None))
-        if not dep_terminal or not str(dep_terminal).strip():
-            errors["departure_terminal"] = "Departure terminal is required."
-
-        arr_terminal = attrs.get("arrival_terminal", getattr(self.instance, "arrival_terminal", None))
-        if not arr_terminal or not str(arr_terminal).strip():
-            errors["arrival_terminal"] = "Arrival terminal is required."
-
-        if errors:
-            raise serializers.ValidationError(errors)
 
         return attrs
 

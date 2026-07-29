@@ -67,7 +67,7 @@ export function createCrudSlice(entityName, apiBasePath) {
       try {
         const isFormData = data instanceof FormData;
         return await fetchWithAuth(`${apiBasePath}/${id}/`, {
-          method: 'PUT',
+          method: 'PATCH',
           body: isFormData ? data : JSON.stringify(data),
           headers: isFormData ? {} : { 'Content-Type': 'application/json' },
         });

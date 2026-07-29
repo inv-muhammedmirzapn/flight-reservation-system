@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
+import { API_BASE_URL } from '@/services/apiClient';
 import { Plane, Search, ArrowRight, Filter, X, ArrowLeftRight, Users, ChevronDown } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
@@ -92,9 +93,14 @@ function FlightCard({ flight }) {
             <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1c1d', lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
               {depTime}
             </div>
-            <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 2, fontWeight: 600 }}>
+            <div style={{ fontSize: 14, color: '#1a1c1d', marginTop: 2, fontWeight: 800 }}>
               {flight.source_airport}
             </div>
+            {flight.source_airport_name && (
+              <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, maxWidth: 120, margin: '0 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={flight.source_airport_name}>
+                {flight.source_airport_name}
+              </div>
+            )}
           </div>
 
           {/* Duration line */}
@@ -134,9 +140,14 @@ function FlightCard({ flight }) {
             <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1c1d', lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
               {arrTime}
             </div>
-            <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 2, fontWeight: 600 }}>
+            <div style={{ fontSize: 14, color: '#1a1c1d', marginTop: 2, fontWeight: 800 }}>
               {flight.destination_airport}
             </div>
+            {flight.destination_airport_name && (
+              <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, maxWidth: 120, margin: '0 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={flight.destination_airport_name}>
+                {flight.destination_airport_name}
+              </div>
+            )}
           </div>
         </div>
 
@@ -204,13 +215,25 @@ function FlightCard({ flight }) {
   );
 }
 
+const FieldWrap = ({ label, children, center }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: center ? 'center' : 'flex-start', textAlign: center ? 'center' : 'left' }}>
+    <span style={{ fontSize: 10, fontWeight: 800, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{label}</span>
+    {children}
+  </div>
+);
+
 /* ── Fixed Top Search Bar ────────────────────────────────── */
-function SearchBar({ source, setSource, destination, setDestination, depDate, setDepDate, arrDate, setArrDate, adults, setAdults, childrenCount, setChildrenCount, infants, setInfants }) {
+function SearchBar({ source, setSource, destination, setDestination, depDate, setDepDate, arrDate, setArrDate, adults, setAdults, childrenCount, setChildrenCount, infants, setInfants, cabinClass, setCabinClass }) {
   const [showPax, setShowPax] = useState(false);
   const paxRef = useRef(null);
+  const [showClass, setShowClass] = useState(false);
+  const classRef = useRef(null);
 
   useEffect(() => {
-    function outside(e) { if (paxRef.current && !paxRef.current.contains(e.target)) setShowPax(false); }
+    function outside(e) {
+      if (paxRef.current && !paxRef.current.contains(e.target)) setShowPax(false);
+      if (classRef.current && !classRef.current.contains(e.target)) setShowClass(false);
+    }
     document.addEventListener('mousedown', outside);
     return () => document.removeEventListener('mousedown', outside);
   }, []);
@@ -218,13 +241,6 @@ function SearchBar({ source, setSource, destination, setDestination, depDate, se
   const paxLabel = `${adults} Adult${adults > 1 ? 's' : ''}${childrenCount ? `, ${childrenCount} Child` : ''}${infants ? `, ${infants} Infant` : ''}`;
 
   const swap = () => { const t = source; setSource(destination); setDestination(t); };
-
-  const FieldWrap = ({ label, children, center }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: center ? 'center' : 'flex-start', textAlign: center ? 'center' : 'left' }}>
-      <span style={{ fontSize: 10, fontWeight: 800, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{label}</span>
-      {children}
-    </div>
-  );
 
   return (
     <div style={{
@@ -247,117 +263,150 @@ function SearchBar({ source, setSource, destination, setDestination, depDate, se
       padding: '0 1rem',
       gap: 0,
     }}>
-        {/* All search fields in one flex row */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', minWidth: 0 }}>
+      {/* All search fields in one flex row */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', minWidth: 0 }}>
 
-          {/* FROM */}
-          <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FieldWrap label="From" center>
-              <LocationAutocomplete
-                placeholder="City or Airport"
-                value={source}
-                onChange={setSource}
-                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
-              />
-            </FieldWrap>
-          </div>
-
-          {/* Swap Button — inline flex item */}
-          <button onClick={swap} style={{
-            flexShrink: 0, width: 32, alignSelf: 'center',
-            background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.4)',
-            borderRadius: '50%', height: 32,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 4px',
-          }}>
-            <ArrowLeftRight size={13} color="#705d00" />
-          </button>
-
-          {/* TO */}
-          <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FieldWrap label="To" center>
-              <LocationAutocomplete
-                placeholder="City or Airport"
-                value={destination}
-                onChange={setDestination}
-                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
-              />
-            </FieldWrap>
-          </div>
-
-          {/* DEPARTURE DATE */}
-          <div style={{ flex: 1.4, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
-            <FieldWrap label="Departure">
-              <DatePicker
-                value={depDate}
-                onChange={setDepDate}
-                placeholder="Add date"
-                variant="transparent"
-              />
-            </FieldWrap>
-          </div>
-
-          {/* RETURN DATE */}
-          <div style={{ flex: 1.2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
-            <FieldWrap label="Return">
-              <DatePicker
-                value={arrDate}
-                onChange={setArrDate}
-                placeholder="Add return"
-                variant="transparent"
-              />
-            </FieldWrap>
-          </div>
-
-          {/* PASSENGERS */}
-          <div ref={paxRef} style={{ flex: 1.2, minWidth: 0, padding: '0 14px', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowPax(v => !v)}>
-            <FieldWrap label="Travellers">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{paxLabel}</span>
-                <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
-              </div>
-            </FieldWrap>
-            {showPax && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
-                background: '#fff', borderRadius: 16, padding: 20, minWidth: 280,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
-              }} onClick={e => e.stopPropagation()}>
-                {[['Adults', adults, setAdults, [1,2,3,4,5,6,7,8,9], 'Age 12+'], ['Children', childrenCount, setChildrenCount, [0,1,2,3,4,5,6], 'Age 2-11'], ['Infants', infants, setInfants, [0,1,2,3,4,5,6], 'Under 2']].map(([lbl, val, setter, opts, sub]) => (
-                  <div key={lbl} style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1c1d' }}>{lbl} <span style={{ fontSize: 10, color: '#9e9488', fontWeight: 400 }}>({sub})</span></div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      {opts.map(o => (
-                        <button key={o} onClick={() => setter(o)} style={{
-                          width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer',
-                          background: val === o ? '#ffd700' : '#f5f5f5',
-                          color: val === o ? '#1a1c1d' : '#5e5e5e',
-                          fontWeight: 700, fontSize: 13,
-                        }}>{o}</button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* FROM */}
+        <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FieldWrap label="From" center>
+            <LocationAutocomplete
+              placeholder="City or Airport"
+              value={source}
+              onChange={setSource}
+              style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+            />
+          </FieldWrap>
         </div>
 
-        {/* SEARCH BUTTON */}
-        <button style={{
-          marginLeft: 12, padding: '0 20px', height: 42, borderRadius: 10,
-          background: '#ffd700', border: 'none', cursor: 'pointer',
-          fontWeight: 800, fontSize: 14, color: '#1a1c1d',
-          boxShadow: '0 4px 16px rgba(255,215,0,0.4)',
-          display: 'flex', alignItems: 'center', gap: 6,
-          flexShrink: 0, whiteSpace: 'nowrap',
-          transition: 'background 0.2s',
-        }}
-          onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
-          onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
-        >
-          <Search size={14} /> Search
+        {/* Swap Button — inline flex item */}
+        <button onClick={swap} style={{
+          flexShrink: 0, width: 32, alignSelf: 'center',
+          background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.4)',
+          borderRadius: '50%', height: 32,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 4px',
+        }}>
+          <ArrowLeftRight size={13} color="#705d00" />
         </button>
+
+        {/* TO */}
+        <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FieldWrap label="To" center>
+            <LocationAutocomplete
+              placeholder="City or Airport"
+              value={destination}
+              onChange={setDestination}
+              style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+            />
+          </FieldWrap>
+        </div>
+
+        {/* DEPARTURE DATE */}
+        <div style={{ flex: 1.4, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+          <FieldWrap label="Departure">
+            <DatePicker
+              value={depDate}
+              onChange={setDepDate}
+              placeholder="Add date"
+              variant="transparent"
+            />
+          </FieldWrap>
+        </div>
+
+        {/* RETURN DATE */}
+        <div style={{ flex: 1.2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+          <FieldWrap label="Return">
+            <DatePicker
+              value={arrDate}
+              onChange={setArrDate}
+              placeholder="Add return"
+              variant="transparent"
+            />
+          </FieldWrap>
+        </div>
+
+        {/* PASSENGERS */}
+        <div ref={paxRef} style={{ flex: 1.1, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowPax(v => !v)}>
+          <FieldWrap label="Travellers">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{paxLabel}</span>
+              <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
+            </div>
+          </FieldWrap>
+          {showPax && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
+              background: '#fff', borderRadius: 16, padding: 20, minWidth: 280,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
+            }} onClick={e => e.stopPropagation()}>
+              {[['Adults', adults, setAdults, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'Age 12+'], ['Children', childrenCount, setChildrenCount, [0, 1, 2, 3, 4, 5, 6], 'Age 2-11'], ['Infants', infants, setInfants, [0, 1, 2, 3, 4, 5, 6], 'Under 2']].map(([lbl, val, setter, opts, sub]) => (
+                <div key={lbl} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1c1d' }}>{lbl} <span style={{ fontSize: 10, color: '#9e9488', fontWeight: 400 }}>({sub})</span></div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {opts.map(o => (
+                      <button key={o} onClick={() => setter(o)} style={{
+                        width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: val === o ? '#ffd700' : '#f5f5f5',
+                        color: val === o ? '#1a1c1d' : '#5e5e5e',
+                        fontWeight: 700, fontSize: 13,
+                      }}>{o}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CLASS */}
+        <div ref={classRef} style={{ flex: 1, minWidth: 0, padding: '0 14px', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowClass(v => !v)}>
+          <FieldWrap label="Class">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cabinClass}</span>
+              <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
+            </div>
+          </FieldWrap>
+          {showClass && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
+              background: '#fff', borderRadius: 16, padding: 14, minWidth: 160,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
+              display: 'flex', flexDirection: 'column', gap: 6
+            }} onClick={e => e.stopPropagation()}>
+              {['Economy', 'Business', 'First'].map(c => (
+                <button key={c} onClick={() => { setCabinClass(c); setShowClass(false); }} style={{
+                  padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: cabinClass === c ? '#ffd700' : 'transparent',
+                  color: cabinClass === c ? '#1a1c1d' : '#5e5e5e',
+                  fontWeight: cabinClass === c ? 800 : 600, fontSize: 13,
+                  textAlign: 'left', transition: 'all 0.15s ease'
+                }}
+                  onMouseEnter={e => { if (cabinClass !== c) e.currentTarget.style.background = '#f5f5f5' }}
+                  onMouseLeave={e => { if (cabinClass !== c) e.currentTarget.style.background = 'transparent' }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SEARCH BUTTON */}
+      <button style={{
+        marginLeft: 12, padding: '0 20px', height: 42, borderRadius: 10,
+        background: '#ffd700', border: 'none', cursor: 'pointer',
+        fontWeight: 800, fontSize: 14, color: '#1a1c1d',
+        boxShadow: '0 4px 16px rgba(255,215,0,0.4)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        flexShrink: 0, whiteSpace: 'nowrap',
+        transition: 'background 0.2s',
+      }}
+        onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
+        onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
+      >
+        <Search size={14} /> Search
+      </button>
     </div>
   );
 }
@@ -404,7 +453,7 @@ function Sidebar({
     <>
       {/* Overlay for mobile drawer */}
       <div className={`sidebar-overlay ${mobileFiltersOpen ? 'open' : ''}`} onClick={() => setMobileFiltersOpen(false)} />
-      
+
       <aside className={`sidebar-aside ${mobileFiltersOpen ? 'open' : ''}`} style={{
         width: 260,
         flexShrink: 0,
@@ -422,11 +471,11 @@ function Sidebar({
           position: 'relative'
         }}>
           {/* Close button (mobile only) */}
-          <button 
-            className="mobile-close-btn" 
-            onClick={() => setMobileFiltersOpen(false)} 
-            style={{ 
-              display: 'none', background: 'rgba(0,0,0,0.05)', border: 'none', 
+          <button
+            className="mobile-close-btn"
+            onClick={() => setMobileFiltersOpen(false)}
+            style={{
+              display: 'none', background: 'rgba(0,0,0,0.05)', border: 'none',
               position: 'absolute', top: 12, right: 12, cursor: 'pointer',
               borderRadius: '50%', padding: 6, zIndex: 10
             }}
@@ -439,186 +488,186 @@ function Sidebar({
             overflowY: 'auto',
             flex: 1,
           }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h2 style={{
-            fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-            fontSize: 22, fontWeight: 700, color: '#1a1c1d',
-          }}>
-            {t("flights.filters", { defaultValue: 'Filters' })}
-          </h2>
-          <button
-            onClick={onClearFilters}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#705d00',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 6,
-            }}
-            onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
-            onMouseOut={(e) => e.target.style.background = 'transparent'}
-          >
-            {t("flights.clearAll", { defaultValue: 'Clear All' })}
-          </button>
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{
+                fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
+                fontSize: 22, fontWeight: 700, color: '#1a1c1d',
+              }}>
+                {t("flights.filters", { defaultValue: 'Filters' })}
+              </h2>
+              <button
+                onClick={onClearFilters}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#705d00',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                }}
+                onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
+                onMouseOut={(e) => e.target.style.background = 'transparent'}
+              >
+                {t("flights.clearAll", { defaultValue: 'Clear All' })}
+              </button>
+            </div>
 
-        {/* Airline Filter */}
-        {availableAirlines.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Airlines</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {availableAirlines.map(airline => (
-                <label key={airline} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+            {/* Airline Filter */}
+            {availableAirlines.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Airlines</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {availableAirlines.map(airline => (
+                    <label key={airline} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={airlinesFilter.includes(airline)}
+                        onChange={() => {
+                          if (airlinesFilter.includes(airline)) setAirlinesFilter(airlinesFilter.filter(a => a !== airline));
+                          else setAirlinesFilter([...airlinesFilter, airline]);
+                        }}
+                        style={{ accentColor: '#705d00' }}
+                      />
+                      <span style={{ color: '#1a1c1d' }}>{airline}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Baggage Filter */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Baggage</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[{ label: 'Check-in Baggage', value: 'checkin' }, { label: 'Cabin Baggage', value: 'cabin' }].map(opt => (
+                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={baggageFilter.includes(opt.value)}
+                      onChange={() => {
+                        if (baggageFilter.includes(opt.value)) setBaggageFilter(baggageFilter.filter(b => b !== opt.value));
+                        else setBaggageFilter([...baggageFilter, opt.value]);
+                      }}
+                      style={{ accentColor: '#705d00' }}
+                    />
+                    <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Price Range */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
+
+              <div style={{ marginBottom: 16 }}>
+                <label htmlFor="min-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
+                <input
+                  id="min-price-slider"
+                  type="range"
+                  min={absMin}
+                  max={localMaxFare}
+                  value={localMinFare}
+                  onChange={e => setLocalMinFare(Number(e.target.value))}
+                  onMouseUp={() => commitMinFare(localMinFare)}
+                  onTouchEnd={() => commitMinFare(localMinFare)}
+                  onKeyUp={() => commitMinFare(localMinFare)}
+                  style={{ width: '100%', accentColor: '#705d00' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
+                  <span>{INR(absMin)}</span>
+                  <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMinFare)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="max-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
+                <input
+                  id="max-price-slider"
+                  type="range"
+                  min={localMinFare}
+                  max={absMax}
+                  value={localMaxFare}
+                  onChange={e => setLocalMaxFare(Number(e.target.value))}
+                  onMouseUp={() => commitMaxFare(localMaxFare)}
+                  onTouchEnd={() => commitMaxFare(localMaxFare)}
+                  onKeyUp={() => commitMaxFare(localMaxFare)}
+                  style={{ width: '100%', accentColor: '#705d00' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
+                  <span>{INR(localMinFare)}</span>
+                  <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMaxFare)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stops filter */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.stops", { defaultValue: 'Stops' })}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { label: t("flights.nonStop", { defaultValue: 'Non-stop' }), value: 0 },
+                  { label: t("flights.oneStop", { defaultValue: '1 Stop' }), value: 1 },
+                  { label: t("flights.twoPlusStops", { defaultValue: '2+ Stops' }), value: 2 },
+                ].map(opt => {
+                  const isChecked = stopsFilter.includes(opt.value);
+                  return (
+                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setStopsFilter(stopsFilter.filter(v => v !== opt.value));
+                          } else {
+                            setStopsFilter([...stopsFilter, opt.value]);
+                          }
+                        }}
+                        style={{ accentColor: '#705d00' }}
+                      />
+                      <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Status filter */}
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.status", { defaultValue: 'Status' })}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
                   <input
-                    type="checkbox"
-                    checked={airlinesFilter.includes(airline)}
-                    onChange={() => {
-                      if (airlinesFilter.includes(airline)) setAirlinesFilter(airlinesFilter.filter(a => a !== airline));
-                      else setAirlinesFilter([...airlinesFilter, airline]);
-                    }}
+                    type="radio"
+                    name="status"
+                    value=""
+                    checked={statusFilter === ''}
+                    onChange={() => setStatusFilter('')}
                     style={{ accentColor: '#705d00' }}
                   />
-                  <span style={{ color: '#1a1c1d' }}>{airline}</span>
+                  <span style={{ color: '#1a1c1d' }}>{t("flights.allStatuses", { defaultValue: 'All Statuses' })}</span>
                 </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Baggage Filter */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Baggage</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[{ label: 'Check-in Baggage', value: 'checkin' }, { label: 'Cabin Baggage', value: 'cabin' }].map(opt => (
-              <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={baggageFilter.includes(opt.value)}
-                  onChange={() => {
-                    if (baggageFilter.includes(opt.value)) setBaggageFilter(baggageFilter.filter(b => b !== opt.value));
-                    else setBaggageFilter([...baggageFilter, opt.value]);
-                  }}
-                  style={{ accentColor: '#705d00' }}
-                />
-                <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Price Range */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
-
-          <div style={{ marginBottom: 16 }}>
-            <label htmlFor="min-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
-            <input
-              id="min-price-slider"
-              type="range"
-              min={absMin}
-              max={localMaxFare}
-              value={localMinFare}
-              onChange={e => setLocalMinFare(Number(e.target.value))}
-              onMouseUp={() => commitMinFare(localMinFare)}
-              onTouchEnd={() => commitMinFare(localMinFare)}
-              onKeyUp={() => commitMinFare(localMinFare)}
-              style={{ width: '100%', accentColor: '#705d00' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
-              <span>{INR(absMin)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMinFare)}</span>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="max-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
-            <input
-              id="max-price-slider"
-              type="range"
-              min={localMinFare}
-              max={absMax}
-              value={localMaxFare}
-              onChange={e => setLocalMaxFare(Number(e.target.value))}
-              onMouseUp={() => commitMaxFare(localMaxFare)}
-              onTouchEnd={() => commitMaxFare(localMaxFare)}
-              onKeyUp={() => commitMaxFare(localMaxFare)}
-              style={{ width: '100%', accentColor: '#705d00' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
-              <span>{INR(localMinFare)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMaxFare)}</span>
+                {statuses.map(s => (
+                  <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="status"
+                      value={s}
+                      checked={statusFilter === s}
+                      onChange={() => setStatusFilter(s)}
+                      style={{ accentColor: '#705d00' }}
+                    />
+                    <span style={{ color: '#1a1c1d' }}>{s.charAt(0) + s.slice(1).toLowerCase()}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Stops filter */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.stops", { defaultValue: 'Stops' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { label: t("flights.nonStop", { defaultValue: 'Non-stop' }), value: 0 },
-              { label: t("flights.oneStop", { defaultValue: '1 Stop' }), value: 1 },
-              { label: t("flights.twoPlusStops", { defaultValue: '2+ Stops' }), value: 2 },
-            ].map(opt => {
-              const isChecked = stopsFilter.includes(opt.value);
-              return (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {
-                      if (isChecked) {
-                        setStopsFilter(stopsFilter.filter(v => v !== opt.value));
-                      } else {
-                        setStopsFilter([...stopsFilter, opt.value]);
-                      }
-                    }}
-                    style={{ accentColor: '#705d00' }}
-                  />
-                  <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Status filter */}
-        <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.status", { defaultValue: 'Status' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="radio"
-                name="status"
-                value=""
-                checked={statusFilter === ''}
-                onChange={() => setStatusFilter('')}
-                style={{ accentColor: '#705d00' }}
-              />
-              <span style={{ color: '#1a1c1d' }}>{t("flights.allStatuses", { defaultValue: 'All Statuses' })}</span>
-            </label>
-            {statuses.map(s => (
-              <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="status"
-                  value={s}
-                  checked={statusFilter === s}
-                  onChange={() => setStatusFilter(s)}
-                  style={{ accentColor: '#705d00' }}
-                />
-                <span style={{ color: '#1a1c1d' }}>{s.charAt(0) + s.slice(1).toLowerCase()}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </aside>
-  </>
+      </aside>
+    </>
   );
 }
 
@@ -627,7 +676,7 @@ export default function UserFlightsList() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
-  
+
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [airlinesFilter, setAirlinesFilter] = useState([]);
   const [baggageFilter, setBaggageFilter] = useState([]);
@@ -647,6 +696,7 @@ export default function UserFlightsList() {
   }, [flights]);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const [cabinClass, setCabinClass] = useState(searchParams.get('class') || 'Economy');
   const source = searchParams.get('from') || '';
   const destination = searchParams.get('to') || '';
   const statusFilter = searchParams.get('status') || '';
@@ -763,6 +813,16 @@ export default function UserFlightsList() {
     }, { replace: true });
   };
 
+  const updateCabinClass = (val) => {
+    setCabinClass(val);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('class', val);
+      next.delete('page');
+      return next;
+    }, { replace: true });
+  };
+
   const setStopsFilter = (val) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -811,10 +871,11 @@ export default function UserFlightsList() {
         min_fare: minFare || undefined,
         max_fare: maxFare || undefined,
         stops: stopsFilter.length > 0 ? stopsFilter.join(',') : undefined,
+        class: cabinClass || undefined,
         ordering: 'departure_time',
       }
     }));
-  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, searchParams]);
+  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, cabinClass, searchParams]);
 
   // Clear flights on unmount to prevent showing old data briefly
   useEffect(() => {
@@ -836,9 +897,54 @@ export default function UserFlightsList() {
     }), { replace: true });
   };
 
-  // Static bounds for server-side pagination slider
-  const absMin = 0;
-  const absMax = 100000;
+  // Dynamic bounds for server-side pagination slider
+  const [absMin, setAbsMin] = useState(0);
+  const [absMax, setAbsMax] = useState(100000);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchBounds() {
+      try {
+        const params = new URLSearchParams();
+        if (source) params.set('source', source);
+        if (destination) params.set('destination', destination);
+        if (depDate) params.set('date', depDate);
+        params.set('page_size', '1');
+
+        // Fetch Min fare
+        params.set('ordering', 'base_fare');
+        const minRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
+        if (!minRes.ok) return;
+        const minData = await minRes.json();
+        const minVal = minData.results?.[0]?.base_fare;
+
+        // Fetch Max fare
+        params.set('ordering', '-base_fare');
+        const maxRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
+        if (!maxRes.ok) return;
+        const maxData = await maxRes.json();
+        const maxVal = maxData.results?.[0]?.base_fare;
+
+        if (active) {
+          const parsedMin = minVal ? Math.floor(parseFloat(minVal)) : 0;
+          let parsedMax = maxVal ? Math.ceil(parseFloat(maxVal)) : 100000;
+
+          if (parsedMax <= parsedMin && parsedMin > 0) {
+            parsedMax = parsedMin + 1000; // ensure max is always strictly > min if there's data
+          }
+
+          setAbsMin(parsedMin);
+          setAbsMax(parsedMax);
+        }
+      } catch (err) {
+        console.error("Failed to fetch absolute fare bounds", err);
+      }
+    }
+
+    fetchBounds();
+    return () => { active = false; };
+  }, [source, destination, depDate]);
 
 
 
@@ -972,6 +1078,7 @@ export default function UserFlightsList() {
         adults={adults} setAdults={setAdults}
         childrenCount={childrenCount} setChildrenCount={setChildrenCount}
         infants={infants} setInfants={setInfants}
+        cabinClass={cabinClass} setCabinClass={updateCabinClass}
       />
       <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '170px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
@@ -1044,7 +1151,7 @@ export default function UserFlightsList() {
                   {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
                 </div>
                 {/* Mobile Filter Button */}
-                <button 
+                <button
                   className="mobile-filter-btn"
                   onClick={() => setMobileFiltersOpen(true)}
                   style={{
