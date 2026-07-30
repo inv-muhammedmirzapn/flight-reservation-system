@@ -25,6 +25,7 @@ export default function AdminCrudPage({
   thunks,
   extraActions,
   filterBar,
+  pageActions,
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -195,9 +196,12 @@ export default function AdminCrudPage({
               )}
             </div>
           </div>
-          <button className="btn-primary" onClick={openCreate} id={`add-${entityName}-btn`}>
-            <Plus size={15} /> Add New
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {pageActions}
+            <button className="btn-primary" onClick={openCreate} id={`add-${entityName}-btn`}>
+              <Plus size={15} /> Add New
+            </button>
+          </div>
         </div>
 
         {/* Toolbar */}

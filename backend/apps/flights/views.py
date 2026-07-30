@@ -349,11 +349,38 @@ class FlightBulkImportView(APIView):
 # ─── New entity ViewSets ────────────────────────────────────────────────────────
 
 class CountryViewSet(AdminModelViewSet):
-    queryset = Country.objects.all().order_by("name")
+    queryset = Country.objects.all().order_by("id")
     serializer_class = CountrySerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "iso_code"]
-    ordering_fields = ["name", "iso_code"]
+    ordering_fields = ["id", "name", "iso_code"]
+
+    @action(detail=False, methods=["post"], url_path="populate-presets")
+    def populate_presets(self, request):
+        """
+        POST /api/v2/countries/populate-presets/
+        Populate standard ISO countries using pycountry.
+        """
+        import pycountry
+        created_count = 0
+        updated_count = 0
+        for c in pycountry.countries:
+            iso_code = c.alpha_2.upper()
+            name = c.name
+            country_obj = Country.objects.filter(iso_code=iso_code).first()
+            if country_obj:
+                if country_obj.name != name:
+                    country_obj.name = name
+                    country_obj.save()
+                    updated_count += 1
+            else:
+                Country.objects.create(name=name, iso_code=iso_code)
+                created_count += 1
+        return Response({
+            "detail": f"Successfully populated countries. Created {created_count}, updated {updated_count}.",
+            "created_count": created_count,
+            "updated_count": updated_count
+        }, status=status.HTTP_200_OK)
 
 
 class AirportViewSet(AdminModelViewSet):
@@ -367,13 +394,14 @@ class AirportViewSet(AdminModelViewSet):
         country_id = self.request.query_params.get("country")
         if country_id:
             qs = qs.filter(country_id=country_id)
-        # ?q= does prefix search (startswith) across city, iata_code, airport_name
+        # ?q= does prefix search (startswith) across city, iata_code, airport_name, country
         q = self.request.query_params.get("q", "").strip()
         if q:
             qs = qs.filter(
                 Q(city__istartswith=q) |
                 Q(iata_code__istartswith=q) |
-                Q(airport_name__istartswith=q)
+                Q(airport_name__istartswith=q) |
+                Q(country__name__istartswith=q)
             )
         # fallback: ?search= still works (contains) for admin pages
         search = self.request.query_params.get("search", "").strip()
@@ -381,9 +409,182 @@ class AirportViewSet(AdminModelViewSet):
             qs = qs.filter(
                 Q(city__icontains=search) |
                 Q(iata_code__icontains=search) |
-                Q(airport_name__icontains=search)
+                Q(airport_name__icontains=search) |
+                Q(country__name__icontains=search)
             )
         return qs.order_by("city")
+
+    @action(detail=False, methods=["post"], url_path="import-openflights")
+    def import_openflights(self, request):
+        """
+        POST /api/v2/airports/import-openflights/
+        Import airport data from OpenFlights.
+        Accepts:
+          - A file upload (in form-data request.FILES['file'])
+          - Or if no file is uploaded, fetches automatically from OpenFlights URL.
+          - ?overwrite=true query param to overwrite existing records.
+          - ?limit=N to limit the number of imported records.
+        """
+        from decimal import Decimal
+        import requests
+        import csv
+        import io
+        import pycountry
+
+        overwrite = request.query_params.get("overwrite", "false").lower() == "true"
+        limit = request.query_params.get("limit")
+        if limit:
+            try:
+                limit = int(limit)
+            except ValueError:
+                limit = None
+
+        countries_param = request.query_params.get("countries", "").strip()
+        filter_countries = []
+        if countries_param:
+            filter_countries = [c.strip().lower() for c in countries_param.split(",") if c.strip()]
+
+        csv_file = request.FILES.get("file")
+        csv_content = ""
+
+        if csv_file:
+            try:
+                csv_content = csv_file.read().decode("utf-8", errors="ignore")
+            except Exception as e:
+                return Response({"detail": f"Failed to read uploaded file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            url = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat"
+            try:
+                response = requests.get(url, timeout=15)
+                if response.status_code == 200:
+                    csv_content = response.text
+                else:
+                    return Response({"detail": f"Failed to download OpenFlights data: HTTP {response.status_code}"}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"detail": f"Failed to connect to OpenFlights: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse the CSV contents
+        reader = csv.reader(io.StringIO(csv_content))
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+
+        # Cache countries in memory to speed up lookups
+        country_cache = {c.name.lower(): c for c in Country.objects.all()}
+        country_iso_cache = {c.iso_code.upper(): c for c in Country.objects.all()}
+
+        for row in reader:
+            if not row or len(row) < 8:
+                continue
+
+            # If we reached the limit, stop
+            if limit and (created_count + updated_count) >= limit:
+                break
+
+            iata_code = row[4].strip().upper()
+            if not iata_code or len(iata_code) != 3 or iata_code == "\\N":
+                skipped_count += 1
+                continue
+
+            airport_name = row[1].strip()[:200]
+            if not airport_name or airport_name == "\\N":
+                airport_name = "Unknown Airport"
+
+            city = row[2].strip()[:100]
+            if not city or city == "\\N":
+                city = "Unknown"
+
+            country_name = row[3].strip()
+
+            # Filter by country if specified
+            if filter_countries and country_name.lower() not in filter_countries:
+                continue
+
+            # Find or create country
+            country_obj = country_cache.get(country_name.lower())
+            if not country_obj:
+                # Try finding by fuzzy pycountry lookup
+                try:
+                    res = pycountry.countries.search_fuzzy(country_name)
+                    if res:
+                        iso_2 = res[0].alpha_2.upper()
+                        # check if ISO code already in DB
+                        country_obj = country_iso_cache.get(iso_2)
+                        if not country_obj:
+                            country_obj = Country.objects.create(name=res[0].name, iso_code=iso_2)
+                            # update cache
+                            country_cache[country_name.lower()] = country_obj
+                            country_iso_cache[iso_2] = country_obj
+                except Exception:
+                    pass
+
+            if not country_obj:
+                # Generate a unique fallback ISO code
+                try:
+                    fallback_iso = country_name[:2].upper()
+                    suffix = 1
+                    while Country.objects.filter(iso_code=fallback_iso).exists() or fallback_iso in country_iso_cache:
+                        # limit suffix to make sure fallback_iso is max 3 chars
+                        fallback_iso = f"{country_name[:2].upper()[:2]}{suffix}"[:3]
+                        suffix += 1
+                    country_obj = Country.objects.create(name=country_name, iso_code=fallback_iso)
+                    country_cache[country_name.lower()] = country_obj
+                    country_iso_cache[fallback_iso] = country_obj
+                except Exception:
+                    # if country creation fails, skip this row
+                    skipped_count += 1
+                    continue
+
+            # Coordinates
+            try:
+                latitude = round(Decimal(row[6].strip()), 6)
+            except Exception:
+                latitude = None
+            try:
+                longitude = round(Decimal(row[7].strip()), 6)
+            except Exception:
+                longitude = None
+
+            timezone_str = row[11].strip()
+            if not timezone_str or timezone_str == "\\N":
+                timezone_str = "UTC"
+
+            try:
+                # Check existing
+                ap = Airport.objects.filter(iata_code=iata_code).first()
+                if ap:
+                    if overwrite:
+                        ap.airport_name = airport_name
+                        ap.city = city
+                        ap.timezone = timezone_str
+                        ap.latitude = latitude
+                        ap.longitude = longitude
+                        ap.country = country_obj
+                        ap.save()
+                        updated_count += 1
+                    else:
+                        skipped_count += 1
+                else:
+                    Airport.objects.create(
+                        iata_code=iata_code,
+                        airport_name=airport_name,
+                        city=city,
+                        timezone=timezone_str,
+                        latitude=latitude,
+                        longitude=longitude,
+                        country=country_obj,
+                        terminals=["T1", "T2", "T3"]
+                    )
+                    created_count += 1
+            except Exception:
+                skipped_count += 1
+
+        return Response({
+            "detail": f"OpenFlights import completed. Created {created_count}, updated {updated_count}, skipped {skipped_count}.",
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "skipped_count": skipped_count
+        }, status=status.HTTP_200_OK)
 
 
 class AirlineViewSet(AdminModelViewSet):

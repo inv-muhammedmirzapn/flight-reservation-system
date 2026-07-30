@@ -105,6 +105,48 @@ export const generateSeats = createAsyncThunk(
   }
 );
 
+// Custom: populate standard countries from pycountry presets
+export const populateCountries = createAsyncThunk(
+  'country/populatePresets',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth('/flights/v2/countries/populate-presets/', {
+        method: 'POST',
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to populate countries');
+    }
+  }
+);
+
+// Custom: import openflights airports
+export const importOpenFlights = createAsyncThunk(
+  'airport/importOpenFlights',
+  async (params = {}, { rejectWithValue }) => {
+    const { overwrite, limit, file, countries } = params;
+    const query = new URLSearchParams();
+    if (overwrite !== undefined) query.append('overwrite', overwrite);
+    if (limit !== undefined) query.append('limit', limit);
+    if (countries !== undefined) query.append('countries', countries);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    try {
+      let body;
+      if (file) {
+        body = new FormData();
+        body.append('file', file);
+      }
+      return await fetchWithAuth(`/flights/v2/airports/import-openflights/${queryString}`, {
+        method: 'POST',
+        body,
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to import airports');
+    }
+  }
+);
+
+
 // ─── Seat ─────────────────────────────────────────────────────────────────────
 const seatSliceDef = createCrudSlice('seat', '/flights/v2/seats');
 export const seatActions = seatSliceDef.actions;

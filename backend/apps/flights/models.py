@@ -122,7 +122,7 @@ class Country(models.Model):
 
     class Meta:
         verbose_name_plural = "Countries"
-        ordering = ["name"]
+        ordering = ["id"]
 
     def clean(self):
         if self.iso_code:
