@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/waitlist/', include('apps.waitlist.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/bulk-upload/', include('apps.bulk_upload.urls')),
 
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

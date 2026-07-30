@@ -38,6 +38,12 @@ const ADMIN_GROUPS = [
       { label: 'Passengers',     href: '/admin/records/passengers' },
     ],
   },
+  {
+    label: 'System',
+    links: [
+      { label: 'Bulk Import', href: '/admin/system/data-management' },
+    ],
+  },
 ];
 
 // Nav links shown when authenticated (adapted for the app dashboard)

@@ -45,6 +45,7 @@ export default function FlightRoutesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
+  const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -68,8 +69,14 @@ export default function FlightRoutesPage() {
 
   const openEdit = (route) => {
     setEditId(route.id);
+    const selectedAirline = airlines.find((a) => String(a.id) === String(route.airline));
+    let numericFlightNo = route.flight_no || '';
+    if (selectedAirline && selectedAirline.iata_airline_code) {
+      const regex = new RegExp(`^${selectedAirline.iata_airline_code}[-]?`, 'i');
+      numericFlightNo = numericFlightNo.replace(regex, '');
+    }
     setForm({
-      flight_no: route.flight_no || '',
+      flight_no: numericFlightNo,
       airline: route.airline || '',
       baggage_weight_allowed_per_person: route.baggage_weight_allowed_per_person || '20',
       baggage_number_allowed_per_person: route.baggage_number_allowed_per_person || '',
@@ -125,7 +132,9 @@ export default function FlightRoutesPage() {
   // ─── Validation ──────────────────────────────────────────────────────────────
   const validateForm = () => {
     const e = {};
-    if (!form.flight_no || form.flight_no.trim().length < 2) e.flight_no = 'Flight number must be at least 2 characters.';
+    if (!form.flight_no || !/^\d+$/.test(form.flight_no.trim())) {
+      e.flight_no = 'Flight number must be numeric (e.g., 202).';
+    }
     if (!form.airline) e.airline = 'Airline is required.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
@@ -163,8 +172,13 @@ export default function FlightRoutesPage() {
     e.preventDefault();
     if (!validateForm()) { toast.error('Fix validation errors.'); return; }
 
+    const selectedAirline = airlines.find((a) => String(a.id) === String(form.airline));
+    const prefix = selectedAirline ? `${selectedAirline.iata_airline_code}-` : '';
+    const fullFlightNo = `${prefix}${form.flight_no.trim()}`;
+
     const payload = {
       ...form,
+      flight_no: fullFlightNo,
       legs: form.legs.map((leg, i) => ({ ...leg, leg_order: i + 1 })),
     };
 
@@ -307,12 +321,94 @@ export default function FlightRoutesPage() {
             <form onSubmit={handleSubmit}>
               {/* General */}
               <div className="admin-form-grid" style={{ marginBottom: 20 }}>
-                <Input id="flight_no" label="Flight Number" placeholder="e.g. 6E-202" value={form.flight_no}
-                  onChange={(e) => setForm((f) => ({ ...f, flight_no: e.target.value }))}
-                  error={localErrors.flight_no} disabled={!!editId} />
-                <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
-                  onChange={(e) => setForm((f) => ({ ...f, airline: e.target.value }))}
+                 <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
+                  onChange={(e) => {
+                    const airlineId = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      airline: airlineId,
+                      flight_no: '',
+                    }));
+                  }}
                   error={localErrors.airline} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label htmlFor="flight_no" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>
+                    Flight Number
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {form.airline ? (() => {
+                      const selected = airlines.find((a) => String(a.id) === String(form.airline));
+                      if (selected) {
+                        return (
+                          <div style={{
+                            padding: '9px 14px',
+                            background: 'rgba(0, 0, 0, 0.04)',
+                            border: `1.5px solid ${
+                              localErrors.flight_no
+                                ? '#b91c1c'
+                                : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
+                            }`,
+                            borderRight: 'none',
+                            borderRadius: '10px 0 0 10px',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: '#5e5e5e',
+                            fontFamily: 'Inter, sans-serif',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            boxSizing: 'border-box',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            {selected.iata_airline_code} -
+                          </div>
+                        );
+                      }
+                      return null;
+                    })() : null}
+                    <input
+                      id="flight_no"
+                      placeholder={form.airline ? "e.g. 202" : "Select airline first..."}
+                      value={form.flight_no}
+                      disabled={!!editId || !form.airline}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, ''); // only allow digits
+                        setForm((f) => ({ ...f, flight_no: val }));
+                      }}
+                      onFocus={() => setIsFlightNoFocused(true)}
+                      onBlur={() => setIsFlightNoFocused(false)}
+                      style={{
+                        flex: 1,
+                        background: form.airline
+                          ? (isFlightNoFocused ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)')
+                          : 'rgba(0,0,0,0.03)',
+                        border: `1.5px solid ${
+                          localErrors.flight_no
+                            ? '#b91c1c'
+                            : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
+                        }`,
+                        borderLeft: form.airline ? 'none' : undefined,
+                        borderRadius: form.airline ? '0 10px 10px 0' : '10px',
+                        padding: '9px 13px',
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: '#1a1c1d',
+                        fontFamily: 'Inter, sans-serif',
+                        outline: 'none',
+                        height: '40px',
+                        boxSizing: 'border-box',
+                        boxShadow: localErrors.flight_no
+                          ? (isFlightNoFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
+                          : (isFlightNoFocused ? '0 0 0 3px rgba(0,0,0,0.05)' : 'none'),
+                        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s'
+                      }}
+                    />
+                  </div>
+                  {localErrors.flight_no && (
+                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>{localErrors.flight_no}</p>
+                  )}
+                </div>
                 <Input id="baggage_weight" label="Baggage Allowance (kg)" type="number"
                   value={form.baggage_weight_allowed_per_person}
                   onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_per_person: e.target.value }))} />

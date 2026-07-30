@@ -38,6 +38,8 @@ const MealsPage = lazy(() => import('@/pages/admin/operations/MealsPage'));
 const AdminBookingsPage = lazy(() => import('@/pages/admin/records/AdminBookingsPage'));
 const AdminPaymentsPage = lazy(() => import('@/pages/admin/records/AdminPaymentsPage'));
 const AdminPassengersPage = lazy(() => import('@/pages/admin/records/AdminPassengersPage'));
+// System
+const DataManagementPage = lazy(() => import('@/pages/admin/system/DataManagementPage'));
 
 const LoadingFallback = () => (
   <div className="flex-grow flex items-center justify-center min-h-[50vh]">
@@ -219,6 +221,9 @@ const router = createBrowserRouter([
       { path: 'admin/records/bookings', element: adminRoute(<AdminBookingsPage />) },
       { path: 'admin/records/payments', element: adminRoute(<AdminPaymentsPage />) },
       { path: 'admin/records/passengers', element: adminRoute(<AdminPassengersPage />) },
+
+      // ── System ───────────────────────────────────────────────────────────────
+      { path: 'admin/system/data-management', element: adminRoute(<DataManagementPage />) },
 
       // Fallback
       {
