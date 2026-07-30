@@ -67,6 +67,14 @@ export default function FlightsPage() {
         const response = await flightsAPI.list(1, queryParams);
         let results = response.results || response || [];
 
+        // 0. Exclude departed flights (status DEPARTED/ARRIVED or departure_time in past)
+        const now = new Date();
+        results = results.filter((f) => {
+          if (f.status === "DEPARTED" || f.status === "ARRIVED") return false;
+          if (f.departure_time && new Date(f.departure_time) <= now) return false;
+          return true;
+        });
+
         // 1. Waitlist Mode Filter (All / Hide Waitlisted / Waitlist Only)
         if (filters.waitlistMode === "available_only") {
           results = results.filter((f) => Number(f.available_seats) > 0);

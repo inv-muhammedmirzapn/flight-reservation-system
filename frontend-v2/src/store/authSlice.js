@@ -149,6 +149,12 @@ const authSlice = createSlice({
     },
     clearAuthError: (state) => {
       state.error = null;
+    },
+    updateProfileSuccess: (state, action) => {
+      state.profile = action.payload;
+      if (action.payload?.role) {
+        state.isAdmin = state.decodedToken?.is_superuser || action.payload.role === 'ADMIN';
+      }
     }
   },
   extraReducers: (builder) => {
@@ -217,5 +223,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearAuthError } = authSlice.actions;
+export const { logout, clearAuthError, updateProfileSuccess } = authSlice.actions;
 export default authSlice.reducer;

@@ -148,7 +148,7 @@ export default function Navbar() {
 
               {/* Dropdown Menu */}
               {isProfileMenuOpen && (
-                <div className="absolute right-0 top-12 w-48 bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-xl rounded-2xl p-2 animate-fade-in z-50">
+                <div className="absolute right-0 top-12 w-48 bg-white backdrop-blur-xl border border-slate-200/60 shadow-xl rounded-2xl p-2 animate-fade-in z-50">
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="text-xs font-bold text-slate-800 truncate">
                       {profile?.username || decodedToken?.username || "Passenger"}
@@ -156,6 +156,17 @@ export default function Navbar() {
                     {profile?.email && (
                       <p className="text-[10px] text-slate-500 truncate">{profile.email}</p>
                     )}
+                  </div>
+
+                  <div className="py-1 border-b border-slate-100">
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100/80 rounded-xl transition-colors cursor-pointer text-left"
+                    >
+                      <span className="material-symbols-outlined text-sm">person</span>
+                      My Profile
+                    </Link>
                   </div>
 
                   <button

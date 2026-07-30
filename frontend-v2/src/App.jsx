@@ -11,6 +11,9 @@ import FlightsPage from "@/pages/flights/FlightsPage";
 import FlightDetailPage from "@/pages/flights/FlightDetailPage";
 import BookingConfirmationPage from "@/pages/bookings/BookingConfirmationPage";
 import MyBookingsPage from "@/pages/bookings/MyBookingsPage";
+import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
+import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
+import UserProfilePage from "@/pages/profile/UserProfilePage";
 
 export default function App() {
   return (
@@ -86,6 +89,14 @@ export default function App() {
 
               {/* Protected Routes (Authentication Required) */}
               <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <UserProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/my-bookings"
                 element={
                   <ProtectedRoute>
@@ -106,6 +117,38 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <BookingConfirmationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-bookings/ticket/:id"
+                element={
+                  <ProtectedRoute>
+                    <TicketDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-bookings/ticket/waitlist/:id"
+                element={
+                  <ProtectedRoute>
+                    <TicketDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-bookings/cancel/:id"
+                element={
+                  <ProtectedRoute>
+                    <TicketCancellationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-bookings/cancel/waitlist/:id"
+                element={
+                  <ProtectedRoute>
+                    <TicketCancellationPage />
                   </ProtectedRoute>
                 }
               />

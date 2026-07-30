@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
@@ -7,12 +7,14 @@ import TicketCard from "@/components/bookings/TicketCard";
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPastBookings, setShowPastBookings] = useState(location.state?.showPastBookings || false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -62,12 +64,38 @@ export default function MyBookingsPage() {
     };
   }, [isAuthenticated, navigate]);
 
+  // Helper to determine if a ticket is past/inactive (CANCELLED or EXPIRED)
+  const isPastTicket = (item) => {
+    const status = String(item.status || "").toUpperCase();
+    return status === "CANCELLED" || status === "EXPIRED";
+  };
+
+  const activeItems = items.filter((item) => !isPastTicket(item));
+  const pastItems = items.filter((item) => isPastTicket(item));
+
+  const displayedItems = showPastBookings ? pastItems : activeItems;
+
   return (
-    <div className="flex-1 min-h-screen mt-12 pt-12 pb-16 px-4 md:px-6 max-w-5xl mx-auto w-full">
-      {/* Heading */}
-      <h1 className="text-2xl font-bold text-slate-950 mb-6 ml-2">
-        My Bookings
-      </h1>
+    <div className="flex-1 min-h-screen mt-12 pt-12 pb-16 px-4 md:px-6 max-w-6xl mx-auto w-full">
+      {/* Header Container with Toggle Link */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-2">
+        <h1 className="text-xl font-bold text-slate-950">
+          {showPastBookings ? "Past Bookings" : "My Bookings"}
+        </h1>
+
+        <button
+          type="button"
+          onClick={() => setShowPastBookings((prev) => !prev)}
+          className="text-xs font-semibold text-slate-600 hover:text-slate-950 cursor-pointer transition-colors flex items-center mt-2 gap-1.5"
+        >
+          <span className="material-symbols-outlined text-base">
+            {showPastBookings ? "arrow_back" : "history"}
+          </span>
+          {showPastBookings
+            ? `View active bookings (${activeItems.length})`
+            : `View past bookings (${pastItems.length})`}
+        </button>
+      </div>
 
       {loading ? (
         <div className="space-y-4">
@@ -80,27 +108,47 @@ export default function MyBookingsPage() {
           <span className="material-symbols-outlined text-3xl text-rose-500">error</span>
           <p className="text-sm font-semibold text-slate-700">{error}</p>
         </div>
-      ) : items.length === 0 ? (
+      ) : displayedItems.length === 0 ? (
         <div className="plain-card rounded-3xl p-10 text-center space-y-4 max-w-md mx-auto mt-6">
           <span className="material-symbols-outlined text-4xl text-slate-400">
-            airplane_ticket
+            {showPastBookings ? "history" : "airplane_ticket"}
           </span>
-          <h3 className="text-base font-bold text-slate-900">No Bookings Found</h3>
+          <h3 className="text-base font-bold text-slate-900">
+            {showPastBookings ? "No Past Bookings" : "No Active Bookings"}
+          </h3>
           <p className="text-xs text-slate-500">
-            You don&apos;t have any active flight bookings or waitlisted tickets yet.
+            {showPastBookings
+              ? "You don't have any cancelled or expired bookings."
+              : "You don't have any active flight bookings or waitlisted tickets."}
           </p>
-          <button
-            type="button"
-            onClick={() => navigate("/flights")}
-            className="btn-primary text-slate-950 px-5 py-2.5 rounded-full text-xs font-bold shadow-2xs"
-          >
-            Search Flights
-          </button>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            {!showPastBookings ? (
+              <button
+                type="button"
+                onClick={() => navigate("/flights")}
+                className="btn-primary text-slate-950 px-5 py-2.5 rounded-full text-xs font-bold shadow-2xs"
+              >
+                Search Flights
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowPastBookings(false)}
+                className="btn-primary text-slate-950 px-5 py-2.5 rounded-full text-xs font-bold shadow-2xs"
+              >
+                Back to Active Bookings
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-8">
-          {items.map((item) => (
-            <TicketCard key={`${item.itemType}-${item.id}`} item={item} />
+          {displayedItems.map((item) => (
+            <TicketCard
+              key={`${item.itemType}-${item.id}`}
+              item={item}
+              isPastView={showPastBookings}
+            />
           ))}
         </div>
       )}

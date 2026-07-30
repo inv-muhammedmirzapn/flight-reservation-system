@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function TicketCard({ item }) {
+export default function TicketCard({ item, isPastView = false }) {
   const navigate = useNavigate();
 
   if (!item) return null;
@@ -9,7 +9,7 @@ export default function TicketCard({ item }) {
   const isWaitlist = item.itemType === "WAITLIST" || Boolean(item.queue_position !== undefined && item.queue_position !== null);
   const flight = item.flight_detail || item.flight || {};
 
-  // Formats timestamp for black top header: e.g. 08:57 10th July, 2026
+  // Formats timestamp for black top header: e.g. 08:57 on 10th July, 2026
   const formatHeaderTimestamp = (isoStr) => {
     if (!isoStr) return "";
     const d = new Date(isoStr);
@@ -96,14 +96,15 @@ export default function TicketCard({ item }) {
   // Ticket Status Badge
   const ticketStatus = (item.status || "CONFIRMED").toUpperCase();
   const getTicketStatusBadge = () => {
-    if (isWaitlist) {
+    if (ticketStatus === "EXPIRED") {
       return (
-        <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
-          {item.queue_position ? `WL #${item.queue_position}` : "Waitlisted"}
-          <span className="material-symbols-outlined text-sm">hourglass_top</span>
+        <span className="bg-slate-200 text-slate-700 border border-slate-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+          Expired
+          <span className="material-symbols-outlined text-sm">hourglass_disabled</span>
         </span>
       );
     }
+
     if (ticketStatus === "CANCELLED") {
       return (
         <span className="bg-rose-100 text-rose-950 border border-rose-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
@@ -112,6 +113,16 @@ export default function TicketCard({ item }) {
         </span>
       );
     }
+
+    if (isWaitlist) {
+      return (
+        <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+          {item.queue_position ? `WL #${item.queue_position}` : "Waitlisted"}
+          <span className="material-symbols-outlined text-sm">hourglass_top</span>
+        </span>
+      );
+    }
+
     // Confirmed
     return (
       <span className="bg-white text-slate-950 border border-slate-300/80 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
@@ -123,14 +134,18 @@ export default function TicketCard({ item }) {
 
   const handleCardClick = () => {
     if (isWaitlist) {
-      navigate(`/booking-confirmation/waitlist/${item.id}`, { state: { waitlist: item, flight } });
+      navigate(`/my-bookings/ticket/waitlist/${item.id}`, {
+        state: { waitlist: item, flight, showPastBookings: isPastView }
+      });
     } else {
-      navigate(`/booking-confirmation/${item.id}`, { state: { booking: item, flight } });
+      navigate(`/my-bookings/ticket/${item.id}`, {
+        state: { booking: item, flight, showPastBookings: isPastView }
+      });
     }
   };
 
   return (
-    <div className="group animate-fade-in shadow-2xs hover:shadow-xs ">
+    <div className="group animate-fade-in shadow-2xs hover:shadow-xs">
       {/* Top Black Header Bar */}
       <div className="rounded-t-3xl mx-auto bg-slate-950 text-white px-5 pt-2 pb-7 flex items-center justify-between text-[10px] font-semibold tracking-wide">
         <span className="text-slate-200">
@@ -138,6 +153,7 @@ export default function TicketCard({ item }) {
         </span>
         <span className="text-slate-300 font-medium">Booked at {headerTime}</span>
       </div>
+
       <div
         onClick={handleCardClick}
         className={`w-full rounded-3xl overflow-hidden transition-all duration-300 cursor-pointer -mt-5 ${
@@ -146,7 +162,6 @@ export default function TicketCard({ item }) {
             : "plain-card border border-slate-200/70"
         }`}
       >
-
         {/* Main Card Content (Styled like FlightCard.jsx) */}
         <div className="px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
           {/* 1. Airline & Flight Info */}

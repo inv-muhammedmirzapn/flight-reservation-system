@@ -79,7 +79,7 @@ class BookingViewSet(mixins.CreateModelMixin,
         try:
             booking = cancel_booking(booking_id=pk, user=request.user)
             return Response(
-                {"detail": "Booking cancelled successfully. Waitlist allocation triggered (if applicable).", "status": booking.status},
+                {"detail": "Booking cancelled successfully.", "status": booking.status},
                 status=status.HTTP_200_OK
             )
         except ValidationError as e:

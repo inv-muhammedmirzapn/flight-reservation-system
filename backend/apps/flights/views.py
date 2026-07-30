@@ -4,6 +4,7 @@ from django.http import Http404
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -108,6 +109,17 @@ class FlightListCreateView(APIView):
         else:
             qs = Flight.objects.all().order_by('departure_time')
 
+        # Filter out flights that have already departed unless explicitly requested
+        include_departed = request.query_params.get('include_departed', '').strip().lower() == 'true'
+        status_filter = request.query_params.get('status', '').strip().upper()
+
+        if not include_departed and status_filter not in ['DEPARTED', 'ARRIVED']:
+            now = timezone.now()
+            qs = qs.exclude(
+                Q(status__in=['DEPARTED', 'ARRIVED']) |
+                Q(departure_time__lte=now)
+            )
+
         search = request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(
@@ -117,7 +129,6 @@ class FlightListCreateView(APIView):
                 Q(destination_airport__icontains=search)
             )
 
-        status_filter = request.query_params.get('status', '').strip().upper()
         if status_filter:
             qs = qs.filter(status=status_filter)
 
