@@ -5,6 +5,7 @@ from .views import (
     WaitlistDetailView,
     WaitlistCancelView,
     WaitlistFlightCountView,
+    WaitlistPromoteView,
 )
 
 urlpatterns = [
@@ -12,6 +13,7 @@ urlpatterns = [
     path("", WaitlistListView.as_view(), name="waitlist-list"),
     path("<uuid:pk>/", WaitlistDetailView.as_view(), name="waitlist-detail"),
     path("<uuid:pk>/cancel/", WaitlistCancelView.as_view(), name="waitlist-cancel"),
+    path("<uuid:pk>/promote/", WaitlistPromoteView.as_view(), name="waitlist-promote"),
     path(
         "flight/<uuid:flight_id>/",
         WaitlistFlightCountView.as_view(),

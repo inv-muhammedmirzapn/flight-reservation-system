@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
-from apps.flights.models import Flight
+from apps.flights.models import Flight, CabinClass
 from apps.bookings.models import Booking
 
 
@@ -28,6 +28,11 @@ class WaitlistEntry(models.Model):
     seat_count = models.PositiveIntegerField(
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(9)],
+    )
+    cabin_class = models.CharField(
+        max_length=10,
+        choices=CabinClass.choices,
+        default=CabinClass.ECONOMY
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(

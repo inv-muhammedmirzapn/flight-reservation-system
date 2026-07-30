@@ -49,7 +49,15 @@ class GoogleLoginView(APIView):
         request=inline_serializer(
             name='GoogleLoginRequest',
             fields={'token': rf_serializers.CharField()}
-        )
+        ),
+        responses={200: inline_serializer('GoogleLoginResponse', {
+            'refresh': rf_serializers.CharField(),
+            'access': rf_serializers.CharField(),
+            'id': rf_serializers.IntegerField(),
+            'username': rf_serializers.CharField(),
+            'email': rf_serializers.CharField(),
+            'role': rf_serializers.CharField(),
+        })}
     )
     def post(self, request, *args, **kwargs):
         token = request.data.get('token')

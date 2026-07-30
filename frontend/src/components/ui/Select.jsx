@@ -10,6 +10,7 @@ export function Select({
   value,
   onChange,
   disabled = false,
+  error,
   style = {},
   ...props
 }) {
@@ -30,7 +31,7 @@ export function Select({
     return opt;
   });
 
-  const selectedOption = normalizedOptions.find(opt => opt.value === value) || normalizedOptions[0];
+  const selectedOption = normalizedOptions.find(opt => String(opt.value) === String(value)) || (value === '' ? null : normalizedOptions[0]);
 
   // Compute dropdown position from the trigger button's bounding rect
   const updateDropdownPosition = () => {
@@ -160,9 +161,9 @@ export function Select({
   const triggerStyle = {
     width: '100%',
     background: disabled ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.65)',
-    border: isFocused && !disabled
-      ? '1.5px solid #705d00'
-      : '1.5px solid rgba(0,0,0,0.1)',
+    border: error
+      ? '1.5px solid #b91c1c'
+      : (isFocused && !disabled ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)'),
     borderRadius: 10,
     padding: '9px 36px 9px 13px',
     fontSize: 14,
@@ -175,7 +176,9 @@ export function Select({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    boxShadow: isFocused && !disabled ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none',
+    boxShadow: error
+      ? '0 0 0 3px rgba(185,28,28,0.1)'
+      : (isFocused && !disabled ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none'),
     transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
     ...style,
   };
@@ -292,6 +295,9 @@ export function Select({
 
         {dropdown}
       </div>
+      {error && (
+        <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>{error}</p>
+      )}
     </div>
   );
 }

@@ -360,7 +360,7 @@ export default function AnalyticsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
                   <YAxis width={100} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false}
-                    tickFormatter={v => v >= 10_000_000 ? `₹${(v/10_000_000).toFixed(1)}Cr` : v >= 100_000 ? `₹${(v/100_000).toFixed(0)}L` : `₹${(v/1000).toFixed(0)}k`} />
+                    tickFormatter={v => v >= 10_000_000 ? `₹${(v / 10_000_000).toFixed(1)}Cr` : v >= 100_000 ? `₹${(v / 100_000).toFixed(0)}L` : `₹${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip currency />} />
                   <Area
                     type="monotone" dataKey="revenue" name={t('admin.analytics.tooltip.revenue')}

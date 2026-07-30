@@ -24,6 +24,7 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
             "flight",
             "flight_detail",
             "seat_count",
+            "cabin_class",
             "price",
             "status",
             "booking",

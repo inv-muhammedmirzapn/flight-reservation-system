@@ -7,15 +7,51 @@ import { LogoutConfirmDialog } from '@/components/ui/LogoutConfirmDialog';
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
+// Admin nav: grouped by domain, each group renders as a dropdown
+const ADMIN_GROUPS = [
+  {
+    label: 'Master Data',
+    links: [
+      { label: 'Countries',      href: '/admin/master/countries' },
+      { label: 'Airports',       href: '/admin/master/airports' },
+      { label: 'Airlines',       href: '/admin/master/airlines' },
+      { label: 'Aircraft Models',href: '/admin/master/aircraft-models' },
+      { label: 'Aircraft',       href: '/admin/master/aircraft' },
+      { label: 'Food Items',     href: '/admin/master/food-items' },
+    ],
+  },
+  {
+    label: 'Operations',
+    links: [
+      { label: 'Flight Routes',  href: '/admin/operations/flight-routes' },
+      { label: 'Instances',      href: '/admin/operations/flight-instances' },
+      { label: 'Seat Map',       href: '/admin/operations/seat-map' },
+      { label: 'Fares',          href: '/admin/operations/fares' },
+      { label: 'Meals',          href: '/admin/operations/meals' },
+    ],
+  },
+  {
+    label: 'Records',
+    links: [
+      { label: 'Bookings',       href: '/admin/records/bookings' },
+      { label: 'Payments',       href: '/admin/records/payments' },
+      { label: 'Passengers',     href: '/admin/records/passengers' },
+    ],
+  },
+  {
+    label: 'System',
+    links: [
+      { label: 'Bulk Import', href: '/admin/system/data-management' },
+    ],
+  },
+];
+
 // Nav links shown when authenticated (adapted for the app dashboard)
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
   { labelKey: "bookings", href: "/my-bookings" },
-];
-
-const ADMIN_NAV_LINKS = [
-  { labelKey: "flights", href: "/admin/flights" },
-  { labelKey: "analytics", href: "/admin/analytics" },
+  { labelKey: "rewards", href: "/rewards" },
+  { labelKey: "support", href: "/#support" },
 ];
 
 export function Navbar() {
@@ -27,8 +63,9 @@ export function Navbar() {
   const { unreadCount } = useSelector((state) => state.notifications);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState(null); // for admin mega-nav
   const dropdownRef = useRef(null);
+  const groupRefs = useRef({});
 
   const [localFirstName, setLocalFirstName] = useState(localStorage.getItem("firstName") || "");
 
@@ -48,11 +85,6 @@ export function Navbar() {
     }
   }, [dispatch, isAuthenticated, isAdmin]);
 
-  // Close mobile drawer when route changes
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
-
   // Build initials from Redux profile or local storage
   const firstName = profile?.first_name || localFirstName || "";
   const username = profile?.username || "";
@@ -63,28 +95,21 @@ export function Navbar() {
       ? firstName.charAt(0).toUpperCase()
       : (username.charAt(0).toUpperCase() || "U");
 
-  const navLinks = isAdmin ? ADMIN_NAV_LINKS : APP_NAV_LINKS;
+  const navLinks = isAdmin ? [] : APP_NAV_LINKS; // admin uses grouped mega-nav
 
-  // Auto-close mobile drawer when screen is resized back to desktop width
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 640) {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Close dropdown when clicking outside
+  // Close profile dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
+      // Close open group if click outside all group refs
+      let inside = false;
+      Object.values(groupRefs.current).forEach(ref => { if (ref && ref.contains(e.target)) inside = true; });
+      if (!inside) setOpenGroup(null);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const toggleLanguage = () => {
@@ -94,7 +119,6 @@ export function Navbar() {
 
   const handleLogoutRequest = () => {
     setDropdownOpen(false);
-    setMobileOpen(false);
     setLogoutDialogOpen(true);
   };
 
@@ -110,39 +134,123 @@ export function Navbar() {
   };
 
   return (
-    <>
-      <nav className="landing-nav">
+    <nav className="landing-nav">
       <div className="landing-nav-inner">
 
-        {/* Logo */}
+        {/* Logo — same as AuthNavbar / LandingPage */}
         <div
           className="landing-logo"
           style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-          onClick={() => navigate(isAdmin ? "/admin/flights" : "/")}
+          onClick={() => navigate(isAuthenticated ? (isAdmin ? "/admin/overview" : "/flights") : "/")}
         >
           <img src="/updated%20logo.png" alt="Passenger Logo" style={{ height: "36px", objectFit: "contain" }} />
         </div>
 
-        {/* Centre nav links — hidden on mobile via CSS */}
+        {/* Centre nav links */}
         <div className="landing-nav-links">
-          {navLinks.map((link) => (
-            <a
-              key={link.labelKey}
-              className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
-              href={link.href}
-              onClick={(e) => {
-                if (!link.href.includes("#")) {
-                  e.preventDefault();
-                  navigate(link.href);
-                }
-              }}
-            >
-              {link.label ?? t(`navbar.${link.labelKey}`)}
-            </a>
-          ))}
+          {isAdmin ? (
+            // ── Admin grouped mega-nav ────────────────────────────────────
+            <>
+              {/* Overview direct link */}
+              <a
+                className={`landing-nav-link${location.pathname === '/admin/overview' ? ' landing-nav-link-active' : ''}`}
+                href="/admin/overview"
+                onClick={(e) => { e.preventDefault(); navigate('/admin/overview'); setOpenGroup(null); }}
+              >
+                Overview
+              </a>
+
+              {/* Analytics direct link */}
+              <a
+                className={`landing-nav-link${location.pathname === '/admin/analytics' ? ' landing-nav-link-active' : ''}`}
+                href="/admin/analytics"
+                onClick={(e) => { e.preventDefault(); navigate('/admin/analytics'); setOpenGroup(null); }}
+              >
+                Analytics
+              </a>
+
+              {/* Grouped dropdown buttons */}
+              {ADMIN_GROUPS.map((group) => {
+                const isActive = group.links.some(l => location.pathname.startsWith(l.href));
+                const isOpen = openGroup === group.label;
+                return (
+                  <div
+                    key={group.label}
+                    style={{ position: 'relative' }}
+                    ref={el => groupRefs.current[group.label] = el}
+                  >
+                    <button
+                      className={`landing-nav-link${isActive ? ' landing-nav-link-active' : ''}`}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontFamily: 'inherit', padding: '0.25rem 0.5rem',
+                      }}
+                      onClick={() => setOpenGroup(isOpen ? null : group.label)}
+                    >
+                      {group.label}
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
+                        style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', opacity: 0.6 }}>
+                        <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+
+                    {isOpen && (
+                      <div style={{
+                        position: 'absolute', top: 'calc(100% + 10px)', left: 0,
+                        background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(24px)',
+                        border: '1px solid rgba(0,0,0,0.07)', borderRadius: 14,
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+                        padding: '6px 0', minWidth: 180, zIndex: 200,
+                        animation: 'fadeSlideDown 0.15s ease',
+                      }}>
+                        {group.links.map(link => {
+                          const active = location.pathname === link.href;
+                          return (
+                            <button
+                              key={link.href}
+                              onClick={() => { navigate(link.href); setOpenGroup(null); }}
+                              style={{
+                                display: 'block', width: '100%', textAlign: 'left',
+                                padding: '8px 18px', background: active ? 'rgba(112,93,0,0.08)' : 'none',
+                                border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: active ? 700 : 500,
+                                color: active ? '#705d00' : '#1a1c1d', transition: 'background 0.12s',
+                                fontFamily: 'inherit',
+                              }}
+                              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+                              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'none'; }}
+                            >
+                              {link.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            // ── Customer nav flat links ───────────────────────────────────
+            navLinks.map((link) => (
+              <a
+                key={link.href}
+                className={`landing-nav-link${location.pathname === link.href ? " landing-nav-link-active" : ""}`}
+                href={link.href}
+                onClick={(e) => {
+                  if (!link.href.includes("#")) {
+                    e.preventDefault();
+                    navigate(link.href);
+                  }
+                }}
+              >
+                {link.label ?? t(`navbar.${link.labelKey}`)}
+              </a>
+            ))
+          )}
         </div>
 
-        {/* Right side — hidden on mobile (replaced by hamburger) */}
+        {/* Right side */}
         <div className="landing-nav-actions">
           {/* Language Switcher */}
           <button
@@ -176,7 +284,6 @@ export function Navbar() {
             <span style={{ opacity: 0.3 }}>|</span>
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
           </button>
-
           {!isAuthenticated ? (
             <>
               <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>
@@ -212,11 +319,19 @@ export function Navbar() {
                   </svg>
                   {unreadCount > 0 && (
                     <span style={{
-                      position: "absolute", top: "-2px", right: "-2px",
-                      background: "#ef4444", color: "#ffffff",
-                      fontSize: "0.65rem", fontWeight: 700, borderRadius: "50%",
-                      width: "14px", height: "14px",
-                      display: "flex", alignItems: "center", justifyContent: "center",
+                      position: "absolute",
+                      top: "-2px",
+                      right: "-2px",
+                      background: "#ef4444",
+                      color: "#ffffff",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      borderRadius: "50%",
+                      width: "14px",
+                      height: "14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}>
                       {unreadCount}
                     </span>
@@ -224,19 +339,28 @@ export function Navbar() {
                 </button>
               )}
 
-              {/* Avatar + dropdown */}
               <div className="relative" ref={dropdownRef} style={{ position: "relative" }}>
+                {/* Avatar button — same gold colour as Join Club */}
                 <button
                   id="profile-avatar-btn"
                   onClick={() => setDropdownOpen((prev) => !prev)}
                   aria-label="Profile menu"
                   style={{
-                    width: "2.25rem", height: "2.25rem", borderRadius: "50%",
-                    background: "#ffd700", color: "#1a1c1d", fontWeight: 700, fontSize: "0.875rem",
-                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: "2.25rem",
+                    height: "2.25rem",
+                    borderRadius: "50%",
+                    background: "#ffd700",
+                    color: "#1a1c1d",
+                    fontWeight: 700,
+                    fontSize: "0.875rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     border: "2px solid rgba(255,255,255,0.7)",
                     boxShadow: "0 4px 12px rgba(255,215,0,0.35)",
-                    cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s", flexShrink: 0,
+                    cursor: "pointer",
+                    transition: "transform 0.15s, box-shadow 0.15s",
+                    flexShrink: 0,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "scale(1.08)";
@@ -250,37 +374,79 @@ export function Navbar() {
                   {initials}
                 </button>
 
+                {/* Dropdown — glassmorphism card matching screenshot */}
                 {dropdownOpen && (
                   <div style={{
-                    position: "absolute", right: 0, top: "calc(100% + 0.75rem)",
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 0.75rem)",
                     width: "13.5rem",
                     background: "rgba(255,255,255,0.95)",
-                    backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
                     border: "1px solid rgba(255,255,255,0.6)",
-                    borderRadius: "1rem", boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                    overflow: "hidden", zIndex: 100, animation: "fadeSlideDown 0.15s ease",
+                    borderRadius: "1rem",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                    zIndex: 100,
+                    animation: "fadeSlideDown 0.15s ease",
                   }}>
+                    {/* MY ACCOUNT header */}
                     <div style={{ padding: "0.625rem 1rem 0.5rem", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-                      <p style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{t("navbar.myAccount")}</p>
+                      <p style={{
+                        fontSize: "0.65rem",
+                        fontWeight: 700,
+                        color: "#9ca3af",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        margin: 0,
+                      }}>{t("navbar.myAccount")}</p>
                     </div>
+
                     <div style={{ padding: "0.5rem 0" }}>
-                      {[
-                        { id: "nav-view-profile", label: t("navbar.viewProfile"), onClick: () => { setDropdownOpen(false); navigate("/profile"); }, color: "#1a1c1d" },
-                        ...(!isAdmin ? [{ id: "nav-view-notifications", label: t("navbar.notifications", "Notifications"), onClick: () => { setDropdownOpen(false); navigate("/notifications"); }, color: "#1a1c1d", badge: unreadCount }] : []),
-                      ].map(item => (
-                        <button key={item.id} id={item.id} onClick={item.onClick}
-                          style={{ width: "100%", textAlign: "left", padding: "0.625rem 1.25rem", fontSize: "0.875rem", fontWeight: 600, color: item.color, background: "none", border: "none", cursor: "pointer", transition: "all 0.15s ease", display: "flex", alignItems: "center" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#f8f9fa"; e.currentTarget.style.color = "#705d00"; e.currentTarget.style.paddingLeft = "1.5rem"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = item.color; e.currentTarget.style.paddingLeft = "1.25rem"; }}
-                        >
-                          <span>{item.label}</span>
-                          {item.badge > 0 && <span style={{ marginLeft: "auto", background: "#ef4444", color: "#fff", fontSize: "0.7rem", fontWeight: 700, borderRadius: "9999px", padding: "2px 6px" }}>{item.badge}</span>}
-                        </button>
-                      ))}
-                      <button id="nav-logout" onClick={handleLogoutRequest}
-                        style={{ width: "100%", textAlign: "left", padding: "0.625rem 1.25rem", fontSize: "0.875rem", fontWeight: 600, color: "#b91c1c", background: "none", border: "none", cursor: "pointer", transition: "all 0.15s ease" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.paddingLeft = "1.5rem"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.paddingLeft = "1.25rem"; }}
+                      {/* View Profile */}
+                      <button
+                        id="nav-view-profile"
+                        onClick={() => { setDropdownOpen(false); navigate("/profile"); }}
+                        style={{
+                          width: "100%", textAlign: "left", padding: "0.625rem 1.25rem",
+                          fontSize: "0.875rem", fontWeight: 600, color: "#1a1c1d",
+                          background: "none", border: "none", cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#f8f9fa";
+                          e.currentTarget.style.color = "#705d00";
+                          e.currentTarget.style.paddingLeft = "1.5rem";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
+                          e.currentTarget.style.color = "#1a1c1d";
+                          e.currentTarget.style.paddingLeft = "1.25rem";
+                        }}
+                      >
+                        {t("navbar.viewProfile")}
+                      </button>
+
+
+                      {/* Sign Out */}
+                      <button
+                        id="nav-logout"
+                        onClick={handleLogoutRequest}
+                        style={{
+                          width: "100%", textAlign: "left", padding: "0.625rem 1.25rem",
+                          fontSize: "0.875rem", fontWeight: 600, color: "#b91c1c",
+                          background: "none", border: "none", cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#fef2f2";
+                          e.currentTarget.style.paddingLeft = "1.5rem";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
+                          e.currentTarget.style.paddingLeft = "1.25rem";
+                        }}
                       >
                         {t("navbar.signOut")}
                       </button>
@@ -291,112 +457,7 @@ export function Navbar() {
             </div>
           )}
         </div>
-
-        {/* ── Hamburger button (mobile only — shown via CSS) ── */}
-        <button
-          className={`nav-hamburger${mobileOpen ? ' open' : ''}`}
-          onClick={() => setMobileOpen(prev => !prev)}
-          aria-label="Toggle menu"
-        >
-          <span /><span /><span />
-        </button>
       </div>
-    </nav>
-
-      {/* ── Mobile Slide-in Drawer ── */}
-      {mobileOpen && (
-        <div className="nav-mobile-drawer open" onClick={() => setMobileOpen(false)}>
-          <div className="nav-mobile-panel" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <img src="/updated%20logo.png" alt="Passenger" style={{ height: '28px', objectFit: 'contain' }} />
-              <button onClick={() => setMobileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5e5e5e', padding: '4px', display: 'flex' }}>
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.07)', margin: '0.5rem 0 0.75rem' }} />
-
-            {/* Main nav links */}
-            {navLinks.map(link => (
-              <button
-                key={link.labelKey}
-                className={`nav-mobile-link${location.pathname === link.href ? ' active' : ''}`}
-                onClick={() => { navigate(link.href); setMobileOpen(false); }}
-              >
-                {link.label ?? t(`navbar.${link.labelKey}`)}
-              </button>
-            ))}
-
-            {/* Authenticated section */}
-            {isAuthenticated && (
-              <>
-                <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.07)', margin: '0.75rem 0' }} />
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 1rem 0.5rem' }}>
-                  {t('navbar.myAccount')}
-                </div>
-                <button className="nav-mobile-link" onClick={() => { navigate('/profile'); setMobileOpen(false); }}>
-                  {t('navbar.viewProfile')}
-                </button>
-                {!isAdmin && (
-                  <button
-                    className="nav-mobile-link"
-                    onClick={() => { navigate('/notifications'); setMobileOpen(false); }}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <span>{t('navbar.notifications', 'Notifications')}</span>
-                    {unreadCount > 0 && (
-                      <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', fontWeight: 700, borderRadius: '9999px', padding: '2px 7px' }}>
-                        {unreadCount}
-                      </span>
-                    )}
-                  </button>
-                )}
-                <button
-                  className="nav-mobile-link"
-                  style={{ color: '#b91c1c' }}
-                  onClick={handleLogoutRequest}
-                >
-                  {t('navbar.signOut')}
-                </button>
-              </>
-            )}
-
-            {/* Guest section */}
-            {!isAuthenticated && (
-              <>
-                <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.07)', margin: '0.75rem 0' }} />
-                <button className="nav-mobile-link" onClick={() => { navigate('/login'); setMobileOpen(false); }}>
-                  {t('navbar.signIn')}
-                </button>
-                <button
-                  onClick={() => { navigate('/register'); setMobileOpen(false); }}
-                  style={{
-                    marginTop: '0.5rem', padding: '0.875rem 1rem',
-                    background: '#ffd700', color: '#1a1c1d', fontWeight: 700, fontSize: '1rem',
-                    border: 'none', borderRadius: '12px', cursor: 'pointer', width: '100%',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  {t('navbar.register')}
-                </button>
-              </>
-            )}
-
-            {/* Language toggle at bottom */}
-            <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-              <button
-                onClick={toggleLanguage}
-                style={{ background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '2rem', padding: '0.375rem 1rem', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', color: '#5e5e5e' }}
-              >
-                {i18n.language?.startsWith('ja') ? '🇯🇵 Japanese' : '🇬🇧 English'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <style>{`
         @keyframes fadeSlideDown {
@@ -405,11 +466,12 @@ export function Navbar() {
         }
       `}</style>
 
+      {/* Logout confirmation dialog (portal, rendered outside nav) */}
       <LogoutConfirmDialog
         open={logoutDialogOpen}
         onConfirm={handleLogoutConfirm}
         onCancel={handleLogoutCancel}
       />
-    </>
+    </nav>
   );
 }

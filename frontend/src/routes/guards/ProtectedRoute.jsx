@@ -6,7 +6,7 @@ export function ProtectedRoute({ children, adminOnly = false, guestOnly = false 
 
   if (isAuthenticated && guestOnly) {
     // If user is logged in and tries to access guest pages (like login/register), redirect to their dashboard
-    return isAdmin ? <Navigate to="/admin/flights" replace /> : <Navigate to="/flights" replace />;
+    return isAdmin ? <Navigate to="/admin/overview" replace /> : <Navigate to="/flights" replace />;
   }
 
   if (!isAuthenticated && !guestOnly) {

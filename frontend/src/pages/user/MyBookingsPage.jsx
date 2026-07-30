@@ -913,7 +913,7 @@ export default function MyBookingsPage() {
         }
       `}</style>
 
-      <div className="bookings-page-wrapper" style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 0 64px' }}>
+      <div className="bookings-page-wrapper" style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 0 64px' }}>
         {/* Page Header */}
         <div className="bookings-page-header" style={{ marginBottom: 24 }}>
           <h1 style={{

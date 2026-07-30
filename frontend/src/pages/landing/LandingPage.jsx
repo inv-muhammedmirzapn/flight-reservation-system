@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import DatePicker from '@/components/ui/DatePicker';
 import PassengerSelector from '@/components/ui/PassengerSelector';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 
 export default function LandingPage() {
   const { t } = useTranslation();
@@ -52,12 +53,10 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined landing-search-icon">flight_takeoff</span>
                   <div className="landing-search-field">
                     <label>{t("landing.from")}</label>
-                    <input
+                    <LocationAutocomplete
                       placeholder={t("landing.cityOrAirport")}
-                      type="text"
-                      autoComplete="off"
                       value={from}
-                      onChange={(e) => setFrom(e.target.value)}
+                      onChange={setFrom}
                     />
                   </div>
                 </div>
@@ -65,12 +64,10 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined landing-search-icon">flight_land</span>
                   <div className="landing-search-field">
                     <label>{t("landing.to")}</label>
-                    <input
+                    <LocationAutocomplete
                       placeholder={t("landing.destination")}
-                      type="text"
-                      autoComplete="off"
                       value={to}
-                      onChange={(e) => setTo(e.target.value)}
+                      onChange={setTo}
                     />
                   </div>
                 </div>

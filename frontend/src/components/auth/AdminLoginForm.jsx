@@ -35,7 +35,7 @@ export function AdminLoginForm() {
     
     if (result.meta.requestStatus === 'fulfilled') {
       toast.success('Welcome back, Admin. Access granted.');
-      navigate('/admin/flights');
+      navigate('/admin/overview');
     } else {
       toast.error(result.payload);
     }

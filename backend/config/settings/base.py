@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'drf_spectacular',
     'corsheaders',
+    'django_filters',
 ] + [
     'apps.users', 'apps.flights', 'apps.bookings', 'apps.route_optimization', 'apps.pricing',
     'apps.waitlist', 'apps.analytics', 'apps.delays', 'apps.notifications', 'apps.comparison',
@@ -58,6 +59,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LANGUAGE_CODE = 'en-us'
@@ -71,6 +74,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'apps.flights.pagination.StandardPagination',
+    'PAGE_SIZE': 10,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
