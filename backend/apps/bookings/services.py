@@ -19,10 +19,45 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
     seat_count = len(passengers_data)
     
     # ── Pre-validate outside any transaction ───────────────────────────────
+    flight = None
+    resolved_flight_instance = None
+    
     try:
-        flight = Flight.objects.get(id=flight_id)
-    except Flight.DoesNotExist:
-        raise ValidationError("Flight not found.")
+        # Check if flight_id is an integer (FlightInstance PK)
+        instance_pk = int(flight_id)
+        from apps.flights.models import FlightInstance as _FI
+        try:
+            resolved_flight_instance = _FI.objects.select_related('flight').get(pk=instance_pk)
+            # Find the matching legacy Flight (since Booking requires it)
+            flight = Flight.objects.filter(flight_number=resolved_flight_instance.flight.flight_no).first()
+            if not flight:
+                # Fallback: create a dummy legacy flight for this route
+                # (mirroring the logic in BookingSerializer.validate_flight)
+                first_leg = resolved_flight_instance.flight.legs.order_by('leg_order').first()
+                last_leg = resolved_flight_instance.flight.legs.order_by('leg_order').last()
+                src = first_leg.departure_airport.iata_code if first_leg else "N/A"
+                dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+                flight = Flight.objects.create(
+                    flight_number=resolved_flight_instance.flight.flight_no,
+                    airline=resolved_flight_instance.flight.airline.airline_name,
+                    aircraft=resolved_flight_instance.aircraft.registration if resolved_flight_instance.aircraft else "Unknown",
+                    source_airport=src,
+                    destination_airport=dst,
+                    departure_time=resolved_flight_instance.scheduled_departure,
+                    arrival_time=resolved_flight_instance.scheduled_arrival,
+                    base_fare=0.0,
+                    total_seats=resolved_flight_instance.seats.count(),
+                    available_seats=resolved_flight_instance.seats.filter(status='AVAILABLE').count(),
+                    status=resolved_flight_instance.status
+                )
+        except _FI.DoesNotExist:
+            raise ValidationError("Flight not found.")
+    except (ValueError, TypeError):
+        # flight_id is not an integer – must be a UUID for legacy Flight
+        try:
+            flight = Flight.objects.get(id=flight_id)
+        except Flight.DoesNotExist:
+            raise ValidationError("Flight not found.")
 
     if flight.status in [FlightStatus.CANCELLED, FlightStatus.DEPARTED, FlightStatus.ARRIVED, FlightStatus.BOARDING]:
         raise ValidationError(f"Cannot book a flight that is already {flight.status.lower()}.")
@@ -65,9 +100,9 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
     # ── Atomic write: re-check with lock, then create ───────────────────────
     with transaction.atomic():
         try:
-            flight = Flight.objects.select_for_update(nowait=False).get(id=flight_id)
+            flight = Flight.objects.select_for_update(nowait=False).get(id=flight.id)
         except (Flight.DoesNotExist, DatabaseError):
-            flight = Flight.objects.get(id=flight_id)
+            flight = Flight.objects.get(id=flight.id)
 
         # Final guard inside the lock
         if flight.available_seats < seat_count:
@@ -81,21 +116,24 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
         if cabin_class:
             try:
                 from apps.flights.models import FlightRoute, FlightInstance, Fare, Seat, SeatStatus
-                route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-                if route:
-                    flight_instance = (
-                        FlightInstance.objects
-                        .filter(flight=route, scheduled_departure=flight.departure_time)
-                        .first()
-                    )
-                    if not flight_instance:
+                if resolved_flight_instance:
+                    flight_instance = resolved_flight_instance
+                else:
+                    route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
+                    if route:
                         flight_instance = (
                             FlightInstance.objects
-                            .filter(flight=route)
-                            .order_by('scheduled_departure')
+                            .filter(flight=route, scheduled_departure=flight.departure_time)
                             .first()
                         )
-                    if flight_instance:
+                        if not flight_instance:
+                            flight_instance = (
+                                FlightInstance.objects
+                                .filter(flight=route)
+                                .order_by('scheduled_departure')
+                                .first()
+                            )
+                if flight_instance:
                         fare_obj = Fare.objects.select_for_update().filter(
                             flight_instance=flight_instance,
                             cabin_class=cabin_class
