@@ -79,14 +79,6 @@ export default function SeatMapPage() {
   const [dragCur, setDragCur] = useState(null);
   const [dragMode, setDragMode] = useState('add');
 
-  useEffect(() => { dispatch(fetchFlightInstances({ page_size: 500 })); }, [dispatch]);
-  useEffect(() => {
-    if (instanceParam && instances.length > 0) {
-      setSelInstance(instanceParam);
-      load(instanceParam);
-    }
-  }, [instanceParam, instances.length]);
-
   const load = id => {
     if (!id) return;
     dispatch(fetchSeats({ flight_instance: id, page_size: 2000 }))
@@ -94,6 +86,17 @@ export default function SeatMapPage() {
       .then(() => setShowMap(true))
       .catch(err => toast.error(`Failed to load seats: ${err?.message || err || 'Check if the backend is running'}`));
   };
+
+  useEffect(() => {
+    dispatch(fetchFlightInstances({ page_size: 500 }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (instanceParam) {
+      setSelInstance(instanceParam);
+      load(instanceParam);
+    }
+  }, [instanceParam]);
 
   const handleInstanceChange = id => {
     setSelInstance(id); setSelectedIds(new Set()); setActiveFilters([]);
@@ -103,7 +106,9 @@ export default function SeatMapPage() {
   const handleGenerate = () => {
     if (!selInstance) return;
     toast.promise(dispatch(generateSeats(selInstance)).unwrap(), {
-      loading: 'Generating…', success: r => { load(selInstance); return r?.detail || 'Done!'; }, error: e => String(e),
+      loading: 'Generating seats…',
+      success: r => { load(selInstance); return r?.detail || 'Seats generated successfully!'; },
+      error: e => String(e?.detail || e || 'Failed to generate seats.'),
     });
   };
 
@@ -183,10 +188,8 @@ export default function SeatMapPage() {
 
   // Build seat grid grouped by class
   const parseSeat = s => {
-    // Prefix is optional (e.g., '12A' or 'E12A')
     const m = s.seat_number.match(/^([A-Z]?)(\d+)([A-Z])$/);
     if (!m) {
-      // Fallback if it's just a number or old format like 'E12'
       const numMatch = s.seat_number.match(/\d+/);
       const row = numMatch ? parseInt(numMatch[0], 10) : 0;
       const letterMatch = s.seat_number.match(/[A-Z]$/);
@@ -215,7 +218,7 @@ export default function SeatMapPage() {
   const grid = buildGrid(seats);
   const classOrder = ['FIRST', 'BUSINESS', 'ECONOMY'].filter(c => grid[c] && Object.keys(grid[c]).length > 0);
 
-  const instanceOptions = instances.map(i => ({ value: i.id, label: `${i.flight_number || i.flight_no} — ${i.date} (${i.status})` }));
+  const instanceOptions = instances.map(i => ({ value: String(i.id), label: `${i.flight_no || i.flight_number} — ${i.date} (${i.status})` }));
   const selInstanceObj = instances.find(i => String(i.id) === String(selInstance));
   const hasSeatCountWarning = selInstanceObj && seats.length > 0 && seats.length !== selInstanceObj.total_capacity;
 
@@ -363,12 +366,25 @@ export default function SeatMapPage() {
 
           {/* ── RIGHT COLUMN (seat map) ── */}
           <div className="smp-main">
-
-            {/* Seat map */}
             {selInstance && showMap && (
               seatsLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><div style={{ width: 28, height: 28, border: '2.5px solid rgba(15,23,42,.12)', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin .7s linear infinite' }} /></div>
-              ) : seats.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+                  <div style={{ width: 28, height: 28, border: '2.5px solid rgba(15,23,42,.12)', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+                </div>
+              ) : seats.length === 0 ? (
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <Zap size={24} />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>No Seats Found for this Flight</h3>
+                  <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, margin: '0 auto 20px', lineHeight: 1.5 }}>
+                    Seats have not been generated for this flight instance yet. Click below to automatically generate seats based on the aircraft layout.
+                  </p>
+                  <button className="btn-primary" onClick={handleGenerate} disabled={actionLoading} style={{ padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Zap size={16} /> {actionLoading ? 'Generating…' : 'Auto-Generate Seats'}
+                  </button>
+                </div>
+              ) : (
                 <div className="smp-plane">
                   <div className="smp-fuselage" ref={mapRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
                     <div style={dragBox()} />
@@ -410,11 +426,9 @@ export default function SeatMapPage() {
                               else if (fee > 460) cls += ' sprem';
                               else cls += ' prem';
                               if (isSel) cls += ' sel';
-                              const hasConflict = isSel && seat.last_rule_applied && ruleLabel && seat.last_rule_applied !== ruleLabel;
                               const ea = getEffectiveAttrs(seat);
                               return (
                                 <div key={seat.id} data-seat-id={seat.id} className={cls} onClick={e => avail && handleSeatClick(e, seat)} title={`${seat.seat_number} | ${ea.join(', ')} | ₹${seat.seat_fee}`}>
-                                  {hasConflict && <div className="smp-conflict"><AlertTriangle size={8} /></div>}
                                   {isSel ? <Check size={12} strokeWidth={3} color="#0ea5e9" /> : <span>{seat.seat_number}</span>}
                                 </div>
                               );
