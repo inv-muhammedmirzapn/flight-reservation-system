@@ -76,6 +76,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
     first_name = serializers.CharField(source="user.first_name", required=True, allow_blank=False)
     last_name = serializers.CharField(source="user.last_name", required=True, allow_blank=False)
+    is_superuser = serializers.BooleanField(source="user.is_superuser", read_only=True)
 
     class Meta:
         model = Profile
@@ -85,6 +86,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "is_superuser",
             "role",
             "phone_number",
             "date_of_birth",
@@ -138,6 +140,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         profile, _ = Profile.objects.get_or_create(user=user)
         data['role'] = profile.role
+        data['is_superuser'] = user.is_superuser
         
         return data
 

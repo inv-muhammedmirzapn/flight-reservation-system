@@ -77,6 +77,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'apps.flights.pagination.StandardPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_RATES': {
+        'otp_request': '3/minute',
+        'otp_verify': '5/minute',
+    },
 }
 
 SPECTACULAR_SETTINGS = {

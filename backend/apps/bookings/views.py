@@ -22,7 +22,8 @@ class BookingViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         user = self.request.user
-        qs = Booking.objects.all() if (user.is_staff or user.is_superuser) else Booking.objects.filter(user=user)
+        is_admin = user.is_superuser or (hasattr(user, 'profile') and user.profile.role == 'ADMIN')
+        qs = Booking.objects.all() if is_admin else Booking.objects.filter(user=user)
         pnr = self.request.query_params.get('pnr')
         status_param = self.request.query_params.get('status')
         if pnr:
@@ -111,7 +112,8 @@ class PassengerViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Passenger.objects.all() if (user.is_staff or user.is_superuser) else Passenger.objects.filter(booking__user=user)
+        is_admin = user.is_superuser or (hasattr(user, 'profile') and user.profile.role == 'ADMIN')
+        qs = Passenger.objects.all() if is_admin else Passenger.objects.filter(booking__user=user)
         search = self.request.query_params.get('search')
         if search:
             qs = qs.filter(name__icontains=search)

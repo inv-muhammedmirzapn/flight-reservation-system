@@ -18,8 +18,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+from rest_framework.throttling import ScopedRateThrottle
 import os
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as rf_serializers
@@ -57,6 +56,7 @@ class GoogleLoginView(APIView):
             'username': rf_serializers.CharField(),
             'email': rf_serializers.CharField(),
             'role': rf_serializers.CharField(),
+            'is_superuser': rf_serializers.BooleanField(),
         })}
     )
     def post(self, request, *args, **kwargs):
@@ -66,22 +66,15 @@ class GoogleLoginView(APIView):
 
         import requests
         try:
-            if token == "dummy-google-token":
-                idinfo = {
-                    "email": "testgoogle@example.com",
-                    "given_name": "Test",
-                    "family_name": "Google"
-                }
-            else:
-                # The frontend's useGoogleLogin provides an access token.
-                # We can verify and fetch user info by calling the Google userinfo endpoint.
-                response = requests.get(
-                    'https://www.googleapis.com/oauth2/v3/userinfo',
-                    headers={'Authorization': f'Bearer {token}'}
-                )
-                if not response.ok:
-                    return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
-                idinfo = response.json()
+            # The frontend's useGoogleLogin provides an access token.
+            # We can verify and fetch user info by calling the Google userinfo endpoint.
+            response = requests.get(
+                'https://www.googleapis.com/oauth2/v3/userinfo',
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            if not response.ok:
+                return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            idinfo = response.json()
 
             email = idinfo['email']
             first_name = idinfo.get('given_name', '')
@@ -114,7 +107,8 @@ class GoogleLoginView(APIView):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'role': user.profile.role
+                'role': user.profile.role,
+                'is_superuser': user.is_superuser
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -144,6 +138,8 @@ class ChangePasswordAPIView(APIView):
 
 class ForgotPasswordView(APIView):
     permission_classes = (AllowAny,)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp_request'
 
     @extend_schema(request=ForgotPasswordSerializer, responses={200: inline_serializer('ForgotPasswordResponse', {'detail': rf_serializers.CharField()})})
     def post(self, request, *args, **kwargs):
@@ -189,6 +185,8 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = (AllowAny,)
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp_verify'
 
     @extend_schema(request=ResetPasswordSerializer, responses={200: inline_serializer('ResetPasswordResponse', {'detail': rf_serializers.CharField()})})
     def post(self, request, *args, **kwargs):
@@ -214,6 +212,8 @@ class ResetPasswordView(APIView):
 class RequestEmailOTPView(APIView):
     """Send a 6-digit OTP to the user's *new* email address to verify ownership."""
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp_request'
 
     @extend_schema(
         request=inline_serializer('RequestEmailOTPRequest', {'new_email': rf_serializers.EmailField()}),
@@ -255,6 +255,8 @@ class RequestEmailOTPView(APIView):
 class VerifyEmailOTPView(APIView):
     """Verify the OTP and update the user's email address."""
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'otp_verify'
 
     @extend_schema(
         request=inline_serializer('VerifyEmailOTPRequest', {

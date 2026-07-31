@@ -35,8 +35,7 @@ export const loginUser = createAsyncThunk(
   async ({ credentials, requireAdmin, requireCustomer }, { dispatch, rejectWithValue }) => {
     try {
       const data = await authAPI.login(credentials);
-      
-      const isAdmin = data.role === 'ADMIN';
+      const isAdmin = data.role === 'ADMIN' || data.is_superuser;
       
       if (requireAdmin && !isAdmin) {
         return rejectWithValue('Access Denied: Administrator privileges required.');
@@ -52,7 +51,8 @@ export const loginUser = createAsyncThunk(
         id: data.id,
         username: data.username,
         email: data.email,
-        role: data.role
+        role: data.role,
+        is_superuser: data.is_superuser
       };
       return { token: data.access, profile };
     } catch (error) {
@@ -72,7 +72,7 @@ export const googleLoginUser = createAsyncThunk(
     try {
       const data = await authAPI.googleLogin(token);
       
-      const isAdmin = data.role === 'ADMIN';
+      const isAdmin = data.role === 'ADMIN' || data.is_superuser;
       if (requireCustomer && isAdmin) {
         return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
       }
@@ -84,7 +84,8 @@ export const googleLoginUser = createAsyncThunk(
         id: data.id,
         username: data.username,
         email: data.email,
-        role: data.role
+        role: data.role,
+        is_superuser: data.is_superuser
       };
       return { token: data.access, profile };
     } catch (error) {
@@ -106,7 +107,7 @@ const initialState = {
   decodedToken: decoded,
   profile: null,
   isAuthenticated: !!initialToken,
-  isAdmin: decoded?.is_superuser || false,
+  isAdmin: false,
   loading: false,
   isInitializing: !!initialToken,
   error: null,
@@ -143,7 +144,7 @@ const authSlice = createSlice({
         state.decodedToken = decodeToken(action.payload.token);
         state.profile = action.payload.profile;
         state.isAuthenticated = true;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
+        state.isAdmin = action.payload.profile?.role === 'ADMIN' || action.payload.profile?.is_superuser;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -160,7 +161,7 @@ const authSlice = createSlice({
         state.decodedToken = decodeToken(action.payload.token);
         state.profile = action.payload.profile;
         state.isAuthenticated = true;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
+        state.isAdmin = action.payload.profile?.role === 'ADMIN' || action.payload.profile?.is_superuser;
       })
       .addCase(googleLoginUser.rejected, (state, action) => {
         state.loading = false;
@@ -173,7 +174,7 @@ const authSlice = createSlice({
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.isInitializing = false;
         state.profile = action.payload;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.role === 'ADMIN';
+        state.isAdmin = action.payload.role === 'ADMIN' || action.payload.is_superuser;
       })
       .addCase(fetchProfile.rejected, (state) => {
         state.isInitializing = false;
