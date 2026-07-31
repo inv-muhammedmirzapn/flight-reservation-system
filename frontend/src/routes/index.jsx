@@ -21,7 +21,6 @@ const AnalyticsDashboard = lazy(() => import('@/pages/admin/AnalyticsDashboard')
 
 // ── New admin entity pages ──────────────────────────────────────────────────────
 // Master data
-const CountriesPage = lazy(() => import('@/pages/admin/master/CountriesPage'));
 const AirportsPage = lazy(() => import('@/pages/admin/master/AirportsPage'));
 const AirlinesPage = lazy(() => import('@/pages/admin/master/AirlinesPage'));
 const AircraftModelsPage = lazy(() => import('@/pages/admin/master/AircraftModelsPage'));
@@ -202,7 +201,6 @@ const router = createBrowserRouter([
       { path: 'admin/analytics', element: adminRoute(<AnalyticsDashboard />) },
 
       // ── Master Data ─────────────────────────────────────────────────────────
-      { path: 'admin/master/countries', element: adminRoute(<CountriesPage />) },
       { path: 'admin/master/airports', element: adminRoute(<AirportsPage />) },
       { path: 'admin/master/airlines', element: adminRoute(<AirlinesPage />) },
       { path: 'admin/master/aircraft-models', element: adminRoute(<AircraftModelsPage />) },

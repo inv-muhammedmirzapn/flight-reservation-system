@@ -5,7 +5,6 @@ import styles from './DataManagementPage.module.css';
 
 // ── Entity definitions ────────────────────────────────────────────────────────
 const ENTITIES = [
-  { id: "countries", label: "Countries", cols: ["name", "iso_code"], example: ["India", "IN"] },
   { id: "airlines", label: "Airlines", cols: ["iata_airline_code", "airline_name"], example: ["AI", "Air India"] },
   { id: "airports", label: "Airports", cols: ["iata_code", "airport_name", "city", "country_iso", "timezone", "latitude", "longitude"], example: ["DEL", "Indira Gandhi Intl", "New Delhi", "IN", "Asia/Kolkata", "28.5665", "77.1031"] },
   { id: "aircraft_models", label: "Aircraft Models", cols: ["manufacturer", "model_name"], example: ["Boeing", "737-800"] },

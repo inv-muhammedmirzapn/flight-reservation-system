@@ -12,7 +12,6 @@ const ADMIN_GROUPS = [
   {
     label: 'Master Data',
     links: [
-      { label: 'Countries',      href: '/admin/master/countries' },
       { label: 'Airports',       href: '/admin/master/airports' },
       { label: 'Airlines',       href: '/admin/master/airlines' },
       { label: 'Aircraft Models',href: '/admin/master/aircraft-models' },

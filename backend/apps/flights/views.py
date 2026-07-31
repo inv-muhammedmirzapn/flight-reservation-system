@@ -261,39 +261,14 @@ class FlightUpdateView(APIView):
 
 # ─── New entity ViewSets ────────────────────────────────────────────────────────
 
-class CountryViewSet(AdminModelViewSet):
-    queryset = Country.objects.all().order_by("id")
+class CountryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Country.objects.all().order_by("name")
     serializer_class = CountrySerializer
+    permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "iso_code"]
     ordering_fields = ["id", "name", "iso_code"]
 
-    @action(detail=False, methods=["post"], url_path="populate-presets")
-    def populate_presets(self, request):
-        """
-        POST /api/v2/countries/populate-presets/
-        Populate standard ISO countries using pycountry.
-        """
-        import pycountry
-        created_count = 0
-        updated_count = 0
-        for c in pycountry.countries:
-            iso_code = c.alpha_2.upper()
-            name = c.name
-            country_obj = Country.objects.filter(iso_code=iso_code).first()
-            if country_obj:
-                if country_obj.name != name:
-                    country_obj.name = name
-                    country_obj.save()
-                    updated_count += 1
-            else:
-                Country.objects.create(name=name, iso_code=iso_code)
-                created_count += 1
-        return Response({
-            "detail": f"Successfully populated countries. Created {created_count}, updated {updated_count}.",
-            "created_count": created_count,
-            "updated_count": updated_count
-        }, status=status.HTTP_200_OK)
 
 
 class AirportViewSet(AdminModelViewSet):
