@@ -22,6 +22,7 @@ from .models import (
     FlightRoute, FlightLeg, FlightInstance,
     Seat, SeatStatus, CabinClass,
     Fare, FoodItem, FlightMeal, FlightMealItem,
+    SeatPriceTemplate,
 )
 from .serializers import (
     FlightSerializer,
@@ -31,6 +32,7 @@ from .serializers import (
     FlightInstanceSerializer,
     SeatSerializer, FareSerializer,
     FoodItemSerializer, FlightMealSerializer,
+    SeatPriceTemplateSerializer,
 )
 from .permissions import IsAdminOrSuperuser
 
@@ -646,62 +648,86 @@ class FlightInstanceViewSet(AdminModelViewSet):
             qs = qs.filter(date__lte=date_to)
         return qs
 
+    def perform_create(self, serializer):
+        """Auto-generate seats immediately after a new flight instance is saved."""
+        instance = serializer.save()
+        self._auto_generate_seats(instance)
+
+    def _auto_generate_seats(self, instance):
+        """Shared seat-generation logic (also called from generate_seats action)."""
+        if instance.seats.exists():
+            return
+        aircraft = instance.aircraft
+        if not aircraft:
+            return
+
+        def _pos_left(col_index, block_width):
+            if block_width == 1: return "window"
+            if col_index == 0: return "window"
+            if col_index == block_width - 1: return "aisle"
+            return "middle"
+
+        def _pos_right(col_index, block_width):
+            if block_width == 1: return "window"
+            if col_index == 0: return "aisle"
+            if col_index == block_width - 1: return "window"
+            return "middle"
+
+        def _make_seats(capacity, cabin_class, prefix, cols_per_row):
+            if capacity <= 0:
+                return []
+            rows_needed = -(-capacity // cols_per_row)
+            col_letters = [chr(ord('A') + i) for i in range(cols_per_row)]
+            left_block = cols_per_row // 2
+            right_block = cols_per_row - left_block
+            created, remaining = [], capacity
+            for row_num in range(1, rows_needed + 1):
+                for col_idx, letter in enumerate(col_letters):
+                    if remaining <= 0:
+                        break
+                    pos = _pos_left(col_idx, left_block) if col_idx < left_block else _pos_right(col_idx - left_block, right_block)
+                    created.append(Seat(
+                        flight_instance=instance,
+                        seat_number=f"{prefix}{row_num}{letter}",
+                        seat_class=cabin_class,
+                        position=pos,
+                        status=SeatStatus.AVAILABLE,
+                    ))
+                    remaining -= 1
+            return created
+
+        seats = []
+        fc = aircraft.first_class_capacity
+        seats += _make_seats(fc, CabinClass.FIRST, "F", 4 if fc > 2 else max(fc, 2))
+        bc = aircraft.business_capacity
+        seats += _make_seats(bc, CabinClass.BUSINESS, "B", 4 if bc > 2 else max(bc, 2))
+        ec = aircraft.economy_capacity
+        seats += _make_seats(ec, CabinClass.ECONOMY, "E", 6 if ec > 3 else max(ec, 3))
+        Seat.objects.bulk_create(seats)
+
     @action(detail=True, methods=["post"], url_path="generate-seats",
             permission_classes=[IsAdminOrSuperuser])
     def generate_seats(self, request, pk=None):
         """
         POST /api/v2/flight-instances/{id}/generate-seats/
-        Auto-creates Seat rows from the linked aircraft's capacity fields.
-        Skips if seats already exist.
+        Auto-creates Seat rows. Skips if seats already exist.
         """
         instance = self.get_object()
-        aircraft = instance.aircraft
-
         if instance.seats.exists():
             return Response(
                 {"detail": "Seats have already been generated for this flight instance."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        seats_to_create = []
-
-        def _make_seats(count, cabin_class, prefix, positions):
-            for i in range(1, count + 1):
-                pos_index = (i - 1) % len(positions)
-                seats_to_create.append(
-                    Seat(
-                        flight_instance=instance,
-                        seat_number=f"{prefix}{i}",
-                        seat_class=cabin_class,
-                        position=positions[pos_index],
-                        status=SeatStatus.AVAILABLE,
-                    )
-                )
-
-        _make_seats(
-            aircraft.first_class_capacity, CabinClass.FIRST, "F",
-            ["window", "aisle"]
-        )
-        _make_seats(
-            aircraft.business_capacity, CabinClass.BUSINESS, "B",
-            ["window", "middle", "aisle"]
-        )
-        _make_seats(
-            aircraft.economy_capacity, CabinClass.ECONOMY, "E",
-            ["window", "middle", "aisle"]
-        )
-
-        Seat.objects.bulk_create(seats_to_create)
-
+        self._auto_generate_seats(instance)
         # Refresh fare available_seats counts
         for fare in instance.fares.all():
             fare.available_seats = instance.seats.filter(
                 seat_class=fare.cabin_class, status=SeatStatus.AVAILABLE
             ).count()
             fare.save(update_fields=["available_seats"])
-
+        count = instance.seats.count()
         return Response(
-            {"detail": f"{len(seats_to_create)} seats generated.", "count": len(seats_to_create)},
+            {"detail": f"{count} seats generated.", "count": count},
             status=status.HTTP_201_CREATED,
         )
 
@@ -824,6 +850,53 @@ class SeatViewSet(AdminModelViewSet):
                 legacy_flight.save(update_fields=["available_seats"])
         instance.delete()
 
+    @action(detail=False, methods=["post"], url_path="bulk-price",
+            permission_classes=[IsAdminOrSuperuser])
+    def bulk_price(self, request):
+        """
+        POST /api/v2/seats/bulk-price/
+        Body: {"seat_ids": [1, 2, 3], "price": 250, "rule_label": "window"}
+        Sets seat_fee = price and last_rule_applied = rule_label for all listed seats.
+        Returns counts and any conflict warnings (seats that already had a different rule).
+        """
+        seat_ids = request.data.get("seat_ids", [])
+        price = request.data.get("price")
+        rule_label = request.data.get("rule_label", "")
+
+        if not seat_ids or price is None:
+            return Response(
+                {"detail": "seat_ids and price are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            price = float(price)
+            if price < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "price must be a non-negative number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        seats = Seat.objects.filter(id__in=seat_ids)
+        conflict_seat_ids = []
+        to_update = []
+        for seat in seats:
+            if seat.last_rule_applied and seat.last_rule_applied != rule_label:
+                conflict_seat_ids.append(seat.id)
+            seat.seat_fee = price
+            seat.last_rule_applied = rule_label
+            to_update.append(seat)
+
+        Seat.objects.bulk_update(to_update, ["seat_fee", "last_rule_applied"])
+
+        return Response({
+            "updated_count": len(to_update),
+            "conflict_seat_ids": conflict_seat_ids,
+            "detail": f"Price ₹{price} applied to {len(to_update)} seats.",
+        }, status=status.HTTP_200_OK)
+
+
 class FareViewSet(AdminModelViewSet):
     queryset = Fare.objects.select_related("flight_instance").all()
     serializer_class = FareSerializer
@@ -863,4 +936,24 @@ class FlightMealViewSet(AdminModelViewSet):
         instance_id = self.request.query_params.get("flight_instance")
         if instance_id:
             qs = qs.filter(flight_instance_id=instance_id)
+        return qs
+
+
+class SeatPriceTemplateViewSet(AdminModelViewSet):
+    """
+    CRUD for attribute→price rule templates keyed by aircraft model.
+    GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+    POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+    """
+    queryset = SeatPriceTemplate.objects.select_related("aircraft_model").all()
+    serializer_class = SeatPriceTemplateSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name", "created_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        aircraft_model_id = self.request.query_params.get("aircraft_model")
+        if aircraft_model_id:
+            qs = qs.filter(aircraft_model_id=aircraft_model_id)
         return qs

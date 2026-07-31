@@ -382,12 +382,27 @@ class Seat(models.Model):
         max_length=10, choices=SeatStatus.choices, default=SeatStatus.AVAILABLE
     )
     exit_row = models.BooleanField(default=False)
+    extra_legroom = models.BooleanField(default=False)
     seat_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     currency = models.CharField(max_length=3, default="INR")
+    # Tracks which attribute rule last set the price — used for conflict badge.
+    last_rule_applied = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         ordering = ["seat_number"]
         unique_together = [["flight_instance", "seat_number"]]
+
+    @property
+    def attributes(self):
+        """Return a list of attribute tags derived from position/flag fields."""
+        attrs = []
+        if self.position:
+            attrs.append(self.position)   # 'window' | 'aisle' | 'middle'
+        if self.exit_row:
+            attrs.append('exit_row')
+        if self.extra_legroom:
+            attrs.append('extra_legroom')
+        return attrs
 
     def clean(self):
         if self.seat_fee is not None and self.seat_fee < 0:
@@ -399,6 +414,33 @@ class Seat(models.Model):
 
     def __str__(self):
         return f"{self.seat_number} ({self.seat_class}) – {self.flight_instance}"
+
+
+class SeatPriceTemplate(models.Model):
+    """
+    Stores a named attribute→price mapping that can be reused across
+    flight instances of the same aircraft type.
+    """
+    aircraft_model = models.ForeignKey(
+        AircraftModel, on_delete=models.CASCADE, related_name="seat_price_templates"
+    )
+    name = models.CharField(max_length=100)
+    rules = models.JSONField(
+        default=list,
+        help_text=(
+            'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom", '
+            '"price": <number>} dicts ordered by priority (last wins on conflict).'
+        )
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["aircraft_model", "name"]
+        unique_together = [["aircraft_model", "name"]]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.aircraft_model})"
 
 
 class RefundType(models.TextChoices):

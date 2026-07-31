@@ -280,7 +280,9 @@ export function Select({
           style={triggerStyle}
           {...props}
         >
-          <span>{selectedOption ? selectedOption.label : 'Select...'}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, textAlign: 'left' }}>
+            {selectedOption ? selectedOption.label : 'Select...'}
+          </span>
           <ChevronDown
             size={14}
             style={{

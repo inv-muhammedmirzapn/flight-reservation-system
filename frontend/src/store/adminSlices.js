@@ -173,6 +173,33 @@ export const {
 } = seatSliceDef.thunks;
 export const seatReducer = seatSliceDef.slice.reducer;
 
+// Custom: apply a price to a list of seat IDs in one request
+export const bulkPriceSeats = createAsyncThunk(
+  'seat/bulkPrice',
+  async ({ seatIds, price, ruleLabel = '' }, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth('/flights/v2/seats/bulk-price/', {
+        method: 'POST',
+        body: JSON.stringify({ seat_ids: seatIds, price, rule_label: ruleLabel }),
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Bulk price failed');
+    }
+  }
+);
+
+// ─── SeatPriceTemplate ────────────────────────────────────────────────────────
+const seatPriceTemplateSliceDef = createCrudSlice('seatPriceTemplate', '/flights/v2/seat-price-templates');
+export const seatPriceTemplateActions = seatPriceTemplateSliceDef.actions;
+export const {
+  fetchList: fetchSeatPriceTemplates,
+  fetchDetail: fetchSeatPriceTemplateDetail,
+  add: addSeatPriceTemplate,
+  update: updateSeatPriceTemplate,
+  remove: removeSeatPriceTemplate,
+} = seatPriceTemplateSliceDef.thunks;
+export const seatPriceTemplateReducer = seatPriceTemplateSliceDef.slice.reducer;
+
 // ─── Fare ─────────────────────────────────────────────────────────────────────
 const fareSliceDef = createCrudSlice('fare', '/flights/v2/fares');
 export const fareActions = fareSliceDef.actions;

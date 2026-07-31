@@ -505,11 +505,13 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     )
     route = serializers.SerializerMethodField()
 
+    total_capacity = serializers.SerializerMethodField()
+
     class Meta:
         model = FlightInstance
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
-            "aircraft", "aircraft_registration", "route",
+            "aircraft", "aircraft_registration", "total_capacity", "route",
             "status",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",
@@ -518,6 +520,11 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_total_capacity(self, obj):
+        if not obj.aircraft:
+            return 0
+        return (obj.aircraft.economy_capacity or 0) + (obj.aircraft.business_capacity or 0) + (obj.aircraft.first_class_capacity or 0)
 
     def get_route(self, obj):
         legs = obj.flight.legs.order_by('leg_order')
@@ -544,14 +551,20 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
 # ─── Seat ──────────────────────────────────────────────────────────────────────
 
 class SeatSerializer(serializers.ModelSerializer):
+    attributes = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Seat
         fields = [
             "id", "flight_instance", "seat_number",
             "seat_class", "position", "status",
-            "exit_row", "seat_fee", "currency"
+            "exit_row", "extra_legroom", "seat_fee", "currency",
+            "last_rule_applied", "attributes",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "attributes"]
+
+    def get_attributes(self, obj):
+        return obj.attributes
 
     def validate_seat_fee(self, value):
         if value is not None and value < 0:
@@ -654,3 +667,20 @@ class FlightMealSerializer(serializers.ModelSerializer):
             for item_data in items_data:
                 FlightMealItem.objects.create(flight_meal=instance, **item_data)
         return instance
+
+
+# ─── SeatPriceTemplate ─────────────────────────────────────────────────────────
+
+class SeatPriceTemplateSerializer(serializers.ModelSerializer):
+    aircraft_model_display = serializers.CharField(
+        source="aircraft_model.__str__", read_only=True
+    )
+
+    class Meta:
+        from .models import SeatPriceTemplate
+        model = SeatPriceTemplate
+        fields = [
+            "id", "aircraft_model", "aircraft_model_display",
+            "name", "rules", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

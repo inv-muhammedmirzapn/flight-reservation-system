@@ -1,603 +1,483 @@
-/**
- * SeatMapPage — per-flight-instance seat map.
- * Features:
- *  - Instance selector dropdown
- *  - "Generate Seats" bulk action
- *  - Visual grid (clickable cells) for editing status/exit_row/seat_fee
- */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import '@/styles/admin-system.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
-import { fetchFlightInstances, fetchSeats, updateSeat, generateSeats, applyPremiumPricing } from '@/store/adminSlices';
-import { Zap, Save, X, ArrowLeft, Search, DollarSign } from 'lucide-react';
+import { fetchFlightInstances, fetchSeats, generateSeats, bulkPriceSeats } from '@/store/adminSlices';
+import { Zap, ArrowLeft, AlertTriangle, Check, DollarSign, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const STATUS_COLORS = {
-  AVAILABLE: '#22c55e',
-  HELD: '#f59e0b',
-  BOOKED: '#3b82f6',
-  BLOCKED: '#6b7280',
-};
-
-const STATUS_OPTIONS = [
-  { value: 'AVAILABLE', label: 'Available' },
-  { value: 'HELD', label: 'Held' },
-  { value: 'BOOKED', label: 'Booked' },
-  { value: 'BLOCKED', label: 'Blocked' },
+const ATTRS = [
+  { id: 'window', label: 'Window' },
+  { id: 'aisle', label: 'Aisle' },
+  { id: 'middle', label: 'Middle' },
 ];
+const CLASS_TABS = ['ALL', 'FIRST', 'BUSINESS', 'ECONOMY'];
+const CLASS_LABELS = { ALL: 'All Classes', FIRST: 'First', BUSINESS: 'Business', ECONOMY: 'Economy' };
+const CLASS_COLORS = { FIRST: '#fbbf24', BUSINESS: '#818cf8', ECONOMY: '#34d399' };
+
+/* Derive position from seat_number column letter + cabin layout.
+   E.g. for Economy 3-3 (ABCDEF): A=window, B=middle, C=aisle | D=aisle, E=middle, F=window
+   For Business/First 2-2 (ABCD): A=window, B=aisle | C=aisle, D=window */
+function derivePosition(seatNumber, seatClass) {
+  if (!seatNumber) return '';
+  const letter = seatNumber.slice(-1).toUpperCase();
+  if (!/[A-Z]/.test(letter)) return '';
+  const colIdx = letter.charCodeAt(0) - 65; // A=0, B=1, ...
+
+  // Determine cols_per_row by class
+  let cols;
+  if (seatClass === 'ECONOMY') cols = 6;
+  else cols = 4; // FIRST and BUSINESS use 2-2
+
+  const leftBlock = Math.floor(cols / 2);
+
+  if (colIdx < leftBlock) {
+    // Left block: first=window, last=aisle, else middle
+    if (colIdx === 0) return 'window';
+    if (colIdx === leftBlock - 1) return 'aisle';
+    return 'middle';
+  } else {
+    // Right block: first=aisle, last=window, else middle
+    const ri = colIdx - leftBlock;
+    const rightBlock = cols - leftBlock;
+    if (ri === 0) return 'aisle';
+    if (ri === rightBlock - 1) return 'window';
+    return 'middle';
+  }
+}
+
+function getEffectiveAttrs(seat) {
+  // Use DB-stored position first, fallback to derivation
+  const pos = seat.position || derivePosition(seat.seat_number, seat.seat_class);
+  const attrs = [];
+  if (pos) attrs.push(pos.toLowerCase());
+  if (seat.exit_row) attrs.push('exit_row');
+  if (seat.extra_legroom) attrs.push('extra_legroom');
+  return attrs;
+}
 
 export default function SeatMapPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { items: instances } = useSelector((s) => s.flightInstance);
-  const { items: seats, loading: seatsLoading, actionLoading } = useSelector((s) => s.seat);
-
+  const { items: instances } = useSelector(s => s.flightInstance);
+  const { items: seats, loading: seatsLoading, actionLoading } = useSelector(s => s.seat);
   const [searchParams] = useSearchParams();
   const instanceParam = searchParams.get('instance') || '';
 
-  const [selectedInstanceId, setSelectedInstanceId] = useState(instanceParam);
-  const [editSeat, setEditSeat] = useState(null);
-  const [seatForm, setSeatForm] = useState({});
+  const [selInstance, setSelInstance] = useState(instanceParam);
   const [showMap, setShowMap] = useState(!!instanceParam);
-  const [showPricing, setShowPricing] = useState(false);
-  const [pricingForm, setPricingForm] = useState({ window_fee: 50, legroom_fee: 150 });
+  const [activeFilters, setActiveFilters] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [classTab, setClassTab] = useState('ALL');
+  const [bulkPrice, setBulkPrice] = useState('');
 
-  useEffect(() => {
-    dispatch(fetchFlightInstances({ page_size: 500 }));
-  }, [dispatch]);
+  const mapRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const [dragCur, setDragCur] = useState(null);
+  const [dragMode, setDragMode] = useState('add');
 
-  // Once instances are loaded, if URL has ?instance=X, select it and load seats
+  useEffect(() => { dispatch(fetchFlightInstances({ page_size: 500 })); }, [dispatch]);
   useEffect(() => {
     if (instanceParam && instances.length > 0) {
-      setSelectedInstanceId(instanceParam);
-      loadSeats(instanceParam).then(() => setShowMap(true)).catch(() => {});
+      setSelInstance(instanceParam);
+      load(instanceParam);
     }
-  }, [instanceParam, instances.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [instanceParam, instances.length]);
 
-  const loadSeats = (id) => {
+  const load = id => {
     if (!id) return;
-    return dispatch(fetchSeats({ flight_instance: id, page_size: 500 })).unwrap();
+    dispatch(fetchSeats({ flight_instance: id, page_size: 2000 }))
+      .unwrap()
+      .then(() => setShowMap(true))
+      .catch(err => toast.error(`Failed to load seats: ${err?.message || err || 'Check if the backend is running'}`));
   };
 
-  const handleInstanceChange = (id) => {
-    setSelectedInstanceId(id);
-    setEditSeat(null);
-    if (id) {
-      loadSeats(id).then(() => setShowMap(true)).catch(() => {});
-    } else {
-      setShowMap(false);
-    }
+  const handleInstanceChange = id => {
+    setSelInstance(id); setSelectedIds(new Set()); setActiveFilters([]);
+    if (id) load(id); else setShowMap(false);
   };
 
-  const handleSearchClick = () => {
-    if (!selectedInstanceId) {
-      toast.error('Please select a flight instance first.');
-      return;
-    }
-    setEditSeat(null);
-    loadSeats(selectedInstanceId).then(() => setShowMap(true)).catch(() => {});
-  };
-
-  const handleGenerateSeats = async () => {
-    if (!selectedInstanceId) return;
-
-    try {
-      const res = await loadSeats(selectedInstanceId);
-      const fetchedSeats = res.results || res;
-      if (fetchedSeats && fetchedSeats.length > 0) {
-        setShowMap(true);
-        toast.success('Seats loaded.');
-        return;
-      }
-    } catch (err) {
-      // ignore
-    }
-
-    toast.promise(
-      dispatch(generateSeats(selectedInstanceId)).unwrap(),
-      {
-        loading: 'Generating seats…',
-        success: (res) => {
-          loadSeats(selectedInstanceId);
-          setShowMap(true);
-          return res?.detail || 'Seats generated!';
-        },
-        error: (err) => String(err),
-      }
-    );
-  };
-
-  const handleApplyPricing = () => {
-    if (!selectedInstanceId) return;
-    toast.promise(
-      dispatch(applyPremiumPricing({ 
-        instanceId: selectedInstanceId, 
-        data: pricingForm 
-      })).unwrap(),
-      {
-        loading: 'Applying pricing…',
-        success: (res) => {
-          loadSeats(selectedInstanceId);
-          setShowPricing(false);
-          return res?.detail || 'Pricing applied!';
-        },
-        error: (err) => String(err),
-      }
-    );
-  };
-
-  const openEditSeat = (seat) => {
-    setEditSeat(seat);
-    setSeatForm({
-      status: seat.status,
-      exit_row: seat.exit_row,
-      seat_fee: seat.seat_fee,
-      position: seat.position,
+  const handleGenerate = () => {
+    if (!selInstance) return;
+    toast.promise(dispatch(generateSeats(selInstance)).unwrap(), {
+      loading: 'Generating…', success: r => { load(selInstance); return r?.detail || 'Done!'; }, error: e => String(e),
     });
   };
 
-  const handleSaveSeat = () => {
-    if (seatForm.seat_fee === '' || Number(seatForm.seat_fee) < 0) {
-      toast.error('Seat fee must be a non-negative number.');
-      return;
-    }
-    toast.promise(
-      dispatch(updateSeat({ id: editSeat.id, data: { ...editSeat, ...seatForm } })).unwrap(),
-      {
-        loading: 'Saving seat…',
-        success: () => { setEditSeat(null); return 'Seat updated!'; },
-        error: 'Failed to update seat.',
+  // Filter by class scope then attribute
+  const scopedSeats = classTab === 'ALL' ? seats : seats.filter(s => s.seat_class === classTab);
+
+  const handleFilterToggle = attrId => {
+    setActiveFilters(prev => {
+      const next = prev.includes(attrId) ? prev.filter(x => x !== attrId) : [...prev, attrId];
+      if (!next.length) { setSelectedIds(new Set()); return next; }
+      const sel = new Set();
+      scopedSeats.forEach(seat => {
+        const ea = getEffectiveAttrs(seat);
+        if (next.some(a => ea.includes(a))) sel.add(seat.id);
+      });
+      setSelectedIds(sel);
+      return next;
+    });
+  };
+
+  // Re-run filter selection when classTab changes
+  useEffect(() => {
+    if (!activeFilters.length) return;
+    const scoped = classTab === 'ALL' ? seats : seats.filter(s => s.seat_class === classTab);
+    const sel = new Set();
+    scoped.forEach(seat => {
+      const ea = getEffectiveAttrs(seat);
+      if (activeFilters.some(a => ea.includes(a))) sel.add(seat.id);
+    });
+    setSelectedIds(sel);
+  }, [classTab, seats]);
+
+  const handleSeatClick = (e, seat) => {
+    e.preventDefault(); e.stopPropagation();
+    setSelectedIds(prev => { const n = new Set(prev); n.has(seat.id) ? n.delete(seat.id) : n.add(seat.id); return n; });
+  };
+
+  // Drag selection
+  const handlePointerDown = e => {
+    if (e.button !== 0 || !mapRef.current) return;
+    const r = mapRef.current.getBoundingClientRect();
+    setIsDragging(true); setDragStart({ x: e.clientX - r.left, y: e.clientY - r.top });
+    setDragCur({ x: e.clientX - r.left, y: e.clientY - r.top });
+    setDragMode(e.shiftKey ? 'remove' : 'add');
+    e.target.setPointerCapture(e.pointerId);
+  };
+  const handlePointerMove = e => {
+    if (!isDragging || !mapRef.current) return;
+    const r = mapRef.current.getBoundingClientRect();
+    setDragCur({ x: Math.max(0, Math.min(e.clientX - r.left, r.width)), y: Math.max(0, Math.min(e.clientY - r.top, r.height)) });
+  };
+  const handlePointerUp = () => {
+    if (!isDragging) return; setIsDragging(false);
+    if (!dragStart || !dragCur) return;
+    const l = Math.min(dragStart.x, dragCur.x), ri = Math.max(dragStart.x, dragCur.x);
+    const t = Math.min(dragStart.y, dragCur.y), b = Math.max(dragStart.y, dragCur.y);
+    const sel = new Set(selectedIds);
+    document.querySelectorAll('[data-seat-id]').forEach(n => {
+      const sr = n.getBoundingClientRect(), mr = mapRef.current.getBoundingClientRect();
+      const sl = sr.left - mr.left, sR = sr.right - mr.left, st = sr.top - mr.top, sb = sr.bottom - mr.top;
+      if (!(ri < sl || l > sR || b < st || t > sb)) {
+        const id = parseInt(n.getAttribute('data-seat-id'), 10);
+        dragMode === 'add' ? sel.add(id) : sel.delete(id);
       }
-    );
+    });
+    setSelectedIds(sel); setDragStart(null); setDragCur(null);
   };
 
-  const instanceOptions = instances.map((i) => ({
-    value: i.id,
-    label: `${i.flight_no} — ${i.date} (${i.status})`,
-  }));
-
-  // Group seats by class
-  const economy = seats.filter((s) => s.seat_class === 'ECONOMY');
-  const business = seats.filter((s) => s.seat_class === 'BUSINESS');
-  const first = seats.filter((s) => s.seat_class === 'FIRST');
-
-  const SeatGrid = ({ title, seatList, color }) => (
-    <div style={{ marginBottom: 32 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color, marginBottom: 12 }}>
-        {title} ({seatList.length} seats)
-      </h3>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {seatList.map((seat) => (
-          <button
-            key={seat.id}
-            onClick={() => openEditSeat(seat)}
-            title={`${seat.seat_number} | ${seat.status} | ${seat.position}${seat.exit_row ? ' | EXIT ROW' : ''} | Fee: ${seat.seat_fee}`}
-            style={{
-              width: 44, height: 44, borderRadius: 8,
-              background: STATUS_COLORS[seat.status] + '22',
-              border: `2px solid ${STATUS_COLORS[seat.status]}`,
-              color: STATUS_COLORS[seat.status],
-              fontSize: 10, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: 1,
-              transition: 'transform .15s',
-              outline: editSeat?.id === seat.id ? `3px solid #705d00` : 'none',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <span>{seat.seat_number}</span>
-            {seat.exit_row && <span style={{ fontSize: 8 }}>EXIT</span>}
-          </button>
-        ))}
-        {seatList.length === 0 && <span style={{ fontSize: 13, color: '#888' }}>No seats in this class.</span>}
-      </div>
-    </div>
-  );
-
-  const chunkArray = (arr, size) => {
-    return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
-      arr.slice(i * size, i * size + size)
-    );
+  const handleBulkApply = () => {
+    if (!selectedIds.size) return toast.error('No seats selected.');
+    if (!bulkPrice || isNaN(bulkPrice) || Number(bulkPrice) < 0) return toast.error('Enter a valid price.');
+    const autoRule = activeFilters.length ? activeFilters.join('+') : '';
+    toast.promise(dispatch(bulkPriceSeats({ seatIds: [...selectedIds], price: bulkPrice, ruleLabel: autoRule })).unwrap(), {
+      loading: 'Applying…', success: r => { load(selInstance); return r.detail || 'Done!'; }, error: e => String(e),
+    });
   };
 
-  // Sort seats numerically by the number part of seat_number so they flow correctly in rows
-  const sortedSeats = [...seats].sort((a, b) => {
-    const numA = parseInt(a.seat_number.replace(/\D/g, ''), 10) || 0;
-    const numB = parseInt(b.seat_number.replace(/\D/g, ''), 10) || 0;
-    if (numA === numB) return a.seat_number.localeCompare(b.seat_number);
-    return numA - numB;
-  });
+  // Build seat grid grouped by class
+  const parseSeat = s => {
+    // Prefix is optional (e.g., '12A' or 'E12A')
+    const m = s.seat_number.match(/^([A-Z]?)(\d+)([A-Z])$/);
+    if (!m) {
+      // Fallback if it's just a number or old format like 'E12'
+      const numMatch = s.seat_number.match(/\d+/);
+      const row = numMatch ? parseInt(numMatch[0], 10) : 0;
+      const letterMatch = s.seat_number.match(/[A-Z]$/);
+      const col = letterMatch ? letterMatch[0] : '';
+      return { prefix: '', row, col };
+    }
+    return { prefix: m[1], row: parseInt(m[2], 10), col: m[3] };
+  };
 
-  const seatRows = chunkArray(sortedSeats, 6);
+  const buildGrid = (seatList) => {
+    const byClass = {};
+    seatList.forEach(s => {
+      if (!byClass[s.seat_class]) byClass[s.seat_class] = {};
+      const p = parseSeat(s);
+      const rowKey = `${p.prefix}${p.row}`;
+      if (!byClass[s.seat_class][rowKey]) byClass[s.seat_class][rowKey] = [];
+      byClass[s.seat_class][rowKey].push(s);
+    });
+    // Sort cols within each row
+    Object.values(byClass).forEach(rows => {
+      Object.values(rows).forEach(cols => cols.sort((a, b) => a.seat_number.localeCompare(b.seat_number)));
+    });
+    return byClass;
+  };
+
+  const grid = buildGrid(seats);
+  const classOrder = ['FIRST', 'BUSINESS', 'ECONOMY'].filter(c => grid[c] && Object.keys(grid[c]).length > 0);
+
+  const instanceOptions = instances.map(i => ({ value: i.id, label: `${i.flight_number || i.flight_no} — ${i.date} (${i.status})` }));
+  const selInstanceObj = instances.find(i => String(i.id) === String(selInstance));
+  const hasSeatCountWarning = selInstanceObj && seats.length > 0 && seats.length !== selInstanceObj.total_capacity;
+
+  // Selection class summary
+  const selClasses = new Set();
+  selectedIds.forEach(id => { const s = seats.find(x => x.id === id); if (s) selClasses.add(s.seat_class); });
+  const selClassLabel = selClasses.size === 0 ? '' : selClasses.size === 1 ? CLASS_LABELS[Array.from(selClasses)[0]] || '' : 'Mixed Classes';
+
+  const dragBox = () => {
+    if (!isDragging || !dragStart || !dragCur) return { display: 'none' };
+    return {
+      position: 'absolute', left: Math.min(dragStart.x, dragCur.x), top: Math.min(dragStart.y, dragCur.y),
+      width: Math.abs(dragCur.x - dragStart.x), height: Math.abs(dragCur.y - dragStart.y),
+      backgroundColor: dragMode === 'add' ? 'rgba(14,165,233,0.15)' : 'rgba(239,68,68,0.15)',
+      border: `1.5px dashed ${dragMode === 'add' ? '#0ea5e9' : '#ef4444'}`, pointerEvents: 'none', zIndex: 100,
+    };
+  };
 
   return (
     <>
       <style>{`
-        .plane-area {
-          background-color: #bde0fe;
-          padding: 60px 40px;
-          display: flex;
-          gap: 60px;
-          justify-content: center;
-          align-items: flex-start;
-          border-radius: 12px;
-          overflow: hidden;
-          margin-top: 24px;
-        }
-        .legend-card {
-          background: white;
-          padding: 24px;
-          border-radius: 4px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          min-width: 220px;
-          position: sticky;
-          top: 100px;
-        }
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          font-size: 14px;
-          color: #333;
-        }
-        .legend-box {
-          width: 24px; height: 24px;
-          border-radius: 4px;
-          border: 1px solid #ccc;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .legend-box.free { background: #4ade80; border-color: #22c55e; }
-        .legend-box.premium { background: #93c5fd; border-color: #60a5fa; }
-        .legend-box.super-premium { background: #c084fc; border-color: #a855f7; }
-        .legend-box .exit-corner {
-          position: absolute; top:0; left:0; width:0; height:0;
-          border-top: 8px solid #dc2626; border-right: 8px solid transparent;
-        }
-        .fuselage {
-          background: white;
-          width: 420px;
-          border-radius: 210px 210px 0 0;
-          padding: 80px 40px 60px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-        .exit-row-marker {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          color: #dc2626;
-          font-weight: 800;
-          font-size: 11px;
-          margin: 32px 0 24px;
-          letter-spacing: 0.5px;
-        }
-        .exit-sign { display: flex; align-items: center; gap: 6px; }
-        .exit-sign .bar { width: 2px; height: 16px; background: #dc2626; }
-        .seat-row {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          margin-bottom: 12px;
-        }
-        .seat-group { display: flex; gap: 6px; }
-        .aisle-gap { width: 30px; }
-        .row-number {
-          font-size: 12px;
-          color: #666;
-          width: 20px;
-          text-align: center;
-          font-weight: 600;
-        }
-        .col-label {
-          width: 36px;
-          text-align: center;
-          font-size: 13px;
-          font-weight: 600;
-          color: #555;
-          margin-bottom: 12px;
-        }
-        .seat-box {
-          width: 36px;
-          height: 36px;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          position: relative;
-          background: white;
-          transition: transform 0.15s, box-shadow 0.15s;
-        }
-        .seat-box:hover {
-          transform: scale(1.1);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-          z-index: 10;
-        }
-        .seat-box.unavailable { background: #f9fafb; cursor: not-allowed; }
-        .seat-box.unavailable::before, .seat-box.unavailable::after {
-          content: ''; position: absolute;
-          top: 17px; left: 8px; width: 20px; height: 1px;
-          background: #9ca3af;
-        }
-        .seat-box.unavailable::before { transform: rotate(45deg); }
-        .seat-box.unavailable::after { transform: rotate(-45deg); }
+        .smp-wrap{width:95%;max-width:1600px;margin:0 auto;padding:88px 20px 24px}
+        .smp-body{display:flex;gap:24px;align-items:flex-start}
+        .smp-sidebar{width:300px;flex-shrink:0;position:sticky;top:88px;max-height:calc(100vh - 104px);overflow-y:auto}
+        .smp-main{flex:1;min-width:0;max-height:calc(100vh - 88px);overflow-y:auto;padding-right:4px}
+        .smp-breadcrumb{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+        .smp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+        .smp-header-left{display:flex;align-items:center;gap:16px}
+        .smp-back{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.05);border:none;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;color:#333;cursor:pointer;transition:background 0.2s}
+        .smp-back:hover{background:rgba(0,0,0,.08)}
+        .smp-title{font-size:24px;font-weight:800;color:#1a1c1d;margin:0}
         
-        .seat-box.available.free { background: #4ade80; border-color: #22c55e; }
-        .seat-box.available.premium { background: #93c5fd; border-color: #60a5fa; }
-        .seat-box.available.super-premium { background: #c084fc; border-color: #a855f7; }
+        .smp-section{margin-bottom:12px}
+        .smp-section-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block}
         
-        .seat-box.selected {
-          background: #0ea5e9 !important;
-          border-color: #0284c7 !important;
-          color: white;
-        }
-        .exit-corner {
-          position: absolute; top: 0; left: 0; width: 0; height: 0;
-          border-top: 10px solid #dc2626; border-right: 10px solid transparent;
-        }
-        .xl-text {
-          font-size: 10px;
-          font-weight: 800;
-          color: #666;
-          opacity: 0.6;
-        }
+        .smp-instance-row{display:flex;align-items:center;gap:8px;width:100%}
+        
+        .smp-chip-group{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;margin-bottom:10px}
+        .smp-chip-group:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+        
+        .smp-chip{padding:4px 12px;border-radius:20px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+        .smp-chip:hover{background:#f8fafc;border-color:#94a3b8}
+        .smp-chip.on{background:#0f172a;color:#fff;border-color:#0f172a}
+        
+        .smp-ctab{padding:4px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+        .smp-ctab:hover{background:#f8fafc;border-color:#94a3b8}
+        .smp-ctab.on{background:#1e293b;color:#fff;border-color:#1e293b}
+        
+        .smp-warning{display:flex;align-items:center;gap:6px;background:#fef3c7;color:#b45309;padding:6px 10px;border-radius:6px;font-size:12px;font-weight:600;margin-top:8px}
+        
+        .smp-plane{display:flex;justify-content:center;padding:12px 0}
+        .smp-fuselage{background:#fff;width:380px;border-radius:190px 190px 12px 12px;padding:110px 28px 40px;box-shadow:0 6px 24px rgba(0,0,0,.08);position:relative;touch-action:none}
+        .smp-class-hdr{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;text-align:center;padding:6px 0 4px;margin:12px 0 6px;border-radius:4px}
+        .smp-row{display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:4px}
+        .smp-grp{display:flex;gap:3px}
+        .smp-aisle{width:22px}
+        .smp-rn{font-size:9px;color:#999;width:16px;text-align:center;font-weight:700}
+        .smp-seat{width:28px;height:28px;border:1.5px solid #d1d5db;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;background:#fff;user-select:none;transition:transform .1s;font-size:8px;font-weight:700;color:#666}
+        .smp-seat.una{background:#f3f4f6;cursor:not-allowed;opacity:.5}
+        .smp-seat.free{background:#dcfce7;border-color:#4ade80}
+        .smp-seat.prem{background:#dbeafe;border-color:#93c5fd}
+        .smp-seat.sprem{background:#f3e8ff;border-color:#c084fc}
+        .smp-seat.sel{border-color:#0ea5e9!important;box-shadow:0 0 0 2px rgba(14,165,233,.3);transform:scale(1.08);z-index:5}
+        .smp-conflict{position:absolute;top:-5px;right:-5px;width:13px;height:13px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;z-index:10}
+        .smp-legend{display:flex;gap:16px;align-items:center;justify-content:center;padding:4px 0 8px 0;font-size:11px;color:#475569;margin-bottom:0}
+        .smp-lbox{width:16px;height:16px;border-radius:4px;border:1px solid #ccc}
+        .smp-lbox.fr{background:#4ade80;border-color:#22c55e}
+        .smp-lbox.pr{background:#93c5fd;border-color:#60a5fa}
+        .smp-lbox.sp{background:#c084fc;border-color:#a855f7}
+        .smp-bar{background:#fff;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;bottom:32px;z-index:200;border:1px solid #e2e8f0;width:fit-content;margin:16px auto 0}
+        @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
-        {instanceParam && (
-          <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
-            <span>
-              <Link to="/admin/operations/flight-instances">Flight Instances</Link>
-              <span style={{ margin: '0 8px' }}>/</span>
-            </span>
-            <span>Seats (Instance #{instanceParam})</span>
-          </div>
-        )}
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer' }}
-          >
-            <ArrowLeft size={15} /> Back
-          </button>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>
-            Seat Map
-          </h1>
-        </div>
-        <p style={{ color: '#888', fontSize: 14, marginBottom: 28 }}>Select a flight instance, generate seats, and configure seat mapping visually.</p>
-
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 280 }}>
-            <Select
-              id="seat-map-instance"
-              label="Flight Instance"
-              options={[{ value: '', label: '— Select instance —' }, ...instanceOptions]}
-              value={selectedInstanceId}
-              onChange={(e) => handleInstanceChange(e.target.value)}
-            />
-          </div>
-          <button type="button" className="btn-primary" onClick={handleSearchClick} disabled={!selectedInstanceId || seatsLoading} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Search size={15} /> Search Seats
-          </button>
-          {selectedInstanceId && seats.length === 0 && !seatsLoading && (
-            <button className="btn-secondary" onClick={handleGenerateSeats} disabled={actionLoading} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Zap size={15} /> Generate Seats
-            </button>
-          )}
-          {selectedInstanceId && seats.length > 0 && !seatsLoading && (
-            <button className="btn-secondary" onClick={() => setShowPricing(true)} disabled={actionLoading} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <DollarSign size={15} /> Set Premium Pricing
-            </button>
-          )}
+      <div className="smp-wrap">
+        <div className="smp-breadcrumb">
+          FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
         </div>
 
-        {selectedInstanceId && showMap && (
-          seatsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
+        <div className="smp-header">
+          <div className="smp-header-left">
+            <button className="smp-back" onClick={() => navigate(-1)}><ArrowLeft size={14} /> Back</button>
+            <h1 className="smp-title">Seat Pricing & Selection</h1>
+          </div>
+        </div>
+
+        <div className="smp-body">
+          {/* ── LEFT SIDEBAR ── */}
+          <div className="smp-sidebar">
+
+            {/* Filters Section A: Flight Instance */}
+            <div className="smp-section">
+              <span className="smp-section-label">Flight Instance</span>
+              <div className="smp-instance-row">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Select id="seat-map-instance" options={[{ value: '', label: '— Select Flight Instance —' }, ...instanceOptions]} value={selInstance} onChange={e => handleInstanceChange(e.target.value)} style={{ margin: 0, height: '38px', padding: '0 32px 0 12px' }} />
+                </div>
+                <button className="btn-primary" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading} style={{ padding: '0 14px', height: '38px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {seatsLoading ? 'Loading…' : 'Search Seats'}
+                </button>
+              </div>
+              {hasSeatCountWarning && (
+                <div className="smp-warning">
+                  <AlertTriangle size={14} />
+                  Showing {seats.length} of {selInstanceObj.total_capacity} seats — check seat generation logic, capacity may have changed.
+                </div>
+              )}
             </div>
-          ) : seats.length === 0 ? (
-            <div className="admin-card" style={{ textAlign: 'center', color: '#888', padding: '48px 0', marginTop: 24 }}>
-              No seats yet. Click &ldquo;Generate Seats&rdquo; to create them from the aircraft capacity.
-            </div>
-          ) : (
-            <div className="plane-area">
-              
-              {/* Legend on the Left */}
-              <div className="legend-card">
-                <div className="legend-item">
-                  <div className="legend-box free"></div>
-                  <span>Free</span>
+
+            {showMap && seats.length > 0 && (
+              <div className="smp-section" style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                {/* Filters Section B: Cabin Class */}
+                <div style={{ marginBottom: 10 }}>
+                  <span className="smp-section-label">Cabin Class Scope</span>
+                  <div className="smp-chip-group">
+                    {CLASS_TABS.map(c => (
+                      <button key={c} className={`smp-ctab ${classTab === c ? 'on' : ''}`} onClick={() => setClassTab(c)}>{CLASS_LABELS[c]}</button>
+                    ))}
+                  </div>
                 </div>
-                <div className="legend-item">
-                  <div className="legend-box premium"></div>
-                  <span>₹ 1-460</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-box super-premium"></div>
-                  <span>₹ 461+</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-box"><div className="exit-corner" /></div>
-                  <span>Exit Row Seats</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-box"><span className="xl-text">XL</span></div>
-                  <span>Extra Legroom</span>
+
+                {/* Filters Section C: Attributes */}
+                <div>
+                  <span className="smp-section-label">Select By Attribute</span>
+                  <div className="smp-chip-group" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                    {ATTRS.map(a => (
+                      <button key={a.id} className={`smp-chip ${activeFilters.includes(a.id) ? 'on' : ''}`} onClick={() => handleFilterToggle(a.id)}>{a.label}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Airplane Layout */}
-              <div className="fuselage">
-                <svg width="140" height="60" viewBox="0 0 140 60" style={{ margin: '0 auto 20px', display: 'block' }}>
-                  <path d="M 20 60 C 40 10, 100 10, 120 60" fill="none" stroke="#555" strokeWidth="12" strokeLinecap="round" strokeDasharray="30 15" />
-                </svg>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 40px', color: '#ccc' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="6" r="2" /><path d="M6 12v7h4v-7" /><path d="M4 12h8" /><circle cx="16" cy="6" r="2" /><path d="M14 12v7h4v-7" /><path d="M12 12h8" /></svg>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="6" r="2" /><path d="M6 12v7h4v-7" /><path d="M4 12h8" /><circle cx="16" cy="6" r="2" /><path d="M14 12v7h4v-7" /><path d="M12 12h8" /></svg>
-                </div>
-
-                <div className="exit-row-marker">
-                  <div className="exit-sign"><div className="bar"/> ◀ EXIT</div>
-                  <div className="exit-sign">EXIT ▶ <div className="bar"/></div>
-                </div>
-
-                <div className="seat-row" style={{ marginBottom: 16 }}>
-                  <div className="row-number"></div>
-                  <div className="seat-group">
-                    <div className="col-label">A</div>
-                    <div className="col-label">B</div>
-                    <div className="col-label">C</div>
-                  </div>
-                  <div className="aisle-gap"></div>
-                  <div className="seat-group">
-                    <div className="col-label">D</div>
-                    <div className="col-label">E</div>
-                    <div className="col-label">F</div>
-                  </div>
-                  <div className="row-number"></div>
-                </div>
-
-                {seatRows.map((rowSeats, i) => {
-                  const rowNum = i + 1;
-                  const leftGroup = rowSeats.slice(0, 3);
-                  const rightGroup = rowSeats.slice(3, 6);
-                  
-                  return (
-                    <div key={rowNum} className="seat-row">
-                      <div className="row-number">{rowNum}</div>
-                      
-                      <div className="seat-group">
-                        {leftGroup.map(seat => {
-                          const isAvailable = seat.status === 'AVAILABLE';
-                          const fee = Number(seat.seat_fee);
-                          const isFree = isAvailable && fee === 0;
-                          const isPremium = isAvailable && fee > 0 && fee <= 460;
-                          const isSuperPremium = isAvailable && fee > 460;
-                          const isSelected = editSeat?.id === seat.id;
-                          
-                          let cls = "seat-box";
-                          if (!isAvailable) cls += " unavailable";
-                          else if (isFree) cls += " available free";
-                          else if (isSuperPremium) cls += " available super-premium";
-                          else if (isPremium) cls += " available premium";
-                          if (isSelected) cls += " selected";
-
-                          return (
-                            <div key={seat.id} className={cls} onClick={() => openEditSeat(seat)} title={`${seat.seat_number} | Fee: ${seat.seat_fee}`}>
-                              {seat.exit_row && <div className="exit-corner" />}
-                              {(seat.exit_row || fee > 0) && isAvailable && !seat.exit_row && <span className="xl-text">XL</span>}
-                              {isSelected && isAvailable && (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ position: 'absolute', zIndex: 2 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="aisle-gap"></div>
-
-                      <div className="seat-group">
-                        {rightGroup.map(seat => {
-                          const isAvailable = seat.status === 'AVAILABLE';
-                          const fee = Number(seat.seat_fee);
-                          const isFree = isAvailable && fee === 0;
-                          const isPremium = isAvailable && fee > 0 && fee <= 460;
-                          const isSuperPremium = isAvailable && fee > 460;
-                          const isSelected = editSeat?.id === seat.id;
-                          
-                          let cls = "seat-box";
-                          if (!isAvailable) cls += " unavailable";
-                          else if (isFree) cls += " available free";
-                          else if (isSuperPremium) cls += " available super-premium";
-                          else if (isPremium) cls += " available premium";
-                          if (isSelected) cls += " selected";
-
-                          return (
-                            <div key={seat.id} className={cls} onClick={() => openEditSeat(seat)} title={`${seat.seat_number} | Fee: ${seat.seat_fee}`}>
-                              {seat.exit_row && <div className="exit-corner" />}
-                              {(seat.exit_row || fee > 0) && isAvailable && !seat.exit_row && <span className="xl-text">XL</span>}
-                              {isSelected && isAvailable && (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ position: 'absolute', zIndex: 2 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="row-number">{rowNum}</div>
-                    </div>
-                  );
-                })}
+            {/* Legend */}
+            {showMap && seats.length > 0 && (
+              <div className="smp-legend" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox fr" /> Free</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox pr" /> ₹1–460</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox sp" /> ₹461+</span>
               </div>
+            )}
+            {showMap && seats.length > 0 && (
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, lineHeight: 1.4 }}>Drag to select • Shift+drag to deselect • Click to toggle</p>
+            )}
+          </div>{/* end sidebar */}
+
+          {/* ── RIGHT COLUMN (seat map) ── */}
+          <div className="smp-main">
+
+            {/* Seat map */}
+            {selInstance && showMap && (
+              seatsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><div style={{ width: 28, height: 28, border: '2.5px solid rgba(15,23,42,.12)', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin .7s linear infinite' }} /></div>
+              ) : seats.length > 0 && (
+                <div className="smp-plane">
+                  <div className="smp-fuselage" ref={mapRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+                    <div style={dragBox()} />
+
+                    {classOrder.filter(c => classTab === 'ALL' || classTab === c).map(cabinClass => {
+                      const rows = grid[cabinClass];
+                      const rowKeys = Object.keys(rows).sort((a, b) => {
+                        const na = parseInt(a.replace(/\D/g, ''), 10), nb = parseInt(b.replace(/\D/g, ''), 10);
+                        return na - nb;
+                      });
+
+                      return (
+                        <div key={cabinClass}>
+                          <div className="smp-class-hdr" style={{ background: `${CLASS_COLORS[cabinClass]}22`, color: CLASS_COLORS[cabinClass] }}>{CLASS_LABELS[cabinClass]}</div>
+                          {rowKeys.map(rowKey => {
+                            const rowSeats = rows[rowKey];
+                            const colCount = cabinClass === 'ECONOMY' ? 6 : 4;
+                            const leftCount = Math.floor(colCount / 2);
+
+                            // Pad to expected columns
+                            const padded = [];
+                            for (let ci = 0; ci < colCount; ci++) {
+                              const letter = String.fromCharCode(65 + ci);
+                              const found = rowSeats.find(s => s.seat_number.endsWith(letter));
+                              padded.push(found || null);
+                            }
+                            const leftGroup = padded.slice(0, leftCount);
+                            const rightGroup = padded.slice(leftCount);
+                            const rowNum = rowKey.replace(/\D/g, '');
+
+                            const renderSeat = seat => {
+                              if (!seat) return <div key={Math.random()} style={{ width: 28, height: 28 }} />;
+                              const avail = seat.status === 'AVAILABLE';
+                              const fee = Number(seat.seat_fee);
+                              const isSel = selectedIds.has(seat.id);
+                              let cls = 'smp-seat';
+                              if (!avail) cls += ' una';
+                              else if (fee === 0) cls += ' free';
+                              else if (fee > 460) cls += ' sprem';
+                              else cls += ' prem';
+                              if (isSel) cls += ' sel';
+                              const hasConflict = isSel && seat.last_rule_applied && ruleLabel && seat.last_rule_applied !== ruleLabel;
+                              const ea = getEffectiveAttrs(seat);
+                              return (
+                                <div key={seat.id} data-seat-id={seat.id} className={cls} onClick={e => avail && handleSeatClick(e, seat)} title={`${seat.seat_number} | ${ea.join(', ')} | ₹${seat.seat_fee}`}>
+                                  {hasConflict && <div className="smp-conflict"><AlertTriangle size={8} /></div>}
+                                  {isSel ? <Check size={12} strokeWidth={3} color="#0ea5e9" /> : <span>{seat.seat_number}</span>}
+                                </div>
+                              );
+                            };
+
+                            return (
+                              <div key={rowKey} className="smp-row">
+                                <div className="smp-rn">{rowNum}</div>
+                                <div className="smp-grp">{leftGroup.map(renderSeat)}</div>
+                                <div className="smp-aisle" />
+                                <div className="smp-grp">{rightGroup.map(renderSeat)}</div>
+                                <div className="smp-rn">{rowNum}</div>
+                              </div>
+                            );
+                          })}
+                          <div style={{ height: 6 }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            )}
+          </div>{/* end smp-main */}
+        </div>{/* end smp-body */}
+
+        {/* Sticky bulk action bar */}
+        {selectedIds.size > 0 && (
+          <div className="smp-bar">
+            <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '5px 10px', borderRadius: 6, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>
+              {selectedIds.size} seats {selClassLabel && `— ${selClassLabel}`}
             </div>
-          )
+            <div style={{ width: 100 }}>
+              <Input id="bulk-price" type="text" inputMode="numeric" placeholder="Price ₹" value={bulkPrice} onChange={e => { const val = e.target.value; if (val === '' || /^\d*$/.test(val)) setBulkPrice(val); }} style={{ margin: 0, padding: '5px 8px', fontSize: 12 }} />
+            </div>
+            <button className="btn-primary" onClick={handleBulkApply} disabled={actionLoading} style={{ padding: '6px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <DollarSign size={13} /> Apply Price
+            </button>
+            <div style={{ width: '1px', height: '18px', background: '#e2e8f0', margin: '0 4px', flexShrink: 0 }} />
+            <button
+              onClick={() => { setSelectedIds(new Set()); setActiveFilters([]); }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                borderRadius: '50%',
+                transition: 'background 0.2s, color 0.2s',
+                flexShrink: 0
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+              title="Clear selection"
+            >
+              <X size={15} />
+            </button>
+          </div>
         )}
       </div>
-
-      {/* Edit seat panel */}
-      {editSeat && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#fff', borderRadius: 18, padding: '24px 28px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: 320, zIndex: 300 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#1a1c1d' }}>Seat {editSeat.seat_number}</h3>
-            <button className="btn-icon" onClick={() => setEditSeat(null)} style={{ padding: '4px 8px' }}><X size={14} /></button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Select id="edit-status" label="Status" options={STATUS_OPTIONS} value={seatForm.status}
-              onChange={(e) => setSeatForm((f) => ({ ...f, status: e.target.value }))} />
-            <Input id="edit-seat-fee" label="Seat Fee" type="number" value={seatForm.seat_fee}
-              onChange={(e) => setSeatForm((f) => ({ ...f, seat_fee: e.target.value }))} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input type="checkbox" id="edit-exit-row" checked={!!seatForm.exit_row}
-                onChange={(e) => setSeatForm((f) => ({ ...f, exit_row: e.target.checked }))}
-                style={{ width: 16, height: 16, accentColor: '#705d00' }} />
-              <label htmlFor="edit-exit-row" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Exit Row</label>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn-secondary" onClick={() => setEditSeat(null)} style={{ flex: 1, justifyContent: 'center' }}><X size={13} /> Cancel</button>
-            <button className="btn-primary" onClick={handleSaveSeat} disabled={actionLoading} style={{ flex: 1, justifyContent: 'center' }}>
-              <Save size={13} /> Save
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Premium Pricing panel */}
-      {showPricing && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 18, padding: '24px 28px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: 360, zIndex: 300 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#1a1c1d' }}>Bulk Premium Pricing</h3>
-            <button className="btn-icon" onClick={() => setShowPricing(false)} style={{ padding: '4px 8px' }}><X size={14} /></button>
-          </div>
-          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>Increase prices for specific seat types. This will apply to all seats of this flight instance.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Input id="pricing-window" label="Add to Window Seats" type="number" value={pricingForm.window_fee}
-              onChange={(e) => setPricingForm((f) => ({ ...f, window_fee: e.target.value }))} />
-            <Input id="pricing-legroom" label="Add to Exit Row (Legroom)" type="number" value={pricingForm.legroom_fee}
-              onChange={(e) => setPricingForm((f) => ({ ...f, legroom_fee: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn-secondary" onClick={() => setShowPricing(false)} style={{ flex: 1, justifyContent: 'center' }}><X size={13} /> Cancel</button>
-            <button className="btn-primary" onClick={handleApplyPricing} disabled={actionLoading} style={{ flex: 1, justifyContent: 'center' }}>
-              <Zap size={13} /> Apply All
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

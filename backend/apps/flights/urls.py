@@ -8,6 +8,7 @@ from .views import (
     FlightRouteViewSet, FlightInstanceViewSet,
     SeatViewSet, FareViewSet,
     FoodItemViewSet, FlightMealViewSet,
+    SeatPriceTemplateViewSet,
 )
 
 app_name = "apps/flights"
@@ -25,6 +26,7 @@ router.register(r"v2/seats", SeatViewSet, basename="seat")
 router.register(r"v2/fares", FareViewSet, basename="fare")
 router.register(r"v2/food-items", FoodItemViewSet, basename="food-item")
 router.register(r"v2/flight-meals", FlightMealViewSet, basename="flight-meal")
+router.register(r"v2/seat-price-templates", SeatPriceTemplateViewSet, basename="seat-price-template")
 
 urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────
