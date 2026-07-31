@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "@/store/authSlice";
+import { fetchNotifications } from "@/store/notificationsSlice";
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
@@ -15,6 +16,13 @@ export default function Navbar() {
 
   const auth = useSelector((state) => state?.auth) || {};
   const { isAuthenticated, profile, decodedToken } = auth;
+  const unreadCount = useSelector((state) => state?.notifications?.unreadCount || 0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchNotifications());
+    }
+  }, [isAuthenticated, dispatch]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -129,12 +137,17 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => navigate("/notifications")}
-                className="text-slate-900 hover:text-black transition-colors p-1.5 rounded-full w-9 h-9 rounded-full hover:bg-black/5 cursor-pointer flex items-center justify-center"
+                className={`relative text-slate-900 hover:text-black transition-colors w-9 h-9 rounded-full hover:bg-black/5 cursor-pointer flex items-center justify-center ${
+                  location.pathname === "/notifications" ? "bg-black/10 font-bold" : ""
+                }`}
                 title="Notifications"
               >
                 <span className="material-symbols-outlined text-xl select-none">
                   notifications
                 </span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white animate-pulse" />
+                )}
               </button>
 
               {/* User Avatar Circle Badge */}

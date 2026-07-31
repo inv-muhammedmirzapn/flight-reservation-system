@@ -4,6 +4,7 @@ import flightsReducer from './flightSlice';
 import bookingsReducer from './bookingSlice';
 import waitlistReducer from './waitlistSlice';
 import notificationsReducer from './notificationsSlice';
+import systemReducer from './systemSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
     bookings: bookingsReducer,
     waitlist: waitlistReducer,
     notifications: notificationsReducer,
+    system: systemReducer,
   },
 });

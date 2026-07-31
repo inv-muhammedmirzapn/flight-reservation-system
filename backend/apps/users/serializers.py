@@ -74,8 +74,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", required=False)
     email = serializers.EmailField(source="user.email", read_only=True)
-    first_name = serializers.CharField(source="user.first_name", required=True, allow_blank=False)
-    last_name = serializers.CharField(source="user.last_name", required=True, allow_blank=False)
+    first_name = serializers.CharField(source="user.first_name", required=False, allow_blank=True)
+    last_name = serializers.CharField(source="user.last_name", required=False, allow_blank=True)
+    gender = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Profile
@@ -96,6 +97,28 @@ class ProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "role", "created_at", "updated_at"]
+
+    def validate_gender(self, value):
+        if not value:
+            return ""
+        upper_val = str(value).upper()
+        valid_choices = [choice[0] for choice in Profile.Gender.choices]
+        if upper_val not in valid_choices:
+            raise serializers.ValidationError(f'"{value}" is not a valid gender choice.')
+        return upper_val
+
+    def validate_date_of_birth(self, value):
+        if value:
+            import datetime
+            today = datetime.date.today()
+            if value > today:
+                raise serializers.ValidationError("Date of birth cannot be in the future.")
+            age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+            if age < 18:
+                raise serializers.ValidationError("You must be at least 18 years old.")
+            if age > 120:
+                raise serializers.ValidationError("Please enter a valid date of birth.")
+        return value
 
     def validate(self, attrs):
         user_data = attrs.get("user", {})

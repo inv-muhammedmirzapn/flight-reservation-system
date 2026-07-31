@@ -5,6 +5,7 @@ import { updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
 import CustomSelect from "@/components/ui/CustomSelect";
 import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
+import countriesData from "../../../resources/countries.json";
 
 export default function UserProfilePage() {
   const dispatch = useDispatch();
@@ -15,6 +16,7 @@ export default function UserProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isDobModalOpen, setIsDobModalOpen] = useState(false);
+  const [dobError, setDobError] = useState("");
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -49,6 +51,37 @@ export default function UserProfilePage() {
     fetchProfile();
   }, [dispatch]);
 
+  const formatGender = (genderStr) => {
+    if (!genderStr) return "Male";
+    const upper = genderStr.toUpperCase();
+    if (upper === "FEMALE") return "Female";
+    if (upper === "OTHER") return "Other";
+    return "Male";
+  };
+
+  const getDialCode = (countryName) => {
+    if (!countryName) return "+91";
+    const match = countriesData.find(
+      (c) => c.name.toLowerCase() === countryName.toLowerCase()
+    );
+    return match ? match.dial_code : "+91";
+  };
+
+  const extractLocalPhone = (fullPhoneStr, countryName) => {
+    if (!fullPhoneStr) return "";
+    const dialCode = getDialCode(countryName);
+    if (dialCode && fullPhoneStr.startsWith(dialCode)) {
+      return fullPhoneStr.substring(dialCode.length).trim();
+    }
+    if (fullPhoneStr.startsWith("+")) {
+      const spaceIdx = fullPhoneStr.indexOf(" ");
+      if (spaceIdx !== -1) {
+        return fullPhoneStr.substring(spaceIdx + 1).trim();
+      }
+    }
+    return fullPhoneStr;
+  };
+
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -56,12 +89,12 @@ export default function UserProfilePage() {
         last_name: profile.last_name || "",
         username: profile.username || "",
         email: profile.email || "",
-        phone_number: profile.phone_number || "",
-        gender: profile.gender || "Male",
+        phone_number: extractLocalPhone(profile.phone_number, profile.country),
+        gender: formatGender(profile.gender),
         date_of_birth: profile.date_of_birth || "",
         city: profile.city || "",
         state: profile.state || "",
-        country: profile.country || "",
+        country: profile.country || "India",
       });
     }
   }, [profile]);
@@ -94,35 +127,107 @@ export default function UserProfilePage() {
     return "AM";
   };
 
+  const calculateAge = (dobString) => {
+    if (!dobString) return 0;
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getDobError = (dobString) => {
+    if (!dobString) return "";
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    if (birthDate > today) {
+      return "Date of birth cannot be in the future.";
+    }
+    const age = calculateAge(dobString);
+    if (age < 18) {
+      return "You must be at least 18 years old.";
+    }
+    if (age > 120) {
+      return "Please enter a valid date of birth.";
+    }
+    return "";
+  };
+
+  const countryOptions = countriesData.map((c) => ({
+    label: `${c.name} (${c.dial_code})`,
+    value: c.name,
+  }));
+
+  const handleCountryChange = (selectedCountryName) => {
+    setFormData((prev) => ({
+      ...prev,
+      country: selectedCountryName,
+    }));
+  };
+
+  const currentLocalPhone = extractLocalPhone(profile?.phone_number, profile?.country);
+  const hasChanges =
+    Boolean(profile) &&
+    (formData.first_name.trim() !== (profile.first_name || "") ||
+      formData.last_name.trim() !== (profile.last_name || "") ||
+      formData.gender !== formatGender(profile.gender) ||
+      formData.date_of_birth !== (profile.date_of_birth || "") ||
+      formData.city.trim() !== (profile.city || "") ||
+      formData.state.trim() !== (profile.state || "") ||
+      formData.country.trim() !== (profile.country || "") ||
+      formData.phone_number.trim() !== (currentLocalPhone || ""));
+
   const handleCancel = () => {
+    setDobError("");
     if (profile) {
       setFormData({
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",
         username: profile.username || "",
         email: profile.email || "",
-        phone_number: profile.phone_number || "",
-        gender: profile.gender || "Male",
+        phone_number: extractLocalPhone(profile.phone_number, profile.country),
+        gender: formatGender(profile.gender),
         date_of_birth: profile.date_of_birth || "",
         city: profile.city || "",
         state: profile.state || "",
-        country: profile.country || "",
+        country: profile.country || "India",
       });
     }
     setIsEditing(false);
   };
 
   const handleSave = async () => {
+    const activeDobError = dobError || getDobError(formData.date_of_birth);
+    if (activeDobError) {
+      setDobError(activeDobError);
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await profileAPI.updateProfile(formData);
+      const dialCode = getDialCode(formData.country);
+      const fullPhoneNumber = formData.phone_number.trim()
+        ? `${dialCode} ${formData.phone_number.trim()}`.trim()
+        : "";
+
+      const payload = {
+        ...formData,
+        gender: formData.gender ? formData.gender.toUpperCase() : "MALE",
+        date_of_birth: formData.date_of_birth || null,
+        phone_number: fullPhoneNumber,
+      };
+      const updated = await profileAPI.updateProfile(payload);
       setLocalProfile(updated);
       dispatch(updateProfileSuccess(updated));
       toast.success("Profile updated successfully!");
+      setDobError("");
       setIsEditing(false);
     } catch (err) {
       console.error("Error updating profile:", err);
-      toast.error("Failed to update profile. Please try again.");
+      toast.error(err?.message || "Failed to update profile. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -138,7 +243,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-14 bg-slate-50/60">
+    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
       {/* Sky-themed Soft Ambient Aesthetic Blobs */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
       <div className="absolute bottom-10 -right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl pointer-events-none" />
@@ -149,14 +254,14 @@ export default function UserProfilePage() {
       </h1>
 
       {/* Container Card */}
-      <div className="relative z-10 w-full max-w-2xl rounded-3xl px-8 py-12 sm:px-10 animate-fade-in plain-card space-y-6">
+      <div className="relative z-10 w-full max-w-2xl rounded-3xl px-8 pt-3 pb-12 sm:px-10 animate-fade-in plain-card space-y-6">
         {/* Top-Right Edit / Action Buttons */}
         <div className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2">
           {!isEditing ? (
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
+              className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">edit</span>
               <span>Edit</span>
@@ -167,15 +272,15 @@ export default function UserProfilePage() {
                 type="button"
                 onClick={handleCancel}
                 disabled={saving}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-all duration-200 cursor-pointer"
+                className="h-8 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-all duration-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#ffd600] hover:bg-yellow-400 text-black font-bold text-xs transition-all duration-200 cursor-pointer shadow-sm disabled:opacity-50"
+                disabled={saving || !hasChanges}
+                className="h-8 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#ffd600] hover:bg-yellow-400 text-black font-bold text-xs transition-all duration-200 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#ffd600]"
               >
                 {saving ? "Saving..." : "Save"}
               </button>
@@ -224,7 +329,7 @@ export default function UserProfilePage() {
                   value={isEditing ? formData.first_name : (profile?.first_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
                   className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
+                    !isEditing ? "cursor-default" : "focus:border-slate-400"
                   }`}
                 />
               </div>
@@ -239,7 +344,7 @@ export default function UserProfilePage() {
                   value={isEditing ? formData.last_name : (profile?.last_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
                   className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
+                    !isEditing ? "cursor-default" : "focus:border-slate-400"
                   }`}
                 />
               </div>
@@ -275,16 +380,25 @@ export default function UserProfilePage() {
                   Date of Birth
                 </label>
                 {isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsDobModalOpen(true)}
-                    className="input-field flex items-center justify-between text-left cursor-pointer w-full bg-white border border-slate-200"
-                  >
-                    <span className={formData.date_of_birth ? "text-slate-800 font-semibold text-sm" : "text-slate-400 text-sm"}>
-                      {formData.date_of_birth ? formatDate(formData.date_of_birth) : "Select DOB"}
-                    </span>
-                    <span className="material-symbols-outlined text-sm text-slate-500">calendar_today</span>
-                  </button>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setIsDobModalOpen(true)}
+                      className={`input-field flex items-center justify-between text-left cursor-pointer w-full border ${
+                        (dobError || getDobError(formData.date_of_birth)) ? "border-rose-400 focus:border-rose-500" : "border-slate-200"
+                      }`}
+                    >
+                      <span className={formData.date_of_birth ? "text-slate-800 font-semibold text-sm" : "text-slate-400 text-sm"}>
+                        {formData.date_of_birth ? formatDate(formData.date_of_birth) : "Select DOB"}
+                      </span>
+                      <span className="material-symbols-outlined text-sm text-slate-500">calendar_today</span>
+                    </button>
+                    {(dobError || getDobError(formData.date_of_birth)) && (
+                      <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                        <p className="field-error ml-2">{dobError || getDobError(formData.date_of_birth)}</p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input
                     type="text"
@@ -294,64 +408,6 @@ export default function UserProfilePage() {
                   />
                 )}
               </div>
-            </div>
-
-            {/* Username & Email */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  readOnly={!isEditing}
-                  value={isEditing ? formData.username : (profile?.username || "-")}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
-                  }`}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
-                  Email address
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    name="email"
-                    readOnly={!isEditing}
-                    value={isEditing ? formData.email : (profile?.email || "-")}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                    className={`input-field font-semibold text-slate-800 pr-10 ${
-                      !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
-                    }`}
-                  />
-                  {profile?.email && !isEditing && (
-                    <span className="material-symbols-outlined text-base text-emerald-500 absolute right-3 pointer-events-none" title="Verified Email">
-                      verified
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
-                Phone number
-              </label>
-              <input
-                type="text"
-                name="phone_number"
-                readOnly={!isEditing}
-                value={isEditing ? formData.phone_number : (profile?.phone_number || "-")}
-                onChange={(e) => setFormData((prev) => ({ ...prev, phone_number: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
-                }`}
-              />
             </div>
           </div>
         </div>
@@ -373,7 +429,7 @@ export default function UserProfilePage() {
                 value={isEditing ? formData.city : (profile?.city || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
                 className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
+                  !isEditing ? "cursor-default" : "focus:border-slate-400"
                 }`}
               />
             </div>
@@ -388,7 +444,7 @@ export default function UserProfilePage() {
                 value={isEditing ? formData.state : (profile?.state || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
                 className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
+                  !isEditing ? "cursor-default" : "focus:border-slate-400"
                 }`}
               />
             </div>
@@ -396,16 +452,80 @@ export default function UserProfilePage() {
               <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
                 Country
               </label>
-              <input
-                type="text"
-                name="country"
-                readOnly={!isEditing}
-                value={isEditing ? formData.country : (profile?.country || "-")}
-                onChange={(e) => setFormData((prev) => ({ ...prev, country: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "bg-white border border-slate-200 focus:border-slate-400"
-                }`}
-              />
+              {isEditing ? (
+                <CustomSelect
+                  value={formData.country}
+                  onChange={handleCountryChange}
+                  options={countryOptions}
+                  placeholder="Select Country"
+                />
+              ) : (
+                <input
+                  type="text"
+                  readOnly
+                  value={profile?.country || "-"}
+                  className="input-field cursor-default font-semibold text-slate-800"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Details Group */}
+        <div className="pt-2">
+          <h3 className="text-xs font-bold text-slate-400 tracking-wide mb-4 ml-1">
+            Contact Details
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
+                Phone number
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={getDialCode(isEditing ? formData.country : profile?.country)}
+                  className="input-field w-20 sm:w-16 text-center cursor-default bg-slate-100/90 font-bold text-slate-700 select-none flex-shrink-0"
+                  title="Country Code (Auto-filled from selected Country)"
+                />
+                <input
+                  type="text"
+                  name="phone_number"
+                  readOnly={!isEditing}
+                  value={isEditing ? formData.phone_number : (extractLocalPhone(profile?.phone_number, profile?.country) || "-")}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      phone_number: e.target.value.replace(/[^0-9]/g, ""),
+                    }))
+                  }
+                  placeholder="Enter phone number"
+                  className={`input-field flex-1 font-semibold text-slate-800 ${
+                    !isEditing ? "cursor-default" : "focus:border-slate-400"
+                  }`}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
+                Email address
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  name="email"
+                  readOnly
+                  value={profile?.email || "-"}
+                  className="input-field font-semibold text-slate-800 pr-10 cursor-default"
+                />
+                {profile?.email && (
+                  <span className="material-symbols-outlined text-base text-emerald-500 absolute right-3 pointer-events-none" title="Verified Email">
+                    verified
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -416,7 +536,13 @@ export default function UserProfilePage() {
         onClose={() => setIsDobModalOpen(false)}
         selectedDate={formData.date_of_birth}
         onSelectDate={(date) => {
-          setFormData((prev) => ({ ...prev, date_of_birth: date }));
+          const err = getDobError(date);
+          if (err) {
+            setDobError(err);
+          } else {
+            setDobError("");
+            setFormData((prev) => ({ ...prev, date_of_birth: date }));
+          }
           setIsDobModalOpen(false);
         }}
       />

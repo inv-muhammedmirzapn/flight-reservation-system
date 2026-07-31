@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { store } from "@/store";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
@@ -14,6 +14,110 @@ import MyBookingsPage from "@/pages/bookings/MyBookingsPage";
 import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
 import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
 import UserProfilePage from "@/pages/profile/UserProfilePage";
+import NotificationsPage from "@/pages/notifications/NotificationsPage";
+import ServerDownPage from "@/components/common/ServerDownPage";
+
+function AppContent() {
+  const isServerDown = useSelector((state) => state?.system?.isServerDown);
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+        {/* Global Header */}
+        <Navbar />
+
+        {/* Global Server Outage Overlay */}
+        {isServerDown && <ServerDownPage />}
+
+        {/* Main Routing Container */}
+        <main className="flex-1 flex flex-col">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/flights" element={<FlightsPage />} />
+            <Route path="/flights/:id" element={<FlightDetailPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+
+            {/* Protected Routes (Authentication Required) */}
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings"
+              element={
+                <ProtectedRoute>
+                  <MyBookingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/booking-confirmation/:id"
+              element={
+                <ProtectedRoute>
+                  <BookingConfirmationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/booking-confirmation/waitlist/:id"
+              element={
+                <ProtectedRoute>
+                  <BookingConfirmationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings/ticket/:id"
+              element={
+                <ProtectedRoute>
+                  <TicketDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings/ticket/waitlist/:id"
+              element={
+                <ProtectedRoute>
+                  <TicketDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings/cancel/:id"
+              element={
+                <ProtectedRoute>
+                  <TicketCancellationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings/cancel/waitlist/:id"
+              element={
+                <ProtectedRoute>
+                  <TicketCancellationPage />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
+  );
+}
 
 export default function App() {
   return (
@@ -72,90 +176,7 @@ export default function App() {
           },
         }}
       />
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-          {/* Global Header */}
-          <Navbar />
-
-          {/* Main Routing Container */}
-          <main className="flex-1 flex flex-col">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/flights" element={<FlightsPage />} />
-              <Route path="/flights/:id" element={<FlightDetailPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-
-              {/* Protected Routes (Authentication Required) */}
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <UserProfilePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-bookings"
-                element={
-                  <ProtectedRoute>
-                    <MyBookingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/booking-confirmation/:id"
-                element={
-                  <ProtectedRoute>
-                    <BookingConfirmationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/booking-confirmation/waitlist/:id"
-                element={
-                  <ProtectedRoute>
-                    <BookingConfirmationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-bookings/ticket/:id"
-                element={
-                  <ProtectedRoute>
-                    <TicketDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-bookings/ticket/waitlist/:id"
-                element={
-                  <ProtectedRoute>
-                    <TicketDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-bookings/cancel/:id"
-                element={
-                  <ProtectedRoute>
-                    <TicketCancellationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-bookings/cancel/waitlist/:id"
-                element={
-                  <ProtectedRoute>
-                    <TicketCancellationPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </main>
-        </div>
-      </BrowserRouter>
+      <AppContent />
     </Provider>
   );
 }

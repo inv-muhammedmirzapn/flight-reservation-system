@@ -1,5 +1,15 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+const dispatchServerDown = async () => {
+  try {
+    const { store } = await import('@/store');
+    const { setServerDown } = await import('@/store/systemSlice');
+    store.dispatch(setServerDown(true));
+  } catch (err) {
+    console.error("Could not dispatch server down state:", err);
+  }
+};
+
 export const getResponseData = async (res) => {
   if (res.status === 204) return null;
   const text = await res.text();
@@ -15,10 +25,13 @@ export const extractErrorMessage = (data) => {
   if (typeof data === 'string') return data;
   if (data && typeof data === 'object') {
     if (data.detail) return data.detail;
-    if (data.non_field_errors) return Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
-    
+    if (data.non_field_errors)
+      return Array.isArray(data.non_field_errors)
+        ? data.non_field_errors[0]
+        : data.non_field_errors;
+
     // Map over keys for DRF field errors
-    const errors = Object.keys(data).map(key => {
+    const errors = Object.keys(data).map((key) => {
       const fieldError = data[key];
       const msg = Array.isArray(fieldError) ? fieldError[0] : fieldError;
       return `${key.charAt(0).toUpperCase() + key.slice(1)}: ${msg}`;
@@ -34,14 +47,27 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
 
   const headers = {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (netErr) {
+    // Catch network connectivity failure / connection refused
+    dispatchServerDown();
+    throw new Error("Unable to connect to server. Please check backend connection.");
+  }
+
+  // Handle server outage / maintenance statuses (502 Bad Gateway, 503 Service Unavailable, 504 Timeout)
+  if (response.status === 502 || response.status === 503 || response.status === 504) {
+    dispatchServerDown();
+    throw new Error("Server is currently experiencing issues. Please try again shortly.");
+  }
 
   // If unauthorized, attempt token refresh (if a refresh token is present)
   if (response.status === 401 && localStorage.getItem('refresh_token')) {
