@@ -105,6 +105,20 @@ export const generateSeats = createAsyncThunk(
   }
 );
 
+export const applyPremiumPricing = createAsyncThunk(
+  'flightInstance/applyPremiumPricing',
+  async ({ instanceId, data }, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth(`/flights/v2/flight-instances/${instanceId}/apply-premium-pricing/`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
 // Custom: populate standard countries from pycountry presets
 export const populateCountries = createAsyncThunk(
   'country/populatePresets',

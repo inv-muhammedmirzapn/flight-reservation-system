@@ -1,5 +1,6 @@
 import csv
 import io
+from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.db import IntegrityError
 from django.db.models import Count, Q
@@ -111,99 +112,56 @@ class FlightListCreateView(APIView):
 
     @extend_schema(responses=FlightSerializer(many=True))
     def get(self, request, *args, **kwargs) -> Response:
-        ordering = request.query_params.get("ordering", "").strip()
-        allowed_orderings = [
-            "departure_time", "-departure_time", "arrival_time", "-arrival_time",
-            "base_fare", "-base_fare", "flight_number", "-flight_number",
-            "status", "-status", "airline", "-airline"
-        ]
-        qs = (
-            Flight.objects.all().order_by(ordering)
-            if ordering in allowed_orderings
-            else Flight.objects.all().order_by("-departure_time")
-        )
-
-        search = request.query_params.get("search", "").strip()
-        if search:
-            qs = qs.filter(
-                Q(flight_number__icontains=search) | Q(airline__icontains=search) |
-                Q(source_airport__icontains=search) | Q(destination_airport__icontains=search)
-            )
-        status_filter = request.query_params.get("status", "").strip().upper()
-        if status_filter:
-            qs = qs.filter(status=status_filter)
-        source = request.query_params.get("source", "").strip()
+        from django.utils import timezone
+        qs = FlightInstance.objects.select_related('flight', 'flight__airline', 'aircraft').filter(
+            scheduled_departure__gte=timezone.now()
+        ).order_by("scheduled_departure")
+        
+        # Filtering
+        source = request.query_params.get("source", "").strip().upper()
         if source:
-            qs = qs.filter(source_airport__icontains=source)
-        destination = request.query_params.get("destination", "").strip()
+            qs = qs.filter(flight__legs__departure_airport__iata_code=source, flight__legs__leg_order=1)
+
+        destination = request.query_params.get("destination", "").strip().upper()
         if destination:
-            qs = qs.filter(destination_airport__icontains=destination)
+            qs = qs.filter(flight__legs__arrival_airport__iata_code=destination)
+
         date = request.query_params.get("date", "").strip()
         if date:
-            qs = qs.filter(departure_time__date=date)
-        arrival_date = request.query_params.get("arrival_date", "").strip()
-        if arrival_date:
-            qs = qs.filter(arrival_time__date=arrival_date)
-        min_fare = request.query_params.get("min_fare")
-        if min_fare is not None:
+            qs = qs.filter(date=date)
+
+        flight_number = request.query_params.get("flight_number", "").strip().upper()
+        if flight_number:
+            qs = qs.filter(flight__flight_no__icontains=flight_number)
+
+        airline = request.query_params.get("airline", "").strip()
+        if airline:
+            qs = qs.filter(flight__airline__airline_name__icontains=airline)
+
+        status_filter = request.query_params.get("status", "").strip()
+        if status_filter:
+            qs = qs.filter(status__iexact=status_filter)
+
+        min_price = request.query_params.get("min_price", "").strip()
+        if min_price:
             try:
-                qs = qs.filter(base_fare__gte=float(min_fare))
+                qs = qs.filter(fares__price__gte=float(min_price))
             except ValueError:
                 pass
-        max_fare = request.query_params.get("max_fare")
-        if max_fare is not None:
+        
+        max_price = request.query_params.get("max_price", "").strip()
+        if max_price:
             try:
-                qs = qs.filter(base_fare__lte=float(max_fare))
-            except ValueError:
-                pass
-        stops = request.query_params.get("stops")
-        if stops:
-            try:
-                stop_counts = [int(s.strip()) for s in stops.split(",")]
-                q_objects = Q()
-                for count in stop_counts:
-                    if count >= 2:
-                        q_objects |= Q(stops__len__gte=2)
-                    else:
-                        q_objects |= Q(stops__len=count)
-                qs = qs.filter(q_objects)
-            except ValueError:
-                pass
-        passengers = request.query_params.get("passengers")
-        if passengers:
-            try:
-                p_count = int(passengers)
-                qs = qs.filter(Q(available_seats__gte=p_count) | Q(available_seats=0))
+                qs = qs.filter(fares__price__lte=float(max_price))
             except ValueError:
                 pass
 
-        # Cabin class filter — find legacy flights that have a Fare for the given class
-        cabin_class = request.query_params.get("class", "").strip()
-        if cabin_class:
-            # Map display names to model values
-            class_map = {
-                "Economy": "ECONOMY",
-                "Business": "BUSINESS",
-                "First": "FIRST",
-                "ECONOMY": "ECONOMY",
-                "BUSINESS": "BUSINESS",
-                "FIRST": "FIRST",
-            }
-            cabin_value = class_map.get(cabin_class)
-            if cabin_value:
-                from .models import FlightInstance, Fare
-                # Find flight_numbers that have an instance with a fare for this class
-                matching_flight_nos = (
-                    Fare.objects
-                    .filter(cabin_class=cabin_value)
-                    .values_list('flight_instance__flight__flight_no', flat=True)
-                    .distinct()
-                )
-                qs = qs.filter(flight_number__in=list(matching_flight_nos))
+        qs = qs.distinct()
 
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
-        serializer = FlightSerializer(page, many=True)
+        from .serializers import FrontendFlightInstanceSerializer
+        serializer = FrontendFlightInstanceSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
     @extend_schema(request=FlightSerializer, responses={201: FlightSerializer})
@@ -224,20 +182,32 @@ class FlightDetailView(APIView):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
 
-    def get_object(self, pk):
-        try:
-            return Flight.objects.get(pk=pk)
-        except (Flight.DoesNotExist, ValueError, DjangoValidationError):
-            raise Http404
-
     @extend_schema(responses=FlightSerializer)
     def get(self, request, id, *args, **kwargs) -> Response:
-        flight = self.get_object(id)
-        return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
+        import uuid
+        try:
+            uuid.UUID(str(id))
+            flight = get_object_or_404(Flight, id=id)
+            date_param = request.query_params.get("date")
+            from .serializers import FlightSerializer
+            serializer = FlightSerializer(flight, context={"search_date": date_param})
+            return Response(serializer.data)
+        except ValueError:
+            from .serializers import FrontendFlightInstanceSerializer
+            instance = get_object_or_404(FlightInstance, id=int(id))
+            serializer = FrontendFlightInstanceSerializer(instance)
+            return Response(serializer.data)
 
     @extend_schema(responses={204: None})
     def delete(self, request, id, *args, **kwargs) -> Response:
-        self.get_object(id).delete()
+        import uuid
+        try:
+            uuid.UUID(str(id))
+            flight = get_object_or_404(Flight, id=id)
+            flight.delete()
+        except ValueError:
+            instance = get_object_or_404(FlightInstance, id=int(id))
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -286,19 +256,30 @@ class FlightUpdateView(APIView):
 
 
 def _process_flight_records(records):
-    created_flights, errors = [], []
+    created_flights, updated_flights, errors = [], [], []
     for index, item in enumerate(records):
         flight_number = item.get("flight_number", f"Item #{index + 1}")
-        serializer = FlightSerializer(data=item)
+        
+        existing_flight = Flight.objects.filter(flight_number=flight_number).first()
+        if existing_flight:
+            serializer = FlightSerializer(existing_flight, data=item)
+            is_update = True
+        else:
+            serializer = FlightSerializer(data=item)
+            is_update = False
+
         if serializer.is_valid():
             try:
                 serializer.save()
-                created_flights.append(serializer.data)
+                if is_update:
+                    updated_flights.append(serializer.data)
+                else:
+                    created_flights.append(serializer.data)
             except (IntegrityError, DjangoValidationError) as exc:
                 errors.append({"flight_number": flight_number, "errors": {"non_field_errors": [str(exc)]}})
         else:
             errors.append({"flight_number": flight_number, "errors": serializer.errors})
-    return created_flights, errors
+    return created_flights, updated_flights, errors
 
 
 class FlightBulkImportView(APIView):
@@ -312,6 +293,8 @@ class FlightBulkImportView(APIView):
         responses={200: inline_serializer("FlightBulkImportResponse", {
             "created_count": rf_serializers.IntegerField(),
             "created_flights": rf_serializers.ListField(child=FlightSerializer()),
+            "updated_count": rf_serializers.IntegerField(),
+            "updated_flights": rf_serializers.ListField(child=FlightSerializer()),
             "errors": rf_serializers.ListField(child=rf_serializers.DictField()),
         })}
     )
@@ -331,9 +314,14 @@ class FlightBulkImportView(APIView):
             if not records:
                 return Response({"detail": "CSV file is empty or has no data rows."},
                                 status=status.HTTP_400_BAD_REQUEST)
-            created_flights, errors = _process_flight_records(records)
-            return Response({"created_count": len(created_flights), "created_flights": created_flights,
-                             "errors": errors}, status=status.HTTP_200_OK)
+            created_flights, updated_flights, errors = _process_flight_records(records)
+            return Response({
+                "created_count": len(created_flights),
+                "created_flights": created_flights,
+                "updated_count": len(updated_flights),
+                "updated_flights": updated_flights,
+                "errors": errors
+            }, status=status.HTTP_200_OK)
 
         data = request.data
         if isinstance(data, dict):
@@ -341,9 +329,14 @@ class FlightBulkImportView(APIView):
         if not isinstance(data, list):
             return Response({"detail": "Invalid format. Expected a JSON array of flights or a CSV file upload."},
                             status=status.HTTP_400_BAD_REQUEST)
-        created_flights, errors = _process_flight_records(data)
-        return Response({"created_count": len(created_flights), "created_flights": created_flights,
-                         "errors": errors}, status=status.HTTP_200_OK)
+        created_flights, updated_flights, errors = _process_flight_records(data)
+        return Response({
+            "created_count": len(created_flights),
+            "created_flights": created_flights,
+            "updated_count": len(updated_flights),
+            "updated_flights": updated_flights,
+            "errors": errors
+        }, status=status.HTTP_200_OK)
 
 
 # ─── New entity ViewSets ────────────────────────────────────────────────────────
@@ -711,6 +704,52 @@ class FlightInstanceViewSet(AdminModelViewSet):
             {"detail": f"{len(seats_to_create)} seats generated.", "count": len(seats_to_create)},
             status=status.HTTP_201_CREATED,
         )
+
+    @action(detail=True, methods=["post"], url_path="apply-premium-pricing", permission_classes=[IsAdminOrSuperuser])
+    def apply_premium_pricing(self, request, pk=None):
+        instance = self.get_object()
+        
+        window_fee = request.data.get("window_fee")
+        legroom_fee = request.data.get("legroom_fee")
+        
+        if window_fee is not None:
+            try:
+                window_fee = float(window_fee)
+            except ValueError:
+                return Response({"detail": "window_fee must be a number"}, status=status.HTTP_400_BAD_REQUEST)
+                
+        if legroom_fee is not None:
+            try:
+                legroom_fee = float(legroom_fee)
+            except ValueError:
+                return Response({"detail": "legroom_fee must be a number"}, status=status.HTTP_400_BAD_REQUEST)
+
+        seats = instance.seats.all()
+        updated_seats = []
+        for seat in seats:
+            changed = False
+            fee = float(seat.seat_fee)
+            
+            if window_fee is not None and seat.position == 'window':
+                fee += window_fee
+                changed = True
+                
+            if legroom_fee is not None and seat.exit_row:
+                fee += legroom_fee
+                changed = True
+                
+            if changed:
+                seat.seat_fee = fee
+                updated_seats.append(seat)
+                
+        if updated_seats:
+            Seat.objects.bulk_update(updated_seats, ['seat_fee'])
+            
+        return Response({
+            "detail": f"Updated pricing for {len(updated_seats)} seats.",
+            "updated_count": len(updated_seats)
+        })
+
 
 
 class SeatViewSet(AdminModelViewSet):

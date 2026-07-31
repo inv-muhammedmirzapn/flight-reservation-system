@@ -151,13 +151,16 @@ function ReportModal({ reports, onClose }) {
     total: acc.total + (r.total || 0),
     success: acc.success + (r.success || 0),
     failed: acc.failed + (r.failed || 0),
-  }), { total: 0, success: 0, failed: 0 });
+    created: acc.created + (r.created || 0),
+    updated: acc.updated + (r.updated || 0),
+  }), { total: 0, success: 0, failed: 0, created: 0, updated: 0 });
 
   const multiMode = reports.length > 1;
 
   const statCards = [
     { label: "Total Rows", value: totals.total, cardMod: "Neutral", valMod: "Neutral" },
-    { label: "Successful", value: totals.success, cardMod: "Success", valMod: "Success" },
+    { label: "Created", value: totals.created, cardMod: "Success", valMod: "Success" },
+    { label: "Modified", value: totals.updated, cardMod: "Success", valMod: "Success" },
     { label: "Failed", value: totals.failed, cardMod: totals.failed > 0 ? "Failure" : "Neutral", valMod: totals.failed > 0 ? "Failure" : "Zero" },
   ];
 
@@ -187,7 +190,9 @@ function ReportModal({ reports, onClose }) {
               return (
                 <div key={r.entity} className={`${styles.entityRow} ${r.failed > 0 ? styles.entityRowErr : styles.entityRowOk}`}>
                   <span className={styles.entityName}>{ent?.label || r.entity}</span>
-                  <span className={styles.entityOk}>✓ {r.success}</span>
+                  <span className={styles.entityOk}>
+                    ✓ {r.success} <span className={styles.entitySub}>(C:{r.created || 0} M:{r.updated || 0})</span>
+                  </span>
                   {r.failed > 0 && <span className={styles.entityFail}>✕ {r.failed}</span>}
                 </div>
               );

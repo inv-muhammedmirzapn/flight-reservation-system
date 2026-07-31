@@ -11,6 +11,113 @@ from .models import (
 
 # ─── Legacy serializer (unchanged) ─────────────────────────────────────────────
 
+class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
+    """Maps a FlightInstance to the legacy Flight JSON structure expected by the frontend."""
+    flight_number = serializers.CharField(source='flight.flight_no')
+    airline = serializers.CharField(source='flight.airline.airline_name')
+    aircraft = serializers.CharField(source='aircraft.registration')
+    source_airport = serializers.SerializerMethodField()
+    source_airport_name = serializers.SerializerMethodField()
+    source_terminals = serializers.SerializerMethodField()
+    destination_airport = serializers.SerializerMethodField()
+    destination_airport_name = serializers.SerializerMethodField()
+    destination_terminals = serializers.SerializerMethodField()
+    departure_time = serializers.DateTimeField(source='scheduled_departure')
+    arrival_time = serializers.DateTimeField(source='scheduled_arrival')
+    base_fare = serializers.SerializerMethodField()
+    total_seats = serializers.SerializerMethodField()
+    available_seats = serializers.SerializerMethodField()
+    stops = serializers.SerializerMethodField()
+    
+    baggage_weight_kg = serializers.DecimalField(source='flight.baggage_weight_allowed_per_person', max_digits=6, decimal_places=2)
+    baggage_number_allowed = serializers.IntegerField(source='flight.baggage_number_allowed_per_person')
+    handbag_weight_kg = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2)
+    fares = serializers.SerializerMethodField()
+    flight_instance_id = serializers.IntegerField(source='id')
+
+    class Meta:
+        model = FlightInstance
+        fields = [
+            "id", "flight_number", "airline", "aircraft",
+            "source_airport", "source_airport_name", "source_terminals",
+            "destination_airport", "destination_airport_name", "destination_terminals",
+            "departure_time", "arrival_time",
+            "base_fare", "total_seats", "available_seats",
+            "status", "stops",
+            "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
+            "fares", "flight_instance_id",
+        ]
+
+    def _get_first_leg(self, obj):
+        return obj.flight.legs.order_by('leg_order').first()
+
+    def _get_last_leg(self, obj):
+        return obj.flight.legs.order_by('leg_order').last()
+
+    def get_source_airport(self, obj):
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.iata_code if leg else "N/A"
+
+    def get_source_airport_name(self, obj):
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.airport_name if leg else "N/A"
+
+    def get_source_terminals(self, obj):
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.terminals if leg else []
+
+    def get_destination_airport(self, obj):
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.iata_code if leg else "N/A"
+
+    def get_destination_airport_name(self, obj):
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.airport_name if leg else "N/A"
+
+    def get_destination_terminals(self, obj):
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.terminals if leg else []
+
+    def get_base_fare(self, obj):
+        fare = obj.fares.order_by('price').first()
+        return float(fare.price) if fare else 0.0
+
+    def get_total_seats(self, obj):
+        return obj.seats.count()
+
+    def get_available_seats(self, obj):
+        from .models import SeatStatus
+        return obj.seats.filter(status=SeatStatus.AVAILABLE).count()
+
+    def get_stops(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        if legs.count() <= 1:
+            return []
+        stops = []
+        for leg in legs[:legs.count()-1]:
+            stops.append(leg.arrival_airport.city)
+        return stops
+
+    def get_fares(self, obj):
+        from .models import SeatStatus
+        fares = {}
+        for fare in obj.fares.all():
+            real_available = obj.seats.filter(
+                seat_class=fare.cabin_class,
+                status=SeatStatus.AVAILABLE
+            ).count()
+            fares[fare.cabin_class] = {
+                'price': float(fare.price),
+                'currency': fare.currency,
+                'available_seats': real_available,
+                'fare_code': fare.fare_code,
+                'refund_type': fare.refund_type,
+                'change_fee': float(fare.change_fee),
+                'meal_included': fare.meal_included,
+                'baggage_allowance': float(fare.baggage_allowance) if fare.baggage_allowance else None,
+            }
+        return fares if fares else None
+
 class FlightSerializer(serializers.ModelSerializer):
     """Serializer for the legacy Flight model."""
     source_airport_name = serializers.SerializerMethodField()

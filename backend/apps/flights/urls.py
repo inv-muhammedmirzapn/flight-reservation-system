@@ -31,8 +31,8 @@ urlpatterns = [
     path("", FlightListCreateView.as_view(), name="flight-list-create"),
     path("stats/", FlightStatsView.as_view(), name="flight-stats"),
     path("bulk-import/", FlightBulkImportView.as_view(), name="flight-bulk-import"),
-    path("<uuid:id>/", FlightDetailView.as_view(), name="flight-detail"),
-    path("<uuid:id>/update/", FlightUpdateView.as_view(), name="flight-update"),
+    path("<str:id>/", FlightDetailView.as_view(), name="flight-detail"),
+    path("<str:id>/update/", FlightUpdateView.as_view(), name="flight-update"),
 
     # ── New entity endpoints ─────────────────────────────────────────────────
     path("", include(router.urls)),

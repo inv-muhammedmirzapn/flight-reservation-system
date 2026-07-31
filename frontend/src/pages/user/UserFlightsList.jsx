@@ -236,10 +236,10 @@ const FieldWrap = ({ label, children, center }) => (
 );
 
 /* ── Fixed Top Search Bar ────────────────────────────────── */
-function SearchBar({ 
-  initialSource, initialDestination, initialDepDate, initialArrDate, 
+function SearchBar({
+  initialSource, initialDestination, initialDepDate, initialArrDate,
   initialAdults, initialChildrenCount, initialInfants, initialCabinClass,
-  onSearch 
+  onSearch
 }) {
   const [source, setSource] = useState(initialSource);
   const [destination, setDestination] = useState(initialDestination);
