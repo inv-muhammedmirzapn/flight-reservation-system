@@ -73,39 +73,6 @@ export const addFlight = createAsyncThunk(
   }
 );
 
-export const bulkImportFlights = createAsyncThunk(
-  'flights/bulkImportFlights',
-  async (flightsData, { rejectWithValue }) => {
-    try {
-      const data = await flightsAPI.bulkImport(flightsData);
-      return data;
-    } catch (error) {
-      try {
-        const errObj = JSON.parse(error.message);
-        return rejectWithValue(errObj);
-      } catch (_) {
-        return rejectWithValue({ detail: 'Failed to import flights' });
-      }
-    }
-  }
-);
-
-export const bulkImportFlightsCsv = createAsyncThunk(
-  'flights/bulkImportFlightsCsv',
-  async (file, { rejectWithValue }) => {
-    try {
-      const data = await flightsAPI.bulkImportCsv(file);
-      return data;
-    } catch (error) {
-      try {
-        const errObj = JSON.parse(error.message);
-        return rejectWithValue(errObj);
-      } catch (_) {
-        return rejectWithValue({ detail: 'Failed to import CSV file' });
-      }
-    }
-  }
-);
 
 export const updateFlight = createAsyncThunk(
   'flights/updateFlight',
@@ -262,30 +229,6 @@ const flightSlice = createSlice({
       .addCase(addFlight.rejected, (state, action) => {
         state.actionLoading = false;
         state.validationErrors = action.payload;
-      })
-      // Bulk Import (JSON)
-      .addCase(bulkImportFlights.pending, (state) => {
-        state.actionLoading = true;
-        state.error = null;
-      })
-      .addCase(bulkImportFlights.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(bulkImportFlights.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.error = action.payload?.detail || 'Failed to import flights';
-      })
-      // Bulk Import (CSV)
-      .addCase(bulkImportFlightsCsv.pending, (state) => {
-        state.actionLoading = true;
-        state.error = null;
-      })
-      .addCase(bulkImportFlightsCsv.fulfilled, (state) => {
-        state.actionLoading = false;
-      })
-      .addCase(bulkImportFlightsCsv.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.error = action.payload?.detail || 'Failed to import CSV file';
       })
       // Update Flight
       .addCase(updateFlight.pending, (state) => {

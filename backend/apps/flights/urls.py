@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     FlightListCreateView, FlightDetailView, FlightUpdateView,
-    FlightBulkImportView, FlightStatsView,
+    FlightStatsView,
     CountryViewSet, AirportViewSet, AirlineViewSet,
     AircraftModelViewSet, AircraftViewSet,
     FlightRouteViewSet, FlightInstanceViewSet,
@@ -32,7 +32,6 @@ urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────
     path("", FlightListCreateView.as_view(), name="flight-list-create"),
     path("stats/", FlightStatsView.as_view(), name="flight-stats"),
-    path("bulk-import/", FlightBulkImportView.as_view(), name="flight-bulk-import"),
     path("<str:id>/", FlightDetailView.as_view(), name="flight-detail"),
     path("<str:id>/update/", FlightUpdateView.as_view(), name="flight-update"),
 

@@ -3,7 +3,7 @@ Bulk Import API
 POST /api/bulk-upload/import/
 
 Accepts a multipart form with:
-  - entity: one of 'countries', 'airports', 'airlines', 'aircraft_models', 'aircraft', 'flight_routes'
+  - entity: one of 'airports', 'airlines', 'aircraft_models', 'aircraft', 'flight_routes'
   - file: .csv, .xls, or .xlsx
 
 Returns an import report:
@@ -64,28 +64,6 @@ def _strip(val, default=""):
 # All processors use update_or_create so that re-uploading a CSV with changed
 # field values will UPDATE the existing record rather than silently skipping it.
 
-def _import_countries(rows):
-    created_count, updated_count, errors = 0, 0, []
-    for i, row in enumerate(rows, start=2):
-        name     = _strip(row.get("name") or row.get("Name"))
-        iso_code = _strip(row.get("iso_code") or row.get("ISO Code") or row.get("iso")).upper()
-        row_errors = {}
-        if not name:     row_errors["name"] = "Required."
-        if not iso_code: row_errors["iso_code"] = "Required."
-        if row_errors:
-            errors.append({"row": i, "data": row, "errors": row_errors}); continue
-        try:
-            _, created = Country.objects.update_or_create(
-                iso_code=iso_code, defaults={"name": name}
-            )
-            if created: created_count += 1
-            else:        updated_count += 1
-        except (DjangoValidationError, IntegrityError) as exc:
-            msg = exc.message_dict if hasattr(exc, "message_dict") else {"detail": str(exc)}
-            errors.append({"row": i, "data": row, "errors": msg})
-    return created_count, updated_count, errors
-
-
 def _import_airlines(rows):
     created_count, updated_count, errors = 0, 0, []
     for i, row in enumerate(rows, start=2):
@@ -126,8 +104,18 @@ def _import_airports(rows):
             errors.append({"row": i, "data": row, "errors": row_errors}); continue
         country_obj = Country.objects.filter(iso_code=country_iso).first()
         if not country_obj:
+            try:
+                import pycountry
+                c = pycountry.countries.get(alpha_2=country_iso)
+                if c:
+                    country_obj, _ = Country.objects.get_or_create(
+                        iso_code=country_iso, defaults={"name": c.name}
+                    )
+            except Exception:
+                pass
+        if not country_obj:
             errors.append({"row": i, "data": row, "errors": {
-                "country_iso": f"Country '{country_iso}' not found. Import countries first."
+                "country_iso": f"Country '{country_iso}' not found. Please populate countries first."
             }}); continue
         def _dec(raw):
             try: return Decimal(str(raw)) if raw not in (None, "", "None") else None
@@ -467,7 +455,6 @@ def _import_fares(rows):
 # ── Entity registry ───────────────────────────────────────────────────────────
 
 ENTITY_PROCESSORS = {
-    "countries":        _import_countries,
     "airlines":         _import_airlines,
     "airports":         _import_airports,
     "aircraft_models":  _import_aircraft_models,
@@ -520,9 +507,7 @@ class BulkImportView(APIView):
                         
                         lower_name = name.lower()
                         matched_entity = None
-                        if "country" in lower_name or "countries" in lower_name:
-                            matched_entity = "countries"
-                        elif "airline" in lower_name or "airlines" in lower_name:
+                        if "airline" in lower_name or "airlines" in lower_name:
                             matched_entity = "airlines"
                         elif "airport" in lower_name or "airports" in lower_name:
                             matched_entity = "airports"
@@ -546,7 +531,7 @@ class BulkImportView(APIView):
                         if matched_entity:
                             file_mapping[matched_entity] = name
                     
-                    import_order = ["countries", "airlines", "airports", "aircraft_models", "food_items", "aircraft", "flight_routes", "flight_instances", "flight_legs", "fares", "flight_meals"]
+                    import_order = ["airlines", "airports", "aircraft_models", "food_items", "aircraft", "flight_routes", "flight_instances", "flight_legs", "fares", "flight_meals"]
                     combined_report = {
                         "entity": "all",
                         "total": 0,
@@ -600,7 +585,7 @@ class BulkImportView(APIView):
                     
                     if not combined_report["reports"]:
                         return Response(
-                            {"detail": "No matching CSV/Excel files found in the ZIP archive. Ensure file names contain table names (e.g., 'countries.csv', 'airlines.xlsx')."},
+                            {"detail": "No matching CSV/Excel files found in the ZIP archive. Ensure file names contain table names (e.g., 'airports.csv', 'airlines.xlsx')."},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     

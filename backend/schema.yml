@@ -217,7 +217,11 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleLoginResponse'
+          description: ''
   /api/auth/login/:
     post:
       operationId: auth_login_create
@@ -579,6 +583,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Passenger'
           description: ''
+  /api/bulk-upload/import/:
+    post:
+      operationId: bulk_upload_import_create
+      description: |-
+        POST /api/bulk-upload/import/
+        Multipart form fields:
+          - entity  (string): one of ENTITY_PROCESSORS keys, or "all"
+          - file    (file):   .csv / .xls / .xlsx or .zip (if entity is "all")
+      tags:
+      - bulk-upload
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/flights/:
     get:
       operationId: flights_list
@@ -629,7 +648,6 @@ paths:
         name: id
         schema:
           type: string
-          format: uuid
         required: true
       tags:
       - flights
@@ -650,7 +668,6 @@ paths:
         name: id
         schema:
           type: string
-          format: uuid
         required: true
       tags:
       - flights
@@ -667,7 +684,6 @@ paths:
         name: id
         schema:
           type: string
-          format: uuid
         required: true
       tags:
       - flights
@@ -699,7 +715,6 @@ paths:
         name: id
         schema:
           type: string
-          format: uuid
         required: true
       tags:
       - flights
@@ -722,31 +737,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Flight'
-          description: ''
-  /api/flights/bulk-import/:
-    post:
-      operationId: flights_bulk_import_create
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FlightBulkImportRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/FlightBulkImportRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/FlightBulkImportRequest'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FlightBulkImportResponse'
           description: ''
   /api/flights/stats/:
     get:
@@ -1448,6 +1438,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/flights/v2/airports/import-openflights/:
+    post:
+      operationId: flights_v2_airports_import_openflights_create
+      description: |-
+        POST /api/v2/airports/import-openflights/
+        Import airport data from OpenFlights.
+        Accepts:
+          - A file upload (in form-data request.FILES['file'])
+          - Or if no file is uploaded, fetches automatically from OpenFlights URL.
+          - ?overwrite=true query param to overwrite existing records.
+          - ?limit=N to limit the number of imported records.
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
   /api/flights/v2/countries/:
     get:
       operationId: flights_v2_countries_list
@@ -1620,6 +1644,35 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/flights/v2/countries/populate-presets/:
+    post:
+      operationId: flights_v2_countries_populate_presets_create
+      description: |-
+        POST /api/v2/countries/populate-presets/
+        Populate standard ISO countries using pycountry.
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Country'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Country'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Country'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+          description: ''
   /api/flights/v2/fares/:
     get:
       operationId: flights_v2_fares_list
@@ -1958,13 +2011,46 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/flights/v2/flight-instances/{id}/apply-premium-pricing/:
+    post:
+      operationId: flights_v2_flight_instances_apply_premium_pricing_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
   /api/flights/v2/flight-instances/{id}/generate-seats/:
     post:
       operationId: flights_v2_flight_instances_generate_seats_create
       description: |-
         POST /api/v2/flight-instances/{id}/generate-seats/
-        Auto-creates Seat rows from the linked aircraft's capacity fields.
-        Skips if seats already exist.
+        Auto-creates Seat rows. Skips if seats already exist.
       parameters:
       - in: path
         name: id
@@ -2499,6 +2585,196 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/flights/v2/seat-price-templates/:
+    get:
+      operationId: flights_v2_seat_price_templates_list
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSeatPriceTemplateList'
+          description: ''
+    post:
+      operationId: flights_v2_seat_price_templates_create
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+  /api/flights/v2/seat-price-templates/{id}/:
+    get:
+      operationId: flights_v2_seat_price_templates_retrieve
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    put:
+      operationId: flights_v2_seat_price_templates_update
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    patch:
+      operationId: flights_v2_seat_price_templates_partial_update
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    delete:
+      operationId: flights_v2_seat_price_templates_destroy
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/flights/v2/seats/:
     get:
       operationId: flights_v2_seats_list
@@ -2665,6 +2941,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/flights/v2/seats/bulk-price/:
+    post:
+      operationId: flights_v2_seats_bulk_price_create
+      description: |-
+        POST /api/v2/seats/bulk-price/
+        Body: {"seat_ids": [1, 2, 3], "price": 250, "rule_label": "window"}
+        Sets seat_fee = price and last_rule_applied = rule_label for all listed seats.
+        Returns counts and any conflict warnings (seats that already had a different rule).
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
   /api/notifications/:
     get:
       operationId: notifications_list
@@ -3053,9 +3360,9 @@ components:
           type: string
           format: uuid
           readOnly: true
-        flight:
+        flight_id_input:
           type: string
-          format: uuid
+          writeOnly: true
         flight_detail:
           allOf:
           - $ref: '#/components/schemas/FlightSummary'
@@ -3089,8 +3396,8 @@ components:
           readOnly: true
       required:
       - created_at
-      - flight
       - flight_detail
+      - flight_id_input
       - id
       - passengers
       - seat_count
@@ -3348,35 +3655,6 @@ components:
       - source_airport_name
       - source_terminals
       - total_seats
-    FlightBulkImportRequest:
-      type: object
-      properties:
-        flights:
-          type: array
-          items:
-            $ref: '#/components/schemas/Flight'
-        file:
-          type: string
-          format: uri
-          nullable: true
-    FlightBulkImportResponse:
-      type: object
-      properties:
-        created_count:
-          type: integer
-        created_flights:
-          type: array
-          items:
-            $ref: '#/components/schemas/Flight'
-        errors:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
-      required:
-      - created_count
-      - created_flights
-      - errors
     FlightInstance:
       type: object
       properties:
@@ -3397,6 +3675,9 @@ components:
         aircraft:
           type: integer
         aircraft_registration:
+          type: string
+          readOnly: true
+        total_capacity:
           type: string
           readOnly: true
         route:
@@ -3455,6 +3736,7 @@ components:
       - route
       - scheduled_arrival
       - scheduled_departure
+      - total_capacity
       - updated_at
     FlightLeg:
       type: object
@@ -3767,6 +4049,28 @@ components:
           type: string
       required:
       - token
+    GoogleLoginResponse:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+      required:
+      - access
+      - email
+      - id
+      - refresh
+      - role
+      - username
     MonthlyRevenue:
       type: object
       properties:
@@ -4152,6 +4456,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Seat'
+    PaginatedSeatPriceTemplateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatPriceTemplate'
     Passenger:
       type: object
       properties:
@@ -4435,6 +4762,9 @@ components:
         aircraft_registration:
           type: string
           readOnly: true
+        total_capacity:
+          type: string
+          readOnly: true
         route:
           type: string
           readOnly: true
@@ -4659,6 +4989,8 @@ components:
           $ref: '#/components/schemas/SeatStatusEnum'
         exit_row:
           type: boolean
+        extra_legroom:
+          type: boolean
         seat_fee:
           type: string
           format: decimal
@@ -4666,6 +4998,37 @@ components:
         currency:
           type: string
           maxLength: 3
+        last_rule_applied:
+          type: string
+          maxLength: 50
+        attributes:
+          type: string
+          readOnly: true
+    PatchedSeatPriceTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aircraft_model:
+          type: integer
+        aircraft_model_display:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        rules:
+          description: 'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom",
+            "price": <number>} dicts ordered by priority (last wins on conflict).'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PeakBookingHour:
       type: object
       properties:
@@ -4875,6 +5238,8 @@ components:
           $ref: '#/components/schemas/SeatStatusEnum'
         exit_row:
           type: boolean
+        extra_legroom:
+          type: boolean
         seat_fee:
           type: string
           format: decimal
@@ -4882,7 +5247,14 @@ components:
         currency:
           type: string
           maxLength: 3
+        last_rule_applied:
+          type: string
+          maxLength: 50
+        attributes:
+          type: string
+          readOnly: true
       required:
+      - attributes
       - flight_instance
       - id
       - seat_class
@@ -4897,6 +5269,38 @@ components:
         * `ECONOMY` - Economy
         * `BUSINESS` - Business
         * `FIRST` - First
+    SeatPriceTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aircraft_model:
+          type: integer
+        aircraft_model_display:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        rules:
+          description: 'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom",
+            "price": <number>} dicts ordered by priority (last wins on conflict).'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - aircraft_model
+      - aircraft_model_display
+      - created_at
+      - id
+      - name
+      - updated_at
     SeatStatusEnum:
       enum:
       - AVAILABLE
