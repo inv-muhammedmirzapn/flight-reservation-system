@@ -373,15 +373,12 @@ export default function SeatMapPage() {
                 </div>
               ) : seats.length === 0 ? (
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <Zap size={24} />
-                  </div>
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>No Seats Found for this Flight</h3>
                   <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, margin: '0 auto 20px', lineHeight: 1.5 }}>
                     Seats have not been generated for this flight instance yet. Click below to automatically generate seats based on the aircraft layout.
                   </p>
                   <button className="btn-primary" onClick={handleGenerate} disabled={actionLoading} style={{ padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <Zap size={16} /> {actionLoading ? 'Generating…' : 'Auto-Generate Seats'}
+                    {actionLoading ? 'Generating…' : 'Get Seats'}
                   </button>
                 </div>
               ) : (

@@ -61,24 +61,34 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
       try {
         const params = new URLSearchParams({
           date: dateStr,
-          ordering: 'base_fare',
-          page_size: '1',
+          page_size: '100',
         });
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
-        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
 
         const res = await fetch(`${API_BASE_URL}/flights/?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const flight = data.results?.[0];
         let rawFare = null;
-        if (flight) {
+        if (data.results && data.results.length > 0) {
           const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
           const classKey = CLASS_MAP[cabinClass || 'Economy'] || 'ECONOMY';
-          const selectedFare = flight.fares?.[classKey];
-          rawFare = selectedFare ? selectedFare.price : flight.base_fare;
+          
+          let minPrice = Infinity;
+          data.results.forEach(flight => {
+            const selectedFare = flight.fares?.[classKey];
+            // If the specific fare exists, use it. Otherwise fallback to base_fare.
+            const price = selectedFare ? parseFloat(selectedFare.price) : parseFloat(flight.base_fare);
+            
+            if (!isNaN(price) && price < minPrice) {
+              minPrice = price;
+            }
+          });
+          
+          if (minPrice !== Infinity) {
+            rawFare = minPrice;
+          }
         }
 
         // Discard if a newer effect has already run
