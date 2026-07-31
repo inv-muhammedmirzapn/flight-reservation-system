@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
+import React, { useState, useRef, useEffect, useId, useLayoutEffect } from 'react';
+import { ChevronLeft, ChevronRight, X, Calendar, Clock } from 'lucide-react';
 
 export default function DateTimePicker({
   id,
@@ -19,10 +19,14 @@ export default function DateTimePicker({
   ];
 
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const TIME_PRESETS = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
 
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState({});
+
   const containerRef = useRef(null);
+  const popoverRef = useRef(null);
   const uniqueId = useId();
   const selectId = id || uniqueId;
   const selectName = name || id;
@@ -35,11 +39,11 @@ export default function DateTimePicker({
     if (value.includes('T')) {
       const parts = value.split('T');
       dateVal = parts[0];
-      timeVal = parts[1].substring(0, 5);
+      timeVal = parts[1].substring(0, 5) || '12:00';
     } else if (value.includes(' ')) {
       const parts = value.split(' ');
       dateVal = parts[0];
-      timeVal = parts[1].substring(0, 5);
+      timeVal = parts[1].substring(0, 5) || '12:00';
     } else {
       dateVal = value;
     }
@@ -49,10 +53,76 @@ export default function DateTimePicker({
   const [viewYear, setViewYear] = useState(initialCalendarDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialCalendarDate.getMonth());
 
+  // Update view month/year if value changes externally
+  useEffect(() => {
+    if (dateVal) {
+      const parsed = new Date(dateVal);
+      if (!isNaN(parsed.getTime())) {
+        setViewYear(parsed.getFullYear());
+        setViewMonth(parsed.getMonth());
+      }
+    }
+  }, [dateVal]);
+
+  // Compute fixed position for the popover so it never clips off-screen or off-modal
+  const updatePopoverPosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const popoverHeight = 370; // approx popover height
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    let top;
+    // Prefer opening downwards unless space below is constrained and space above is larger
+    if (spaceBelow < popoverHeight && rect.top > spaceBelow) {
+      top = rect.top - popoverHeight - 6;
+    } else {
+      top = rect.bottom + 6;
+    }
+
+    // Always clamp top to prevent overflowing above top of viewport
+    top = Math.max(10, Math.min(top, window.innerHeight - popoverHeight - 10));
+
+    let left = rect.left;
+    if (left + 290 > window.innerWidth) {
+      left = Math.max(10, window.innerWidth - 300);
+    }
+
+    setPopoverStyle({
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      width: '290px',
+      zIndex: 99999,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updatePopoverPosition();
+    }
+  }, [isOpen]);
+
+  // Handle window scroll/resize to update fixed position
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScrollOrResize = () => updatePopoverPosition();
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen]);
+
   // Close calendar on click outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -64,12 +134,16 @@ export default function DateTimePicker({
     };
   }, [isOpen]);
 
-  const handleOpen = () => {
+  const handleToggle = () => {
     if (disabled) return;
-    const activeDate = dateVal ? new Date(dateVal) : new Date();
-    setViewYear(activeDate.getFullYear());
-    setViewMonth(activeDate.getMonth());
-    setIsOpen(true);
+    if (isOpen) {
+      setIsOpen(false);
+    } else {
+      const activeDate = dateVal ? new Date(dateVal) : new Date();
+      setViewYear(activeDate.getFullYear());
+      setViewMonth(activeDate.getMonth());
+      setIsOpen(true);
+    }
   };
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -160,10 +234,10 @@ export default function DateTimePicker({
 
   const triggerStyle = {
     width: '100%',
-    background: disabled ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.65)',
+    background: disabled ? 'rgba(0,0,0,0.03)' : '#ffffff',
     border: error 
       ? '1.5px solid #b91c1c' 
-      : (isFocused && !disabled ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)'),
+      : (isFocused && !disabled ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.15)'),
     borderRadius: 10,
     padding: '9px 13px',
     fontSize: 14,
@@ -207,7 +281,7 @@ export default function DateTimePicker({
           data-testid="datetime-trigger"
           type="button"
           disabled={disabled}
-          onClick={handleOpen}
+          onClick={handleToggle}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           style={triggerStyle}
@@ -256,20 +330,15 @@ export default function DateTimePicker({
 
         {isOpen && (
           <div
+            ref={popoverRef}
             className="glass-card"
             style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 5px)',
-              left: 0,
-              zIndex: 2000,
-              width: 280,
               padding: 16,
               borderRadius: 16,
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.12)',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.18)',
+              ...popoverStyle,
             }}
           >
             {/* Header */}
@@ -363,25 +432,55 @@ export default function DateTimePicker({
               })}
             </div>
 
-            {/* Time selector */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-              <label htmlFor={`${selectId}-time-input`} style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e' }}>Time</label>
-              <input
-                id={`${selectId}-time-input`}
-                type="time"
-                value={timeVal}
-                onChange={(e) => handleTimeChange(e.target.value)}
-                style={{
-                  border: '1.5px solid rgba(0,0,0,0.1)',
-                  borderRadius: 8,
-                  padding: '5px 8px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#fff',
-                  outline: 'none',
-                  color: '#1a1c1d',
-                }}
-              />
+            {/* Time selector section */}
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label htmlFor={`${selectId}-time-input`} style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Clock size={13} /> Time
+                </label>
+                <input
+                  id={`${selectId}-time-input`}
+                  type="time"
+                  value={timeVal}
+                  onChange={(e) => handleTimeChange(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    border: '1.5px solid rgba(0,0,0,0.15)',
+                    borderRadius: 8,
+                    padding: '5px 8px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    background: '#fff',
+                    outline: 'none',
+                    color: '#1a1c1d',
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+
+              {/* Time Presets */}
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {TIME_PRESETS.map(preset => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleTimeChange(preset)}
+                    style={{
+                      padding: '3px 7px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      borderRadius: 6,
+                      border: timeVal === preset ? '1px solid #705d00' : '1px solid #e2e8f0',
+                      background: timeVal === preset ? '#fffbeb' : '#f8fafc',
+                      color: timeVal === preset ? '#705d00' : '#475569',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Done button */}
