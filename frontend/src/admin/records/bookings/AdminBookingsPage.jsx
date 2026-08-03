@@ -48,24 +48,18 @@ export default function AdminBookingsPage() {
   const STATUS_OPTIONS = ['', 'CONFIRMED', 'PENDING_PAYMENT', 'CREATED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
 
+
   return (
     <>
-      <style>{`
-        .detail-card { background:#fff; border-radius:18px; padding:28px; box-shadow:0 12px 40px rgba(0,0,0,0.12); margin-top:24px; }
-        .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 20px; font-size:13px; }
-        .kv dt { font-weight:700; color:#888; }
-        .kv dd { color:#1a1c1d; margin:0; }
-      `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
-        <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', marginBottom: 8 }}>Bookings</h1>
-        <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Search by PNR and filter by booking status.</p>
+      <div className="admin-page-wrap">
+        <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Bookings</h1>
+        <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>Search by PNR and filter by booking status.</p>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888', zIndex: 2 }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PNR…"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', fontSize: 14, fontWeight: 500, outline: 'none', background: 'rgba(255,255,255,0.65)', fontFamily: 'Inter, sans-serif' }} />
+        <form onSubmit={handleSearch} className="flex gap-2 mb-5 flex-wrap items-center">
+          <div className="admin-toolbar-search" style={{ flex: 1, minWidth: 200 }}>
+            <Search size={14} className="search-icon" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PNR…" />
           </div>
           <div style={{ minWidth: 160 }}>
             <Select
@@ -73,25 +67,22 @@ export default function AdminBookingsPage() {
               options={STATUS_OPTIONS.map(s => ({ value: s, label: s || 'All statuses' }))}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '9px 14px' }}
             />
           </div>
-          <button type="submit" className="btn-primary" style={{ padding: '9px 16px' }}>Search</button>
+          <button type="submit" className="btn-primary">Search</button>
         </form>
 
         {error && (
-          <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 16px', color: '#b91c1c', marginBottom: 20, fontSize: 13 }}>
+          <div className="admin-error">
             <AlertCircle size={15} /><span>{error}</span>
           </div>
         )}
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-            </div>
+            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
           ) : bookings.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#888', fontSize: 14 }}>No bookings found.</div>
+            <div className="admin-empty"><p>No bookings found.</p></div>
           ) : (
             <table className="admin-table">
               <thead><tr><th>PNR</th><th>User</th><th>Status</th><th>Price Paid</th><th>Created</th></tr></thead>

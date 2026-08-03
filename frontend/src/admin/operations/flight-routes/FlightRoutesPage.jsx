@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
 import { Select } from '@/components/ui/Select';
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
 
 export default function FlightRoutesPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { items: routes, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightRoute);
   const { items: airlines } = useSelector((s) => s.airline);
   const { items: airports } = useSelector((s) => s.airport);
@@ -140,8 +142,8 @@ export default function FlightRoutesPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, goNext = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!validateForm()) { toast.error('Fix validation errors.'); return; }
 
     const selectedAirline = airlines.find((a) => String(a.id) === String(form.airline));
@@ -166,21 +168,22 @@ export default function FlightRoutesPage() {
       promise = dispatch(addFlightRoute(payload)).unwrap();
     }
 
-    toast.promise(promise, {
-      loading: editId ? 'Updating flight route…' : 'Creating flight route…',
-      success: () => { closeForm(); load(search, page); return 'Flight route saved!'; },
-      error: (err) => {
-        if (typeof err === 'string') return err;
-        if (err?.flight_no?.[0]) return err.flight_no[0];
-        if (err?.non_field_errors?.[0]) return err.non_field_errors[0];
-        if (err && typeof err === 'object') {
-          const firstVal = Object.values(err)[0];
-          if (Array.isArray(firstVal) && firstVal.length > 0) return firstVal[0];
-          if (typeof firstVal === 'string') return firstVal;
-        }
-        return 'Failed to save.';
-      },
-    });
+    try {
+      const res = await promise;
+      toast.success('Flight route saved!');
+      closeForm();
+      const routeId = res?.id || editId;
+      if (goNext && routeId) {
+        navigate(`/admin/operations/flight-instances?route=${routeId}&autoCreate=1`);
+      } else {
+        load(search, page);
+      }
+    } catch (err) {
+      if (typeof err === 'string') toast.error(err);
+      else if (err?.flight_no?.[0]) toast.error(err.flight_no[0]);
+      else if (err?.non_field_errors?.[0]) toast.error(err.non_field_errors[0]);
+      else toast.error('Failed to save.');
+    }
   };
 
   const handleDelete = (id) => {
@@ -203,22 +206,12 @@ export default function FlightRoutesPage() {
 
   return (
     <>
-      <style>{`
-        .leg-row { background:rgba(112,93,0,0.04); border:1px solid rgba(112,93,0,0.12);
-          border-radius:12px; padding:16px; margin-bottom:12px; }
-        .leg-airports-row { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:end; margin-bottom:12px; }
-        .leg-arrow { display:flex; align-items:center; justify-content:center; padding-bottom:8px; color:#999; font-size:18px; line-height:1; }
-        .leg-details-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        @media(max-width:600px){ .leg-airports-row { grid-template-columns:1fr; } .leg-arrow { display:none; } .leg-details-row { grid-template-columns:1fr; } }
-      `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+      <div className="admin-page-wrap">
+        <div className="flex justify-between items-center mb-7">
           <div>
-            <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>
-              Flight Routes
-            </h1>
-            <p style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{count} total routes</p>
+            <h1 className="admin-page-title">Flight Routes</h1>
+            <p className="admin-page-subtitle">{count} total routes</p>
           </div>
           <button className="btn-primary" onClick={openCreate} id="add-flight-route-btn">
             <Plus size={15} /> Add Route
@@ -226,17 +219,16 @@ export default function FlightRoutesPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.8)' }} />
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
+          <div className="admin-toolbar-search" style={{ flex: 1 }}>
+            <Search size={14} className="search-icon" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
           </div>
-          <button type="submit" className="btn-primary" style={{ padding: '9px 16px' }}>Search</button>
+          <button type="submit" className="btn-primary">Search</button>
         </form>
 
         {error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '14px 18px', color: '#b91c1c', marginBottom: 20, fontSize: 13 }}>
+          <div className="admin-error">
             <AlertCircle size={16} /><span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
           </div>
         )}
@@ -244,55 +236,54 @@ export default function FlightRoutesPage() {
         {/* Table */}
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: ACCENT, borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-            </div>
+            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
           ) : routes?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#888', fontSize: 14 }}>No flight routes yet. Click &ldquo;Add Route&rdquo; to create one.</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Flight No</th><th>Airline</th><th>Legs & Duration</th>
-                    <th>Baggage (kg)</th><th>Handbag (kg)</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {routes.map((r) => (
-                    <tr key={r.id}>
-                      <td><strong>{r.flight_no}</strong></td>
-                      <td>{r.airline_name || r.airline}</td>
-                      <td>
-                        {(r.legs || []).map((leg, i) => (
-                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 6, marginBottom: 4 }}>
-                            {i > 0 && (
-                              <span style={{ fontSize: 10, color: '#888', background: 'rgba(0,0,0,0.05)', padding: '1px 5px', borderRadius: 4 }}>
-                                Layover {formatMins(leg.layover_duration_minutes)}
-                              </span>
-                            )}
-                            <span style={{ fontSize: 11, background: 'rgba(112,93,0,0.08)', borderRadius: 6, padding: '3px 8px', fontWeight: 600 }}>
-                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                              <span style={{ color: '#666', fontWeight: 400, marginLeft: 4 }}>
-                                ({formatMins(leg.flight_duration_minutes)})
-                              </span>
-                            </span>
-                          </span>
-                        ))}
-                      </td>
-                      <td>{r.baggage_weight_allowed_per_person}</td>
-                      <td>{r.handbag_weight_allowed_per_person}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn-secondary" onClick={() => openEdit(r)}><Pencil size={13} /> Edit</button>
-                          <button className="btn-danger" onClick={() => handleDelete(r.id)}><Trash2 size={13} /> Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="admin-empty">
+              <div className="admin-empty-icon"><MapPin size={28} /></div>
+              <h3>No flight routes yet</h3>
+              <p>Click &ldquo;Add Route&rdquo; to create one.</p>
+              <button className="btn-primary" onClick={openCreate}><Plus size={14} /> Add Route</button>
             </div>
+          ) : (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Flight No</th><th>Airline</th><th>Legs &amp; Duration</th>
+                  <th>Baggage (kg)</th><th>Handbag (kg)</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {routes.map((r) => (
+                  <tr key={r.id}>
+                    <td><strong>{r.flight_no}</strong></td>
+                    <td>{r.airline_name || r.airline}</td>
+                    <td>
+                      {(r.legs || []).map((leg, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 mr-1.5 mb-1">
+                          {i > 0 && (
+                            <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded">
+                              Layover {formatMins(leg.layover_duration_minutes)}
+                            </span>
+                          )}
+                          <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold">
+                            {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                            <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
+                          </span>
+                        </span>
+                      ))}
+                    </td>
+                    <td>{r.baggage_weight_allowed_per_person}</td>
+                    <td>{r.handbag_weight_allowed_per_person}</td>
+                    <td>
+                      <div className="flex gap-1.5">
+                        <button className="btn-secondary" onClick={() => openEdit(r)}><Pencil size={13} /> Edit</button>
+                        <button className="btn-danger" onClick={() => handleDelete(r.id)}><Trash2 size={13} /> Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
@@ -318,9 +309,9 @@ export default function FlightRoutesPage() {
             </div>
 
             {validationErrors && (
-              <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '14px 16px', color: '#b91c1c', marginBottom: 18, fontSize: 13 }}>
+              <div className="admin-error">
                 <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className="flex flex-col gap-1">
                   {typeof validationErrors === 'string' ? (
                     <span>{validationErrors}</span>
                   ) : (
@@ -328,7 +319,7 @@ export default function FlightRoutesPage() {
                       const msg = Array.isArray(val) ? val.join(', ') : String(val);
                       return (
                         <div key={key}>
-                          <strong style={{ textTransform: 'capitalize' }}>{key.replace('_', ' ')}:</strong> {msg}
+                          <strong className="capitalize">{key.replace('_', ' ')}:</strong> {msg}
                         </div>
                       );
                     })
@@ -339,7 +330,7 @@ export default function FlightRoutesPage() {
 
             <form onSubmit={handleSubmit}>
               {/* General */}
-              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
+              <div className="admin-form-grid mb-5">
                  <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
                   onChange={(e) => {
                     const airlineId = e.target.value;
@@ -350,8 +341,8 @@ export default function FlightRoutesPage() {
                     }));
                   }}
                   error={localErrors.airline} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label htmlFor="flight_no" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="flight_no" className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                     Flight Number
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -442,23 +433,23 @@ export default function FlightRoutesPage() {
               </div>
 
               {/* Legs */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: ACCENT, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="mb-5">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="m-0 text-[13px] font-bold uppercase tracking-[.06em] text-[#705d00] flex items-center gap-1.5">
                     <MapPin size={14} /> Flight Legs
                   </h3>
                   <button type="button" className="btn-secondary" onClick={addLeg} style={{ fontSize: 12, padding: '5px 10px' }}>
                     <PlusCircle size={13} /> Add Leg
                   </button>
                 </div>
-                {localErrors.legs && <p style={{ fontSize: 12, color: '#b91c1c', marginBottom: 8 }}>{localErrors.legs}</p>}
+                {localErrors.legs && <p className="text-xs text-[#b91c1c] mb-2">{localErrors.legs}</p>}
 
                 {form.legs.map((leg, i) => (
                   <div key={i} className="leg-row">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT }}>Leg {i + 1}</span>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-[#705d00]">Leg {i + 1}</span>
                       {form.legs.length > 1 && (
-                        <button type="button" onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c' }}>
+                        <button type="button" onClick={() => removeLeg(i)} className="bg-transparent border-none cursor-pointer text-[#b91c1c] p-0">
                           <MinusCircle size={16} />
                         </button>
                       )}
@@ -495,11 +486,23 @@ export default function FlightRoutesPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-slate-200 mt-8">
                 <button type="button" className="btn-secondary" onClick={closeForm}><X size={14} /> Cancel</button>
-                <button type="submit" className="btn-primary" disabled={actionLoading}>
-                  <Save size={14} /> {actionLoading ? 'Saving…' : 'Save Route'}
-                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn-secondary" disabled={actionLoading} onClick={(e) => handleSubmit(e, false)}>
+                    <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={(e) => handleSubmit(e, true)}
+                    className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                  >
+                    Save & Next <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
             </form>
           </div>

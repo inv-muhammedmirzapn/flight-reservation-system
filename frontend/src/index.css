@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
 @theme {
   /* Brand Colors */
@@ -23,6 +24,7 @@
   --color-outline: #7e775f;
   --color-outline-variant: #d0c6ab;
 }
+
 
 /* ─── Reset ─────────────────────────────────────────── */
 *,

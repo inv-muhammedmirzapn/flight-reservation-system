@@ -246,14 +246,13 @@ export default function FlightOverviewPage() {
 
     return (
         <>
-            <style>{`.admin-row:hover{background:rgba(255,255,255,0.5)!important}.act:hover{background:rgba(0,0,0,0.06)!important}.filter-input:focus{border-color:#705d00!important;box-shadow:0 0 0 3px rgba(112,93,0,0.1)!important}`}</style>
-            <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
+            <div className="admin-page-wrap">
 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
+                <div className="flex justify-between items-start flex-wrap gap-4 mb-8">
                     <div>
-                        <h1 style={{ fontFamily: "'Plus Jakarta Sans',Inter,sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{t("admin.overviewTitle", { defaultValue: 'Flight Overview' })}</h1>
-                        <p style={{ fontSize: 14, color: '#5e5e5e', marginTop: 4 }}>{t("admin.overviewSubtitle", { defaultValue: 'Monitor live flight instances, update statuses and check schedules.' })}</p>
+                        <h1 className="admin-page-title">{t("admin.overviewTitle", { defaultValue: 'Flight Overview' })}</h1>
+                        <p className="admin-page-subtitle">{t("admin.overviewSubtitle", { defaultValue: 'Monitor live flight instances, update statuses and check schedules.' })}</p>
                     </div>
                 </div>
 
@@ -386,7 +385,7 @@ export default function FlightOverviewPage() {
 
                 {/* Error */}
                 {error && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#b91c1c', fontSize: 13, marginBottom: 20 }}>
+                    <div className="admin-error">
                         <AlertCircle size={16} />{error}
                     </div>
                 )}

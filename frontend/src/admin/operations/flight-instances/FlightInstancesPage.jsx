@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -48,6 +48,11 @@ const STATUS_COLORS = {
 
 export default function FlightInstancesPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const routeParam = searchParams.get('route');
+  const autoCreate = searchParams.get('autoCreate');
+
   const { items: instances, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightInstance);
   const { items: routes } = useSelector((s) => s.flightRoute);
   const { items: allAircraft } = useSelector((s) => s.aircraft);
@@ -69,6 +74,15 @@ export default function FlightInstancesPage() {
     dispatch(fetchAircraft({ page_size: 500 }));
     dispatch(fetchAirports({ page_size: 500 }));
   }, []);
+
+  useEffect(() => {
+    if (routeParam && autoCreate && routes.length > 0) {
+      setEditId(null);
+      setForm({ ...EMPTY_FORM, flight: routeParam });
+      setLocalErrors({});
+      setShowForm(true);
+    }
+  }, [routeParam, autoCreate, routes]);
 
   const calculateArrival = (routeObj, depStr) => {
     if (!routeObj || !depStr || !routeObj.legs || routeObj.legs.length === 0) return '';
@@ -168,8 +182,8 @@ export default function FlightInstancesPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, followUpTarget = null) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!validateForm()) return; // inline errors already shown via localErrors
 
     // Optional datetime fields must be null (not empty string "") for the backend
@@ -184,10 +198,15 @@ export default function FlightInstancesPage() {
       : addFlightInstance(payload);
 
     try {
-      await dispatch(action).unwrap();
+      const res = await dispatch(action).unwrap();
       toast.success('Flight instance saved!');
       closeForm();
-      load(search, page);
+      const targetId = res?.id || editId;
+      if (followUpTarget && targetId) {
+        navigate(`/admin/operations/${followUpTarget}?instance=${targetId}`);
+      } else {
+        load(search, page);
+      }
     } catch (err) {
       // DRF field errors come as { fieldName: ["msg", ...] | "msg" }
       // Normalise every value to a plain string so input error props work
@@ -221,17 +240,52 @@ export default function FlightInstancesPage() {
 
   return (
     <>
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+      <div className="admin-page-wrap">
+        {routeParam && (
+          <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow">
+                1/4
+              </div>
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                  Instance Setup Flow • Step 1 (Flight Instance)
+                </div>
+                <div className="text-sm font-bold text-slate-800">
+                  Creating Flight Instance for Route #{routeParam}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/operations/fares?route=${routeParam}`)}
+                className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+              >
+                Skip / Next: Fares <ChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/operations/flight-routes')}
+                className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
+              >
+                Finish Flow
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center mb-7">
           <div>
-            <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>Flight Instances</h1>
-            <p style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{count} total instances</p>
+            <h1 className="admin-page-title">Flight Instances</h1>
+            <p className="admin-page-subtitle">{count} total instances</p>
           </div>
           <button className="btn-primary" onClick={openCreate} id="add-fi-btn"><Plus size={15} /> Add Instance</button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <div className="admin-toolbar-search">
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
+          <div className="admin-toolbar-search" style={{ flex: 1 }}>
             <Search size={14} className="search-icon" />
             <input
               value={search}
@@ -253,18 +307,16 @@ export default function FlightInstancesPage() {
         </form>
 
         {error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 16px', color: '#b91c1c', marginBottom: 20, fontSize: 13 }}>
+          <div className="admin-error">
             <AlertCircle size={15} /><span>{String(error)}</span>
           </div>
         )}
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-            </div>
+            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
           ) : instances?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#888', fontSize: 14 }}>No instances. Create one above.</div>
+            <div className="admin-empty"><p>No instances. Create one above.</p></div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
@@ -337,7 +389,7 @@ export default function FlightInstancesPage() {
             </div>
 
             {validationErrors?.non_field_errors && (
-              <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 14px', color: '#b91c1c', marginBottom: 18, fontSize: 13 }}>
+              <div className="admin-error">
                 <AlertCircle size={15} /><span>{validationErrors.non_field_errors.join(', ')}</span>
               </div>
             )}
@@ -353,9 +405,9 @@ export default function FlightInstancesPage() {
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} />
               </div>
 
-              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
+              <div className="admin-form-grid mb-5">
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
+                  <label className="text-[11px] font-bold tracking-[.06em] uppercase text-[#5e5e5e] block mb-1.5">Scheduled Departure</label>
                   <DateTimePicker value={form.scheduled_departure} error={localErrors.scheduled_departure} onChange={(e) => {
                     const depTime = e.target.value;
                     const opDate = depTime ? (depTime.includes('T') ? depTime.split('T')[0] : depTime.split(' ')[0]) : '';
@@ -373,7 +425,7 @@ export default function FlightInstancesPage() {
                   {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
+                  <label className="text-[11px] font-bold tracking-[.06em] uppercase text-[#5e5e5e] block mb-1.5">Scheduled Arrival</label>
                   <DateTimePicker value={form.scheduled_arrival} error={localErrors.scheduled_arrival} onChange={(e) => {
                     setForm((f) => ({ ...f, scheduled_arrival: e.target.value }));
                     if (e.target.value) clearError('scheduled_arrival');
@@ -394,11 +446,23 @@ export default function FlightInstancesPage() {
                   error={localErrors.arrival_terminal} />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-slate-200 mt-8">
                 <button type="button" className="btn-secondary" onClick={closeForm}><X size={14} /> Cancel</button>
-                <button type="submit" className="btn-primary" disabled={actionLoading}>
-                  <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
-                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="submit" className="btn-secondary" disabled={actionLoading} onClick={(e) => handleSubmit(e, null)}>
+                    <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={(e) => handleSubmit(e, 'fares')}
+                    className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                  >
+                    Save & Next <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
             </form>
           </div>

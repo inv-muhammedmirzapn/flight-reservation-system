@@ -14,7 +14,7 @@ import {
   fetchFlightRoutes,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
-import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const EMPTY_ITEM = { food_item: '', quantity: 1 };
@@ -116,11 +116,34 @@ export default function MealsPage() {
 
   return (
     <>
-      <style>{`
-        .item-row { background:rgba(112,93,0,0.04); border:1px solid rgba(112,93,0,0.12); border-radius:10px; padding:12px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:end; }
-      `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
+      <div className="admin-page-wrap">
+        {instanceParam && (
+          <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-xs shadow">
+                4/4
+              </div>
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                  Instance Setup Flow • Step 4 (Flight Meals)
+                </div>
+                <div className="text-sm font-bold text-slate-800">
+                  Configuring Meals for Flight Instance #{instanceParam}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/admin/operations/flight-instances')}
+              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+            >
+              <CheckCircle2 size={14} /> Finish Instance Setup ✓
+            </button>
+          </div>
+        )}
+
         {instanceParam && (
           <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
             <span>
@@ -130,34 +153,30 @@ export default function MealsPage() {
             <span>Meals (Instance #{instanceParam})</span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28, justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="flex items-center gap-3.5 mb-7 justify-between">
+          <div className="flex items-center gap-3.5">
             <button
               onClick={() => navigate(-1)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer', transition: 'background 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+              className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-[#555] cursor-pointer transition-colors hover:bg-black/10"
             >
               <ArrowLeft size={15} /> Back
             </button>
-            <h1 style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>Flight Meals</h1>
+            <h1 className="admin-page-title">Flight Meals</h1>
           </div>
           <button className="btn-primary" onClick={openCreate}><Plus size={15} /> Add Meal</button>
         </div>
 
         {error && (
-          <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 16px', color: '#b91c1c', marginBottom: 20, fontSize: 13 }}>
+          <div className="admin-error">
             <AlertCircle size={15} /><span>{String(error)}</span>
           </div>
         )}
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(112,93,0,0.15)', borderTopColor: '#705d00', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-            </div>
+            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
           ) : meals.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#888', fontSize: 14 }}>No meals yet.</div>
+            <div className="admin-empty"><p>No meals yet.</p></div>
           ) : (
             <table className="admin-table">
               <thead><tr><th>Meal Name</th><th>Flight Instance</th><th>Items</th><th>Actions</th></tr></thead>
@@ -168,13 +187,13 @@ export default function MealsPage() {
                     <td>{meal.flight_instance}</td>
                     <td>
                       {(meal.items || []).map((item, i) => (
-                        <span key={i} style={{ fontSize: 11, background: 'rgba(112,93,0,0.08)', borderRadius: 6, padding: '2px 7px', marginRight: 4 }}>
+                        <span key={i} className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-1.5 py-0.5 mr-1">
                           {item.food_item_name || item.food_item} ×{item.quantity}
                         </span>
                       ))}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div className="flex gap-1.5">
                         <button className="btn-secondary" onClick={() => openEdit(meal)}><Pencil size={13} /> Edit</button>
                         <button className="btn-danger" onClick={() => handleDelete(meal.id)}><Trash2 size={13} /> Delete</button>
                       </div>
@@ -216,9 +235,9 @@ export default function MealsPage() {
                   error={localErrors.name} />
               </div>
 
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#705d00' }}>Meal Items</span>
+              <div className="mb-5">
+                <div className="flex justify-between items-center mb-2.5">
+                  <span className="text-xs font-bold uppercase tracking-[.06em] text-[#705d00]">Meal Items</span>
                   <button type="button" className="btn-secondary" onClick={addItem} style={{ fontSize: 12, padding: '5px 10px' }}>
                     <PlusCircle size={13} /> Add Item
                   </button>
@@ -234,7 +253,7 @@ export default function MealsPage() {
                       error={localErrors[`item_qty_${i}`]} />
                     {form.items.length > 1 && (
                       <button type="button" onClick={() => removeItem(i)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', marginBottom: 4 }}>
+                        className="bg-transparent border-none cursor-pointer text-[#b91c1c] mb-1 p-0">
                         <MinusCircle size={16} />
                       </button>
                     )}
@@ -242,7 +261,7 @@ export default function MealsPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>
+              <div className="flex justify-end gap-2.5 mt-8">
                 <button type="button" className="btn-secondary" onClick={closeForm}><X size={14} /> Cancel</button>
                 <button type="submit" className="btn-primary" disabled={actionLoading}><Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}</button>
               </div>

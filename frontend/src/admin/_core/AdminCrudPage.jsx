@@ -26,6 +26,8 @@ export default function AdminCrudPage({
   extraActions,
   filterBar,
   pageActions,
+  banner,
+  saveAndNextUrl,
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -84,8 +86,8 @@ export default function AdminCrudPage({
     if (localErrors[name]) setLocalErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, goNext = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     const errors = validateForm ? validateForm(form) : {};
     if (Object.keys(errors).length > 0) {
       setLocalErrors(errors);
@@ -101,20 +103,21 @@ export default function AdminCrudPage({
       promise = dispatch(thunks.add(payload)).unwrap();
     }
 
-    toast.promise(promise, {
-      loading: editId ? `Updating ${title}…` : `Creating ${title}…`,
-      success: () => {
-        closeForm();
-        loadList(search, page);
-        return `${title} saved successfully!`;
-      },
-      error: (err) => {
-        if (err && typeof err === 'object' && !err.non_field_errors) {
-          return 'Validation failed. Please check form fields.';
-        }
-        return err?.non_field_errors?.[0] || `Failed to save ${title}.`;
-      },
-    });
+    try {
+      await promise;
+      closeForm();
+      loadList(search, page);
+      toast.success(`${title} saved successfully!`);
+      if (goNext && saveAndNextUrl) {
+        navigate(saveAndNextUrl);
+      }
+    } catch (err) {
+      if (err && typeof err === 'object' && !err.non_field_errors) {
+        toast.error('Validation failed. Please check form fields.');
+      } else {
+        toast.error(err?.non_field_errors?.[0] || `Failed to save ${title}.`);
+      }
+    }
   };
 
   const handleDelete = async (id) => {
@@ -163,13 +166,15 @@ export default function AdminCrudPage({
   return (
     <div className="admin-page">
       <div className="admin-container">
-        
+
+        {banner}
+
         {breadcrumb && breadcrumb.length > 0 && (
           <div className="admin-breadcrumb">
             {breadcrumb.map((b, i) => (
               <span key={i}>
                 {b.href ? <Link to={b.href}>{b.label}</Link> : <span>{b.label}</span>}
-                {i < breadcrumb.length - 1 && <span style={{ margin: '0 8px' }}>/</span>}
+                {i < breadcrumb.length - 1 && <span className="mx-2">/</span>}
               </span>
             ))}
           </div>
@@ -177,13 +182,11 @@ export default function AdminCrudPage({
 
         {/* Header */}
         <div className="admin-page-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             {breadcrumb && breadcrumb.length > 0 && (
               <button
                 onClick={() => navigate(-1)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#555] cursor-pointer transition-colors duration-200 flex-shrink-0 hover:bg-black/10"
               >
                 <ArrowLeft size={15} /> Back
               </button>
@@ -196,7 +199,7 @@ export default function AdminCrudPage({
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="flex gap-2.5 items-center">
             {pageActions}
             <button className="btn-primary" onClick={openCreate} id={`add-${entityName}-btn`}>
               <Plus size={15} /> Add New
@@ -206,7 +209,7 @@ export default function AdminCrudPage({
 
         {/* Toolbar */}
         <div className="admin-toolbar">
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8 }}>
+          <form onSubmit={handleSearch} className="flex gap-2">
             <div className="admin-toolbar-search">
               <Search size={14} className="search-icon" />
               <input
@@ -225,7 +228,7 @@ export default function AdminCrudPage({
                 </button>
               )}
             </div>
-            <button type="submit" className="btn-secondary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
+            <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
           </form>
           {filterBar}
         </div>
@@ -242,12 +245,12 @@ export default function AdminCrudPage({
         {/* Table Card */}
         <div className="admin-card admin-table-wrap">
           {loading && !items?.length ? (
-            <div style={{ padding: 16 }}>
+            <div className="p-4">
               {[1, 2, 3, 4, 5].map(i => (
                 <div key={i} className="skeleton-row">
-                  <div className="skeleton" style={{ height: 20, width: '25%' }} />
-                  <div className="skeleton" style={{ height: 20, width: '35%' }} />
-                  <div className="skeleton" style={{ height: 20, width: '15%' }} />
+                  <div className="skeleton h-5 w-1/4" />
+                  <div className="skeleton h-5 w-[35%]" />
+                  <div className="skeleton h-5 w-[15%]" />
                 </div>
               ))}
             </div>
@@ -265,8 +268,8 @@ export default function AdminCrudPage({
               <thead>
                 <tr>
                   {columns.map((col) => (
-                    <th 
-                      key={col.key} 
+                    <th
+                      key={col.key}
                       onClick={() => handleSort(col.key)}
                       className={sortConfig.key === col.key ? 'sorted' : ''}
                     >
@@ -276,7 +279,7 @@ export default function AdminCrudPage({
                       )}
                     </th>
                   ))}
-                  <th style={{ width: 100, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                  <th className="w-[100px] text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,8 +290,8 @@ export default function AdminCrudPage({
                         {col.render ? col.render(item) : item[col.key] ?? '—'}
                       </td>
                     ))}
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <td className="text-right whitespace-nowrap">
+                      <div className="flex gap-1.5 items-center justify-end">
                         <button className="btn-icon" onClick={() => openEdit(item)} title="Edit">
                           <Pencil size={15} />
                         </button>
@@ -336,7 +339,7 @@ export default function AdminCrudPage({
               <div className="admin-form-grid">
                 {fields.map((field) => {
                   const errorMsg = validationErrors?.[field.name]?.[0] || localErrors[field.name];
-                  
+
                   if (field.type === 'select') {
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
@@ -350,41 +353,41 @@ export default function AdminCrudPage({
                   if (field.type === 'datetime') {
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
+                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
                           {field.label}
                         </label>
                         <DateTimePicker value={form[field.name] ?? ''} onChange={(e) => handleDateChange(field.name, e.target.value)} />
-                        {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
+                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
                   if (field.type === 'checkbox') {
                     return (
-                      <div key={field.name} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <input type="checkbox" id={field.name} name={field.name} checked={!!form[field.name]} onChange={handleChange} style={{ width: 16, height: 16, accentColor: 'var(--admin-accent-dark)' }} />
-                        <label htmlFor={field.name} style={{ fontSize: 13, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer' }}>{field.label}</label>
+                      <div key={field.name} className={`flex items-center gap-2.5 pt-6 ${field.fullWidth ? 'admin-form-full' : ''}`}>
+                        <input type="checkbox" id={field.name} name={field.name} checked={!!form[field.name]} onChange={handleChange} className="w-4 h-4 accent-admin-accent-dark" />
+                        <label htmlFor={field.name} className="text-[13px] font-semibold text-[#1a1c1d] cursor-pointer">{field.label}</label>
                       </div>
                     );
                   }
                   if (field.type === 'file') {
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
+                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
                           {field.label}
                         </label>
-                        <input type="file" name={field.name} accept="image/*" onChange={handleChange} style={{ fontSize: 13 }} />
-                        {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
+                        <input type="file" name={field.name} accept="image/*" onChange={handleChange} className="text-[13px]" />
+                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
                   if (field.type === 'textarea') {
                     return (
                       <div key={field.name} className="admin-form-full">
-                        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>
+                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
                           {field.label}
                         </label>
-                        <textarea name={field.name} value={form[field.name] ?? ''} onChange={handleChange} rows={3} style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--admin-radius-sm)', border: '1px solid rgba(0,0,0,0.15)', fontSize: 13, resize: 'vertical', outline: 'none' }} />
-                        {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
+                        <textarea name={field.name} value={form[field.name] ?? ''} onChange={handleChange} rows={3} className="w-full px-3 py-[9px] rounded-admin-sm border border-black/15 text-[13px] resize-y outline-none" />
+                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
@@ -392,18 +395,18 @@ export default function AdminCrudPage({
                     const arr = Array.isArray(form[field.name]) ? form[field.name] : [];
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                             {field.label}
                           </label>
-                          <button type="button" onClick={() => setForm(f => ({ ...f, [field.name]: [...arr, ''] }))} style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-accent-dark)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <button type="button" onClick={() => setForm(f => ({ ...f, [field.name]: [...arr, ''] }))} className="text-[11px] font-bold text-admin-accent-dark bg-transparent border-none cursor-pointer flex items-center gap-1">
                             <Plus size={12} /> Add
                           </button>
                         </div>
-                        {arr.length === 0 && <p style={{ fontSize: 12, color: '#888', margin: '4px 0 8px' }}>No items added.</p>}
+                        {arr.length === 0 && <p className="text-xs text-[#888] mt-1 mb-2">No items added.</p>}
                         {arr.map((val, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                            <div style={{ flex: 1 }}>
+                          <div key={idx} className="flex gap-2 mb-2 items-center">
+                            <div className="flex-1">
                               <Input
                                 value={val}
                                 placeholder={field.placeholder || ''}
@@ -417,12 +420,12 @@ export default function AdminCrudPage({
                             <button type="button" onClick={() => {
                               const newArr = arr.filter((_, i) => i !== idx);
                               setForm(f => ({ ...f, [field.name]: newArr }));
-                            }} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}>
+                            }} className="bg-transparent border-none text-[#dc2626] cursor-pointer p-1">
                               <X size={14} />
                             </button>
                           </div>
                         ))}
-                        {errorMsg && <p style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{errorMsg}</p>}
+                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
@@ -439,11 +442,21 @@ export default function AdminCrudPage({
                 })}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 32 }}>
+              <div className="flex items-center justify-end gap-2.5 mt-8">
                 <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={actionLoading}>
-                  <Save size={14} /> {actionLoading ? 'Saving…' : 'Save Changes'}
+                <button type="submit" className="btn-secondary" disabled={actionLoading} onClick={(e) => handleSubmit(e, false)}>
+                  <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
                 </button>
+                {saveAndNextUrl && (
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={(e) => handleSubmit(e, true)}
+                    className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                  >
+                    Save & Next <ChevronRight size={14} />
+                  </button>
+                )}
               </div>
             </form>
           </div>

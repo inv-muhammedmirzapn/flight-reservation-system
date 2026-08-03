@@ -5,7 +5,7 @@ import '@/admin/_core/styles/admin.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, generateSeats, bulkPriceSeats } from '@/admin/_core/store/adminSlices';
-import { Zap, ArrowLeft, AlertTriangle, Check, DollarSign, X } from 'lucide-react';
+import { Zap, ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ATTRS = [
@@ -237,62 +237,45 @@ export default function SeatMapPage() {
     };
   };
 
+
   return (
     <>
-      <style>{`
-        .smp-wrap{width:95%;max-width:1600px;margin:0 auto;padding:88px 20px 24px}
-        .smp-body{display:flex;gap:24px;align-items:flex-start}
-        .smp-sidebar{width:300px;flex-shrink:0;position:sticky;top:88px;max-height:calc(100vh - 104px);overflow-y:auto}
-        .smp-main{flex:1;min-width:0;max-height:calc(100vh - 88px);overflow-y:auto;padding-right:4px}
-        .smp-breadcrumb{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
-        .smp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-        .smp-header-left{display:flex;align-items:center;gap:16px}
-        .smp-back{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.05);border:none;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;color:#333;cursor:pointer;transition:background 0.2s}
-        .smp-back:hover{background:rgba(0,0,0,.08)}
-        .smp-title{font-size:24px;font-weight:800;color:#1a1c1d;margin:0}
-        
-        .smp-section{margin-bottom:12px}
-        .smp-section-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block}
-        
-        .smp-instance-row{display:flex;align-items:center;gap:8px;width:100%}
-        
-        .smp-chip-group{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;margin-bottom:10px}
-        .smp-chip-group:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
-        
-        .smp-chip{padding:4px 12px;border-radius:20px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
-        .smp-chip:hover{background:#f8fafc;border-color:#94a3b8}
-        .smp-chip.on{background:#0f172a;color:#fff;border-color:#0f172a}
-        
-        .smp-ctab{padding:4px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
-        .smp-ctab:hover{background:#f8fafc;border-color:#94a3b8}
-        .smp-ctab.on{background:#1e293b;color:#fff;border-color:#1e293b}
-        
-        .smp-warning{display:flex;align-items:center;gap:6px;background:#fef3c7;color:#b45309;padding:6px 10px;border-radius:6px;font-size:12px;font-weight:600;margin-top:8px}
-        
-        .smp-plane{display:flex;justify-content:center;padding:12px 0}
-        .smp-fuselage{background:#fff;width:380px;border-radius:190px 190px 12px 12px;padding:110px 28px 40px;box-shadow:0 6px 24px rgba(0,0,0,.08);position:relative;touch-action:none}
-        .smp-class-hdr{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;text-align:center;padding:6px 0 4px;margin:12px 0 6px;border-radius:4px}
-        .smp-row{display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:4px}
-        .smp-grp{display:flex;gap:3px}
-        .smp-aisle{width:22px}
-        .smp-rn{font-size:9px;color:#999;width:16px;text-align:center;font-weight:700}
-        .smp-seat{width:28px;height:28px;border:1.5px solid #d1d5db;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;background:#fff;user-select:none;transition:transform .1s;font-size:8px;font-weight:700;color:#666}
-        .smp-seat.una{background:#f3f4f6;cursor:not-allowed;opacity:.5}
-        .smp-seat.free{background:#dcfce7;border-color:#4ade80}
-        .smp-seat.prem{background:#dbeafe;border-color:#93c5fd}
-        .smp-seat.sprem{background:#f3e8ff;border-color:#c084fc}
-        .smp-seat.sel{border-color:#0ea5e9!important;box-shadow:0 0 0 2px rgba(14,165,233,.3);transform:scale(1.08);z-index:5}
-        .smp-conflict{position:absolute;top:-5px;right:-5px;width:13px;height:13px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;z-index:10}
-        .smp-legend{display:flex;gap:16px;align-items:center;justify-content:center;padding:4px 0 8px 0;font-size:11px;color:#475569;margin-bottom:0}
-        .smp-lbox{width:16px;height:16px;border-radius:4px;border:1px solid #ccc}
-        .smp-lbox.fr{background:#4ade80;border-color:#22c55e}
-        .smp-lbox.pr{background:#93c5fd;border-color:#60a5fa}
-        .smp-lbox.sp{background:#c084fc;border-color:#a855f7}
-        .smp-bar{background:#fff;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;bottom:32px;z-index:200;border:1px solid #e2e8f0;width:fit-content;margin:16px auto 0}
-        @keyframes spin{to{transform:rotate(360deg)}}
-      `}</style>
-
       <div className="smp-wrap">
+        {instanceParam && (
+          <div className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow">
+                3/4
+              </div>
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wider text-purple-700">
+                  Instance Setup Flow • Step 3 (Seat Map & Fees)
+                </div>
+                <div className="text-sm font-bold text-slate-800">
+                  Configuring Seat Layout for Flight Instance #{instanceParam}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}`)}
+                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+              >
+                <Utensils size={14} /> Skip / Next: Flight Meals <ChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/operations/flight-instances')}
+                className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
+              >
+                Finish Flow
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="smp-breadcrumb">
           FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
         </div>
