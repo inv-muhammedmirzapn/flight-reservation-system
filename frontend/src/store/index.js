@@ -19,7 +19,7 @@ import {
   foodItemReducer,
   flightMealReducer,
   seatPriceTemplateReducer,
-} from './adminSlices';
+} from '@/admin/_core/store/adminSlices';
 
 export const store = configureStore({
   reducer: {
