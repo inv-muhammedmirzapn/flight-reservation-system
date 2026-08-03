@@ -255,8 +255,10 @@ class FlightLeg(models.Model):
     arrival_airport = models.ForeignKey(
         Airport, on_delete=models.PROTECT, related_name="arrival_legs"
     )
-    scheduled_departure = models.DateTimeField()
-    scheduled_arrival = models.DateTimeField()
+    flight_duration_minutes = models.PositiveIntegerField(default=120, help_text="Duration of flight leg in minutes")
+    layover_duration_minutes = models.PositiveIntegerField(default=0, help_text="Layover duration before this leg in minutes")
+    scheduled_departure = models.DateTimeField(null=True, blank=True)
+    scheduled_arrival = models.DateTimeField(null=True, blank=True)
     actual_departure = models.DateTimeField(null=True, blank=True)
     actual_arrival = models.DateTimeField(null=True, blank=True)
 
@@ -272,6 +274,8 @@ class FlightLeg(models.Model):
         if self.scheduled_departure and self.scheduled_arrival:
             if self.scheduled_arrival <= self.scheduled_departure:
                 errors["scheduled_arrival"] = "Scheduled arrival must be after scheduled departure."
+        if self.flight_duration_minutes is not None and self.flight_duration_minutes <= 0:
+            errors["flight_duration_minutes"] = "Flight duration must be greater than 0 minutes."
         if errors:
             raise ValidationError(errors)
 
@@ -308,6 +312,7 @@ class FlightInstance(models.Model):
     actual_arrival = models.DateTimeField(null=True, blank=True)
     checkin_open = models.DateTimeField(null=True, blank=True)
     boarding_time = models.DateTimeField(null=True, blank=True)
+    delay_minutes = models.PositiveIntegerField(default=0, help_text="Delay in minutes (0 = no delay)")
     boarding_gate = models.CharField(max_length=10, blank=True, default="")
     departure_terminal = models.CharField(max_length=10, blank=True, default="")
     arrival_terminal = models.CharField(max_length=10, blank=True, default="")

@@ -165,19 +165,23 @@ function FlightCard({ flight, cabinClass }) {
         <div className="flight-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
           <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
-            <StatusBadge status={flight.status} />
+            {flight.status === 'DELAYED' && flight.delay_minutes > 0 ? (
+              <span style={{
+                background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                ⏱ DELAYED +{flight.delay_minutes}m
+              </span>
+            ) : (
+              <StatusBadge status={flight.status} />
+            )}
             {displaySeats <= 0 && (
               <span style={{
-                background: '#ffedd5',
-                color: '#9a3412',
-                border: '1px solid #fed7aa',
-                borderRadius: 9999,
-                padding: '2px 10px',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
+                background: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
               }}>
                 {t("flights.waitingList", { defaultValue: 'Waiting List' })}
               </span>

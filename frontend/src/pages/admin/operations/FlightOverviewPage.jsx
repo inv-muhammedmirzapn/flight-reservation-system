@@ -56,6 +56,8 @@ export default function FlightOverviewPage() {
     
     const [editTarget, setEditTarget] = useState(null);
     const [editStatus, setEditStatus] = useState('');
+    const [editDelay, setEditDelay] = useState(0);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
     // Active filter/sort state
     const [activeSearch, setActiveSearch] = useState('');
@@ -226,14 +228,15 @@ export default function FlightOverviewPage() {
     
     const handleStatusUpdate = async () => {
         if (!editTarget || !editStatus) return;
-        
+        setConfirmOpen(false);
         try {
             await dispatch(updateFlightInstance({ 
                 id: editTarget.id, 
-                data: { status: editStatus } 
+                data: { status: editStatus, delay_minutes: Number(editDelay) || 0 } 
             })).unwrap();
             
-            toast.success(`Flight status updated to ${editStatus}`);
+            const delayMsg = editDelay > 0 ? ` — delayed by ${editDelay} min` : '';
+            toast.success(`Flight status updated to ${editStatus}${delayMsg}`);
             setEditTarget(null);
             fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
         } catch (err) {
@@ -430,7 +433,7 @@ export default function FlightOverviewPage() {
                                             <td style={{ padding: '16px' }}><Badge status={f.status} /></td>
                                             <td style={{ padding: '16px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
+                                                    <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -590,32 +593,131 @@ export default function FlightOverviewPage() {
                 </Modal>
 
                 {/* Edit Status Modal */}
-                <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Update Flight Status">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '12px 4px' }}>
+                <Modal isOpen={!!editTarget && !confirmOpen} onClose={() => setEditTarget(null)} title="Update Flight Status">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '4px 0' }}>
+
+                        {/* Flight identifier banner */}
                         {editTarget && (
-                            <p style={{ fontSize: 14, color: '#5e5e5e', margin: 0 }}>
-                                Update status for flight <strong>{editTarget.flight_number}</strong>
-                            </p>
+                            <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.12)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 18, fontWeight: 900, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{editTarget.flight_number}</span>
+                                <span style={{ fontSize: 13, color: '#9e9488' }}>·</span>
+                                <span style={{ fontSize: 13, color: '#5e5e5e', fontWeight: 500 }}>
+                                    {editTarget.route?.source?.iata_code} → {editTarget.route?.destination?.iata_code}
+                                </span>
+                            </div>
                         )}
-                        <Select
-                            label="New Status"
-                            options={getStatusOptions(t).filter(o => o.value !== '')}
-                            value={editStatus}
-                            onChange={(e) => setEditStatus(e.target.value)}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+
+                        {/* Status + Delay side by side */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 14, alignItems: 'start' }}>
+                            <Select
+                                label="New Status"
+                                options={getStatusOptions(t).filter(o => o.value !== '')}
+                                value={editStatus}
+                                onChange={(e) => {
+                                    const nextStatus = e.target.value;
+                                    setEditStatus(nextStatus);
+                                    // Auto reset delay to 0 if they change status away from DELAYED
+                                    if (nextStatus !== 'DELAYED') {
+                                        setEditDelay(0);
+                                    }
+                                }}
+                            />
+
+                            {/* Delay stepper */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
+                                <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
+                                        style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                    >−</button>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={editDelay}
+                                        onChange={e => {
+                                            const v = Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0);
+                                            setEditDelay(v);
+                                            if (v > 0) setEditStatus('DELAYED');
+                                        }}
+                                        style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
+                                        style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                    >+</button>
+                                </div>
+                                {editDelay > 0 ? (
+                                    <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
+                                ) : (
+                                    <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                             <button
                                 onClick={() => setEditTarget(null)}
-                                style={{ padding: '10px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer' }}
+                                style={{ padding: '9px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer' }}
                             >
                                 Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (editStatus === 'DELAYED' && Number(editDelay) <= 0) {
+                                        toast.error("Please enter a delay greater than 0 minutes for Delayed status.");
+                                        return;
+                                    }
+                                    if (editStatus !== 'DELAYED' && Number(editDelay) > 0) {
+                                        toast.error("Delay minutes can only be set when flight status is Delayed.");
+                                        return;
+                                    }
+                                    setConfirmOpen(true);
+                                }}
+                                disabled={actionLoading}
+                                style={{ padding: '9px 22px', background: '#1a1c1d', color: '#ffd700', fontWeight: 700, fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer', opacity: actionLoading ? 0.7 : 1 }}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+
+                </Modal>
+
+                {/* Confirmation Modal */}
+                <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Update">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '12px 4px' }}>
+                        <p style={{ fontSize: 14, color: '#1a1c1d', margin: 0, lineHeight: 1.7 }}>
+                            You are about to update <strong>{editTarget?.flight_number}</strong>:
+                        </p>
+                        <div style={{ background: 'rgba(112,93,0,0.06)', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Status</span>
+                                <span style={{ fontWeight: 800, color: '#1a1c1d' }}>{editStatus}</span>
+                            </div>
+                            <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Delay</span>
+                                <span style={{ fontWeight: 800, color: editDelay > 0 ? '#92400e' : '#1a1c1d' }}>
+                                    {editDelay > 0 ? `${editDelay} minutes` : 'No delay'}
+                                </span>
+                            </div>
+                        </div>
+                        <p style={{ fontSize: 12, color: '#9e9488', margin: 0 }}>This will update the live flight record and notify affected passengers.</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button
+                                onClick={() => setConfirmOpen(false)}
+                                style={{ padding: '10px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer' }}
+                            >
+                                Go Back
                             </button>
                             <button
                                 onClick={handleStatusUpdate}
                                 disabled={actionLoading}
                                 style={{ padding: '10px 22px', background: '#1a1c1d', color: '#ffd700', fontWeight: 700, fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer', opacity: actionLoading ? 0.7 : 1 }}
                             >
-                                {actionLoading ? 'Saving...' : 'Save'}
+                                {actionLoading ? 'Updating...' : 'Confirm Update'}
                             </button>
                         </div>
                     </div>

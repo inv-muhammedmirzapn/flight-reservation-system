@@ -160,6 +160,13 @@ class FlightListCreateView(APIView):
 
         qs = qs.distinct()
 
+        if not qs.exists() and Flight.objects.exists() and not any([source, destination, date, flight_number, airline, status_filter, min_price, max_price]):
+            legacy_qs = Flight.objects.all().order_by("departure_time")
+            paginator = FlightPagination()
+            page = paginator.paginate_queryset(legacy_qs, request)
+            serializer = FlightSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         from .serializers import FrontendFlightInstanceSerializer

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ComboInput } from '@/components/ui/ComboInput';
 import DateTimePicker from '@/components/ui/DateTimePicker';
+import DatePicker from '@/components/ui/DatePicker';
 import {
   fetchFlightInstances, fetchFlightInstanceDetail, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
@@ -69,27 +70,34 @@ export default function FlightInstancesPage() {
     dispatch(fetchAirports({ page_size: 500 }));
   }, []);
 
+  const calculateArrival = (routeObj, depStr) => {
+    if (!routeObj || !depStr || !routeObj.legs || routeObj.legs.length === 0) return '';
+    const depDate = new Date(depStr);
+    if (isNaN(depDate.getTime())) return '';
+    const totalMins = routeObj.legs.reduce((acc, leg) => {
+      return acc + Number(leg.flight_duration_minutes || 0) + Number(leg.layover_duration_minutes || 0);
+    }, 0);
+    if (totalMins <= 0) return '';
+    const arrDate = new Date(depDate.getTime() + totalMins * 60000);
+    const yyyy = arrDate.getFullYear();
+    const mm = String(arrDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(arrDate.getDate()).padStart(2, '0');
+    const hh = String(arrDate.getHours()).padStart(2, '0');
+    const mns = String(arrDate.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${mns}`;
+  };
+
   // Auto-suggest times when flight selected
   const handleFlightChange = async (flightId) => {
-    setForm((f) => ({ ...f, flight: flightId, aircraft: '' }));
-    if (!flightId) return;
-    try {
-      const data = await fetchWithAuth(`/flights/v2/flight-routes/${flightId}/`);
-      const legs = data.legs || [];
-      if (legs.length > 0) {
-        const firstLeg = legs[0];
-        const lastLeg = legs[legs.length - 1];
-        const depTime = firstLeg.scheduled_departure || '';
-        const opDate = depTime ? (depTime.includes('T') ? depTime.split('T')[0] : depTime.split(' ')[0]) : '';
-        setForm((f) => ({
-          ...f,
-          flight: flightId,
-          date: opDate || f.date,
-          scheduled_departure: depTime,
-          scheduled_arrival: lastLeg.scheduled_arrival || '',
-        }));
+    setForm((f) => {
+      const nextForm = { ...f, flight: flightId, aircraft: '' };
+      const routeObj = routes.find((r) => String(r.id) === String(flightId));
+      if (routeObj && nextForm.scheduled_departure) {
+        const computedArr = calculateArrival(routeObj, nextForm.scheduled_departure);
+        if (computedArr) nextForm.scheduled_arrival = computedArr;
       }
-    } catch (_) {}
+      return nextForm;
+    });
   };
 
   // Filter aircraft by airline matching selected route's airline
@@ -338,8 +346,6 @@ export default function FlightInstancesPage() {
               <div className="admin-form-grid" style={{ marginBottom: 20 }}>
                 <Select id="fi_flight" label="Flight Route" options={routeOptions} value={form.flight}
                   onChange={(e) => { handleFlightChange(e.target.value); clearError('flight'); }} error={localErrors.flight} />
-                <Input id="fi_date" label="Date" type="date" value={form.date}
-                  onChange={(e) => { setForm((f) => ({ ...f, date: e.target.value })); clearError('date'); }} error={localErrors.date} />
                 <Select id="fi_aircraft" label="Aircraft (filtered by airline)" options={aircraftOptions}
                   value={form.aircraft} onChange={(e) => { setForm((f) => ({ ...f, aircraft: e.target.value })); clearError('aircraft'); }}
                   error={localErrors.aircraft} />
@@ -353,7 +359,15 @@ export default function FlightInstancesPage() {
                   <DateTimePicker value={form.scheduled_departure} error={localErrors.scheduled_departure} onChange={(e) => {
                     const depTime = e.target.value;
                     const opDate = depTime ? (depTime.includes('T') ? depTime.split('T')[0] : depTime.split(' ')[0]) : '';
-                    setForm((f) => ({ ...f, scheduled_departure: depTime, date: opDate || f.date }));
+                    setForm((f) => {
+                      const nextForm = { ...f, scheduled_departure: depTime, date: opDate || f.date };
+                      const routeObj = routes.find((r) => String(r.id) === String(f.flight));
+                      if (routeObj && depTime) {
+                        const computedArr = calculateArrival(routeObj, depTime);
+                        if (computedArr) nextForm.scheduled_arrival = computedArr;
+                      }
+                      return nextForm;
+                    });
                     if (depTime) clearError('scheduled_departure');
                   }} />
                   {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}

@@ -356,7 +356,7 @@ export default function UserFlightDetail() {
               <div className="glass-panel">
                 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: flight.status === 'DELAYED' && flight.delay_minutes > 0 ? 20 : 40 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 48, height: 48, background: '#fcfaf6', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                        <Plane size={24} color="#d0c6ab" style={{ transform: 'rotate(-45deg)' }} />
@@ -369,11 +369,48 @@ export default function UserFlightDetail() {
                   <StatusBadge status={flight.status} />
                 </div>
 
+                {/* Delay alert banner */}
+                {flight.status === 'DELAYED' && flight.delay_minutes > 0 && (
+                  <div style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fcd34d',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    marginBottom: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
+                    <span style={{ fontSize: 20 }}>⏱</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>
+                        Flight Delayed by {flight.delay_minutes} minutes
+                      </div>
+                      <div style={{ fontSize: 12, color: '#78350f', marginTop: 2, fontWeight: 500 }}>
+                        New estimated departure is {(() => {
+                          const d = new Date(new Date(flight.departure_time).getTime() + flight.delay_minutes * 60000);
+                          return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        })()} — please check the departure boards at the airport.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Timeline */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#9e9488', letterSpacing: '0.1em', marginBottom: 8 }}>DEPARTURE</div>
-                    <div className="flight-time-large">{fmtTime(flight.departure_time)}</div>
+                    <div className="flight-time-large" style={flight.status === 'DELAYED' && flight.delay_minutes > 0 ? { color: '#9e9488', textDecoration: 'line-through', fontSize: 30 } : {}}>
+                      {fmtTime(flight.departure_time)}
+                    </div>
+                    {flight.status === 'DELAYED' && flight.delay_minutes > 0 && (
+                      <div className="flight-time-large" style={{ color: '#92400e', fontSize: 34, marginTop: 2 }}>
+                        {(() => {
+                          const d = new Date(new Date(flight.departure_time).getTime() + flight.delay_minutes * 60000);
+                          return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        })()}
+                      </div>
+                    )}
                     <div className="flight-city-large">{flight.source_airport}</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', marginTop: 4, maxWidth: 160 }}>
                       {flight.source_airport_name || 'Airport'}

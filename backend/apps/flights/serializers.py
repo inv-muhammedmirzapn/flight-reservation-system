@@ -43,7 +43,7 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
             "base_fare", "total_seats", "available_seats",
-            "status", "stops",
+            "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
         ]
@@ -418,9 +418,14 @@ class FlightLegSerializer(serializers.ModelSerializer):
             "id", "leg_order",
             "departure_airport", "departure_airport_iata",
             "arrival_airport", "arrival_airport_iata",
+            "flight_duration_minutes", "layover_duration_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival"
         ]
+        extra_kwargs = {
+            "scheduled_departure": {"required": False, "allow_null": True},
+            "scheduled_arrival": {"required": False, "allow_null": True},
+        }
 
     def validate(self, attrs):
         dep = attrs.get("departure_airport")
@@ -429,11 +434,15 @@ class FlightLegSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"arrival_airport": "Arrival airport must differ from departure airport."}
             )
-        dep_time = attrs.get("scheduled_departure")
-        arr_time = attrs.get("scheduled_arrival")
-        if dep_time and arr_time and arr_time <= dep_time:
+        duration = attrs.get("flight_duration_minutes")
+        if duration is not None and duration <= 0:
             raise serializers.ValidationError(
-                {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
+                {"flight_duration_minutes": "Flight duration must be greater than 0 minutes."}
+            )
+        layover = attrs.get("layover_duration_minutes")
+        if layover is not None and layover < 0:
+            raise serializers.ValidationError(
+                {"layover_duration_minutes": "Layover duration cannot be negative."}
             )
         return attrs
 
@@ -454,22 +463,10 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def _validate_legs_ordering(self, legs_data):
-        """Cross-leg: each leg's departure must be after previous leg's arrival."""
-        sorted_legs = sorted(legs_data, key=lambda l: l.get("leg_order", 0))
-        for i in range(1, len(sorted_legs)):
-            prev_arr = sorted_legs[i - 1].get("scheduled_arrival")
-            curr_dep = sorted_legs[i].get("scheduled_departure")
-            if prev_arr and curr_dep and curr_dep < prev_arr:
-                raise serializers.ValidationError(
-                    f"Leg {sorted_legs[i]['leg_order']} departure must be after leg "
-                    f"{sorted_legs[i-1]['leg_order']} arrival."
-                )
-
     def validate(self, attrs):
         legs_data = attrs.get("legs", [])
-        if legs_data:
-            self._validate_legs_ordering(legs_data)
+        if not legs_data and not self.instance:
+            raise serializers.ValidationError({"legs": "At least one leg is required."})
         return attrs
 
     @transaction.atomic
@@ -487,6 +484,7 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+
         if legs_data is not None:
             instance.legs.all().delete()
             for i, leg_data in enumerate(legs_data, start=1):
@@ -495,7 +493,7 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         return instance
 
 
-# ─── Flight Instance ────────────────────────────────────────────────────────────
+# ─── Flight Instance ───────────────────────────────────────────────────────────
 
 class FlightInstanceSerializer(serializers.ModelSerializer):
     flight_no = serializers.CharField(source="flight.flight_no", read_only=True)
@@ -512,7 +510,7 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
             "aircraft", "aircraft_registration", "total_capacity", "route",
-            "status",
+            "status", "delay_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",
             "checkin_open", "boarding_time",
@@ -538,12 +536,26 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         dep = attrs.get("scheduled_departure", getattr(self.instance, "scheduled_departure", None))
         arr = attrs.get("scheduled_arrival", getattr(self.instance, "scheduled_arrival", None))
+        route = attrs.get("flight", getattr(self.instance, "flight", None))
+
+        if dep and route and not arr:
+            from datetime import timedelta
+            legs = route.legs.all()
+            if legs.exists():
+                total_mins = sum((leg.flight_duration_minutes or 0) + (leg.layover_duration_minutes or 0) for leg in legs)
+                if total_mins > 0:
+                    arr = dep + timedelta(minutes=total_mins)
+                    attrs["scheduled_arrival"] = arr
+
         if dep and arr and arr <= dep:
             raise serializers.ValidationError(
                 {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
             )
 
-
+        # Auto-set status to DELAYED when delay_minutes > 0 and status not explicitly provided
+        delay = attrs.get("delay_minutes", getattr(self.instance, "delay_minutes", 0) or 0)
+        if delay > 0 and "status" not in attrs:
+            attrs["status"] = "DELAYED"
 
         return attrs
 

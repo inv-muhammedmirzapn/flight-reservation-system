@@ -1,6 +1,136 @@
 import React, { useState, useRef, useEffect, useId, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Clock } from 'lucide-react';
 
+/* ─────────────────────────────────────────────
+   TimeInput: custom HH : MM keyboard input
+───────────────────────────────────────────── */
+function TimeInput({ timeVal, onTimeChange, selectId }) {
+  const [hRaw, setHRaw] = useState(() => timeVal.split(':')[0] || '00');
+  const [mRaw, setMRaw] = useState(() => timeVal.split(':')[1] || '00');
+  const [hFocused, setHFocused] = useState(false);
+  const [mFocused, setMFocused] = useState(false);
+  const minRef = useRef(null);
+
+  // Sync inbound value changes (e.g. preset click)
+  useEffect(() => {
+    const [h, m] = timeVal.split(':');
+    setHRaw(h || '00');
+    setMRaw(m || '00');
+  }, [timeVal]);
+
+  const commit = (h, m) => {
+    const hc = String(Math.min(23, Math.max(0, parseInt(h, 10) || 0))).padStart(2, '0');
+    const mc = String(Math.min(59, Math.max(0, parseInt(m, 10) || 0))).padStart(2, '0');
+    onTimeChange(`${hc}:${mc}`);
+    return { hc, mc };
+  };
+
+  const segStyle = (focused) => ({
+    width: 36,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 800,
+    fontFamily: 'Inter, monospace',
+    background: focused ? 'rgba(112,93,0,0.06)' : '#f5f5f3',
+    border: focused ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.12)',
+    borderRadius: 7,
+    padding: '5px 4px',
+    outline: 'none',
+    color: '#1a1c1d',
+    cursor: 'text',
+    boxShadow: focused ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+    letterSpacing: 1,
+  });
+
+  return (
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Hours */}
+      <input
+        id={`${selectId}-h`}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        value={hFocused ? hRaw : hRaw.padStart(2, '0')}
+        style={segStyle(hFocused)}
+        onFocus={e => { setHFocused(true); e.target.select(); }}
+        onBlur={() => {
+          setHFocused(false);
+          const { hc } = commit(hRaw || '00', mRaw || '00');
+          setHRaw(hc);
+        }}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setHRaw(val);
+          // auto-advance after 2 digits
+          if (val.length === 2) {
+            commit(val, mRaw || '00');
+            minRef.current?.focus();
+          }
+        }}
+        onKeyDown={e => {
+          const h = parseInt(hRaw, 10) || 0;
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = String((h + 1) % 24).padStart(2, '0');
+            setHRaw(next);
+            commit(next, mRaw);
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = String((h - 1 + 24) % 24).padStart(2, '0');
+            setHRaw(next);
+            commit(next, mRaw);
+          }
+        }}
+      />
+
+      <span style={{ fontSize: 15, fontWeight: 900, color: '#705d00', lineHeight: 1 }}>:</span>
+
+      {/* Minutes */}
+      <input
+        ref={minRef}
+        id={`${selectId}-m`}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        value={mFocused ? mRaw : (mRaw || '00').padStart(2, '0')}
+        style={segStyle(mFocused)}
+        onFocus={e => { setMFocused(true); e.target.select(); }}
+        onBlur={() => {
+          setMFocused(false);
+          const { mc } = commit(hRaw || '00', mRaw || '00');
+          setMRaw(mc);
+        }}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setMRaw(val);
+          if (val.length === 2) commit(hRaw || '00', val);
+        }}
+        onKeyDown={e => {
+          const m = parseInt(mRaw, 10) || 0;
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = String((m + 5) % 60).padStart(2, '0');
+            setMRaw(next);
+            commit(hRaw, next);
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = String((m - 5 + 60) % 60).padStart(2, '0');
+            setMRaw(next);
+            commit(hRaw, next);
+          }
+        }}
+      />
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', marginLeft: 2, letterSpacing: '0.04em' }}>24h</span>
+    </div>
+  );
+}
+
 export default function DateTimePicker({
   id,
   name,
@@ -434,52 +564,12 @@ export default function DateTimePicker({
 
             {/* Time selector section */}
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label htmlFor={`${selectId}-time-input`} style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={13} /> Time
-                </label>
-                <input
-                  id={`${selectId}-time-input`}
-                  type="time"
-                  value={timeVal}
-                  onChange={(e) => handleTimeChange(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    border: '1.5px solid rgba(0,0,0,0.15)',
-                    borderRadius: 8,
-                    padding: '5px 8px',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    background: '#fff',
-                    outline: 'none',
-                    color: '#1a1c1d',
-                    cursor: 'pointer',
-                  }}
-                />
-              </div>
-
-              {/* Time Presets */}
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {TIME_PRESETS.map(preset => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => handleTimeChange(preset)}
-                    style={{
-                      padding: '3px 7px',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: timeVal === preset ? '1px solid #705d00' : '1px solid #e2e8f0',
-                      background: timeVal === preset ? '#fffbeb' : '#f8fafc',
-                      color: timeVal === preset ? '#705d00' : '#475569',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {preset}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Clock size={13} style={{ color: '#9e9488' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Time</span>
+                </div>
+                <TimeInput timeVal={timeVal} onTimeChange={handleTimeChange} selectId={selectId} />
               </div>
             </div>
 

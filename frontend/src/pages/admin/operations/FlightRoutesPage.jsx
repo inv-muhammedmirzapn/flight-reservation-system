@@ -22,10 +22,8 @@ import {
 import toast from 'react-hot-toast';
 
 const ACCENT = '#705d00';
-const EMPTY_LEG = {
-  departure_airport: '', arrival_airport: '',
-  scheduled_departure: '', scheduled_arrival: '',
-};
+const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
+
 const EMPTY_FORM = {
   flight_no: '', airline: '',
   baggage_weight_allowed_per_person: '20',
@@ -61,6 +59,7 @@ export default function FlightRoutesPage() {
   const airportOptions = airports.map((a) => ({ value: a.id, label: `${a.iata_code} – ${a.airport_name}` }));
 
   const openCreate = () => {
+    dispatch(flightRouteActions.clearErrors());
     setEditId(null);
     setForm(EMPTY_FORM);
     setLocalErrors({});
@@ -68,6 +67,7 @@ export default function FlightRoutesPage() {
   };
 
   const openEdit = (route) => {
+    dispatch(flightRouteActions.clearErrors());
     setEditId(route.id);
     const selectedAirline = airlines.find((a) => String(a.id) === String(route.airline));
     let numericFlightNo = route.flight_no || '';
@@ -84,15 +84,15 @@ export default function FlightRoutesPage() {
       legs: (route.legs || []).map((leg) => ({
         departure_airport: leg.departure_airport,
         arrival_airport: leg.arrival_airport,
-        scheduled_departure: leg.scheduled_departure || '',
-        scheduled_arrival: leg.scheduled_arrival || '',
+        flight_duration_minutes: leg.flight_duration_minutes || 120,
+        layover_duration_minutes: leg.layover_duration_minutes || 0,
       })),
     });
     setLocalErrors({});
     setShowForm(true);
   };
 
-  const closeForm = () => { setShowForm(false); setEditId(null); };
+  const closeForm = () => { setShowForm(false); setEditId(null); dispatch(flightRouteActions.clearErrors()); };
 
   // ─── Leg management ─────────────────────────────────────────────────────────
   const addLeg = () => setForm((f) => {
@@ -100,25 +100,7 @@ export default function FlightRoutesPage() {
     if (f.legs.length > 0) {
       const prevLeg = f.legs[f.legs.length - 1];
       newLeg.departure_airport = prevLeg.arrival_airport;
-      
-      // Auto-set the new leg's departure time to 1 hour after previous leg's arrival
-      if (prevLeg.scheduled_arrival) {
-        try {
-          const arrDate = new Date(prevLeg.scheduled_arrival);
-          arrDate.setHours(arrDate.getHours() + 1);
-          
-          // Format as YYYY-MM-DD HH:mm for the DateTimePicker input
-          const yyyy = arrDate.getFullYear();
-          const mm = String(arrDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(arrDate.getDate()).padStart(2, '0');
-          const hh = String(arrDate.getHours()).padStart(2, '0');
-          const mns = String(arrDate.getMinutes()).padStart(2, '0');
-          
-          newLeg.scheduled_departure = `${yyyy}-${mm}-${dd} ${hh}:${mns}`;
-        } catch (err) {
-          // Ignore parsing errors
-        }
-      }
+      newLeg.layover_duration_minutes = 60; // 1 hour default layover
     }
     return { ...f, legs: [...f.legs, newLeg] };
   });
@@ -143,24 +125,14 @@ export default function FlightRoutesPage() {
     form.legs.forEach((leg, i) => {
       if (!leg.departure_airport) e[`leg_${i}_dep_apt`] = 'Departure airport required.';
       if (!leg.arrival_airport) e[`leg_${i}_arr_apt`] = 'Arrival airport required.';
-      if (!leg.scheduled_departure) e[`leg_${i}_dep_time`] = 'Departure time required.';
-      if (!leg.scheduled_arrival) e[`leg_${i}_arr_time`] = 'Arrival time required.';
       if (leg.departure_airport && leg.arrival_airport && leg.departure_airport === leg.arrival_airport) {
         e[`leg_${i}_arr_apt`] = 'Arrival must differ from departure.';
       }
-      if (leg.scheduled_departure && leg.scheduled_arrival) {
-        if (new Date(leg.scheduled_arrival) <= new Date(leg.scheduled_departure)) {
-          e[`leg_${i}_arr_time`] = 'Arrival must be after departure.';
-        }
+      if (!leg.flight_duration_minutes || Number(leg.flight_duration_minutes) <= 0) {
+        e[`leg_${i}_duration`] = 'Flight duration must be > 0 mins.';
       }
-      // Cross-leg layover
-      if (i > 0) {
-        const prev = form.legs[i - 1];
-        if (prev.scheduled_arrival && leg.scheduled_departure) {
-          if (new Date(leg.scheduled_departure) < new Date(prev.scheduled_arrival)) {
-            e[`leg_${i}_dep_time`] = 'Departure must be after previous leg arrival.';
-          }
-        }
+      if (i > 0 && Number(leg.layover_duration_minutes) < 0) {
+        e[`leg_${i}_layover`] = 'Layover duration cannot be negative.';
       }
     });
 
@@ -179,7 +151,12 @@ export default function FlightRoutesPage() {
     const payload = {
       ...form,
       flight_no: fullFlightNo,
-      legs: form.legs.map((leg, i) => ({ ...leg, leg_order: i + 1 })),
+      legs: form.legs.map((leg, i) => ({
+        ...leg,
+        leg_order: i + 1,
+        flight_duration_minutes: Number(leg.flight_duration_minutes),
+        layover_duration_minutes: i > 0 ? Number(leg.layover_duration_minutes) : 0,
+      })),
     };
 
     let promise;
@@ -192,7 +169,17 @@ export default function FlightRoutesPage() {
     toast.promise(promise, {
       loading: editId ? 'Updating flight route…' : 'Creating flight route…',
       success: () => { closeForm(); load(search, page); return 'Flight route saved!'; },
-      error: (err) => err?.non_field_errors?.[0] || 'Failed to save.',
+      error: (err) => {
+        if (typeof err === 'string') return err;
+        if (err?.flight_no?.[0]) return err.flight_no[0];
+        if (err?.non_field_errors?.[0]) return err.non_field_errors[0];
+        if (err && typeof err === 'object') {
+          const firstVal = Object.values(err)[0];
+          if (Array.isArray(firstVal) && firstVal.length > 0) return firstVal[0];
+          if (typeof firstVal === 'string') return firstVal;
+        }
+        return 'Failed to save.';
+      },
     });
   };
 
@@ -205,6 +192,13 @@ export default function FlightRoutesPage() {
     });
   };
 
+  const formatMins = (mins) => {
+    if (!mins) return '0m';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}` : `${m}m`;
+  };
+
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
   return (
@@ -212,8 +206,10 @@ export default function FlightRoutesPage() {
       <style>{`
         .leg-row { background:rgba(112,93,0,0.04); border:1px solid rgba(112,93,0,0.12);
           border-radius:12px; padding:16px; margin-bottom:12px; }
-        .leg-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        @media(max-width:600px){ .leg-grid { grid-template-columns:1fr; } }
+        .leg-airports-row { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:end; margin-bottom:12px; }
+        .leg-arrow { display:flex; align-items:center; justify-content:center; padding-bottom:8px; color:#999; font-size:18px; line-height:1; }
+        .leg-details-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        @media(max-width:600px){ .leg-airports-row { grid-template-columns:1fr; } .leg-arrow { display:none; } .leg-details-row { grid-template-columns:1fr; } }
       `}</style>
 
       <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '88px 24px 48px' }}>
@@ -258,7 +254,7 @@ export default function FlightRoutesPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Flight No</th><th>Airline</th><th>Legs</th>
+                    <th>Flight No</th><th>Airline</th><th>Legs & Duration</th>
                     <th>Baggage (kg)</th><th>Handbag (kg)</th><th>Actions</th>
                   </tr>
                 </thead>
@@ -269,8 +265,18 @@ export default function FlightRoutesPage() {
                       <td>{r.airline_name || r.airline}</td>
                       <td>
                         {(r.legs || []).map((leg, i) => (
-                          <span key={i} style={{ fontSize: 11, background: 'rgba(112,93,0,0.08)', borderRadius: 6, padding: '2px 7px', marginRight: 4, display: 'inline-block' }}>
-                            {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 6, marginBottom: 4 }}>
+                            {i > 0 && (
+                              <span style={{ fontSize: 10, color: '#888', background: 'rgba(0,0,0,0.05)', padding: '1px 5px', borderRadius: 4 }}>
+                                Layover {formatMins(leg.layover_duration_minutes)}
+                              </span>
+                            )}
+                            <span style={{ fontSize: 11, background: 'rgba(112,93,0,0.08)', borderRadius: 6, padding: '3px 8px', fontWeight: 600 }}>
+                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                              <span style={{ color: '#666', fontWeight: 400, marginLeft: 4 }}>
+                                ({formatMins(leg.flight_duration_minutes)})
+                              </span>
+                            </span>
                           </span>
                         ))}
                       </td>
@@ -311,10 +317,23 @@ export default function FlightRoutesPage() {
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
             </div>
 
-            {validationErrors?.non_field_errors && (
-              <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 14px', color: '#b91c1c', marginBottom: 18, fontSize: 13 }}>
-                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>{validationErrors.non_field_errors.join(', ')}</span>
+            {validationErrors && (
+              <div style={{ display: 'flex', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '14px 16px', color: '#b91c1c', marginBottom: 18, fontSize: 13 }}>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {typeof validationErrors === 'string' ? (
+                    <span>{validationErrors}</span>
+                  ) : (
+                    Object.entries(validationErrors).map(([key, val]) => {
+                      const msg = Array.isArray(val) ? val.join(', ') : String(val);
+                      return (
+                        <div key={key}>
+                          <strong style={{ textTransform: 'capitalize' }}>{key.replace('_', ' ')}:</strong> {msg}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
 
@@ -344,7 +363,7 @@ export default function FlightRoutesPage() {
                             padding: '9px 14px',
                             background: 'rgba(0, 0, 0, 0.04)',
                             border: `1.5px solid ${
-                              localErrors.flight_no
+                              (localErrors.flight_no || validationErrors?.flight_no)
                                 ? '#b91c1c'
                                 : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
                             }`,
@@ -384,7 +403,7 @@ export default function FlightRoutesPage() {
                           ? (isFlightNoFocused ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)')
                           : 'rgba(0,0,0,0.03)',
                         border: `1.5px solid ${
-                          localErrors.flight_no
+                          (localErrors.flight_no || validationErrors?.flight_no)
                             ? '#b91c1c'
                             : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
                         }`,
@@ -398,15 +417,17 @@ export default function FlightRoutesPage() {
                         outline: 'none',
                         height: '40px',
                         boxSizing: 'border-box',
-                        boxShadow: localErrors.flight_no
+                        boxShadow: (localErrors.flight_no || validationErrors?.flight_no)
                           ? (isFlightNoFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
                           : (isFlightNoFocused ? '0 0 0 3px rgba(0,0,0,0.05)' : 'none'),
                         transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s'
                       }}
                     />
                   </div>
-                  {localErrors.flight_no && (
-                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>{localErrors.flight_no}</p>
+                  {(localErrors.flight_no || validationErrors?.flight_no) && (
+                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>
+                      {localErrors.flight_no || (Array.isArray(validationErrors.flight_no) ? validationErrors.flight_no.join(', ') : validationErrors.flight_no)}
+                    </p>
                   )}
                 </div>
                 <Input id="baggage_weight" label="Baggage Allowance (kg)" type="number"
@@ -442,25 +463,33 @@ export default function FlightRoutesPage() {
                         </button>
                       )}
                     </div>
-                    <div className="leg-grid">
+                    {/* Airports row: DEP ──▶ ARR */}
+                    <div className="leg-airports-row">
                       <Select id={`dep_apt_${i}`} label="Departure Airport" options={airportOptions}
                         value={leg.departure_airport}
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
+                      <div className="leg-arrow">→</div>
                       <Select id={`arr_apt_${i}`} label="Arrival Airport" options={airportOptions}
                         value={leg.arrival_airport}
                         onChange={(e) => updateLeg(i, 'arrival_airport', e.target.value)}
                         error={localErrors[`leg_${i}_arr_apt`]} />
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Departure</label>
-                        <DateTimePicker value={leg.scheduled_departure} onChange={(e) => updateLeg(i, 'scheduled_departure', e.target.value)} error={localErrors[`leg_${i}_dep_time`]} />
-                        {localErrors[`leg_${i}_dep_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_dep_time`]}</p>}
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5e5e5e', display: 'block', marginBottom: 6 }}>Scheduled Arrival</label>
-                        <DateTimePicker value={leg.scheduled_arrival} onChange={(e) => updateLeg(i, 'scheduled_arrival', e.target.value)} error={localErrors[`leg_${i}_arr_time`]} />
-                        {localErrors[`leg_${i}_arr_time`] && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors[`leg_${i}_arr_time`]}</p>}
-                      </div>
+                    </div>
+
+                    {/* Duration + Layover row */}
+                    <div className="leg-details-row">
+                      <Input id={`duration_${i}`} label="Flight Duration (mins)" type="number"
+                        placeholder="e.g. 150"
+                        value={leg.flight_duration_minutes}
+                        onChange={(e) => updateLeg(i, 'flight_duration_minutes', e.target.value)}
+                        error={localErrors[`leg_${i}_duration`]} />
+                      {i > 0 ? (
+                        <Input id={`layover_${i}`} label="Layover Before This Leg (mins)" type="number"
+                          placeholder="e.g. 60"
+                          value={leg.layover_duration_minutes}
+                          onChange={(e) => updateLeg(i, 'layover_duration_minutes', e.target.value)}
+                          error={localErrors[`leg_${i}_layover`]} />
+                      ) : <div />}
                     </div>
                   </div>
                 ))}
