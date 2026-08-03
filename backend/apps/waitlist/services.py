@@ -6,10 +6,10 @@ from django.db.models import F
 from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingStatus, Passenger
+from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus, CabinClass
 from .models import WaitlistEntry, WaitlistStatus
 
 logger = logging.getLogger(__name__)
-
 
 
 # ---------------------------------------------------------------------------
@@ -17,165 +17,122 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 @transaction.atomic
-def process_waitlist_allocations(flight, cancelled_cabin_class=None):
+def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabin_class=None):
     """
-    Called when available seats on a flight increase (due to cancellation).
-    Scans the waitlist queue in FIFO order (by created_at) and allocates
-    seats to pending entries that can be fully accommodated by the available seats.
+    Called when seats on a FlightInstance are freed (due to booking cancellation).
+    Scans the waitlist queue in FIFO order and allocates seats to pending entries
+    that can be fully accommodated.
     """
-    from apps.flights.models import Flight
-    flight = Flight.objects.select_for_update().get(id=flight.id)
+    # Re-fetch with lock
+    flight_instance = FlightInstance.objects.select_for_update().get(pk=flight_instance.pk)
 
-    if flight.available_seats <= 0:
-        return
-
-    qs = WaitlistEntry.objects.filter(flight=flight, status=WaitlistStatus.PENDING).order_by("created_at")
+    qs = WaitlistEntry.objects.filter(
+        flight=flight_instance, status=WaitlistStatus.PENDING
+    ).order_by("created_at")
     pending_entries = list(qs.select_for_update())
-
-    # Resolve the flight instance once for this flight
-    instance = None
-    try:
-        from apps.flights.models import FlightRoute, FlightInstance
-        route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-        if route:
-            instance = (
-                FlightInstance.objects
-                .filter(flight=route, scheduled_departure=flight.departure_time)
-                .first()
-            )
-            if not instance:
-                instance = (
-                    FlightInstance.objects
-                    .filter(flight=route)
-                    .order_by('scheduled_departure')
-                    .first()
-                )
-    except Exception:
-        logger.exception("Error resolving flight instance for waitlist allocation")
 
     for entry in pending_entries:
         fare_obj = None
-        has_seats = False
+        cabin = entry.cabin_class
 
-        if entry.cabin_class and instance:
-            try:
-                from apps.flights.models import Fare
-                fare_obj = Fare.objects.select_for_update().filter(
-                    flight_instance=instance,
-                    cabin_class=entry.cabin_class
-                ).first()
-                if fare_obj and fare_obj.available_seats >= entry.seat_count:
-                    has_seats = True
-            except Exception:
-                logger.exception("Error resolving fare_obj during waitlist allocation")
+        if cabin:
+            fare_obj = Fare.objects.select_for_update().filter(
+                flight_instance=flight_instance, cabin_class=cabin
+            ).first()
 
-        if not entry.cabin_class:
-            if flight.available_seats >= entry.seat_count:
-                has_seats = True
+        # Check if enough seats are physically available
+        seat_filter = {"status": SeatStatus.AVAILABLE}
+        if cabin:
+            seat_filter["seat_class"] = cabin
+        available_count = flight_instance.seats.filter(**seat_filter).count()
+
+        if cabin and fare_obj:
+            has_seats = fare_obj.available_seats >= entry.seat_count
         else:
-            if fare_obj and fare_obj.available_seats >= entry.seat_count:
-                has_seats = True
-            elif not fare_obj and flight.available_seats >= entry.seat_count:
-                has_seats = True
+            has_seats = available_count >= entry.seat_count
 
-        if has_seats:
-            Flight.objects.filter(pk=flight.pk).update(available_seats=flight.available_seats - entry.seat_count)
-            flight.available_seats -= entry.seat_count
+        if not has_seats:
+            continue
 
-            if fare_obj:
-                fare_obj.available_seats -= entry.seat_count
-                fare_obj.save(update_fields=['available_seats'])
+        # Create confirmed booking
+        booking_kwargs = {
+            "user": entry.user,
+            "flight": flight_instance,
+            "seat_count": entry.seat_count,
+            "total_price": entry.price,
+            "status": BookingStatus.CONFIRMED,
+        }
+        if cabin:
+            booking_kwargs["cabin_class"] = cabin
+        booking = Booking.objects.create(**booking_kwargs)
 
-            booking_kwargs = {
-                "user": entry.user,
-                "flight": flight,
-                "seat_count": entry.seat_count,
-                "total_price": entry.price,
-                "status": BookingStatus.CONFIRMED,
-            }
-            if entry.cabin_class:
-                booking_kwargs["cabin_class"] = entry.cabin_class
-            booking = Booking.objects.create(**booking_kwargs)
+        # Assign seats
+        assigned_seats = []
+        seat_qs = flight_instance.seats.select_for_update().filter(
+            **seat_filter
+        ).order_by('seat_number')[:entry.seat_count]
+        for seat_obj in seat_qs:
+            seat_obj.status = SeatStatus.BOOKED
+            seat_obj.save(update_fields=['status'])
+            assigned_seats.append(seat_obj.seat_number)
 
-            assigned_seats = []
-            target_class = entry.cabin_class or 'ECONOMY'
-            if instance:
-                try:
-                    from apps.flights.models import SeatStatus
-                    avail_seats = instance.seats.select_for_update().filter(
-                        seat_class=target_class,
-                        status=SeatStatus.AVAILABLE
-                    ).order_by('seat_number')[:entry.seat_count]
-                    for seat_obj in avail_seats:
-                        seat_obj.status = SeatStatus.BOOKED
-                        seat_obj.save(update_fields=['status'])
-                        assigned_seats.append(seat_obj.seat_number)
-                except Exception:
-                    logger.exception("Error auto-assigning seats during waitlist allocation")
+        # Keep Fare.available_seats in sync
+        if fare_obj and assigned_seats:
+            fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
+            fare_obj.save(update_fields=['available_seats'])
 
-            for idx, wp in enumerate(entry.passengers.all()):
-                Passenger.objects.create(
-                    booking=booking,
-                    name=wp.name,
-                    age=wp.age,
-                    gender=wp.gender,
-                    phone_number=wp.phone_number,
-                    seat_number=assigned_seats[idx] if idx < len(assigned_seats) else None,
-                )
+        # Create Passenger rows
+        for idx, wp in enumerate(entry.passengers.all()):
+            Passenger.objects.create(
+                booking=booking,
+                name=wp.name,
+                age=wp.age,
+                gender=wp.gender,
+                phone_number=wp.phone_number,
+                seat_number=assigned_seats[idx] if idx < len(assigned_seats) else None,
+            )
 
-            entry.status = WaitlistStatus.CONFIRMED
-            entry.booking = booking
-            entry.save()
+        entry.status = WaitlistStatus.CONFIRMED
+        entry.booking = booking
+        entry.save()
 
-            try:
-                from apps.notifications.services import NotificationService
-                NotificationService.send_waitlist_allocation(booking)
-            except Exception:
-                logger.exception("Failed to send waitlist allocation notification")
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send_waitlist_allocation(booking)
+        except Exception:
+            logger.exception("Failed to send waitlist allocation notification")
 
-            if flight.available_seats == 0:
-                break
+        # Stop if no more seats left
+        remaining = flight_instance.seats.filter(**{"status": SeatStatus.AVAILABLE}).count()
+        if remaining == 0:
+            break
 
 
 # ---------------------------------------------------------------------------
 # Helpers shared across join / promote
 # ---------------------------------------------------------------------------
 
-def _resolve_fare_and_availability(flight, cabin_class):
+def _resolve_fare_and_availability(flight_instance: FlightInstance, cabin_class: str | None):
     """
-    Return (available_seats, price_per_pax) for *cabin_class* on *flight*.
-    Falls back to flight-level values when no Fare row is found.
+    Return (available_seats, price_per_pax) for *cabin_class* on *flight_instance*.
+    Falls back to total available seat count and price=0 when no Fare row is found.
     """
-    available_seats = flight.available_seats
-    price_per_pax   = flight.base_fare
+    seat_filter = {"status": SeatStatus.AVAILABLE}
+    if cabin_class:
+        seat_filter["seat_class"] = cabin_class
+
+    available_seats = flight_instance.seats.filter(**seat_filter).count()
+    price_per_pax = Decimal("0")
 
     if not cabin_class:
         return available_seats, price_per_pax
 
-    try:
-        from apps.flights.models import FlightRoute, FlightInstance, Fare
-        route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-        if not route:
-            return available_seats, price_per_pax
-        instance = (
-            FlightInstance.objects
-            .filter(flight=route, scheduled_departure=flight.departure_time)
-            .first()
-        ) or (
-            FlightInstance.objects
-            .filter(flight=route)
-            .order_by('scheduled_departure')
-            .first()
-        )
-        if instance:
-            fare_obj = Fare.objects.filter(
-                flight_instance=instance, cabin_class=cabin_class
-            ).first()
-            if fare_obj:
-                available_seats = fare_obj.available_seats
-                price_per_pax   = fare_obj.price
-    except Exception:
-        logger.exception("Error resolving fare and availability")
+    fare_obj = Fare.objects.filter(
+        flight_instance=flight_instance, cabin_class=cabin_class
+    ).first()
+    if fare_obj:
+        available_seats = fare_obj.available_seats
+        price_per_pax = fare_obj.price
 
     return available_seats, price_per_pax
 
@@ -216,25 +173,28 @@ class WaitlistError(Exception):
         self.status_code = status_code
 
 
-def join_waitlist(user, flight_id: int, passengers_data: list, cabin_class: str | None) -> WaitlistEntry:
+def join_waitlist(
+    user,
+    flight_id: int,
+    passengers_data: list,
+    cabin_class: str | None,
+) -> WaitlistEntry:
     """
     Validate all business rules and create a new WaitlistEntry + WaitlistPassenger rows.
 
     Raises WaitlistError on any rule violation.
     """
-    from apps.flights.models import Flight, CabinClass
-
-    # --- resolve flight ---
+    # --- resolve flight instance ---
     try:
-        flight = Flight.objects.get(id=flight_id)
-    except (Flight.DoesNotExist, ValueError):
+        flight_instance = FlightInstance.objects.select_related('flight').get(id=int(flight_id))
+    except (FlightInstance.DoesNotExist, ValueError, TypeError):
         raise WaitlistError("Flight not found.", status_code=404)
 
     # --- flight must not have departed ---
-    if flight.departure_time <= timezone.now():
+    if flight_instance.scheduled_departure <= timezone.now():
         raise WaitlistError("Cannot join the waitlist for a flight that has already departed.")
 
-    # --- cabin class ---
+    # --- cabin class validation ---
     if cabin_class and cabin_class not in dict(CabinClass.choices):
         raise WaitlistError("Invalid cabin class.")
 
@@ -249,7 +209,7 @@ def join_waitlist(user, flight_id: int, passengers_data: list, cabin_class: str 
         raise WaitlistError(passenger_error)
 
     # --- resolve availability for this class ---
-    available_seats, price_per_pax = _resolve_fare_and_availability(flight, cabin_class)
+    available_seats, price_per_pax = _resolve_fare_and_availability(flight_instance, cabin_class)
 
     # --- flight must actually be full for this class ---
     if available_seats >= seat_count:
@@ -262,14 +222,14 @@ def join_waitlist(user, flight_id: int, passengers_data: list, cabin_class: str 
 
     # --- no duplicate pending entry ---
     if WaitlistEntry.objects.filter(
-        user=user, flight=flight, status=WaitlistStatus.PENDING
+        user=user, flight=flight_instance, status=WaitlistStatus.PENDING
     ).exists():
         raise WaitlistError("You are already on the waitlist for this flight")
 
     # --- create entry and passengers ---
     entry_kwargs = {
         "user":       user,
-        "flight":     flight,
+        "flight":     flight_instance,
         "seat_count": seat_count,
         "price":      price_per_pax * seat_count,
         "status":     WaitlistStatus.PENDING,
@@ -342,63 +302,67 @@ def promote_waitlist_entry(entry: WaitlistEntry) -> Booking:
     if entry.status != WaitlistStatus.PENDING:
         raise WaitlistError("Only pending waitlist entries can be promoted.")
 
-    from apps.flights.models import Flight
-
-    flight   = Flight.objects.select_for_update().get(id=entry.flight_id)
+    flight_instance = FlightInstance.objects.select_for_update().get(pk=entry.flight_id)
+    cabin = entry.cabin_class
     fare_obj = None
 
-    if entry.cabin_class:
-        try:
-            from apps.flights.models import FlightRoute, FlightInstance, Fare
-            route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-            if route:
-                instance = (
-                    FlightInstance.objects
-                    .filter(flight=route, scheduled_departure=flight.departure_time)
-                    .first()
-                ) or (
-                    FlightInstance.objects
-                    .filter(flight=route)
-                    .order_by('scheduled_departure')
-                    .first()
-                )
-                if instance:
-                    fare_obj = Fare.objects.select_for_update().filter(
-                        flight_instance=instance,
-                        cabin_class=entry.cabin_class,
-                    ).first()
-        except Exception:
-            logger.exception("Error resolving fare_obj during waitlist promotion")
+    if cabin:
+        fare_obj = Fare.objects.select_for_update().filter(
+            flight_instance=flight_instance, cabin_class=cabin
+        ).first()
 
     # --- seat availability check ---
+    seat_filter = {"status": SeatStatus.AVAILABLE}
+    if cabin:
+        seat_filter["seat_class"] = cabin
+
     if fare_obj:
         if fare_obj.available_seats < entry.seat_count:
             raise WaitlistError(
-                f"Not enough available seats in {entry.cabin_class} to promote this waitlist entry."
+                f"Not enough available seats in {cabin} to promote this waitlist entry."
             )
-    elif flight.available_seats < entry.seat_count:
-        raise WaitlistError("Not enough available seats to promote this waitlist entry.")
+    else:
+        physical_count = flight_instance.seats.filter(**seat_filter).count()
+        if physical_count < entry.seat_count:
+            raise WaitlistError("Not enough available seats to promote this waitlist entry.")
 
-    # --- deduct seats ---
-    flight.available_seats = F('available_seats') - entry.seat_count
-    flight.save(update_fields=['available_seats'])
+    # --- assign seats ---
+    assigned_seats = []
+    seat_qs = flight_instance.seats.select_for_update().filter(
+        **seat_filter
+    ).order_by('seat_number')[:entry.seat_count]
+    for seat_obj in seat_qs:
+        seat_obj.status = SeatStatus.BOOKED
+        seat_obj.save(update_fields=['status'])
+        assigned_seats.append(seat_obj.seat_number)
 
-    if fare_obj:
-        fare_obj.available_seats = F('available_seats') - entry.seat_count
+    if fare_obj and assigned_seats:
+        fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
         fare_obj.save(update_fields=['available_seats'])
 
     # --- create booking ---
     booking_kwargs = {
         "user":        entry.user,
-        "flight":      flight,
+        "flight":      flight_instance,
         "seat_count":  entry.seat_count,
         "total_price": entry.price,
         "status":      BookingStatus.CONFIRMED,
     }
-    if entry.cabin_class:
-        booking_kwargs["cabin_class"] = entry.cabin_class
+    if cabin:
+        booking_kwargs["cabin_class"] = cabin
 
     booking = Booking.objects.create(**booking_kwargs)
+
+    # Copy waitlist passengers to booking passengers
+    for idx, wp in enumerate(entry.passengers.all()):
+        Passenger.objects.create(
+            booking=booking,
+            name=wp.name,
+            age=wp.age,
+            gender=wp.gender,
+            phone_number=wp.phone_number,
+            seat_number=assigned_seats[idx] if idx < len(assigned_seats) else None,
+        )
 
     entry.status  = WaitlistStatus.CONFIRMED
     entry.booking = booking
@@ -418,10 +382,9 @@ def expire_departed_waitlist_entries(user=None):
     """
     Auto-expire pending waitlist entries whose flights have already departed.
     """
-    from django.db.models import Sum
     now = timezone.now()
     qs = WaitlistEntry.objects.filter(
-        status=WaitlistStatus.PENDING, flight__departure_time__lte=now
+        status=WaitlistStatus.PENDING, flight__scheduled_departure__lte=now
     )
     if user and not (user.is_staff or user.is_superuser):
         qs = qs.filter(user=user)
@@ -430,7 +393,7 @@ def expire_departed_waitlist_entries(user=None):
 
 def get_waitlist_passenger_count(flight_id):
     """
-    Get the total count of pending waitlisted passengers for a given flight.
+    Get the total count of pending waitlisted passengers for a given FlightInstance.
     """
     from django.db.models import Sum
     result = WaitlistEntry.objects.filter(

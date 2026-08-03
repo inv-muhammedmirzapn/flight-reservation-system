@@ -18,15 +18,13 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as rf_serializers
 
 from .models import (
-    Flight,
     Country, Airport, Airline, AircraftModel, Aircraft,
-    FlightRoute, FlightLeg, FlightInstance,
+    FlightRoute, FlightLeg, FlightInstance, InstanceStatus,
     Seat, SeatStatus, CabinClass,
     Fare, FoodItem, FlightMeal, FlightMealItem,
     SeatPriceTemplate,
 )
 from .serializers import (
-    FlightSerializer,
     CountrySerializer, AirportSerializer, AirlineSerializer,
     AircraftModelSerializer, AircraftSerializer,
     FlightRouteSerializer, FlightLegSerializer,
@@ -91,7 +89,7 @@ class FlightPagination(PageNumberPagination):
 class FlightStatsView(APIView):
     """
     GET /api/flights/stats/
-    Returns aggregate flight counts by status.
+    Returns aggregate flight instance counts by status.
     """
     permission_classes = [AllowAny]
 
@@ -105,8 +103,8 @@ class FlightStatsView(APIView):
         "arrived": rf_serializers.IntegerField(),
     })})
     def get(self, request, *args, **kwargs) -> Response:
-        rows = Flight.objects.values("status").annotate(count=Count("id"))
-        stats = {"total": Flight.objects.count(), "scheduled": 0, "delayed": 0,
+        rows = FlightInstance.objects.values("status").annotate(count=Count("id"))
+        stats = {"total": FlightInstance.objects.count(), "scheduled": 0, "delayed": 0,
                  "cancelled": 0, "boarding": 0, "departed": 0, "arrived": 0}
         for row in rows:
             key = row["status"].lower()
@@ -121,7 +119,7 @@ class FlightListCreateView(APIView):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
 
-    @extend_schema(responses=FlightSerializer(many=True))
+    @extend_schema(responses=FlightInstanceSerializer(many=True))
     def get(self, request, *args, **kwargs) -> Response:
         from django.utils import timezone
         qs = FlightInstance.objects.select_related('flight', 'flight__airline', 'aircraft').filter(
@@ -169,29 +167,12 @@ class FlightListCreateView(APIView):
 
         qs = qs.distinct()
 
-        if not qs.exists() and Flight.objects.exists() and not any([source, destination, date, flight_number, airline, status_filter, min_price, max_price]):
-            legacy_qs = Flight.objects.all().order_by("departure_time")
-            paginator = FlightPagination()
-            page = paginator.paginate_queryset(legacy_qs, request)
-            serializer = FlightSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
-
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         from .serializers import FrontendFlightInstanceSerializer
         serializer = FrontendFlightInstanceSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-    @extend_schema(request=FlightSerializer, responses={201: FlightSerializer})
-    def post(self, request, *args, **kwargs) -> Response:
-        serializer = FlightSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except (IntegrityError, DjangoValidationError) as exc:
-            return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FlightDetailView(APIView):
@@ -200,73 +181,16 @@ class FlightDetailView(APIView):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
 
-    @extend_schema(responses=FlightSerializer)
+    @extend_schema(responses=FlightInstanceSerializer)
     def get(self, request, id, *args, **kwargs) -> Response:
-        import uuid
-        try:
-            uuid.UUID(str(id))
-            flight = get_object_or_404(Flight, id=id)
-            date_param = request.query_params.get("date")
-            from .serializers import FlightSerializer
-            serializer = FlightSerializer(flight, context={"search_date": date_param})
-            return Response(serializer.data)
-        except ValueError:
-            from .serializers import FrontendFlightInstanceSerializer
-            instance = get_object_or_404(FlightInstance, id=int(id))
-            serializer = FrontendFlightInstanceSerializer(instance)
-            return Response(serializer.data)
-
-    @extend_schema(responses={204: None})
-    def delete(self, request, id, *args, **kwargs) -> Response:
-        import uuid
-        try:
-            uuid.UUID(str(id))
-            flight = get_object_or_404(Flight, id=id)
-            flight.delete()
-        except ValueError:
-            instance = get_object_or_404(FlightInstance, id=int(id))
-            instance.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        from .serializers import FrontendFlightInstanceSerializer
+        instance = get_object_or_404(FlightInstance, id=int(id))
+        serializer = FrontendFlightInstanceSerializer(instance)
+        return Response(serializer.data)
 
 
-class FlightUpdateView(APIView):
-    permission_classes = [IsAdminOrSuperuser]
 
-    def get_object(self, pk):
-        try:
-            return Flight.objects.get(pk=pk)
-        except (Flight.DoesNotExist, ValueError, DjangoValidationError):
-            raise Http404
 
-    @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
-    def put(self, request, id, *args, **kwargs) -> Response:
-        flight = self.get_object(id)
-        old_available = flight.available_seats
-        serializer = FlightSerializer(flight, data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            flight = serializer.save()
-            trigger_waitlist_if_seats_freed(flight, old_available)
-            flight.refresh_from_db()
-            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
-        except (IntegrityError, DjangoValidationError) as exc:
-            return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
-
-    @extend_schema(request=FlightSerializer, responses={200: FlightSerializer})
-    def patch(self, request, id, *args, **kwargs) -> Response:
-        flight = self.get_object(id)
-        old_available = flight.available_seats
-        serializer = FlightSerializer(flight, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            flight = serializer.save()
-            trigger_waitlist_if_seats_freed(flight, old_available)
-            flight.refresh_from_db()
-            return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
-        except (IntegrityError, DjangoValidationError) as exc:
-            return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 

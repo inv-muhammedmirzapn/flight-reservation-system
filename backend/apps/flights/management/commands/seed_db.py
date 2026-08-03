@@ -11,7 +11,6 @@ from apps.flights.models import (
     FlightRoute, FlightLeg, FlightInstance, InstanceStatus,
     Seat, CabinClass, SeatPosition, SeatStatus,
     Fare, RefundType, FoodItem, FlightMeal, FlightMealItem,
-    Flight, FlightStatus
 )
 from apps.bookings.models import Booking, BookingStatus, Passenger
 from apps.waitlist.models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
@@ -37,7 +36,6 @@ class Command(BaseCommand):
         Fare.objects.all().delete()
         Seat.objects.all().delete()
         FlightInstance.objects.all().delete()
-        Flight.objects.all().delete()
         FlightLeg.objects.all().delete()
         FlightRoute.objects.all().delete()
         Aircraft.objects.all().delete()
@@ -288,7 +286,6 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Seeding Flights & Instances for {len(dates_to_generate)} specific dates...")
 
-        legacy_flights_created = []
         flight_instances_created = []
 
         flight_counter = 1000
@@ -310,32 +307,11 @@ class Command(BaseCommand):
                 base_price = random.randint(15000, 150000)
                 
                 if dep_t < now:
-                    status = FlightStatus.DEPARTED
                     inst_status = InstanceStatus.DEPARTED
                 else:
-                    status = FlightStatus.SCHEDULED
                     inst_status = InstanceStatus.SCHEDULED
 
                 unique_fno = f"{fno}-{flight_counter}"
-                
-                # Legacy Flight
-                fl, _ = Flight.objects.get_or_create(
-                    flight_number=unique_fno,
-                    defaults={
-                        "airline": airlines_dict[al_code].airline_name,
-                        "aircraft": aircraft_dict[ac_reg].aircraft_model.model_name,
-                        "source_airport": dep_code,
-                        "destination_airport": arr_code,
-                        "departure_time": dep_t,
-                        "arrival_time": arr_t,
-                        "base_fare": base_price,
-                        "total_seats": 200,
-                        "available_seats": random.randint(50, 150),
-                        "status": status,
-                        "stops": [],
-                    }
-                )
-                legacy_flights_created.append(fl)
 
                 # Flight Instance
                 inst, _ = FlightInstance.objects.get_or_create(
@@ -477,16 +453,20 @@ class Command(BaseCommand):
         
         # We will create a few bookings for some flights
         for i in range(30):
-            flight_obj = random.choice(legacy_flights_created)
+            flight_inst = random.choice(flight_instances_created)
             user_obj = customer_user if i % 2 == 0 else admin_user
+            
+            fare = Fare.objects.filter(flight_instance=flight_inst, cabin_class=CabinClass.ECONOMY).first()
+            mock_price = fare.price if fare else Decimal("15000.00")
+            
             b, _ = Booking.objects.get_or_create(
                 id=f"10000000-0000-0000-0000-0000000000{i:02d}",
                 defaults={
                     "user": user_obj,
-                    "flight": flight_obj,
+                    "flight": flight_inst,
                     "status": BookingStatus.CONFIRMED,
                     "seat_count": 1,
-                    "total_price": flight_obj.base_fare,
+                    "total_price": mock_price,
                 }
             )
             Passenger.objects.get_or_create(

@@ -12,21 +12,21 @@ const ADMIN_GROUPS = [
   {
     label: 'Master Data',
     links: [
-      { label: 'Airports',       href: '/admin/master/airports' },
-      { label: 'Airlines',       href: '/admin/master/airlines' },
-      { label: 'Aircraft Models',href: '/admin/master/aircraft-models' },
-      { label: 'Aircraft',       href: '/admin/master/aircraft' },
-      { label: 'Food Items',     href: '/admin/master/food-items' },
+      { label: 'Airports', href: '/admin/master/airports' },
+      { label: 'Airlines', href: '/admin/master/airlines' },
+      { label: 'Aircraft Models', href: '/admin/master/aircraft-models' },
+      { label: 'Aircraft', href: '/admin/master/aircraft' },
+      { label: 'Food Items', href: '/admin/master/food-items' },
     ],
   },
   {
     label: 'Operations',
     links: [
-      { label: 'Flight Routes',  href: '/admin/operations/flight-routes' },
-      { label: 'Instances',      href: '/admin/operations/flight-instances' },
-      { label: 'Seat Map',       href: '/admin/operations/seat-map' },
-      { label: 'Fares',          href: '/admin/operations/fares' },
-      { label: 'Meals',          href: '/admin/operations/meals' },
+      { label: 'Flight Routes', href: '/admin/operations/flight-routes' },
+      { label: 'Instances', href: '/admin/operations/flight-instances' },
+      { label: 'Seat Map', href: '/admin/operations/seat-map' },
+      { label: 'Fares', href: '/admin/operations/fares' },
+      { label: 'Meals', href: '/admin/operations/meals' },
     ],
   },
   // {
@@ -49,7 +49,7 @@ const ADMIN_GROUPS = [
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
   { labelKey: "bookings", href: "/my-bookings" },
-  
+
 ];
 
 export function Navbar() {
@@ -189,7 +189,7 @@ export function Navbar() {
                       {group.label}
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
                         style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', opacity: 0.6 }}>
-                        <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                       </svg>
                     </button>
 

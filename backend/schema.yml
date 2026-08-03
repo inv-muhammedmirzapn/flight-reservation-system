@@ -248,6 +248,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomTokenObtainPair'
           description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
   /api/auth/password/forgot/:
     post:
       operationId: auth_password_forgot_create
@@ -589,8 +615,8 @@ paths:
       description: |-
         POST /api/bulk-upload/import/
         Multipart form fields:
-          - entity  (string): one of ENTITY_PROCESSORS keys, or "all"
-          - file    (file):   .csv / .xls / .xlsx or .zip (if entity is "all")
+          - entity  (string): one of ENTITY_IMPORTERS keys, or "all"
+          - file    (file):   .csv / .xls / .xlsx  — or .zip when entity is "all"
       tags:
       - bulk-upload
       security:
@@ -613,32 +639,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Flight'
-          description: ''
-    post:
-      operationId: flights_create
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Flight'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
+                  $ref: '#/components/schemas/FlightInstance'
           description: ''
   /api/flights/{id}/:
     get:
@@ -647,7 +648,7 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
         required: true
       tags:
       - flights
@@ -659,91 +660,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Flight'
+                $ref: '#/components/schemas/FlightInstance'
           description: ''
-    delete:
-      operationId: flights_destroy
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
+  /api/flights/bounds/:
+    get:
+      operationId: flights_bounds_retrieve
       tags:
       - flights
       security:
       - jwtAuth: []
+      - {}
       responses:
-        '204':
+        '200':
           description: No response body
-  /api/flights/{id}/update/:
-    put:
-      operationId: flights_update_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
+  /api/flights/calendar/:
+    get:
+      operationId: flights_calendar_retrieve
       tags:
       - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Flight'
-        required: true
       security:
       - jwtAuth: []
+      - {}
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
-          description: ''
-    patch:
-      operationId: flights_update_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
-          description: ''
+          description: No response body
   /api/flights/stats/:
     get:
       operationId: flights_stats_retrieve
       description: |-
         GET /api/flights/stats/
-        Returns aggregate flight counts by status.
+        Returns aggregate flight instance counts by status.
       tags:
       - flights
       security:
@@ -1475,7 +1421,6 @@ paths:
   /api/flights/v2/countries/:
     get:
       operationId: flights_v2_countries_list
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
       parameters:
       - name: ordering
         required: false
@@ -1513,36 +1458,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCountryList'
           description: ''
-    post:
-      operationId: flights_v2_countries_create
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Country'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Country'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Country'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Country'
-          description: ''
   /api/flights/v2/countries/{id}/:
     get:
       operationId: flights_v2_countries_retrieve
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
       parameters:
       - in: path
         name: id
@@ -1555,117 +1473,6 @@ paths:
       security:
       - jwtAuth: []
       - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Country'
-          description: ''
-    put:
-      operationId: flights_v2_countries_update
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this country.
-        required: true
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Country'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Country'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Country'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Country'
-          description: ''
-    patch:
-      operationId: flights_v2_countries_partial_update
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this country.
-        required: true
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedCountry'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedCountry'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedCountry'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Country'
-          description: ''
-    delete:
-      operationId: flights_v2_countries_destroy
-      description: 'Base viewset: list/retrieve public, write actions admin-only.'
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this country.
-        required: true
-      tags:
-      - flights
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/flights/v2/countries/populate-presets/:
-    post:
-      operationId: flights_v2_countries_populate_presets_create
-      description: |-
-        POST /api/v2/countries/populate-presets/
-        Populate standard ISO countries using pycountry.
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Country'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Country'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Country'
-        required: true
-      security:
-      - jwtAuth: []
       responses:
         '200':
           content:
@@ -3354,18 +3161,18 @@ components:
       - ''
     Booking:
       type: object
-      description: Full booking representation including nested flight summary.
+      description: Full booking representation including nested flight instance summary.
       properties:
         id:
           type: string
           format: uuid
           readOnly: true
         flight_id_input:
-          type: string
+          type: integer
           writeOnly: true
         flight_detail:
           allOf:
-          - $ref: '#/components/schemas/FlightSummary'
+          - $ref: '#/components/schemas/FlightInstanceSummary'
           readOnly: true
         cabin_class:
           nullable: true
@@ -3553,108 +3360,6 @@ components:
       - flight_instance
       - id
       - price
-    Flight:
-      type: object
-      description: Serializer for the legacy Flight model.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        flight_number:
-          type: string
-          maxLength: 20
-        airline:
-          type: string
-          maxLength: 100
-        aircraft:
-          type: string
-          maxLength: 100
-        source_airport:
-          type: string
-          maxLength: 10
-        source_airport_name:
-          type: string
-          readOnly: true
-        source_terminals:
-          type: string
-          readOnly: true
-        destination_airport:
-          type: string
-          maxLength: 10
-        destination_airport_name:
-          type: string
-          readOnly: true
-        destination_terminals:
-          type: string
-          readOnly: true
-        departure_time:
-          type: string
-          format: date-time
-        arrival_time:
-          type: string
-          format: date-time
-        base_fare:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        total_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
-        available_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
-        status:
-          $ref: '#/components/schemas/Status43bEnum'
-        external_id:
-          type: string
-          nullable: true
-          maxLength: 100
-        sync_source:
-          type: string
-          nullable: true
-          maxLength: 50
-        stops: {}
-        baggage_weight_kg:
-          type: string
-          readOnly: true
-        baggage_number_allowed:
-          type: string
-          readOnly: true
-        handbag_weight_kg:
-          type: string
-          readOnly: true
-        fares:
-          type: string
-          readOnly: true
-        flight_instance_id:
-          type: string
-          readOnly: true
-      required:
-      - aircraft
-      - airline
-      - arrival_time
-      - available_seats
-      - baggage_number_allowed
-      - baggage_weight_kg
-      - base_fare
-      - departure_time
-      - destination_airport
-      - destination_airport_name
-      - destination_terminals
-      - fares
-      - flight_instance_id
-      - flight_number
-      - handbag_weight_kg
-      - id
-      - source_airport
-      - source_airport_name
-      - source_terminals
-      - total_seats
     FlightInstance:
       type: object
       properties:
@@ -3685,6 +3390,12 @@ components:
           readOnly: true
         status:
           $ref: '#/components/schemas/Status43bEnum'
+        delay_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Delay in minutes (0 = no delay)
         scheduled_departure:
           type: string
           format: date-time
@@ -3738,6 +3449,41 @@ components:
       - scheduled_departure
       - total_capacity
       - updated_at
+    FlightInstanceSummary:
+      type: object
+      description: Lightweight FlightInstance info embedded in booking responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_number:
+          type: string
+          readOnly: true
+        airline:
+          type: string
+          readOnly: true
+        source_airport:
+          type: string
+          readOnly: true
+        destination_airport:
+          type: string
+          readOnly: true
+        scheduled_departure:
+          type: string
+          format: date-time
+        scheduled_arrival:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/Status43bEnum'
+      required:
+      - airline
+      - destination_airport
+      - flight_number
+      - id
+      - scheduled_arrival
+      - scheduled_departure
+      - source_airport
     FlightLeg:
       type: object
       properties:
@@ -3759,12 +3505,26 @@ components:
         arrival_airport_iata:
           type: string
           readOnly: true
+        flight_duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Duration of flight leg in minutes
+        layover_duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Layover duration before this leg in minutes
         scheduled_departure:
           type: string
           format: date-time
+          nullable: true
         scheduled_arrival:
           type: string
           format: date-time
+          nullable: true
         actual_departure:
           type: string
           format: date-time
@@ -3780,8 +3540,6 @@ components:
       - departure_airport_iata
       - id
       - leg_order
-      - scheduled_arrival
-      - scheduled_departure
     FlightMeal:
       type: object
       properties:
@@ -3922,51 +3680,6 @@ components:
       - departed
       - scheduled
       - total
-    FlightSummary:
-      type: object
-      description: Lightweight flight info embedded in booking responses.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        flight_number:
-          type: string
-          maxLength: 20
-        airline:
-          type: string
-          maxLength: 100
-        aircraft:
-          type: string
-          maxLength: 100
-        source_airport:
-          type: string
-          maxLength: 10
-        destination_airport:
-          type: string
-          maxLength: 10
-        departure_time:
-          type: string
-          format: date-time
-        arrival_time:
-          type: string
-          format: date-time
-        base_fare:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        status:
-          $ref: '#/components/schemas/Status43bEnum'
-      required:
-      - aircraft
-      - airline
-      - arrival_time
-      - base_fare
-      - departure_time
-      - destination_airport
-      - flight_number
-      - id
-      - source_airport
     FoodItem:
       type: object
       properties:
@@ -4071,6 +3784,20 @@ components:
       - refresh
       - role
       - username
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
+    LogoutResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     MonthlyRevenue:
       type: object
       properties:
@@ -4609,18 +4336,6 @@ components:
           type: string
           readOnly: true
         terminals: {}
-    PatchedCountry:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 100
-        iso_code:
-          type: string
-          maxLength: 3
     PatchedFare:
       type: object
       properties:
@@ -4659,87 +4374,6 @@ components:
           nullable: true
           description: Override flight-level baggage allowance (kg). Leave blank to
             use flight default.
-    PatchedFlight:
-      type: object
-      description: Serializer for the legacy Flight model.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        flight_number:
-          type: string
-          maxLength: 20
-        airline:
-          type: string
-          maxLength: 100
-        aircraft:
-          type: string
-          maxLength: 100
-        source_airport:
-          type: string
-          maxLength: 10
-        source_airport_name:
-          type: string
-          readOnly: true
-        source_terminals:
-          type: string
-          readOnly: true
-        destination_airport:
-          type: string
-          maxLength: 10
-        destination_airport_name:
-          type: string
-          readOnly: true
-        destination_terminals:
-          type: string
-          readOnly: true
-        departure_time:
-          type: string
-          format: date-time
-        arrival_time:
-          type: string
-          format: date-time
-        base_fare:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        total_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
-        available_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
-        status:
-          $ref: '#/components/schemas/Status43bEnum'
-        external_id:
-          type: string
-          nullable: true
-          maxLength: 100
-        sync_source:
-          type: string
-          nullable: true
-          maxLength: 50
-        stops: {}
-        baggage_weight_kg:
-          type: string
-          readOnly: true
-        baggage_number_allowed:
-          type: string
-          readOnly: true
-        handbag_weight_kg:
-          type: string
-          readOnly: true
-        fares:
-          type: string
-          readOnly: true
-        flight_instance_id:
-          type: string
-          readOnly: true
     PatchedFlightInstance:
       type: object
       properties:
@@ -4770,6 +4404,12 @@ components:
           readOnly: true
         status:
           $ref: '#/components/schemas/Status43bEnum'
+        delay_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Delay in minutes (0 = no delay)
         scheduled_departure:
           type: string
           format: date-time
@@ -5373,7 +5013,6 @@ components:
           readOnly: true
         refresh:
           type: string
-          writeOnly: true
       required:
       - access
       - refresh
@@ -5440,11 +5079,10 @@ components:
           type: string
           readOnly: true
         flight:
-          type: string
-          format: uuid
+          type: integer
         flight_detail:
           allOf:
-          - $ref: '#/components/schemas/FlightSummary'
+          - $ref: '#/components/schemas/FlightInstanceSummary'
           readOnly: true
         seat_count:
           type: integer

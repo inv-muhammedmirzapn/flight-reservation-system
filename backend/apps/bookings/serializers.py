@@ -1,18 +1,30 @@
 from rest_framework import serializers
 from .models import Booking, Passenger
-from apps.flights.models import Flight
+from apps.flights.models import FlightInstance
 
 
-class FlightSummarySerializer(serializers.ModelSerializer):
-    """Lightweight flight info embedded in booking responses."""
+class FlightInstanceSummarySerializer(serializers.ModelSerializer):
+    """Lightweight FlightInstance info embedded in booking responses."""
+    flight_number = serializers.CharField(source='flight.flight_no', read_only=True)
+    airline = serializers.CharField(source='flight.airline.airline_name', read_only=True)
+    source_airport = serializers.SerializerMethodField()
+    destination_airport = serializers.SerializerMethodField()
+
     class Meta:
-        model = Flight
+        model = FlightInstance
         fields = [
-            'id', 'flight_number', 'airline', 'aircraft',
+            'id', 'flight_number', 'airline',
             'source_airport', 'destination_airport',
-            'departure_time', 'arrival_time', 'base_fare',
-            'status',
+            'scheduled_departure', 'scheduled_arrival', 'status',
         ]
+
+    def get_source_airport(self, obj):
+        first_leg = obj.flight.legs.order_by('leg_order').first()
+        return first_leg.departure_airport.iata_code if first_leg else None
+
+    def get_destination_airport(self, obj):
+        last_leg = obj.flight.legs.order_by('leg_order').last()
+        return last_leg.arrival_airport.iata_code if last_leg else None
 
 
 class PassengerSerializer(serializers.ModelSerializer):
@@ -27,51 +39,29 @@ class PassengerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Age cannot be negative.")
         return value
 
+
 class BookingSerializer(serializers.ModelSerializer):
-    """Full booking representation including nested flight summary."""
-    flight_detail = FlightSummarySerializer(source='flight', read_only=True)
+    """Full booking representation including nested flight instance summary."""
+    flight_detail = FlightInstanceSummarySerializer(source='flight', read_only=True)
     passengers = PassengerSerializer(many=True, read_only=True)
-    
-    # We accept string to allow both legacy UUIDs and FlightInstance IDs (integers)
-    flight_id_input = serializers.CharField(write_only=True, source='flight')
+
+    # Accept an integer FlightInstance PK
+    flight_id_input = serializers.IntegerField(write_only=True, source='flight')
 
     class Meta:
         model = Booking
-        fields = ['id', 'flight_id_input', 'flight_detail', 'cabin_class', 'status', 'seat_count', 'total_price', 'created_at', 'passengers']
-        read_only_fields = ['id', 'status', 'seat_count', 'total_price', 'created_at', 'flight_detail', 'passengers']
+        fields = [
+            'id', 'flight_id_input', 'flight_detail',
+            'cabin_class', 'status', 'seat_count', 'total_price',
+            'created_at', 'passengers',
+        ]
+        read_only_fields = [
+            'id', 'status', 'seat_count', 'total_price',
+            'created_at', 'flight_detail', 'passengers',
+        ]
 
     def validate_flight(self, value):
-        import uuid
-        from apps.flights.models import FlightInstance, Flight
         try:
-            # If it's a valid UUID, use it directly
-            uuid.UUID(str(value))
-            return Flight.objects.get(id=value)
-        except ValueError:
-            # It's an integer ID of FlightInstance
-            try:
-                instance = FlightInstance.objects.get(id=int(value))
-                legacy_flight = Flight.objects.filter(flight_number=instance.flight.flight_no).first()
-                if not legacy_flight:
-                    # Fallback if no legacy flight exists at all (should not happen if seed is run, but just in case)
-                    # We create a dummy one for the route
-                    first_leg = instance.flight.legs.order_by('leg_order').first()
-                    last_leg = instance.flight.legs.order_by('leg_order').last()
-                    src = first_leg.departure_airport.iata_code if first_leg else "N/A"
-                    dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
-                    legacy_flight = Flight.objects.create(
-                        flight_number=instance.flight.flight_no,
-                        airline=instance.flight.airline.airline_name,
-                        aircraft=instance.aircraft.registration,
-                        source_airport=src,
-                        destination_airport=dst,
-                        departure_time=instance.scheduled_departure,
-                        arrival_time=instance.scheduled_arrival,
-                        base_fare=0.0,
-                        total_seats=0,
-                        available_seats=0,
-                        status=instance.status
-                    )
-                return legacy_flight
-            except (ValueError, FlightInstance.DoesNotExist):
-                raise serializers.ValidationError("Invalid flight ID")
+            return FlightInstance.objects.get(id=int(value))
+        except (FlightInstance.DoesNotExist, (ValueError, TypeError)):
+            raise serializers.ValidationError("Invalid flight instance ID.")

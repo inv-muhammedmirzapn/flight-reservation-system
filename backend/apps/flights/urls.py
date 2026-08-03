@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FlightListCreateView, FlightDetailView, FlightUpdateView,
+    FlightListCreateView, FlightDetailView,
     FlightStatsView,
     CountryViewSet, AirportViewSet, AirlineViewSet,
     AircraftModelViewSet, AircraftViewSet,
@@ -10,6 +10,7 @@ from .views import (
     FoodItemViewSet, FlightMealViewSet,
     SeatPriceTemplateViewSet,
 )
+from .views_calendar import FlightFaresCalendarView, FlightFareBoundsView
 
 app_name = "apps/flights"
 
@@ -32,8 +33,10 @@ urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────
     path("", FlightListCreateView.as_view(), name="flight-list-create"),
     path("stats/", FlightStatsView.as_view(), name="flight-stats"),
-    path("<str:id>/", FlightDetailView.as_view(), name="flight-detail"),
-    path("<str:id>/update/", FlightUpdateView.as_view(), name="flight-update"),
+    path("calendar/", FlightFaresCalendarView.as_view(), name="flight-calendar"),
+    path("bounds/", FlightFareBoundsView.as_view(), name="flight-bounds"),
+    path("<int:id>/", FlightDetailView.as_view(), name="flight-detail"),
+
 
     # ── New entity endpoints ─────────────────────────────────────────────────
     path("", include(router.urls)),

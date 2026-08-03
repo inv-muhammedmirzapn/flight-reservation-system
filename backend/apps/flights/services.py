@@ -9,7 +9,6 @@ from django.db.models import F
 from .models import (
     Country, Airport,
     FlightInstance, Seat, SeatStatus, CabinClass, Fare,
-    Flight,
 )
 
 logger = logging.getLogger(__name__)
@@ -331,8 +330,7 @@ def bulk_price_seats(
 
 
 # ---------------------------------------------------------------------------
-# Seat availability sync  (shared by SeatViewSet.perform_update / perform_destroy
-#                          and FlightUpdateView)
+# Seat availability sync  (shared by SeatViewSet.perform_update / perform_destroy)
 # ---------------------------------------------------------------------------
 
 def sync_seat_availability_on_status_change(
@@ -341,9 +339,8 @@ def sync_seat_availability_on_status_change(
     new_status: str,
 ) -> None:
     """
-    When a seat's status flips, keep Fare.available_seats and the legacy
-    Flight.available_seats in sync, and trigger waitlist allocation when a
-    seat becomes available again.
+    When a seat's status flips, keep Fare.available_seats in sync and trigger
+    waitlist allocation when a seat becomes available again.
     """
     if old_status == new_status:
         return
@@ -353,37 +350,26 @@ def sync_seat_availability_on_status_change(
         cabin_class=seat.seat_class,
     ).first()
 
-    flight_no = seat.flight_instance.flight.flight_no
-    legacy_flight = Flight.objects.filter(flight_number=flight_no).first()
-
     if new_status == SeatStatus.AVAILABLE and old_status != SeatStatus.AVAILABLE:
-        # Seat freed — increment counters
+        # Seat freed — increment Fare counter and trigger waitlist
         if fare:
             total_physical = seat.flight_instance.seats.filter(
                 seat_class=seat.seat_class
             ).count()
             fare.available_seats = min(fare.available_seats + 1, total_physical)
             fare.save(update_fields=["available_seats"])
-        if legacy_flight:
-            legacy_flight.available_seats = min(
-                legacy_flight.available_seats + 1, legacy_flight.total_seats
-            )
-            legacy_flight.save(update_fields=["available_seats"])
-            _trigger_waitlist(legacy_flight, seat.seat_class)
+        _trigger_waitlist(seat.flight_instance, seat.seat_class)
 
     elif old_status == SeatStatus.AVAILABLE and new_status != SeatStatus.AVAILABLE:
-        # Seat taken — decrement counters
+        # Seat taken — decrement Fare counter
         if fare:
             fare.available_seats = max(fare.available_seats - 1, 0)
             fare.save(update_fields=["available_seats"])
-        if legacy_flight:
-            legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
-            legacy_flight.save(update_fields=["available_seats"])
 
 
 def sync_seat_availability_on_destroy(seat: Seat) -> None:
     """
-    Called before a seat is hard-deleted. Decrements availability counters
+    Called before a seat is hard-deleted. Decrements Fare.available_seats
     if the seat was AVAILABLE.
     """
     if seat.status != SeatStatus.AVAILABLE:
@@ -397,29 +383,21 @@ def sync_seat_availability_on_destroy(seat: Seat) -> None:
         fare.available_seats = max(fare.available_seats - 1, 0)
         fare.save(update_fields=["available_seats"])
 
-    flight_no = seat.flight_instance.flight.flight_no
-    legacy_flight = Flight.objects.filter(flight_number=flight_no).first()
-    if legacy_flight:
-        legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
-        legacy_flight.save(update_fields=["available_seats"])
 
-
-def trigger_waitlist_if_seats_freed(flight: Flight, old_available: int) -> None:
+def trigger_waitlist_if_seats_freed(flight_instance: FlightInstance, old_available_count: int) -> None:
     """
-    Compare *old_available* with the flight's current available_seats.
+    Compare *old_available_count* with the current physical available seats.
     If seats were freed (count went up), trigger waitlist allocation.
-    Called from FlightUpdateView after a PATCH/PUT.
     """
-    flight.refresh_from_db()
-    if flight.available_seats > old_available:
-        _trigger_waitlist(flight)
+    current_available = flight_instance.seats.filter(status=SeatStatus.AVAILABLE).count()
+    if current_available > old_available_count:
+        _trigger_waitlist(flight_instance)
 
 
-def _trigger_waitlist(flight: Flight, cabin_class: str | None = None) -> None:
+def _trigger_waitlist(flight_instance: FlightInstance, cabin_class: str | None = None) -> None:
     """Fire waitlist auto-allocation, swallowing all errors."""
     try:
         from apps.waitlist.services import process_waitlist_allocations
-        kwargs = {"cancelled_cabin_class": cabin_class} if cabin_class else {}
-        process_waitlist_allocations(flight, **kwargs)
+        process_waitlist_allocations(flight_instance, cabin_class)
     except Exception:
         logger.exception("Failed to trigger waitlist auto-allocation")

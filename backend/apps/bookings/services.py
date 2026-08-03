@@ -2,169 +2,132 @@ import logging
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+
 from .models import Booking, BookingStatus, Passenger
-from apps.flights.models import Flight, FlightStatus
-from apps.waitlist.services import process_waitlist_allocations
+from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus
 
 logger = logging.getLogger(__name__)
 
+
+def _resolve_flight_instance(flight_id) -> FlightInstance:
+    """
+    Resolve a FlightInstance from an integer PK.
+    Raises ValidationError if not found.
+    """
+    try:
+        return FlightInstance.objects.select_related(
+            'flight', 'flight__airline', 'aircraft'
+        ).get(pk=int(flight_id))
+    except (FlightInstance.DoesNotExist, ValueError, TypeError):
+        raise ValidationError("Flight not found.")
+
+
 def create_booking(flight_id, user, passengers_data, cabin_class=None):
     """
-    Creates a confirmed booking for the given user and flight, along with passenger details.
-    
+    Creates a confirmed booking for the given user and FlightInstance.
+
     Args:
-        flight_id: UUID of the legacy Flight record.
+        flight_id: Integer PK of the FlightInstance.
         user: The User object making the booking.
         passengers_data: List of passenger dicts with name/age/gender/phone_number.
         cabin_class: Optional cabin class string ('ECONOMY', 'BUSINESS', 'FIRST').
-                     Used to look up per-class pricing from the Fare model.
     """
     seat_count = len(passengers_data)
-    
-    # ── Pre-validate outside any transaction ───────────────────────────────
-    flight = None
-    resolved_flight_instance = None
-    
-    try:
-        # Check if flight_id is an integer (FlightInstance PK)
-        # We use str() so that UUID objects (which can be cast to int) raise a ValueError
-        instance_pk = int(str(flight_id))
-        from apps.flights.models import FlightInstance as _FI
-        try:
-            resolved_flight_instance = _FI.objects.select_related('flight').get(pk=instance_pk)
-            # Find the matching legacy Flight (since Booking requires it)
-            flight = Flight.objects.filter(flight_number=resolved_flight_instance.flight.flight_no).first()
-            if not flight:
-                # Fallback: create a dummy legacy flight for this route
-                # (mirroring the logic in BookingSerializer.validate_flight)
-                first_leg = resolved_flight_instance.flight.legs.order_by('leg_order').first()
-                last_leg = resolved_flight_instance.flight.legs.order_by('leg_order').last()
-                src = first_leg.departure_airport.iata_code if first_leg else "N/A"
-                dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
-                flight = Flight.objects.create(
-                    flight_number=resolved_flight_instance.flight.flight_no,
-                    airline=resolved_flight_instance.flight.airline.airline_name,
-                    aircraft=resolved_flight_instance.aircraft.registration if resolved_flight_instance.aircraft else "Unknown",
-                    source_airport=src,
-                    destination_airport=dst,
-                    departure_time=resolved_flight_instance.scheduled_departure,
-                    arrival_time=resolved_flight_instance.scheduled_arrival,
-                    base_fare=0.0,
-                    total_seats=resolved_flight_instance.seats.count(),
-                    available_seats=resolved_flight_instance.seats.filter(status='AVAILABLE').count(),
-                    status=resolved_flight_instance.status
-                )
-        except _FI.DoesNotExist:
-            raise ValidationError("Flight not found.")
-    except (ValueError, TypeError):
-        # flight_id is not an integer – must be a UUID for legacy Flight
-        try:
-            flight = Flight.objects.get(id=flight_id)
-        except Flight.DoesNotExist:
-            raise ValidationError("Flight not found.")
 
-    if flight.status in [FlightStatus.CANCELLED, FlightStatus.DEPARTED, FlightStatus.ARRIVED, FlightStatus.BOARDING]:
-        raise ValidationError(f"Cannot book a flight that is already {flight.status.lower()}.")
+    # ── Pre-validate outside any transaction ─────────────────────────────────
+    flight_instance = _resolve_flight_instance(flight_id)
 
-    if flight.departure_time < timezone.now():
+    if flight_instance.status in [
+        InstanceStatus.CANCELLED, InstanceStatus.DEPARTED,
+        InstanceStatus.ARRIVED, InstanceStatus.BOARDING,
+    ]:
+        raise ValidationError(
+            f"Cannot book a flight that is already {flight_instance.status.lower()}."
+        )
+
+    if flight_instance.scheduled_departure < timezone.now():
         raise ValidationError("Cannot book a flight that has already departed.")
 
-    if flight.available_seats < seat_count:
-        raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
+    # Seat availability check (use Seat table as source of truth)
+    if cabin_class:
+        available_count = flight_instance.seats.filter(
+            seat_class=cabin_class, status=SeatStatus.AVAILABLE
+        ).count()
+        if available_count < seat_count:
+            raise ValidationError(
+                f"Only {available_count} {cabin_class.lower()} seat(s) available on this flight."
+            )
+    else:
+        available_count = flight_instance.seats.filter(status=SeatStatus.AVAILABLE).count()
+        if available_count < seat_count:
+            raise ValidationError(
+                f"Only {available_count} seats available on this flight."
+            )
 
     if Booking.objects.filter(
-        user=user, flight=flight, status=BookingStatus.CONFIRMED
+        user=user, flight=flight_instance, status=BookingStatus.CONFIRMED
     ).exists():
         raise ValidationError("You already have a confirmed booking for this flight.")
 
     # Validate passenger data
     for p in passengers_data:
-        name = p.get('name', '')
-        if isinstance(name, str):
-            name = name.strip()
+        name = str(p.get('name', '') or '').strip()
         age = p.get('age')
         gender = p.get('gender')
 
         if not name or not age or not gender:
             raise ValidationError("Name, age, and gender are required for all passengers.")
-            
         if len(name) < 2:
             raise ValidationError("Passenger name must be at least 2 characters.")
-            
         try:
             age_int = int(age)
             if age_int < 1 or age_int > 120:
                 raise ValidationError("Passenger age must be between 1 and 120.")
         except (ValueError, TypeError):
             raise ValidationError("Passenger age must be a valid number.")
-            
         if gender not in ['M', 'F', 'O']:
             raise ValidationError("Gender must be 'M', 'F', or 'O'.")
 
-    # ── Atomic write: re-check with lock, then create ───────────────────────
+    # ── Atomic write: re-check with lock, then create ─────────────────────────
     with transaction.atomic():
+        # Lock the flight instance row to prevent race conditions
         try:
-            flight = Flight.objects.select_for_update(nowait=False).get(id=flight.id)
-        except (Flight.DoesNotExist, DatabaseError):
-            flight = Flight.objects.get(id=flight.id)
+            flight_instance = FlightInstance.objects.select_for_update(nowait=False).get(
+                pk=flight_instance.pk
+            )
+        except (FlightInstance.DoesNotExist, DatabaseError):
+            flight_instance = FlightInstance.objects.get(pk=flight_instance.pk)
 
-        # Final guard inside the lock
-        if flight.available_seats < seat_count:
-            raise ValidationError(f"Only {flight.available_seats} seats available on this flight.")
-
-        # Determine per-passenger price and resolve FlightInstance for seat assignment
-        price_per_pax = flight.base_fare  # default fallback
+        # Lock available seats and get per-class price
         fare_obj = None
-        flight_instance = None
+        price_per_pax = 0
 
         if cabin_class:
-            try:
-                from apps.flights.models import FlightRoute, FlightInstance, Fare, Seat, SeatStatus
-                if resolved_flight_instance:
-                    flight_instance = resolved_flight_instance
-                else:
-                    route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-                    if route:
-                        flight_instance = (
-                            FlightInstance.objects
-                            .filter(flight=route, scheduled_departure=flight.departure_time)
-                            .first()
-                        )
-                        if not flight_instance:
-                            flight_instance = (
-                                FlightInstance.objects
-                                .filter(flight=route)
-                                .order_by('scheduled_departure')
-                                .first()
-                            )
-                if flight_instance:
-                        fare_obj = Fare.objects.select_for_update().filter(
-                            flight_instance=flight_instance,
-                            cabin_class=cabin_class
-                        ).first()
-                        if fare_obj:
-                            price_per_pax = fare_obj.price
-                            # Count real AVAILABLE seats in the Seat table (source of truth)
-                            real_available = flight_instance.seats.filter(
-                                seat_class=cabin_class,
-                                status=SeatStatus.AVAILABLE
-                            ).count()
-                            if real_available < seat_count:
-                                raise ValidationError(
-                                    f"Only {real_available} {cabin_class.lower()} seat(s) available."
-                                )
-            except ValidationError:
-                raise
-            except Exception:
-                logger.exception("Error resolving fare or seats for new schema")
+            fare_obj = Fare.objects.select_for_update().filter(
+                flight_instance=flight_instance,
+                cabin_class=cabin_class
+            ).first()
+            if fare_obj:
+                price_per_pax = fare_obj.price
 
-        # Deduct legacy available_seats counter
-        flight.available_seats -= seat_count
-        Flight.objects.filter(pk=flight.pk).update(available_seats=flight.available_seats)
+            # Final guard inside the lock
+            real_available = flight_instance.seats.filter(
+                seat_class=cabin_class, status=SeatStatus.AVAILABLE
+            ).count()
+            if real_available < seat_count:
+                raise ValidationError(
+                    f"Only {real_available} {cabin_class.lower()} seat(s) available."
+                )
+        else:
+            real_available = flight_instance.seats.filter(status=SeatStatus.AVAILABLE).count()
+            if real_available < seat_count:
+                raise ValidationError(
+                    f"Only {real_available} seats available on this flight."
+                )
 
         booking_kwargs = {
             "user": user,
-            "flight": flight,
+            "flight": flight_instance,
             "status": BookingStatus.CONFIRMED,
             "seat_count": seat_count,
             "total_price": price_per_pax * seat_count,
@@ -176,23 +139,25 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 
         # Auto-assign seats from the Seat table (FIFO order)
         assigned_seats = []
-        if flight_instance and cabin_class:
-            try:
-                from apps.flights.models import Seat, SeatStatus
-                available_seat_qs = flight_instance.seats.select_for_update().filter(
-                    seat_class=cabin_class,
-                    status=SeatStatus.AVAILABLE
-                ).order_by('seat_number')[:seat_count]
-                for seat_obj in available_seat_qs:
-                    seat_obj.status = SeatStatus.BOOKED
-                    seat_obj.save(update_fields=['status'])
-                    assigned_seats.append(seat_obj.seat_number)
-                # Keep Fare.available_seats in sync
-                if fare_obj:
-                    fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
-                    fare_obj.save(update_fields=['available_seats'])
-            except Exception:
-                logger.exception("Error auto-assigning seats")
+        seat_filter_kwargs = {"status": SeatStatus.AVAILABLE}
+        if cabin_class:
+            seat_filter_kwargs["seat_class"] = cabin_class
+
+        available_seat_qs = (
+            flight_instance.seats
+            .select_for_update()
+            .filter(**seat_filter_kwargs)
+            .order_by('seat_number')[:seat_count]
+        )
+        for seat_obj in available_seat_qs:
+            seat_obj.status = SeatStatus.BOOKED
+            seat_obj.save(update_fields=['status'])
+            assigned_seats.append(seat_obj.seat_number)
+
+        # Keep Fare.available_seats in sync
+        if fare_obj and assigned_seats:
+            fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
+            fare_obj.save(update_fields=['available_seats'])
 
         for idx, p_data in enumerate(passengers_data):
             seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
@@ -217,8 +182,8 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 @transaction.atomic
 def cancel_booking(booking_id, user):
     """
-    Cancels a booking, increments the available seats for the flight,
-    and triggers the waitlist auto-allocation logic.
+    Cancels a booking, frees the Seat rows and restores Fare.available_seats,
+    then triggers waitlist auto-allocation.
     """
     try:
         booking = Booking.objects.select_for_update().get(id=booking_id, user=user)
@@ -228,7 +193,6 @@ def cancel_booking(booking_id, user):
     if booking.status == BookingStatus.CANCELLED:
         raise ValidationError("Booking is already cancelled.")
 
-    # Update booking status
     booking.status = BookingStatus.CANCELLED
     booking.save()
 
@@ -238,60 +202,36 @@ def cancel_booking(booking_id, user):
     except Exception:
         logger.exception("Failed to send booking cancellation notification")
 
-    # Increment available seats on the flight (lock row to prevent race conditions).
-    # Use update_fields to skip full_clean() and the status-change notification check.
-    flight = Flight.objects.select_for_update().get(id=booking.flight_id)
-    flight.available_seats += booking.seat_count
-    Flight.objects.filter(pk=flight.pk).update(available_seats=flight.available_seats)
+    # Free up passenger seats in the Seat table
+    flight_instance = booking.flight
+    passenger_seats = [p.seat_number for p in booking.passengers.all() if p.seat_number]
+    if passenger_seats:
+        seats_to_free = flight_instance.seats.select_for_update().filter(
+            seat_number__in=passenger_seats, status=SeatStatus.BOOKED
+        )
+        for seat_obj in seats_to_free:
+            seat_obj.status = SeatStatus.AVAILABLE
+            seat_obj.save(update_fields=['status'])
 
-    # Also restore Fare.available_seats if this booking had a specific cabin_class
+    # Restore Fare.available_seats
     if booking.cabin_class:
-        try:
-            from apps.flights.models import FlightRoute, FlightInstance, Fare, Seat, SeatStatus
-            route = FlightRoute.objects.filter(flight_no=booking.flight.flight_number).first()
-            if route:
-                instance = (
-                    FlightInstance.objects
-                    .filter(flight=route, scheduled_departure=booking.flight.departure_time)
-                    .first()
-                )
-                if not instance:
-                    instance = (
-                        FlightInstance.objects
-                        .filter(flight=route)
-                        .order_by('scheduled_departure')
-                        .first()
-                    )
-                if instance:
-                    # Free up passenger seats in Seat table
-                    passenger_seats = [p.seat_number for p in booking.passengers.all() if p.seat_number]
-                    if passenger_seats:
-                        seats_to_free = instance.seats.select_for_update().filter(
-                            seat_number__in=passenger_seats,
-                            status=SeatStatus.BOOKED
-                        )
-                        for seat_obj in seats_to_free:
-                            seat_obj.status = SeatStatus.AVAILABLE
-                            seat_obj.save(update_fields=['status'])
+        fare_obj = Fare.objects.select_for_update().filter(
+            flight_instance=flight_instance,
+            cabin_class=booking.cabin_class
+        ).first()
+        if fare_obj:
+            total_physical = Seat.objects.filter(
+                flight_instance=flight_instance,
+                seat_class=booking.cabin_class,
+            ).count()
+            fare_obj.available_seats = min(
+                fare_obj.available_seats + booking.seat_count,
+                total_physical,
+            )
+            fare_obj.save(update_fields=['available_seats'])
 
-                    fare_obj = Fare.objects.select_for_update().filter(
-                        flight_instance=instance,
-                        cabin_class=booking.cabin_class
-                    ).first()
-                    if fare_obj:
-                        total_physical = Seat.objects.filter(
-                            flight_instance=instance,
-                            seat_class=booking.cabin_class
-                        ).count()
-                        fare_obj.available_seats = min(
-                            fare_obj.available_seats + booking.seat_count,
-                            total_physical
-                        )
-                        fare_obj.save(update_fields=['available_seats'])
-        except Exception:
-            logger.exception("Error restoring Fare.available_seats")
-
-    # Trigger waitlist auto-allocation for the specific class if applicable
-    process_waitlist_allocations(flight, booking.cabin_class)
+    # Trigger waitlist auto-allocation
+    from apps.waitlist.services import process_waitlist_allocations
+    process_waitlist_allocations(flight_instance, booking.cabin_class)
 
     return booking

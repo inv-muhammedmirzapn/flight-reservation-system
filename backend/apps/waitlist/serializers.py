@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 
-from apps.bookings.serializers import FlightSummarySerializer
+from apps.bookings.serializers import FlightInstanceSummarySerializer as FlightSummarySerializer
 
 class WaitlistPassengerSerializer(serializers.ModelSerializer):
     class Meta:

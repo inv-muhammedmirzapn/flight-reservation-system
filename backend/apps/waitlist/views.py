@@ -11,7 +11,7 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
-from apps.flights.models import Flight, CabinClass
+from apps.flights.models import FlightInstance, CabinClass
 from apps.bookings.models import Booking, BookingStatus
 from .models import WaitlistEntry, WaitlistStatus
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
@@ -162,7 +162,7 @@ class WaitlistDetailView(APIView):
         # Auto-expire if flight has departed
         if (
             entry.status == WaitlistStatus.PENDING
-            and entry.flight.departure_time <= timezone.now()
+            and entry.flight.scheduled_departure <= timezone.now()
         ):
             entry.status = WaitlistStatus.EXPIRED
             entry.save()

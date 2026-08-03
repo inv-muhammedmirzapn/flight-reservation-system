@@ -900,29 +900,18 @@ export default function UserFlightsList() {
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
         if (depDate) params.set('date', depDate);
-        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
-        params.set('page_size', '1');
+        if (cabinClass && cabinClass !== 'Economy') params.set('cabin_class', cabinClass);
 
-        // Fetch Min fare
-        params.set('ordering', 'base_fare');
-        const minRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
-        if (!minRes.ok) return;
-        const minData = await getResponseData(minRes);
-        const minVal = minData?.results?.[0]?.base_fare;
-
-        // Fetch Max fare
-        params.set('ordering', '-base_fare');
-        const maxRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
-        if (!maxRes.ok) return;
-        const maxData = await getResponseData(maxRes);
-        const maxVal = maxData?.results?.[0]?.base_fare;
-
+        const res = await fetch(`${API_BASE_URL}/flights/bounds/?${params}`);
+        if (!res.ok) return;
+        const data = await getResponseData(res);
+        
         if (active) {
-          const parsedMin = minVal ? Math.floor(parseFloat(minVal)) : 0;
-          let parsedMax = maxVal ? Math.ceil(parseFloat(maxVal)) : 100000;
+          const parsedMin = data?.min ? Math.floor(parseFloat(data.min)) : 0;
+          let parsedMax = data?.max ? Math.ceil(parseFloat(data.max)) : 100000;
 
           if (parsedMax <= parsedMin && parsedMin > 0) {
-            parsedMax = parsedMin + 1000; // ensure max is always strictly > min if there's data
+            parsedMax = parsedMin + 1000;
           }
 
           setAbsMin(parsedMin);
