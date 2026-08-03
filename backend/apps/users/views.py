@@ -42,6 +42,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom token view that ensures a Profile exists for authenticated user."""
     serializer_class = CustomTokenObtainPairSerializer
 
+    
+
 class GoogleLoginView(APIView):
     permission_classes = (AllowAny,)
 

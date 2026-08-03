@@ -29,14 +29,14 @@ const ADMIN_GROUPS = [
       { label: 'Meals',          href: '/admin/operations/meals' },
     ],
   },
-  {
-    label: 'Records',
-    links: [
-      { label: 'Bookings',       href: '/admin/records/bookings' },
-      { label: 'Payments',       href: '/admin/records/payments' },
-      { label: 'Passengers',     href: '/admin/records/passengers' },
-    ],
-  },
+  // {
+  //   label: 'Records',
+  //   links: [
+  //     { label: 'Bookings',       href: '/admin/records/bookings' },
+  //     { label: 'Payments',       href: '/admin/records/payments' },
+  //     { label: 'Passengers',     href: '/admin/records/passengers' },
+  //   ],
+  // },
   {
     label: 'System',
     links: [
@@ -49,8 +49,7 @@ const ADMIN_GROUPS = [
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
   { labelKey: "bookings", href: "/my-bookings" },
-  { labelKey: "rewards", href: "/rewards" },
-  { labelKey: "support", href: "/#support" },
+  
 ];
 
 export function Navbar() {
@@ -251,7 +250,7 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="landing-nav-actions">
-          {/* Language Switcher */}
+          {/* Language Switcher
           <button
             onClick={toggleLanguage}
             style={{
@@ -282,7 +281,7 @@ export function Navbar() {
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 0.4 : 1 }}>EN</span>
             <span style={{ opacity: 0.3 }}>|</span>
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
-          </button>
+          </button> */}
           {!isAuthenticated ? (
             <>
               <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>
