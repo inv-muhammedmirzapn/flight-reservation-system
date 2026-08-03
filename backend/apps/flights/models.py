@@ -1,8 +1,10 @@
+import logging
 import uuid
 # trigger reload
 from django.db import models
 from django.core.exceptions import ValidationError
 
+logger = logging.getLogger(__name__)
 
 # ─── Legacy Flight (keep for backwards compat) ─────────────────────────────────
 
@@ -349,7 +351,7 @@ class FlightInstance(models.Model):
                 from apps.notifications.services import NotificationService
                 NotificationService.send_flight_status_notification(legacy_flight, old_status, self.status)
         except Exception:
-            pass
+            logger.exception("Failed to send flight status notification during FlightInstance sync")
 
     def __str__(self):
         return f"{self.flight.flight_no} / {self.date}"

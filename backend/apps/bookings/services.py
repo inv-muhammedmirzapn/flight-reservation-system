@@ -1,9 +1,12 @@
+import logging
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Booking, BookingStatus, Passenger
 from apps.flights.models import Flight, FlightStatus
 from apps.waitlist.services import process_waitlist_allocations
+
+logger = logging.getLogger(__name__)
 
 def create_booking(flight_id, user, passengers_data, cabin_class=None):
     """
@@ -24,7 +27,8 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
     
     try:
         # Check if flight_id is an integer (FlightInstance PK)
-        instance_pk = int(flight_id)
+        # We use str() so that UUID objects (which can be cast to int) raise a ValueError
+        instance_pk = int(str(flight_id))
         from apps.flights.models import FlightInstance as _FI
         try:
             resolved_flight_instance = _FI.objects.select_related('flight').get(pk=instance_pk)
@@ -152,7 +156,7 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             except ValidationError:
                 raise
             except Exception:
-                pass  # fall back to base_fare silently if new schema not set up
+                logger.exception("Error resolving fare or seats for new schema")
 
         # Deduct legacy available_seats counter
         flight.available_seats -= seat_count
@@ -188,7 +192,7 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
                     fare_obj.save(update_fields=['available_seats'])
             except Exception:
-                pass  # seat assignment is best-effort; booking still succeeds
+                logger.exception("Error auto-assigning seats")
 
         for idx, p_data in enumerate(passengers_data):
             seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
@@ -205,7 +209,7 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             from apps.notifications.services import NotificationService
             NotificationService.send_booking_confirmation(booking)
         except Exception:
-            pass
+            logger.exception("Failed to send booking confirmation notification")
 
         return booking
 
@@ -232,7 +236,7 @@ def cancel_booking(booking_id, user):
         from apps.notifications.services import NotificationService
         NotificationService.send_booking_cancellation(booking)
     except Exception:
-        pass
+        logger.exception("Failed to send booking cancellation notification")
 
     # Increment available seats on the flight (lock row to prevent race conditions).
     # Use update_fields to skip full_clean() and the status-change notification check.
@@ -285,7 +289,7 @@ def cancel_booking(booking_id, user):
                         )
                         fare_obj.save(update_fields=['available_seats'])
         except Exception:
-            pass
+            logger.exception("Error restoring Fare.available_seats")
 
     # Trigger waitlist auto-allocation for the specific class if applicable
     process_waitlist_allocations(flight, booking.cabin_class)

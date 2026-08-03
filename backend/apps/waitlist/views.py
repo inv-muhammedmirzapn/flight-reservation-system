@@ -9,12 +9,22 @@ from rest_framework.views import APIView
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 
 from apps.flights.models import Flight, CabinClass
 from apps.bookings.models import Booking, BookingStatus
 from .models import WaitlistEntry, WaitlistStatus
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
 from .serializers import WaitlistEntrySerializer
+from .services import (
+    process_waitlist_allocations,
+    join_waitlist,
+    cancel_waitlist_entry,
+    promote_waitlist_entry,
+    expire_departed_waitlist_entries,
+    get_waitlist_passenger_count,
+    WaitlistError,
+)
 from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
 from rest_framework import serializers as rf_serializers
 
@@ -51,140 +61,26 @@ class WaitlistJoinView(APIView):
         tags=["Waitlist"]
     )
     def post(self, request, *args, **kwargs):
-        flight_id = request.data.get("flight")
+        flight_id      = request.data.get("flight")
         passengers_data = request.data.get("passengers", [])
+        cabin_class    = request.data.get("cabin_class")
 
         if not flight_id:
-            return Response(
-                {"error": "flight is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
-        cabin_class = request.data.get("cabin_class")
-        if cabin_class and cabin_class not in dict(CabinClass.choices):
-            return Response({"error": "Invalid cabin class."}, status=status.HTTP_400_BAD_REQUEST)
-
-            
+            raise ValidationError({"error": "flight is required."})
         if not passengers_data or not isinstance(passengers_data, list) or len(passengers_data) == 0:
-            return Response({'error': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        seat_count = len(passengers_data)
+            raise ValidationError({"error": "At least one passenger is required."})
 
         try:
-            flight = Flight.objects.get(id=flight_id)
-        except (Flight.DoesNotExist, ValueError):
-            return Response(
-                {"error": "Flight not found."},
-                status=status.HTTP_404_NOT_FOUND,
+            entry = join_waitlist(
+                user=request.user,
+                flight_id=flight_id,
+                passengers_data=passengers_data,
+                cabin_class=cabin_class,
             )
-
-        # Validate flight departure
-        if flight.departure_time <= timezone.now():
-            return Response(
-                {"error": "Cannot join the waitlist for a flight that has already departed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validate seat_count range
-        if seat_count < 1 or seat_count > 9:
-            return Response(
-                {"error": "Seat count must be between 1 and 9 seats."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Enforce that flight must be full
-        price_per_pax = flight.base_fare
-        available_seats = flight.available_seats
-
-        if cabin_class:
-            try:
-                from apps.flights.models import FlightRoute, FlightInstance, Fare
-                route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-                if route:
-                    instance = (
-                        FlightInstance.objects
-                        .filter(flight=route, scheduled_departure=flight.departure_time)
-                        .first()
-                    )
-                    if not instance:
-                        instance = (
-                            FlightInstance.objects
-                            .filter(flight=route)
-                            .order_by('scheduled_departure')
-                            .first()
-                        )
-                    if instance:
-                        fare_obj = Fare.objects.filter(flight_instance=instance, cabin_class=cabin_class).first()
-                        if fare_obj:
-                            available_seats = fare_obj.available_seats
-                            price_per_pax = fare_obj.price
-            except Exception:
-                pass
-
-        if available_seats >= seat_count:
-            error_msg = "Waitlist tickets cannot be booked as there are enough available seats for this class" if cabin_class else "Waitlist tickets cannot be booked on the flight as there are enough available seats"
-            return Response(
-                {"error": error_msg},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
-        # Validate passenger data
-        for p in passengers_data:
-            name = p.get('name', '')
-            if isinstance(name, str):
-                name = name.strip()
-            age = p.get('age')
-            gender = p.get('gender')
-    
-            if not name or not age or not gender:
-                return Response({'error': 'Name, age, and gender are required for all passengers.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            if len(name) < 2:
-                return Response({'error': 'Passenger name must be at least 2 characters.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            try:
-                age_int = int(age)
-                if age_int < 1 or age_int > 120:
-                    return Response({'error': 'Passenger age must be between 1 and 120.'}, status=status.HTTP_400_BAD_REQUEST)
-            except (ValueError, TypeError):
-                return Response({'error': 'Passenger age must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            if gender not in ['M', 'F', 'O']:
-                return Response({'error': "Gender must be 'M', 'F', or 'O'."}, status=status.HTTP_400_BAD_REQUEST)
-        # Check for duplicate pending waitlist entry
-        if WaitlistEntry.objects.filter(
-            user=request.user, flight=flight, status=WaitlistStatus.PENDING
-        ).exists():
-            return Response(
-                {"error": "You are already on the waitlist for this flight"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Calculate price based on seat count and class fare
-        price = price_per_pax * seat_count
-
-        # Create waitlist entry
-        entry_kwargs = {
-            "user": request.user,
-            "flight": flight,
-            "seat_count": seat_count,
-            "price": price,
-            "status": WaitlistStatus.PENDING,
-        }
-        if cabin_class:
-            entry_kwargs["cabin_class"] = cabin_class
-            
-        entry = WaitlistEntry.objects.create(**entry_kwargs)
-        
-        from .models import WaitlistPassenger
-        for p_data in passengers_data:
-            WaitlistPassenger.objects.create(
-                waitlist_entry=entry,
-                name=p_data['name'],
-                age=p_data['age'],
-                gender=p_data['gender'],
-                phone_number=p_data.get('phone_number', '')
-            )
+        except WaitlistError as exc:
+            if exc.status_code == 404:
+                raise Http404(str(exc))
+            raise ValidationError({"error": str(exc)})
 
         serializer = WaitlistEntrySerializer(entry)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -220,13 +116,7 @@ class WaitlistListView(APIView):
         is_admin = IsAdminOrSuperuser().has_permission(request, self)
 
         # Auto-expire pending entries whose flights have already departed
-        now = timezone.now()
-        expired_qs = WaitlistEntry.objects.filter(
-            status=WaitlistStatus.PENDING, flight__departure_time__lte=now
-        )
-        if not is_admin:
-            expired_qs = expired_qs.filter(user=request.user)
-        expired_qs.update(status=WaitlistStatus.EXPIRED)
+        expire_departed_waitlist_entries(user=request.user)
 
         # Build list query
         if is_admin:
@@ -313,46 +203,21 @@ class WaitlistCancelView(APIView):
     def post(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
-        if entry.status != WaitlistStatus.PENDING:
-            return Response(
-                {"error": "Only pending waitlist entries can be cancelled."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Cancel entry
-        entry.status = WaitlistStatus.CANCELLED
-        entry.save()
-
-        # Calculate refund (95% refund, 5% processing fee)
-        price = entry.price
-        processing_fee = round(price * Decimal("0.05"), 2)
-        refund_amount = round(price * Decimal("0.95"), 2)
-
-        # Notify user their waitlist entry was cancelled
         try:
-            from apps.notifications.services import NotificationService
-            from apps.notifications.models import Notification, NotificationType
-            flight = entry.flight
-            user = entry.user
-            Notification.objects.create(
-                user=user,
-                title=f"Waitlist Cancelled — Flight {flight.flight_number}",
-                message=(
-                    f"Your waitlist entry for flight {flight.flight_number} "
-                    f"({flight.source_airport} → {flight.destination_airport}) has been cancelled. "
-                    f"A refund of ₹{refund_amount:.2f} will be processed (5% processing fee applied)."
-                ),
-                notification_type=NotificationType.BOOKING_CANCELLED,
-            )
-        except Exception:
-            pass
+            refund_info = cancel_waitlist_entry(entry)
+        except WaitlistError as exc:
+            raise ValidationError({"error": str(exc)})
 
         return Response(
             {
-                "message": f"Waitlist entry cancelled. A 95% refund of ₹{refund_amount:.2f} has been processed (after a 5% processing fee of ₹{processing_fee:.2f}).",
-                "refund_amount": refund_amount,
-                "processing_fee": processing_fee,
-                "status": entry.status,
+                "message": (
+                    f"Waitlist entry cancelled. A 95% refund of "
+                    f"\u20b9{refund_info['refund_amount']:.2f} has been processed "
+                    f"(after a 5% processing fee of \u20b9{refund_info['processing_fee']:.2f})."
+                ),
+                "refund_amount":  refund_info["refund_amount"],
+                "processing_fee": refund_info["processing_fee"],
+                "status":         refund_info["status"],
             },
             status=status.HTTP_200_OK,
         )
@@ -383,89 +248,15 @@ class WaitlistPromoteView(APIView):
     def post(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
-        if entry.status != WaitlistStatus.PENDING:
-            return Response(
-                {"error": "Only pending waitlist entries can be promoted."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        flight = entry.flight
-
-        with transaction.atomic():
-            # Refresh flight to get the latest seats with a lock
-            flight = Flight.objects.select_for_update().get(id=flight.id)
-            
-            fare_obj = None
-            if entry.cabin_class:
-                try:
-                    from apps.flights.models import FlightRoute, FlightInstance, Fare
-                    route = FlightRoute.objects.filter(flight_no=flight.flight_number).first()
-                    if route:
-                        instance = (
-                            FlightInstance.objects
-                            .filter(flight=route, scheduled_departure=flight.departure_time)
-                            .first()
-                        )
-                        if not instance:
-                            instance = (
-                                FlightInstance.objects
-                                .filter(flight=route)
-                                .order_by('scheduled_departure')
-                                .first()
-                            )
-                        if instance:
-                            fare_obj = Fare.objects.select_for_update().filter(
-                                flight_instance=instance,
-                                cabin_class=entry.cabin_class
-                            ).first()
-                except Exception:
-                    pass
-
-            if fare_obj:
-                if fare_obj.available_seats < entry.seat_count:
-                    return Response(
-                        {"error": f"Not enough available seats in {entry.cabin_class} to promote this waitlist entry."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            elif flight.available_seats < entry.seat_count:
-                return Response(
-                    {"error": "Not enough available seats to promote this waitlist entry."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Deduct seats
-            flight.available_seats = F('available_seats') - entry.seat_count
-            flight.save(update_fields=['available_seats'])
-            
-            if fare_obj:
-                fare_obj.available_seats = F('available_seats') - entry.seat_count
-                fare_obj.save(update_fields=['available_seats'])
-
-            # Create the booking manually
-            booking_kwargs = {
-                "user": entry.user,
-                "flight": flight,
-                "seat_count": entry.seat_count,
-                "total_price": entry.price,
-                "status": BookingStatus.CONFIRMED,
-            }
-            if entry.cabin_class:
-                booking_kwargs["cabin_class"] = entry.cabin_class
-                
-            booking = Booking.objects.create(**booking_kwargs)
-
-            entry.status = WaitlistStatus.CONFIRMED
-            entry.booking = booking
-            entry.save(update_fields=['status', 'booking'])
-
-        # Notify user of manual promotion
         try:
-            from apps.notifications.services import NotificationService
-            NotificationService.send_waitlist_allocation(booking)
-        except Exception:
-            pass
+            promote_waitlist_entry(entry)
+        except WaitlistError as exc:
+            raise ValidationError({"error": str(exc)})
 
-        return Response({"message": "Waitlist entry successfully promoted to confirmed booking."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Waitlist entry successfully promoted to confirmed booking."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class WaitlistFlightCountView(APIView):
@@ -485,11 +276,7 @@ class WaitlistFlightCountView(APIView):
     )
     def get(self, request, flight_id, *args, **kwargs):
         try:
-            # Aggregate seat counts of PENDING waitlist entries
-            result = WaitlistEntry.objects.filter(
-                flight_id=flight_id, status=WaitlistStatus.PENDING
-            ).aggregate(total=Sum("seat_count"))
-            count = result["total"] or 0
+            count = get_waitlist_passenger_count(flight_id)
         except ValueError:
             return Response(
                 {"error": "Invalid flight_id format."},

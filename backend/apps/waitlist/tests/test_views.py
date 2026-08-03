@@ -71,7 +71,7 @@ class WaitlistTests(TestCase):
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "Waitlist tickets cannot be booked on the flight as there are enough available seats",
         )
 
@@ -111,7 +111,7 @@ class WaitlistTests(TestCase):
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "You are already on the waitlist for this flight",
         )
 
@@ -144,7 +144,7 @@ class WaitlistTests(TestCase):
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "Cannot join the waitlist for a flight that has already departed.",
         )
 
@@ -290,7 +290,7 @@ class WaitlistTests(TestCase):
         # Cancel again should fail
         response = self.client_a.post(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["error"], "Only pending waitlist entries can be cancelled.")
+        self.assertEqual(response.data["message"], "Only pending waitlist entries can be cancelled.")
 
     def test_public_waitlist_flight_count(self):
         self.flight.available_seats = 0

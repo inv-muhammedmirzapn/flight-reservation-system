@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { API_BASE_URL } from '@/services/apiClient';
+import { API_BASE_URL, getResponseData } from '@/services/apiClient';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function addDays(base, n) {
@@ -68,7 +68,7 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
 
         const res = await fetch(`${API_BASE_URL}/flights/?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await getResponseData(res);
 
         let rawFare = null;
         if (data.results && data.results.length > 0) {

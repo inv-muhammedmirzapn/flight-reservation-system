@@ -1,3 +1,4 @@
+import logging
 import csv
 import io
 from django.shortcuts import get_object_or_404
@@ -35,10 +36,18 @@ from .serializers import (
     SeatPriceTemplateSerializer,
 )
 from .permissions import IsAdminOrSuperuser
-
-
 from .pagination import StandardPagination
+from .services import (
+    import_airports_from_csv,
+    generate_seats_for_instance,
+    apply_premium_pricing,
+    bulk_price_seats,
+    sync_seat_availability_on_status_change,
+    sync_seat_availability_on_destroy,
+    trigger_waitlist_if_seats_freed,
+)
 
+logger = logging.getLogger(__name__)
 
 class AdminModelViewSet(viewsets.ModelViewSet):
     """Base viewset: list/retrieve public, write actions admin-only."""
@@ -238,10 +247,8 @@ class FlightUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             flight = serializer.save()
-            if flight.available_seats > old_available:
-                from apps.waitlist.services import process_waitlist_allocations
-                process_waitlist_allocations(flight)
-                flight.refresh_from_db()
+            trigger_waitlist_if_seats_freed(flight, old_available)
+            flight.refresh_from_db()
             return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
@@ -255,10 +262,8 @@ class FlightUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             flight = serializer.save()
-            if flight.available_seats > old_available:
-                from apps.waitlist.services import process_waitlist_allocations
-                process_waitlist_allocations(flight)
-                flight.refresh_from_db()
+            trigger_waitlist_if_seats_freed(flight, old_available)
+            flight.refresh_from_db()
             return Response(FlightSerializer(flight).data, status=status.HTTP_200_OK)
         except (IntegrityError, DjangoValidationError) as exc:
             return Response({"non_field_errors": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
@@ -320,11 +325,7 @@ class AirportViewSet(AdminModelViewSet):
           - ?overwrite=true query param to overwrite existing records.
           - ?limit=N to limit the number of imported records.
         """
-        from decimal import Decimal
-        import requests
-        import csv
-        import io
-        import pycountry
+        import requests as http_requests
 
         overwrite = request.query_params.get("overwrite", "false").lower() == "true"
         limit = request.query_params.get("limit")
@@ -335,9 +336,9 @@ class AirportViewSet(AdminModelViewSet):
                 limit = None
 
         countries_param = request.query_params.get("countries", "").strip()
-        filter_countries = []
-        if countries_param:
-            filter_countries = [c.strip().lower() for c in countries_param.split(",") if c.strip()]
+        filter_countries = [
+            c.strip().lower() for c in countries_param.split(",") if c.strip()
+        ] if countries_param else []
 
         csv_file = request.FILES.get("file")
         csv_content = ""
@@ -346,140 +347,47 @@ class AirportViewSet(AdminModelViewSet):
             try:
                 csv_content = csv_file.read().decode("utf-8", errors="ignore")
             except Exception as e:
-                return Response({"detail": f"Failed to read uploaded file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+                logger.exception("Failed to read uploaded file in OpenFlights import")
+                return Response(
+                    {"detail": f"Failed to read uploaded file: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             url = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat"
             try:
-                response = requests.get(url, timeout=15)
-                if response.status_code == 200:
-                    csv_content = response.text
+                resp = http_requests.get(url, timeout=15)
+                if resp.status_code == 200:
+                    csv_content = resp.text
                 else:
-                    return Response({"detail": f"Failed to download OpenFlights data: HTTP {response.status_code}"}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                return Response({"detail": f"Failed to connect to OpenFlights: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Parse the CSV contents
-        reader = csv.reader(io.StringIO(csv_content))
-        created_count = 0
-        updated_count = 0
-        skipped_count = 0
-
-        # Cache countries in memory to speed up lookups
-        country_cache = {c.name.lower(): c for c in Country.objects.all()}
-        country_iso_cache = {c.iso_code.upper(): c for c in Country.objects.all()}
-
-        for row in reader:
-            if not row or len(row) < 8:
-                continue
-
-            # If we reached the limit, stop
-            if limit and (created_count + updated_count) >= limit:
-                break
-
-            iata_code = row[4].strip().upper()
-            if not iata_code or len(iata_code) != 3 or iata_code == "\\N":
-                skipped_count += 1
-                continue
-
-            airport_name = row[1].strip()[:200]
-            if not airport_name or airport_name == "\\N":
-                airport_name = "Unknown Airport"
-
-            city = row[2].strip()[:100]
-            if not city or city == "\\N":
-                city = "Unknown"
-
-            country_name = row[3].strip()
-
-            # Filter by country if specified
-            if filter_countries and country_name.lower() not in filter_countries:
-                continue
-
-            # Find or create country
-            country_obj = country_cache.get(country_name.lower())
-            if not country_obj:
-                # Try finding by fuzzy pycountry lookup
-                try:
-                    res = pycountry.countries.search_fuzzy(country_name)
-                    if res:
-                        iso_2 = res[0].alpha_2.upper()
-                        # check if ISO code already in DB
-                        country_obj = country_iso_cache.get(iso_2)
-                        if not country_obj:
-                            country_obj = Country.objects.create(name=res[0].name, iso_code=iso_2)
-                            # update cache
-                            country_cache[country_name.lower()] = country_obj
-                            country_iso_cache[iso_2] = country_obj
-                except Exception:
-                    pass
-
-            if not country_obj:
-                # Generate a unique fallback ISO code
-                try:
-                    fallback_iso = country_name[:2].upper()
-                    suffix = 1
-                    while Country.objects.filter(iso_code=fallback_iso).exists() or fallback_iso in country_iso_cache:
-                        # limit suffix to make sure fallback_iso is max 3 chars
-                        fallback_iso = f"{country_name[:2].upper()[:2]}{suffix}"[:3]
-                        suffix += 1
-                    country_obj = Country.objects.create(name=country_name, iso_code=fallback_iso)
-                    country_cache[country_name.lower()] = country_obj
-                    country_iso_cache[fallback_iso] = country_obj
-                except Exception:
-                    # if country creation fails, skip this row
-                    skipped_count += 1
-                    continue
-
-            # Coordinates
-            try:
-                latitude = round(Decimal(row[6].strip()), 6)
-            except Exception:
-                latitude = None
-            try:
-                longitude = round(Decimal(row[7].strip()), 6)
-            except Exception:
-                longitude = None
-
-            timezone_str = row[11].strip()
-            if not timezone_str or timezone_str == "\\N":
-                timezone_str = "UTC"
-
-            try:
-                # Check existing
-                ap = Airport.objects.filter(iata_code=iata_code).first()
-                if ap:
-                    if overwrite:
-                        ap.airport_name = airport_name
-                        ap.city = city
-                        ap.timezone = timezone_str
-                        ap.latitude = latitude
-                        ap.longitude = longitude
-                        ap.country = country_obj
-                        ap.save()
-                        updated_count += 1
-                    else:
-                        skipped_count += 1
-                else:
-                    Airport.objects.create(
-                        iata_code=iata_code,
-                        airport_name=airport_name,
-                        city=city,
-                        timezone=timezone_str,
-                        latitude=latitude,
-                        longitude=longitude,
-                        country=country_obj,
-                        terminals=["T1", "T2", "T3"]
+                    return Response(
+                        {"detail": f"Failed to download OpenFlights data: HTTP {resp.status_code}"},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
-                    created_count += 1
-            except Exception:
-                skipped_count += 1
+            except Exception as e:
+                logger.exception("Failed to connect to OpenFlights")
+                return Response(
+                    {"detail": f"Failed to connect to OpenFlights: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        return Response({
-            "detail": f"OpenFlights import completed. Created {created_count}, updated {updated_count}, skipped {skipped_count}.",
-            "created_count": created_count,
-            "updated_count": updated_count,
-            "skipped_count": skipped_count
-        }, status=status.HTTP_200_OK)
+        result = import_airports_from_csv(
+            csv_content=csv_content,
+            overwrite=overwrite,
+            limit=limit,
+            filter_countries=filter_countries or None,
+        )
+        return Response(
+            {
+                "detail": (
+                    f"OpenFlights import completed. "
+                    f"Created {result['created_count']}, "
+                    f"updated {result['updated_count']}, "
+                    f"skipped {result['skipped_count']}."
+                ),
+                **result,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class AirlineViewSet(AdminModelViewSet):
@@ -551,59 +459,7 @@ class FlightInstanceViewSet(AdminModelViewSet):
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""
         instance = serializer.save()
-        self._auto_generate_seats(instance)
-
-    def _auto_generate_seats(self, instance):
-        """Shared seat-generation logic (also called from generate_seats action)."""
-        if instance.seats.exists():
-            return
-        aircraft = instance.aircraft
-        if not aircraft:
-            return
-
-        def _pos_left(col_index, block_width):
-            if block_width == 1: return "window"
-            if col_index == 0: return "window"
-            if col_index == block_width - 1: return "aisle"
-            return "middle"
-
-        def _pos_right(col_index, block_width):
-            if block_width == 1: return "window"
-            if col_index == 0: return "aisle"
-            if col_index == block_width - 1: return "window"
-            return "middle"
-
-        def _make_seats(capacity, cabin_class, prefix, cols_per_row):
-            if capacity <= 0:
-                return []
-            rows_needed = -(-capacity // cols_per_row)
-            col_letters = [chr(ord('A') + i) for i in range(cols_per_row)]
-            left_block = cols_per_row // 2
-            right_block = cols_per_row - left_block
-            created, remaining = [], capacity
-            for row_num in range(1, rows_needed + 1):
-                for col_idx, letter in enumerate(col_letters):
-                    if remaining <= 0:
-                        break
-                    pos = _pos_left(col_idx, left_block) if col_idx < left_block else _pos_right(col_idx - left_block, right_block)
-                    created.append(Seat(
-                        flight_instance=instance,
-                        seat_number=f"{prefix}{row_num}{letter}",
-                        seat_class=cabin_class,
-                        position=pos,
-                        status=SeatStatus.AVAILABLE,
-                    ))
-                    remaining -= 1
-            return created
-
-        seats = []
-        fc = aircraft.first_class_capacity
-        seats += _make_seats(fc, CabinClass.FIRST, "F", 4 if fc > 2 else max(fc, 2))
-        bc = aircraft.business_capacity
-        seats += _make_seats(bc, CabinClass.BUSINESS, "B", 4 if bc > 2 else max(bc, 2))
-        ec = aircraft.economy_capacity
-        seats += _make_seats(ec, CabinClass.ECONOMY, "E", 6 if ec > 3 else max(ec, 3))
-        Seat.objects.bulk_create(seats)
+        generate_seats_for_instance(instance)
 
     @action(detail=True, methods=["post"], url_path="generate-seats",
             permission_classes=[IsAdminOrSuperuser])
@@ -618,7 +474,7 @@ class FlightInstanceViewSet(AdminModelViewSet):
                 {"detail": "Seats have already been generated for this flight instance."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        self._auto_generate_seats(instance)
+        generate_seats_for_instance(instance)
         # Refresh fare available_seats counts
         for fare in instance.fares.all():
             fare.available_seats = instance.seats.filter(
@@ -634,46 +490,26 @@ class FlightInstanceViewSet(AdminModelViewSet):
     @action(detail=True, methods=["post"], url_path="apply-premium-pricing", permission_classes=[IsAdminOrSuperuser])
     def apply_premium_pricing(self, request, pk=None):
         instance = self.get_object()
-        
+
         window_fee = request.data.get("window_fee")
         legroom_fee = request.data.get("legroom_fee")
-        
+
         if window_fee is not None:
             try:
                 window_fee = float(window_fee)
             except ValueError:
                 return Response({"detail": "window_fee must be a number"}, status=status.HTTP_400_BAD_REQUEST)
-                
+
         if legroom_fee is not None:
             try:
                 legroom_fee = float(legroom_fee)
             except ValueError:
                 return Response({"detail": "legroom_fee must be a number"}, status=status.HTTP_400_BAD_REQUEST)
 
-        seats = instance.seats.all()
-        updated_seats = []
-        for seat in seats:
-            changed = False
-            fee = float(seat.seat_fee)
-            
-            if window_fee is not None and seat.position == 'window':
-                fee += window_fee
-                changed = True
-                
-            if legroom_fee is not None and seat.exit_row:
-                fee += legroom_fee
-                changed = True
-                
-            if changed:
-                seat.seat_fee = fee
-                updated_seats.append(seat)
-                
-        if updated_seats:
-            Seat.objects.bulk_update(updated_seats, ['seat_fee'])
-            
+        updated_count = apply_premium_pricing(instance, window_fee, legroom_fee)
         return Response({
-            "detail": f"Updated pricing for {len(updated_seats)} seats.",
-            "updated_count": len(updated_seats)
+            "detail": f"Updated pricing for {updated_count} seats.",
+            "updated_count": updated_count,
         })
 
 
@@ -693,61 +529,12 @@ class SeatViewSet(AdminModelViewSet):
 
     def perform_update(self, serializer):
         old_status = self.get_object().status
-        new_status = serializer.validated_data.get('status', old_status)
-        
+        new_status = serializer.validated_data.get("status", old_status)
         seat = serializer.save()
-        
-        if old_status != new_status:
-            from .models import Fare, SeatStatus, Flight as LegacyFlight
-            fare = Fare.objects.filter(
-                flight_instance=seat.flight_instance,
-                cabin_class=seat.seat_class
-            ).first()
-            
-            flight_no = seat.flight_instance.flight.flight_no
-            legacy_flight = LegacyFlight.objects.filter(flight_number=flight_no).first()
-
-            if new_status == SeatStatus.AVAILABLE and old_status != SeatStatus.AVAILABLE:
-                if fare:
-                    total_physical = seat.flight_instance.seats.filter(seat_class=seat.seat_class).count()
-                    fare.available_seats = min(fare.available_seats + 1, total_physical)
-                    fare.save(update_fields=["available_seats"])
-                if legacy_flight:
-                    legacy_flight.available_seats = min(legacy_flight.available_seats + 1, legacy_flight.total_seats)
-                    legacy_flight.save(update_fields=["available_seats"])
-                
-                # Trigger waitlist auto-allocation for the freed cabin class
-                if legacy_flight:
-                    try:
-                        from apps.waitlist.services import process_waitlist_allocations
-                        process_waitlist_allocations(legacy_flight, cancelled_cabin_class=seat.seat_class)
-                    except Exception:
-                        pass
-                        
-            elif old_status == SeatStatus.AVAILABLE and new_status != SeatStatus.AVAILABLE:
-                if fare:
-                    fare.available_seats = max(fare.available_seats - 1, 0)
-                    fare.save(update_fields=["available_seats"])
-                if legacy_flight:
-                    legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
-                    legacy_flight.save(update_fields=["available_seats"])
+        sync_seat_availability_on_status_change(seat, old_status, new_status)
 
     def perform_destroy(self, instance):
-        from .models import Fare, SeatStatus, Flight as LegacyFlight
-        if instance.status == SeatStatus.AVAILABLE:
-            fare = Fare.objects.filter(
-                flight_instance=instance.flight_instance,
-                cabin_class=instance.seat_class
-            ).first()
-            if fare:
-                fare.available_seats = max(fare.available_seats - 1, 0)
-                fare.save(update_fields=["available_seats"])
-            
-            flight_no = instance.flight_instance.flight.flight_no
-            legacy_flight = LegacyFlight.objects.filter(flight_number=flight_no).first()
-            if legacy_flight:
-                legacy_flight.available_seats = max(legacy_flight.available_seats - 1, 0)
-                legacy_flight.save(update_fields=["available_seats"])
+        sync_seat_availability_on_destroy(instance)
         instance.delete()
 
     @action(detail=False, methods=["post"], url_path="bulk-price",
@@ -778,22 +565,11 @@ class SeatViewSet(AdminModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        seats = Seat.objects.filter(id__in=seat_ids)
-        conflict_seat_ids = []
-        to_update = []
-        for seat in seats:
-            if seat.last_rule_applied and seat.last_rule_applied != rule_label:
-                conflict_seat_ids.append(seat.id)
-            seat.seat_fee = price
-            seat.last_rule_applied = rule_label
-            to_update.append(seat)
-
-        Seat.objects.bulk_update(to_update, ["seat_fee", "last_rule_applied"])
-
+        result = bulk_price_seats(seat_ids, price, rule_label)
         return Response({
-            "updated_count": len(to_update),
-            "conflict_seat_ids": conflict_seat_ids,
-            "detail": f"Price ₹{price} applied to {len(to_update)} seats.",
+            "updated_count": result["updated_count"],
+            "conflict_seat_ids": result["conflict_seat_ids"],
+            "detail": f"Price \u20b9{price} applied to {result['updated_count']} seats.",
         }, status=status.HTTP_200_OK)
 
 

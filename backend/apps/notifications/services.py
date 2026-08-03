@@ -1,9 +1,13 @@
+import logging
 import threading
 # pyrefly: ignore [missing-import]
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from .models import Notification, NotificationType
 from . import email_templates as tpl
+
+logger = logging.getLogger(__name__)
+
 
 
 class NotificationService:
@@ -59,8 +63,8 @@ class NotificationService:
                 msg.attach(img)
 
             msg.send(fail_silently=False)
-        except Exception as e:
-            print(f"FAILED TO SEND EMAIL TO {user_email}: {e}")
+        except Exception:
+            logger.exception(f"FAILED TO SEND EMAIL TO {user_email}")
 
     @staticmethod
     def _send_email(user_email: str, subject: str, html_body: str):
@@ -220,3 +224,30 @@ class NotificationService:
                 f"Flight {flight.flight_number} status updated to {new_status}.",
                 notif_type)
             cls._send_email(email, subject, html)
+
+    # ── User Account ────────────────────────────────────────────────────────
+
+    @classmethod
+    def send_password_reset_otp(cls, email: str, otp: str):
+        subject, html = tpl.password_reset_otp(otp)
+        cls._send_email(email, subject, html)
+
+    @classmethod
+    def send_email_change_otp(cls, email: str, otp: str):
+        subject, html = tpl.email_change_otp(otp, email)
+        cls._send_email(email, subject, html)
+
+    # ── Waitlist ─────────────────────────────────────────────────────────────
+
+    @classmethod
+    def send_waitlist_cancellation(cls, user, flight, refund_amount):
+        cls._create_notification(
+            user=user,
+            title=f"Waitlist Cancelled — Flight {flight.flight_number}",
+            message=(
+                f"Your waitlist entry for flight {flight.flight_number} "
+                f"({flight.source_airport} → {flight.destination_airport}) has been cancelled. "
+                f"A refund of ₹{refund_amount:.2f} will be processed (5% processing fee applied)."
+            ),
+            notification_type=NotificationType.BOOKING_CANCELLED
+        )

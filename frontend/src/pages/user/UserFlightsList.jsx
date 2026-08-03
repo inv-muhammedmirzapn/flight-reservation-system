@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
-import { API_BASE_URL } from '@/services/apiClient';
+import { API_BASE_URL, getResponseData } from '@/services/apiClient';
 import { Plane, Search, ArrowRight, Filter, X, ArrowLeftRight, Users, ChevronDown } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
@@ -907,15 +907,15 @@ export default function UserFlightsList() {
         params.set('ordering', 'base_fare');
         const minRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
         if (!minRes.ok) return;
-        const minData = await minRes.json();
-        const minVal = minData.results?.[0]?.base_fare;
+        const minData = await getResponseData(minRes);
+        const minVal = minData?.results?.[0]?.base_fare;
 
         // Fetch Max fare
         params.set('ordering', '-base_fare');
         const maxRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
         if (!maxRes.ok) return;
-        const maxData = await maxRes.json();
-        const maxVal = maxData.results?.[0]?.base_fare;
+        const maxData = await getResponseData(maxRes);
+        const maxVal = maxData?.results?.[0]?.base_fare;
 
         if (active) {
           const parsedMin = minVal ? Math.floor(parseFloat(minVal)) : 0;

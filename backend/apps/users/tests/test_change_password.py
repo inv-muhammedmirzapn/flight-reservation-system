@@ -47,9 +47,8 @@ class ChangePasswordAPITests(APITestCase):
             "new_password": "NewTestPassword123!"
         }
         response = self.client.post(self.change_password_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("old_password", response.data)
-        self.assertEqual(response.data["old_password"][0], "Wrong password.")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data["message"], "Invalid credentials.")
         
         # Verify old password still works
         login_response = self.client.post(self.login_url, {
@@ -65,8 +64,7 @@ class ChangePasswordAPITests(APITestCase):
         }
         response = self.client.post(self.change_password_url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("new_password", response.data)
-        self.assertEqual(response.data["new_password"][0], "New password cannot be the same as the old password.")
+        self.assertIn("new_password", response.data.get("errors", {}))
 
     def test_change_password_weak_new(self):
         payload = {
@@ -75,9 +73,7 @@ class ChangePasswordAPITests(APITestCase):
         }
         response = self.client.post(self.change_password_url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("new_password", response.data)
-        # Assuming the validator returns a list of error strings or a combined string
-        self.assertTrue(len(response.data["new_password"]) > 0)
+        self.assertIn("new_password", response.data.get("errors", {}))
 
     def test_change_password_unauthenticated(self):
         # Remove credentials

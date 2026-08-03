@@ -1,13 +1,17 @@
+import logging
 from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as rf_serializers
 from .models import Booking, Passenger
 from .serializers import BookingSerializer, PassengerSerializer
 from .services import cancel_booking, create_booking
+
+logger = logging.getLogger(__name__)
 
 class BookingViewSet(mixins.CreateModelMixin,
                      mixins.ListModelMixin,
@@ -63,14 +67,14 @@ class BookingViewSet(mixins.CreateModelMixin,
         cabin_class = request.data.get('cabin_class', None)
 
         if not flight_id:
-            return Response({'detail': 'flight field is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'detail': 'flight field is required.'})
         if not passengers_data or not isinstance(passengers_data, list) or len(passengers_data) == 0:
-            return Response({'detail': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'detail': 'At least one passenger is required.'})
 
         # Validate cabin_class if provided
         valid_classes = {'ECONOMY', 'BUSINESS', 'FIRST'}
         if cabin_class and cabin_class not in valid_classes:
-            return Response({'detail': f'Invalid cabin_class. Must be one of: {", ".join(valid_classes)}'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'detail': f'Invalid cabin_class. Must be one of: {", ".join(valid_classes)}'})
 
         try:
             booking = create_booking(
@@ -81,12 +85,13 @@ class BookingViewSet(mixins.CreateModelMixin,
             )
             serializer = self.get_serializer(booking)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
+        except DjangoValidationError as e:
             msg = e.message if isinstance(getattr(e, 'message', None), str) else (
                 e.messages[0] if getattr(e, 'messages', None) else str(e)
             )
-            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'detail': msg})
         except Exception as e:
+            logger.exception("Booking failed")
             return Response({'detail': 'Booking failed. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], url_path='cancel')
@@ -101,8 +106,8 @@ class BookingViewSet(mixins.CreateModelMixin,
                 {"detail": "Booking cancelled successfully. Waitlist allocation triggered (if applicable).", "status": booking.status},
                 status=status.HTTP_200_OK
             )
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+            raise ValidationError({'detail': str(e)})
 
 
 class PassengerViewSet(viewsets.ReadOnlyModelViewSet):
