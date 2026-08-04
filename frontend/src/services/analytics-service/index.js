@@ -1,16 +1,46 @@
 import { fetchWithAuth } from '@/services/apiClient';
 
-export const fetchAnalyticsSummary = () =>
-  fetchWithAuth('/analytics/summary/');
+/**
+ * Keys: startDate, endDate, airlineId, aircraftId, top, months
+ * Any undefined/null/empty values are omitted.
+ */
+function buildParams(extras = {}) {
+  const map = {
+    startDate:  'start_date',
+    endDate:    'end_date',
+    airlineId:  'airline_id',
+    aircraftId: 'aircraft_id',
+    top:        'top',
+    months:     'months',
+  };
+  const qs = new URLSearchParams();
+  for (const [jsKey, apiKey] of Object.entries(map)) {
+    const val = extras[jsKey];
+    if (val !== undefined && val !== null && val !== '') {
+      qs.append(apiKey, val);
+    }
+  }
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}
 
-export const fetchMonthlyRevenue = (months = 12) =>
-  fetchWithAuth(`/analytics/monthly-revenue/?months=${months}`);
+export const fetchAnalyticsSummary = (filters = {}) =>
+  fetchWithAuth(`/analytics/summary/${buildParams(filters)}`);
 
-export const fetchPopularRoutes = (top = 10) =>
-  fetchWithAuth(`/analytics/popular-routes/?top=${top}`);
+export const fetchMonthlyRevenue = (months = 12, filters = {}) =>
+  fetchWithAuth(`/analytics/monthly-revenue/${buildParams({ months, ...filters })}`);
 
-export const fetchFlightOccupancy = (top = 10) =>
-  fetchWithAuth(`/analytics/flight-occupancy/?top=${top}`);
+export const fetchPopularRoutes = (top = 10, filters = {}) =>
+  fetchWithAuth(`/analytics/popular-routes/${buildParams({ top, ...filters })}`);
 
-export const fetchPeakBookingHours = () =>
-  fetchWithAuth('/analytics/peak-booking-hours/');
+export const fetchFlightOccupancy = (top = 10, filters = {}) =>
+  fetchWithAuth(`/analytics/flight-occupancy/${buildParams({ top, ...filters })}`);
+
+export const fetchPeakBookingHours = (filters = {}) =>
+  fetchWithAuth(`/analytics/peak-booking-hours/${buildParams(filters)}`);
+
+export const fetchAirlinePerformance = (top = 10, filters = {}) =>
+  fetchWithAuth(`/analytics/airline-performance/${buildParams({ top, ...filters })}`);
+
+export const fetchAircraftUtilization = (top = 10, filters = {}) =>
+  fetchWithAuth(`/analytics/aircraft-utilization/${buildParams({ top, ...filters })}`);

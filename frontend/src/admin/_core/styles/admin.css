@@ -766,7 +766,7 @@
 
   @media (min-width: 1024px) {
     .kpi-grid {
-      @apply grid-cols-6 gap-3;
+      @apply grid-cols-5 gap-3;
     }
   }
 
