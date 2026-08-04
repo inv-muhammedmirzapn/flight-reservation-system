@@ -17,28 +17,28 @@ const TicketDetailPage = lazy(() => import('@/pages/user/TicketDetailPage'));
 const BookingConfirmationPage = lazy(() => import('@/pages/user/BookingConfirmationPage'));
 const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
 const NotificationsPage = lazy(() => import('@/pages/user/NotificationsPage'));
-const AnalyticsDashboard = lazy(() => import('@/pages/admin/AnalyticsDashboard'));
+const AnalyticsDashboard = lazy(() => import('@/admin/analytics/AnalyticsDashboard'));
 
 // ── New admin entity pages ──────────────────────────────────────────────────────
 // Master data
-const AirportsPage = lazy(() => import('@/pages/admin/master/AirportsPage'));
-const AirlinesPage = lazy(() => import('@/pages/admin/master/AirlinesPage'));
-const AircraftModelsPage = lazy(() => import('@/pages/admin/master/AircraftModelsPage'));
-const AircraftPage = lazy(() => import('@/pages/admin/master/AircraftPage'));
-const FoodItemsPage = lazy(() => import('@/pages/admin/master/FoodItemsPage'));
+const AirportsPage = lazy(() => import('@/admin/master/airports/AirportsPage'));
+const AirlinesPage = lazy(() => import('@/admin/master/airlines/AirlinesPage'));
+const AircraftModelsPage = lazy(() => import('@/admin/master/aircraft/AircraftModelsPage'));
+const AircraftPage = lazy(() => import('@/admin/master/aircraft/AircraftPage'));
+const FoodItemsPage = lazy(() => import('@/admin/master/food-items/FoodItemsPage'));
 // Operations
-const FlightRoutesPage = lazy(() => import('@/pages/admin/operations/FlightRoutesPage'));
-const FlightInstancesPage = lazy(() => import('@/pages/admin/operations/FlightInstancesPage'));
-const FlightOverviewPage = lazy(() => import('@/pages/admin/operations/FlightOverviewPage'));
-const SeatMapPage = lazy(() => import('@/pages/admin/operations/SeatMapPage'));
-const FaresPage = lazy(() => import('@/pages/admin/operations/FaresPage'));
-const MealsPage = lazy(() => import('@/pages/admin/operations/MealsPage'));
+const FlightRoutesPage = lazy(() => import('@/admin/operations/flight-routes/FlightRoutesPage'));
+const FlightInstancesPage = lazy(() => import('@/admin/operations/flight-instances/FlightInstancesPage'));
+const FlightOverviewPage = lazy(() => import('@/admin/operations/flight-overview/FlightOverviewPage'));
+const SeatMapPage = lazy(() => import('@/admin/operations/seat-map/SeatMapPage'));
+const FaresPage = lazy(() => import('@/admin/operations/fares/FaresPage'));
+const MealsPage = lazy(() => import('@/admin/operations/meals/MealsPage'));
 // Records
-const AdminBookingsPage = lazy(() => import('@/pages/admin/records/AdminBookingsPage'));
-const AdminPaymentsPage = lazy(() => import('@/pages/admin/records/AdminPaymentsPage'));
-const AdminPassengersPage = lazy(() => import('@/pages/admin/records/AdminPassengersPage'));
+const AdminBookingsPage = lazy(() => import('@/admin/records/bookings/AdminBookingsPage'));
+const AdminPaymentsPage = lazy(() => import('@/admin/records/payments/AdminPaymentsPage'));
+const AdminPassengersPage = lazy(() => import('@/admin/records/passengers/AdminPassengersPage'));
 // System
-const DataManagementPage = lazy(() => import('@/pages/admin/system/DataManagementPage'));
+const DataManagementPage = lazy(() => import('@/admin/system/data-management/DataManagementPage'));
 
 const LoadingFallback = () => (
   <div className="flex-grow flex items-center justify-center min-h-[50vh]">
