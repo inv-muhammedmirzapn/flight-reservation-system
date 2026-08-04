@@ -185,9 +185,44 @@ def _resolve_country(
 # Seat generation
 # ---------------------------------------------------------------------------
 
+def _parse_layout(layout_str: str) -> list[int]:
+    try:
+        return [int(x) for x in layout_str.split("-") if x]
+    except Exception:
+        return [3, 3]  # fallback
+
+
+def _seat_position_from_layout(col_idx: int, layout: list[int]) -> str:
+    total_cols = sum(layout)
+    if total_cols <= 0:
+        return "middle"
+    if col_idx == 0 or col_idx == total_cols - 1:
+        return "window"
+    
+    current_offset = 0
+    num_segments = len(layout)
+    for j, seg_size in enumerate(layout):
+        if current_offset <= col_idx < current_offset + seg_size:
+            x = col_idx - current_offset
+            if j == 0:
+                if x == seg_size - 1:
+                    return "aisle"
+                return "middle"
+            elif j == num_segments - 1:
+                if x == 0:
+                    return "aisle"
+                return "middle"
+            else:
+                if x == 0 or x == seg_size - 1:
+                    return "aisle"
+                return "middle"
+        current_offset += seg_size
+    return "middle"
+
+
 def generate_seats_for_instance(instance: FlightInstance) -> int:
     """
-    Auto-generate Seat rows for *instance* based on its aircraft capacities.
+    Auto-generate Seat rows for *instance* based on its aircraft capacities and layouts.
     Skips silently if seats already exist.
 
     Returns the number of seats created (0 if already existed or no aircraft).
@@ -200,31 +235,19 @@ def generate_seats_for_instance(instance: FlightInstance) -> int:
 
     seats = []
     fc = aircraft.first_class_capacity
-    seats += _make_cabin_seats(instance, fc, CabinClass.FIRST, "F", 4 if fc > 2 else max(fc, 2))
+    fc_layout = getattr(aircraft, "first_class_layout", "2-2") or "2-2"
+    seats += _make_cabin_seats(instance, fc, CabinClass.FIRST, "F", fc_layout)
+
     bc = aircraft.business_capacity
-    seats += _make_cabin_seats(instance, bc, CabinClass.BUSINESS, "B", 4 if bc > 2 else max(bc, 2))
+    bc_layout = getattr(aircraft, "business_layout", "2-2") or "2-2"
+    seats += _make_cabin_seats(instance, bc, CabinClass.BUSINESS, "B", bc_layout)
+
     ec = aircraft.economy_capacity
-    seats += _make_cabin_seats(instance, ec, CabinClass.ECONOMY, "E", 6 if ec > 3 else max(ec, 3))
+    ec_layout = getattr(aircraft, "economy_layout", "3-3") or "3-3"
+    seats += _make_cabin_seats(instance, ec, CabinClass.ECONOMY, "E", ec_layout)
 
     Seat.objects.bulk_create(seats)
     return len(seats)
-
-
-def _seat_position(col_index: int, block_width: int, is_left_block: bool) -> str:
-    if block_width == 1:
-        return "window"
-    if is_left_block:
-        if col_index == 0:
-            return "window"
-        if col_index == block_width - 1:
-            return "aisle"
-        return "middle"
-    else:
-        if col_index == 0:
-            return "aisle"
-        if col_index == block_width - 1:
-            return "window"
-        return "middle"
 
 
 def _make_cabin_seats(
@@ -232,26 +255,25 @@ def _make_cabin_seats(
     capacity: int,
     cabin_class: str,
     prefix: str,
-    cols_per_row: int,
+    layout_str: str,
 ) -> list:
     if capacity <= 0:
         return []
+    
+    layout = _parse_layout(layout_str)
+    cols_per_row = sum(layout)
+    if cols_per_row <= 0:
+        cols_per_row = 6  # fallback if layout is empty or 0
+
     rows_needed = -(-capacity // cols_per_row)  # ceiling division
     col_letters = [chr(ord("A") + i) for i in range(cols_per_row)]
-    left_block = cols_per_row // 2
-    right_block = cols_per_row - left_block
 
     seats, remaining = [], capacity
     for row_num in range(1, rows_needed + 1):
         for col_idx, letter in enumerate(col_letters):
             if remaining <= 0:
                 break
-            is_left = col_idx < left_block
-            pos = _seat_position(
-                col_idx if is_left else col_idx - left_block,
-                left_block if is_left else right_block,
-                is_left,
-            )
+            pos = _seat_position_from_layout(col_idx, layout)
             seats.append(
                 Seat(
                     flight_instance=instance,

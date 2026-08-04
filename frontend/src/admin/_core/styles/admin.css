@@ -615,9 +615,9 @@
   }
 
   .smp-fuselage {
-    @apply bg-white w-[380px] relative;
+    @apply bg-white w-fit min-w-[380px] relative;
     border-radius: 190px 190px 12px 12px;
-    padding: 110px 28px 40px;
+    padding: 110px 36px 40px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, .08);
     touch-action: none;
   }

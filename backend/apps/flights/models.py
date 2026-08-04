@@ -95,10 +95,33 @@ class Aircraft(models.Model):
     economy_capacity = models.PositiveIntegerField(default=0)
     business_capacity = models.PositiveIntegerField(default=0)
     first_class_capacity = models.PositiveIntegerField(default=0)
+    economy_layout = models.CharField(max_length=20, default="3-3")
+    business_layout = models.CharField(max_length=20, default="2-2")
+    first_class_layout = models.CharField(max_length=20, default="2-2")
 
     class Meta:
         ordering = ["registration"]
         verbose_name_plural = "Aircraft"
+
+    def clean(self):
+        import re
+        layout_regex = re.compile(r'^\d+(-\d+)*$')
+        if self.economy_layout:
+            self.economy_layout = self.economy_layout.strip()
+            if not layout_regex.match(self.economy_layout):
+                raise ValidationError({"economy_layout": "Layout must be numbers separated by hyphens, e.g. 3-3"})
+        if self.business_layout:
+            self.business_layout = self.business_layout.strip()
+            if not layout_regex.match(self.business_layout):
+                raise ValidationError({"business_layout": "Layout must be numbers separated by hyphens, e.g. 2-2"})
+        if self.first_class_layout:
+            self.first_class_layout = self.first_class_layout.strip()
+            if not layout_regex.match(self.first_class_layout):
+                raise ValidationError({"first_class_layout": "Layout must be numbers separated by hyphens, e.g. 2-2"})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.registration} ({self.airline.iata_airline_code})"

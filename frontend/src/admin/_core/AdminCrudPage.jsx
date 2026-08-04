@@ -271,7 +271,7 @@ export default function AdminCrudPage({
                     <th
                       key={col.key}
                       onClick={() => handleSort(col.key)}
-                      className={sortConfig.key === col.key ? 'sorted' : ''}
+                      className={`${sortConfig.key === col.key ? 'sorted' : ''} ${col.className || ''}`}
                     >
                       {col.label}
                       {sortConfig.key === col.key && (
@@ -286,7 +286,7 @@ export default function AdminCrudPage({
                 {sortedItems.map((item) => (
                   <tr key={item.id}>
                     {columns.map((col) => (
-                      <td key={col.key}>
+                      <td key={col.key} className={col.className || ''}>
                         {col.render ? col.render(item) : item[col.key] ?? '—'}
                       </td>
                     ))}

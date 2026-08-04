@@ -218,7 +218,8 @@ class AircraftSerializer(serializers.ModelSerializer):
             "id", "registration",
             "airline", "airline_name",
             "aircraft_model", "model_display",
-            "economy_capacity", "business_capacity", "first_class_capacity"
+            "economy_capacity", "business_capacity", "first_class_capacity",
+            "economy_layout", "business_layout", "first_class_layout"
         ]
 
     def get_model_display(self, obj):
@@ -229,6 +230,27 @@ class AircraftSerializer(serializers.ModelSerializer):
         import re
         if not re.match(r'^[A-Z0-9\-]+$', v):
             raise serializers.ValidationError("Registration must be alphanumeric with hyphens.")
+        return v
+
+    def validate_economy_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 3-3")
+        return v
+
+    def validate_business_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
+        return v
+
+    def validate_first_class_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
         return v
 
 
@@ -331,6 +353,15 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     aircraft_registration = serializers.CharField(
         source="aircraft.registration", read_only=True
     )
+    aircraft_economy_layout = serializers.CharField(
+        source="aircraft.economy_layout", read_only=True
+    )
+    aircraft_business_layout = serializers.CharField(
+        source="aircraft.business_layout", read_only=True
+    )
+    aircraft_first_class_layout = serializers.CharField(
+        source="aircraft.first_class_layout", read_only=True
+    )
     route = serializers.SerializerMethodField()
 
     total_capacity = serializers.SerializerMethodField()
@@ -340,6 +371,7 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
             "aircraft", "aircraft_registration", "total_capacity", "route",
+            "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
             "status", "delay_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",

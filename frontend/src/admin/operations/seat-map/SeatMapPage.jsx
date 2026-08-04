@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
@@ -381,8 +381,17 @@ export default function SeatMapPage() {
                           <div className="smp-class-hdr" style={{ background: `${CLASS_COLORS[cabinClass]}22`, color: CLASS_COLORS[cabinClass] }}>{CLASS_LABELS[cabinClass]}</div>
                           {rowKeys.map(rowKey => {
                             const rowSeats = rows[rowKey];
-                            const colCount = cabinClass === 'ECONOMY' ? 6 : 4;
-                            const leftCount = Math.floor(colCount / 2);
+                            
+                            // Get layout string from flight instance or fallback
+                            let layoutStr = '3-3';
+                            if (selInstanceObj) {
+                              if (cabinClass === 'FIRST') layoutStr = selInstanceObj.aircraft_first_class_layout || '2-2';
+                              else if (cabinClass === 'BUSINESS') layoutStr = selInstanceObj.aircraft_business_layout || '2-2';
+                              else if (cabinClass === 'ECONOMY') layoutStr = selInstanceObj.aircraft_economy_layout || '3-3';
+                            }
+                            const layout = layoutStr.split('-').map(x => parseInt(x, 10)).filter(x => !isNaN(x) && x > 0);
+                            if (layout.length === 0) layout.push(3, 3);
+                            const colCount = layout.reduce((a, b) => a + b, 0);
 
                             // Pad to expected columns
                             const padded = [];
@@ -391,8 +400,14 @@ export default function SeatMapPage() {
                               const found = rowSeats.find(s => s.seat_number.endsWith(letter));
                               padded.push(found || null);
                             }
-                            const leftGroup = padded.slice(0, leftCount);
-                            const rightGroup = padded.slice(leftCount);
+
+                            const groups = [];
+                            let currentOffset = 0;
+                            layout.forEach((segSize) => {
+                              groups.push(padded.slice(currentOffset, currentOffset + segSize));
+                              currentOffset += segSize;
+                            });
+
                             const rowNum = rowKey.replace(/\D/g, '');
 
                             const renderSeat = seat => {
@@ -417,9 +432,12 @@ export default function SeatMapPage() {
                             return (
                               <div key={rowKey} className="smp-row">
                                 <div className="smp-rn">{rowNum}</div>
-                                <div className="smp-grp">{leftGroup.map(renderSeat)}</div>
-                                <div className="smp-aisle" />
-                                <div className="smp-grp">{rightGroup.map(renderSeat)}</div>
+                                {groups.map((group, gIdx) => (
+                                  <Fragment key={gIdx}>
+                                    <div className="smp-grp">{group.map(renderSeat)}</div>
+                                    {gIdx < groups.length - 1 && <div className="smp-aisle" />}
+                                  </Fragment>
+                                ))}
                                 <div className="smp-rn">{rowNum}</div>
                               </div>
                             );
