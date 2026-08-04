@@ -1,120 +1,12 @@
+import logging
 import uuid
-# trigger reload
 from django.db import models
 from django.core.exceptions import ValidationError
 
-
-# ─── Legacy Flight (keep for backwards compat) ─────────────────────────────────
-
-class FlightStatus(models.TextChoices):
-    """Choices for the status of a flight."""
-    SCHEDULED = "SCHEDULED", "Scheduled"
-    DELAYED = "DELAYED", "Delayed"
-    CANCELLED = "CANCELLED", "Cancelled"
-    BOARDING = "BOARDING", "Boarding"
-    DEPARTED = "DEPARTED", "Departed"
-    ARRIVED = "ARRIVED", "Arrived"
+logger = logging.getLogger(__name__)
 
 
-class Flight(models.Model):
-    """
-    Legacy Flight model — kept for backwards compatibility with existing
-    bookings, analytics, and tests.  New schema uses FlightRoute + FlightInstance.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    flight_number = models.CharField(max_length=20, unique=True, db_index=True)
-    airline = models.CharField(max_length=100)
-    aircraft = models.CharField(max_length=100)
-    source_airport = models.CharField(max_length=10)
-    destination_airport = models.CharField(max_length=10)
-    departure_time = models.DateTimeField()
-    arrival_time = models.DateTimeField()
-    base_fare = models.DecimalField(max_digits=10, decimal_places=2)
-    total_seats = models.IntegerField()
-    available_seats = models.IntegerField()
-    status = models.CharField(
-        max_length=20,
-        choices=FlightStatus.choices,
-        default=FlightStatus.SCHEDULED
-    )
-    external_id = models.CharField(
-        max_length=100, null=True, blank=True, unique=True, db_index=True
-    )
-    sync_source = models.CharField(max_length=50, null=True, blank=True)
-    stops = models.JSONField(default=list, blank=True)
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(available_seats__lte=models.F("total_seats")),
-                name="available_seats_lte_total"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(available_seats__gte=0),
-                name="available_seats_non_negative"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(total_seats__gte=0),
-                name="total_seats_non_negative"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(arrival_time__gt=models.F("departure_time")),
-                name="arrival_time_after_departure_time"
-            ),
-            models.CheckConstraint(
-                condition=~models.Q(source_airport=models.F("destination_airport")),
-                name="source_dest_not_equal"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(base_fare__gte=0),
-                name="base_fare_non_negative"
-            )
-        ]
-
-    def clean(self) -> None:
-        super().clean()
-        errors = {}
-        if self.source_airport:
-            self.source_airport = self.source_airport.strip().upper()
-        if self.destination_airport:
-            self.destination_airport = self.destination_airport.strip().upper()
-        if self.departure_time and self.arrival_time:
-            if self.arrival_time <= self.departure_time:
-                errors["arrival_time"] = "Arrival time must be later than departure time."
-        if self.source_airport and self.destination_airport:
-            if self.source_airport == self.destination_airport:
-                errors["destination_airport"] = "Source and destination airports cannot be identical."
-        if self.total_seats is not None and self.total_seats < 0:
-            errors["total_seats"] = "Total seats cannot be negative."
-        if self.available_seats is not None and self.available_seats < 0:
-            errors["available_seats"] = "Available seats cannot be negative."
-        if self.total_seats is not None and self.available_seats is not None:
-            if self.available_seats > self.total_seats:
-                errors["available_seats"] = "Available seats cannot exceed total seats."
-        if self.base_fare is not None and self.base_fare < 0:
-            errors["base_fare"] = "Base fare cannot be negative."
-        if errors:
-            raise ValidationError(errors)
-
-    def save(self, *args, **kwargs) -> None:
-        self.full_clean()
-        is_new = self._state.adding
-        old_status = None
-        if not is_new:
-            try:
-                old_status = Flight.objects.only('status').get(pk=self.pk).status
-            except Flight.DoesNotExist:
-                pass
-        super().save(*args, **kwargs)
-        if old_status is not None and old_status != self.status:
-            from apps.notifications.services import NotificationService
-            NotificationService.send_flight_status_notification(self, old_status, self.status)
-
-    def __str__(self) -> str:
-        return f"{self.flight_number} ({self.source_airport} -> {self.destination_airport})"
-
-
-# ─── New normalised schema ──────────────────────────────────────────────────────
+# ─── Normalised schema ─────────────────────────────────────────────────────────
 
 class Country(models.Model):
     name = models.CharField(max_length=100)
@@ -203,10 +95,33 @@ class Aircraft(models.Model):
     economy_capacity = models.PositiveIntegerField(default=0)
     business_capacity = models.PositiveIntegerField(default=0)
     first_class_capacity = models.PositiveIntegerField(default=0)
+    economy_layout = models.CharField(max_length=20, default="3-3")
+    business_layout = models.CharField(max_length=20, default="2-2")
+    first_class_layout = models.CharField(max_length=20, default="2-2")
 
     class Meta:
         ordering = ["registration"]
         verbose_name_plural = "Aircraft"
+
+    def clean(self):
+        import re
+        layout_regex = re.compile(r'^\d+(-\d+)*$')
+        if self.economy_layout:
+            self.economy_layout = self.economy_layout.strip()
+            if not layout_regex.match(self.economy_layout):
+                raise ValidationError({"economy_layout": "Layout must be numbers separated by hyphens, e.g. 3-3"})
+        if self.business_layout:
+            self.business_layout = self.business_layout.strip()
+            if not layout_regex.match(self.business_layout):
+                raise ValidationError({"business_layout": "Layout must be numbers separated by hyphens, e.g. 2-2"})
+        if self.first_class_layout:
+            self.first_class_layout = self.first_class_layout.strip()
+            if not layout_regex.match(self.first_class_layout):
+                raise ValidationError({"first_class_layout": "Layout must be numbers separated by hyphens, e.g. 2-2"})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.registration} ({self.airline.iata_airline_code})"
@@ -255,8 +170,10 @@ class FlightLeg(models.Model):
     arrival_airport = models.ForeignKey(
         Airport, on_delete=models.PROTECT, related_name="arrival_legs"
     )
-    scheduled_departure = models.DateTimeField()
-    scheduled_arrival = models.DateTimeField()
+    flight_duration_minutes = models.PositiveIntegerField(default=120, help_text="Duration of flight leg in minutes")
+    layover_duration_minutes = models.PositiveIntegerField(default=0, help_text="Layover duration before this leg in minutes")
+    scheduled_departure = models.DateTimeField(null=True, blank=True)
+    scheduled_arrival = models.DateTimeField(null=True, blank=True)
     actual_departure = models.DateTimeField(null=True, blank=True)
     actual_arrival = models.DateTimeField(null=True, blank=True)
 
@@ -272,6 +189,8 @@ class FlightLeg(models.Model):
         if self.scheduled_departure and self.scheduled_arrival:
             if self.scheduled_arrival <= self.scheduled_departure:
                 errors["scheduled_arrival"] = "Scheduled arrival must be after scheduled departure."
+        if self.flight_duration_minutes is not None and self.flight_duration_minutes <= 0:
+            errors["flight_duration_minutes"] = "Flight duration must be greater than 0 minutes."
         if errors:
             raise ValidationError(errors)
 
@@ -308,6 +227,7 @@ class FlightInstance(models.Model):
     actual_arrival = models.DateTimeField(null=True, blank=True)
     checkin_open = models.DateTimeField(null=True, blank=True)
     boarding_time = models.DateTimeField(null=True, blank=True)
+    delay_minutes = models.PositiveIntegerField(default=0, help_text="Delay in minutes (0 = no delay)")
     boarding_gate = models.CharField(max_length=10, blank=True, default="")
     departure_terminal = models.CharField(max_length=10, blank=True, default="")
     arrival_terminal = models.CharField(max_length=10, blank=True, default="")
@@ -327,24 +247,6 @@ class FlightInstance(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-        # Sync status to legacy Flight model for backwards compatibility with customer frontend.
-        # NOTE: We must NOT call legacy_flight.save(update_fields=...) because that skips
-        # Flight.save() and its notification hook.  Instead we grab the old status, do a
-        # targeted UPDATE, then fire the notification service ourselves.
-        try:
-            legacy_flight = Flight.objects.filter(flight_number=self.flight.flight_no).first()
-            if legacy_flight and legacy_flight.status != self.status:
-                old_status = legacy_flight.status
-                # Use queryset update to avoid triggering Flight.save()'s full_clean + notification
-                # We then fire the notification manually below.
-                Flight.objects.filter(pk=legacy_flight.pk).update(status=self.status)
-                # Refresh local object so it reflects the new status
-                legacy_flight.status = self.status
-                # Fire the notification that Flight.save() would have sent
-                from apps.notifications.services import NotificationService
-                NotificationService.send_flight_status_notification(legacy_flight, old_status, self.status)
-        except Exception:
-            pass
 
     def __str__(self):
         return f"{self.flight.flight_no} / {self.date}"
@@ -382,12 +284,27 @@ class Seat(models.Model):
         max_length=10, choices=SeatStatus.choices, default=SeatStatus.AVAILABLE
     )
     exit_row = models.BooleanField(default=False)
+    extra_legroom = models.BooleanField(default=False)
     seat_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     currency = models.CharField(max_length=3, default="INR")
+    # Tracks which attribute rule last set the price — used for conflict badge.
+    last_rule_applied = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         ordering = ["seat_number"]
         unique_together = [["flight_instance", "seat_number"]]
+
+    @property
+    def attributes(self):
+        """Return a list of attribute tags derived from position/flag fields."""
+        attrs = []
+        if self.position:
+            attrs.append(self.position)   # 'window' | 'aisle' | 'middle'
+        if self.exit_row:
+            attrs.append('exit_row')
+        if self.extra_legroom:
+            attrs.append('extra_legroom')
+        return attrs
 
     def clean(self):
         if self.seat_fee is not None and self.seat_fee < 0:
@@ -399,6 +316,33 @@ class Seat(models.Model):
 
     def __str__(self):
         return f"{self.seat_number} ({self.seat_class}) – {self.flight_instance}"
+
+
+class SeatPriceTemplate(models.Model):
+    """
+    Stores a named attribute→price mapping that can be reused across
+    flight instances of the same aircraft type.
+    """
+    aircraft_model = models.ForeignKey(
+        AircraftModel, on_delete=models.CASCADE, related_name="seat_price_templates"
+    )
+    name = models.CharField(max_length=100)
+    rules = models.JSONField(
+        default=list,
+        help_text=(
+            'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom", '
+            '"price": <number>} dicts ordered by priority (last wins on conflict).'
+        )
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["aircraft_model", "name"]
+        unique_together = [["aircraft_model", "name"]]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.aircraft_model})"
 
 
 class RefundType(models.TextChoices):

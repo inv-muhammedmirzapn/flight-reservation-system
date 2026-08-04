@@ -12,30 +12,29 @@ const ADMIN_GROUPS = [
   {
     label: 'Master Data',
     links: [
-      { label: 'Countries',      href: '/admin/master/countries' },
-      { label: 'Airports',       href: '/admin/master/airports' },
-      { label: 'Airlines',       href: '/admin/master/airlines' },
-      { label: 'Aircraft Models',href: '/admin/master/aircraft-models' },
-      { label: 'Aircraft',       href: '/admin/master/aircraft' },
-      { label: 'Food Items',     href: '/admin/master/food-items' },
+      { label: 'Airports', href: '/admin/master/airports' },
+      { label: 'Airlines', href: '/admin/master/airlines' },
+      { label: 'Aircraft Models', href: '/admin/master/aircraft-models' },
+      { label: 'Aircraft', href: '/admin/master/aircraft' },
+      { label: 'Food Items', href: '/admin/master/food-items' },
     ],
   },
   {
     label: 'Operations',
     links: [
-      { label: 'Flight Routes',  href: '/admin/operations/flight-routes' },
-      { label: 'Instances',      href: '/admin/operations/flight-instances' },
-      { label: 'Seat Map',       href: '/admin/operations/seat-map' },
-      { label: 'Fares',          href: '/admin/operations/fares' },
-      { label: 'Meals',          href: '/admin/operations/meals' },
+      { label: 'Flight Routes', href: '/admin/operations/flight-routes' },
+      { label: 'Instances', href: '/admin/operations/flight-instances' },
+      { label: 'Seat Map', href: '/admin/operations/seat-map' },
+      { label: 'Fares', href: '/admin/operations/fares' },
+      { label: 'Meals', href: '/admin/operations/meals' },
     ],
   },
   {
     label: 'Records',
     links: [
-      { label: 'Bookings',       href: '/admin/records/bookings' },
-      { label: 'Payments',       href: '/admin/records/payments' },
-      { label: 'Passengers',     href: '/admin/records/passengers' },
+      { label: 'Bookings', href: '/admin/records/bookings' },
+      // { label: 'Payments', href: '/admin/records/payments' },
+      // { label: 'Passengers', href: '/admin/records/passengers' },
     ],
   },
   {
@@ -50,8 +49,7 @@ const ADMIN_GROUPS = [
 const APP_NAV_LINKS = [
   { labelKey: "flights", href: "/flights" },
   { labelKey: "bookings", href: "/my-bookings" },
-  { labelKey: "rewards", href: "/rewards" },
-  { labelKey: "support", href: "/#support" },
+
 ];
 
 export function Navbar() {
@@ -191,7 +189,7 @@ export function Navbar() {
                       {group.label}
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
                         style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', opacity: 0.6 }}>
-                        <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                       </svg>
                     </button>
 
@@ -252,7 +250,7 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="landing-nav-actions">
-          {/* Language Switcher */}
+          {/* Language Switcher
           <button
             onClick={toggleLanguage}
             style={{
@@ -283,7 +281,7 @@ export function Navbar() {
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 0.4 : 1 }}>EN</span>
             <span style={{ opacity: 0.3 }}>|</span>
             <span style={{ opacity: i18n.language?.startsWith('ja') ? 1 : 0.4 }}>JA</span>
-          </button>
+          </button> */}
           {!isAuthenticated ? (
             <>
               <button className="landing-nav-signin" onClick={() => navigate("/login")}>{t("navbar.signIn")}</button>

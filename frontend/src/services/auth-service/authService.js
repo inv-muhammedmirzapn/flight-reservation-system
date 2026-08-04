@@ -1,4 +1,12 @@
-import { API_BASE_URL, fetchWithAuth } from '@/services/apiClient';
+import { API_BASE_URL, fetchWithAuth, getResponseData, extractErrorMessage } from '@/services/apiClient';
+
+const processAuthResponse = async (response) => {
+  const data = await getResponseData(response);
+  if (!response.ok) {
+    throw new Error(JSON.stringify(data));
+  }
+  return data;
+};
 
 export const authAPI = {
   register: async (userData) => {
@@ -7,9 +15,7 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return processAuthResponse(response);
   },
 
   login: async (credentials) => {
@@ -18,9 +24,7 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return processAuthResponse(response);
   },
 
   googleLogin: async (token) => {
@@ -29,9 +33,7 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return processAuthResponse(response);
   },
 
   getProfile: async () => {
@@ -44,9 +46,7 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return processAuthResponse(response);
   },
 
   resetPassword: async (email, otp, new_password) => {
@@ -55,8 +55,6 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp, new_password }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    return processAuthResponse(response);
   }
 };

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
-import { API_BASE_URL } from '@/services/apiClient';
+import { API_BASE_URL, getResponseData } from '@/services/apiClient';
 import { Plane, Search, ArrowRight, Filter, X, ArrowLeftRight, Users, ChevronDown } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
@@ -165,19 +165,23 @@ function FlightCard({ flight, cabinClass }) {
         <div className="flight-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
           <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
-            <StatusBadge status={flight.status} />
+            {flight.status === 'DELAYED' && flight.delay_minutes > 0 ? (
+              <span style={{
+                background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                ⏱ DELAYED +{flight.delay_minutes}m
+              </span>
+            ) : (
+              <StatusBadge status={flight.status} />
+            )}
             {displaySeats <= 0 && (
               <span style={{
-                background: '#ffedd5',
-                color: '#9a3412',
-                border: '1px solid #fed7aa',
-                borderRadius: 9999,
-                padding: '2px 10px',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
+                background: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
               }}>
                 {t("flights.waitingList", { defaultValue: 'Waiting List' })}
               </span>
@@ -236,10 +240,10 @@ const FieldWrap = ({ label, children, center }) => (
 );
 
 /* ── Fixed Top Search Bar ────────────────────────────────── */
-function SearchBar({ 
-  initialSource, initialDestination, initialDepDate, initialArrDate, 
+function SearchBar({
+  initialSource, initialDestination, initialDepDate, initialArrDate,
   initialAdults, initialChildrenCount, initialInfants, initialCabinClass,
-  onSearch 
+  onSearch
 }) {
   const [source, setSource] = useState(initialSource);
   const [destination, setDestination] = useState(initialDestination);
@@ -896,29 +900,18 @@ export default function UserFlightsList() {
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
         if (depDate) params.set('date', depDate);
-        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
-        params.set('page_size', '1');
+        if (cabinClass && cabinClass !== 'Economy') params.set('cabin_class', cabinClass);
 
-        // Fetch Min fare
-        params.set('ordering', 'base_fare');
-        const minRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
-        if (!minRes.ok) return;
-        const minData = await minRes.json();
-        const minVal = minData.results?.[0]?.base_fare;
-
-        // Fetch Max fare
-        params.set('ordering', '-base_fare');
-        const maxRes = await fetch(`${API_BASE_URL}/flights/?${params}`);
-        if (!maxRes.ok) return;
-        const maxData = await maxRes.json();
-        const maxVal = maxData.results?.[0]?.base_fare;
-
+        const res = await fetch(`${API_BASE_URL}/flights/bounds/?${params}`);
+        if (!res.ok) return;
+        const data = await getResponseData(res);
+        
         if (active) {
-          const parsedMin = minVal ? Math.floor(parseFloat(minVal)) : 0;
-          let parsedMax = maxVal ? Math.ceil(parseFloat(maxVal)) : 100000;
+          const parsedMin = data?.min ? Math.floor(parseFloat(data.min)) : 0;
+          let parsedMax = data?.max ? Math.ceil(parseFloat(data.max)) : 100000;
 
           if (parsedMax <= parsedMin && parsedMin > 0) {
-            parsedMax = parsedMin + 1000; // ensure max is always strictly > min if there's data
+            parsedMax = parsedMin + 1000;
           }
 
           setAbsMin(parsedMin);

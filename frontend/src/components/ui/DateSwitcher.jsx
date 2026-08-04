@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { API_BASE_URL } from '@/services/apiClient';
+import { API_BASE_URL, getResponseData } from '@/services/apiClient';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function addDays(base, n) {
@@ -57,39 +57,41 @@ export default function DateSwitcher({ activeDate, onDateChange, source, destina
     // Reset fares for the new window (show loading dots)
     setFares({});
 
-    visibleDays.forEach(async (dateStr) => {
+    const loadCalendar = async () => {
       try {
+        const start_date = visibleDays[0];
+        const end_date = visibleDays[visibleDays.length - 1];
+
         const params = new URLSearchParams({
-          date: dateStr,
-          ordering: 'base_fare',
-          page_size: '1',
+          start_date,
+          end_date,
+          cabin_class: cabinClass || 'Economy',
         });
         if (source) params.set('source', source);
         if (destination) params.set('destination', destination);
-        if (cabinClass && cabinClass !== 'Economy') params.set('class', cabinClass);
 
-        const res = await fetch(`${API_BASE_URL}/flights/?${params}`);
+        const res = await fetch(`${API_BASE_URL}/flights/calendar/?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await getResponseData(res);
 
-        const flight = data.results?.[0];
-        let rawFare = null;
-        if (flight) {
-          const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
-          const classKey = CLASS_MAP[cabinClass || 'Economy'] || 'ECONOMY';
-          const selectedFare = flight.fares?.[classKey];
-          rawFare = selectedFare ? selectedFare.price : flight.base_fare;
-        }
-
-        // Discard if a newer effect has already run
         if (versionRef.current !== myVersion) return;
 
-        setFares(prev => ({ ...prev, [dateStr]: rawFare }));
-      } catch {
+        // Ensure we handle missing days by setting them to null explicitly
+        const newFares = {};
+        visibleDays.forEach(day => {
+          newFares[day] = data[day] || null;
+        });
+
+        setFares(newFares);
+      } catch (err) {
         if (versionRef.current !== myVersion) return;
-        setFares(prev => ({ ...prev, [dateStr]: null }));
+        const fallbackFares = {};
+        visibleDays.forEach(day => fallbackFares[day] = null);
+        setFares(fallbackFares);
       }
-    });
+    };
+    
+    loadCalendar();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowStart, source, destination, cabinClass]);
 

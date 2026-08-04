@@ -6,29 +6,7 @@ import re
 from .models import Profile
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-class StrongPasswordValidator:
-    """Custom validator matching the frontend password rules."""
 
-    def validate(self, password, user=None):
-        errors = []
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters long.")
-        if not re.search(r'[A-Z]', password):
-            errors.append("Password must contain at least one uppercase letter.")
-        if not re.search(r'[a-z]', password):
-            errors.append("Password must contain at least one lowercase letter.")
-        if not re.search(r'[0-9]', password):
-            errors.append("Password must contain at least one number.")
-        if not re.search(r'[!@#$%^&*()\,.\?\":{}|<>]', password):
-            errors.append("Password must contain at least one special character (!@#$%^&*).")
-        if errors:
-            raise ValidationError(errors)
-
-    def get_help_text(self):
-        return (
-            "Password must be at least 8 characters long and include "
-            "uppercase, lowercase, a number, and a special character."
-        )
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -45,14 +23,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('username', 'password', 'email', 'first_name', 'last_name')
 
     def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError("A user with that email already exists.")
         return value
 
     def validate_password(self, value):
-        validator = StrongPasswordValidator()
         try:
-            validator.validate(value)
+            validate_password(value)
         except ValidationError as e:
             raise serializers.ValidationError(list(e.messages))
         return value
@@ -146,9 +121,8 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
     def validate_new_password(self, value):
-        validator = StrongPasswordValidator()
         try:
-            validator.validate(value)
+            validate_password(value)
         except ValidationError as e:
             raise serializers.ValidationError(list(e.messages))
         return value
@@ -168,9 +142,8 @@ class ResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True, write_only=True)
 
     def validate_new_password(self, value):
-        validator = StrongPasswordValidator()
         try:
-            validator.validate(value)
+            validate_password(value)
         except ValidationError as e:
             raise serializers.ValidationError(list(e.messages))
         return value
@@ -184,11 +157,12 @@ class RequestEmailOTPSerializer(serializers.Serializer):
         current_email = request.user.email if request else None
         if value.lower() == (current_email or "").lower():
             raise serializers.ValidationError("This is already your current email address.")
-        if User.objects.filter(email__iexact=value).exclude(pk=request.user.pk if request else None).exists():
-            raise serializers.ValidationError("An account with this email already exists.")
         return value
 
 
 class VerifyEmailOTPSerializer(serializers.Serializer):
     new_email = serializers.EmailField(required=True)
     otp = serializers.CharField(required=True, max_length=6, min_length=6)
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField(required=True)

@@ -5,7 +5,12 @@ export const getResponseData = async (res) => {
   const text = await res.text();
   if (!text) return null;
   try {
-    return JSON.parse(text);
+    const data = JSON.parse(text);
+    // Unwrap our backend envelope if present (e.g. StandardizedJSONRenderer)
+    if (data && typeof data === 'object' && data.status === 'success' && 'data' in data) {
+      return data.data;
+    }
+    return data;
   } catch (_) {
     return text;
   }
@@ -14,12 +19,19 @@ export const getResponseData = async (res) => {
 export const extractErrorMessage = (data) => {
   if (typeof data === 'string') return data;
   if (data && typeof data === 'object') {
+    // New standardized error envelope format
+    if (data.status === 'error' && data.message) return data.message;
+    
+    // Legacy formats
     if (data.detail) return data.detail;
     if (data.non_field_errors) return Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
     
+    // Fallback: check if standard envelope has field errors
+    const errorDict = data.errors || data;
+    
     // Map over keys for DRF field errors
-    const errors = Object.keys(data).map(key => {
-      const fieldError = data[key];
+    const errors = Object.keys(errorDict).map(key => {
+      const fieldError = errorDict[key];
       const msg = Array.isArray(fieldError) ? fieldError[0] : fieldError;
       return `${key.charAt(0).toUpperCase() + key.slice(1)}: ${msg}`;
     });
@@ -69,7 +81,7 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
             throw new Error("Refresh token expired or invalid");
           }
 
-          const refreshData = await refreshResponse.json();
+          const refreshData = await getResponseData(refreshResponse);
           localStorage.setItem('access_token', refreshData.access);
           if (refreshData.refresh) {
             localStorage.setItem('refresh_token', refreshData.refresh);

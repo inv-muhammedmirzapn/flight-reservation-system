@@ -18,7 +18,8 @@ import {
   fareReducer,
   foodItemReducer,
   flightMealReducer,
-} from './adminSlices';
+  seatPriceTemplateReducer,
+} from '@/admin/_core/store/adminSlices';
 
 export const store = configureStore({
   reducer: {
@@ -40,5 +41,7 @@ export const store = configureStore({
     fare: fareReducer,
     foodItem: foodItemReducer,
     flightMeal: flightMealReducer,
+    seatPriceTemplate: seatPriceTemplateReducer,
   },
 });
+

@@ -6,12 +6,13 @@ from .views import CustomTokenObtainPairView
 from .views import (
     RegisterView, ProfileAPIView, GoogleLoginView,
     ChangePasswordAPIView, ForgotPasswordView, ResetPasswordView,
-    RequestEmailOTPView, VerifyEmailOTPView,
+    RequestEmailOTPView, VerifyEmailOTPView, LogoutView
 )
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('google-login/', GoogleLoginView.as_view(), name='google_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("profile/", ProfileAPIView.as_view(), name="profile"),

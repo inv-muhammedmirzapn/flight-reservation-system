@@ -50,27 +50,6 @@ export const flightsAPI = {
     });
   },
 
-  bulkImport: async (flightsData) => {
-    return fetchWithAuth('/flights/bulk-import/', {
-      method: 'POST',
-      body: JSON.stringify(flightsData),
-    });
-  },
-
-  bulkImportCsv: async (file) => {
-    const token = localStorage.getItem('access_token');
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/flights/bulk-import/`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
-  },
-
   stats: async () => {
     return fetchWithAuth('/flights/stats/');
   },

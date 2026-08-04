@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import (
-    Flight,
     Country, Airport, Airline, AircraftModel, Aircraft,
     FlightRoute, FlightLeg, FlightInstance,
     Seat, Fare, FoodItem, FlightMeal, FlightMealItem,
@@ -11,121 +10,98 @@ from .models import (
 
 # ─── Legacy serializer (unchanged) ─────────────────────────────────────────────
 
-class FlightSerializer(serializers.ModelSerializer):
-    """Serializer for the legacy Flight model."""
+class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
+    """Maps a FlightInstance to the legacy Flight JSON structure expected by the frontend."""
+    flight_number = serializers.CharField(source='flight.flight_no')
+    airline = serializers.CharField(source='flight.airline.airline_name')
+    aircraft = serializers.CharField(source='aircraft.registration')
+    source_airport = serializers.SerializerMethodField()
     source_airport_name = serializers.SerializerMethodField()
-    destination_airport_name = serializers.SerializerMethodField()
     source_terminals = serializers.SerializerMethodField()
+    destination_airport = serializers.SerializerMethodField()
+    destination_airport_name = serializers.SerializerMethodField()
     destination_terminals = serializers.SerializerMethodField()
-    # New fields pulled from the normalised schema
-    baggage_weight_kg = serializers.SerializerMethodField()
-    baggage_number_allowed = serializers.SerializerMethodField()
-    handbag_weight_kg = serializers.SerializerMethodField()
+    departure_time = serializers.DateTimeField(source='scheduled_departure')
+    arrival_time = serializers.DateTimeField(source='scheduled_arrival')
+    base_fare = serializers.SerializerMethodField()
+    total_seats = serializers.SerializerMethodField()
+    available_seats = serializers.SerializerMethodField()
+    stops = serializers.SerializerMethodField()
+    
+    baggage_weight_kg = serializers.DecimalField(source='flight.baggage_weight_allowed_per_person', max_digits=6, decimal_places=2)
+    baggage_number_allowed = serializers.IntegerField(source='flight.baggage_number_allowed_per_person')
+    handbag_weight_kg = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2)
     fares = serializers.SerializerMethodField()
-    flight_instance_id = serializers.SerializerMethodField()
+    flight_instance_id = serializers.IntegerField(source='id')
 
     class Meta:
-        model = Flight
+        model = FlightInstance
         fields = [
             "id", "flight_number", "airline", "aircraft",
             "source_airport", "source_airport_name", "source_terminals",
             "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
             "base_fare", "total_seats", "available_seats",
-            "status", "external_id", "sync_source", "stops",
-            # Enriched fields from normalised schema
+            "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
         ]
-        read_only_fields = ["id"]
 
-    def _get_route(self, obj):
-        """Cached lookup of the linked FlightRoute."""
-        if not hasattr(self, '_route_cache'):
-            self._route_cache = {}
-        if obj.pk not in self._route_cache:
-            try:
-                self._route_cache[obj.pk] = FlightRoute.objects.get(flight_no=obj.flight_number)
-            except FlightRoute.DoesNotExist:
-                self._route_cache[obj.pk] = None
-        return self._route_cache[obj.pk]
+    def _get_first_leg(self, obj):
+        return obj.flight.legs.order_by('leg_order').first()
 
-    def _get_instance(self, obj):
-        """Cached lookup of FlightInstance closest to the requested search date."""
-        if not hasattr(self, '_instance_cache'):
-            self._instance_cache = {}
-        if obj.pk not in self._instance_cache:
-            route = self._get_route(obj)
-            if route:
-                qs = FlightInstance.objects.filter(flight=route)
-                # If a search date is in the request context, prefer the instance on that date
-                request = self.context.get('request')
-                search_date = request.query_params.get('date') if request else None
-                if search_date:
-                    from datetime import date as date_type
-                    inst = qs.filter(date=search_date).first()
-                    if not inst:
-                        # Fall back to nearest upcoming
-                        inst = qs.order_by('date').first()
-                else:
-                    inst = qs.order_by('date').first()
-                self._instance_cache[obj.pk] = inst
-            else:
-                self._instance_cache[obj.pk] = None
-        return self._instance_cache[obj.pk]
+    def _get_last_leg(self, obj):
+        return obj.flight.legs.order_by('leg_order').last()
+
+    def get_source_airport(self, obj):
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.iata_code if leg else "N/A"
 
     def get_source_airport_name(self, obj):
-        try:
-            return Airport.objects.get(iata_code=obj.source_airport).airport_name
-        except Airport.DoesNotExist:
-            return obj.source_airport
-
-    def get_destination_airport_name(self, obj):
-        try:
-            return Airport.objects.get(iata_code=obj.destination_airport).airport_name
-        except Airport.DoesNotExist:
-            return obj.destination_airport
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.airport_name if leg else "N/A"
 
     def get_source_terminals(self, obj):
-        try:
-            return Airport.objects.get(iata_code=obj.source_airport).terminals
-        except Airport.DoesNotExist:
-            return []
+        leg = self._get_first_leg(obj)
+        return leg.departure_airport.terminals if leg else []
+
+    def get_destination_airport(self, obj):
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.iata_code if leg else "N/A"
+
+    def get_destination_airport_name(self, obj):
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.airport_name if leg else "N/A"
 
     def get_destination_terminals(self, obj):
-        try:
-            return Airport.objects.get(iata_code=obj.destination_airport).terminals
-        except Airport.DoesNotExist:
+        leg = self._get_last_leg(obj)
+        return leg.arrival_airport.terminals if leg else []
+
+    def get_base_fare(self, obj):
+        fare = obj.fares.order_by('price').first()
+        return float(fare.price) if fare else 0.0
+
+    def get_total_seats(self, obj):
+        return obj.seats.count()
+
+    def get_available_seats(self, obj):
+        from .models import SeatStatus
+        return obj.seats.filter(status=SeatStatus.AVAILABLE).count()
+
+    def get_stops(self, obj):
+        legs = obj.flight.legs.order_by('leg_order')
+        if legs.count() <= 1:
             return []
-
-    def get_baggage_weight_kg(self, obj):
-        route = self._get_route(obj)
-        if route:
-            return float(route.baggage_weight_allowed_per_person)
-        return 15.0  # sensible default
-
-    def get_baggage_number_allowed(self, obj):
-        route = self._get_route(obj)
-        if route:
-            return route.baggage_number_allowed_per_person
-        return 1
-
-    def get_handbag_weight_kg(self, obj):
-        route = self._get_route(obj)
-        if route:
-            return float(route.handbag_weight_allowed_per_person)
-        return 7.0  # sensible default
+        stops = []
+        for leg in legs[:legs.count()-1]:
+            stops.append(leg.arrival_airport.city)
+        return stops
 
     def get_fares(self, obj):
-        """Return per-class fare info from the Fare model if available."""
-        instance = self._get_instance(obj)
-        if not instance:
-            return {}
         from .models import SeatStatus
         fares = {}
-        for fare in instance.fares.all():
-            # Count physical AVAILABLE seats — this is the single source of truth
-            real_available = instance.seats.filter(
+        for fare in obj.fares.all():
+            real_available = obj.seats.filter(
                 seat_class=fare.cabin_class,
                 status=SeatStatus.AVAILABLE
             ).count()
@@ -139,46 +115,7 @@ class FlightSerializer(serializers.ModelSerializer):
                 'meal_included': fare.meal_included,
                 'baggage_allowance': float(fare.baggage_allowance) if fare.baggage_allowance else None,
             }
-        return fares
-
-    def get_flight_instance_id(self, obj):
-        instance = self._get_instance(obj)
-        return instance.id if instance else None
-
-    def validate(self, attrs):
-        instance = self.instance
-        departure_time = attrs.get("departure_time", getattr(instance, "departure_time", None))
-        arrival_time = attrs.get("arrival_time", getattr(instance, "arrival_time", None))
-        source_airport = attrs.get("source_airport", getattr(instance, "source_airport", ""))
-        destination_airport = attrs.get("destination_airport", getattr(instance, "destination_airport", ""))
-        total_seats = attrs.get("total_seats", getattr(instance, "total_seats", None))
-        available_seats = attrs.get("available_seats", getattr(instance, "available_seats", None))
-        base_fare = attrs.get("base_fare", getattr(instance, "base_fare", None))
-
-        if source_airport and destination_airport:
-            if source_airport.strip().upper() == destination_airport.strip().upper():
-                raise serializers.ValidationError("Source and destination airports cannot be identical.")
-
-        if departure_time and arrival_time:
-            if arrival_time <= departure_time:
-                raise serializers.ValidationError("Arrival time must be later than departure time.")
-
-        if total_seats is not None and total_seats < 0:
-            raise serializers.ValidationError({"total_seats": "Total seats cannot be negative."})
-        if available_seats is not None and available_seats < 0:
-            raise serializers.ValidationError({"available_seats": "Available seats cannot be negative."})
-        if total_seats is not None and available_seats is not None and available_seats > total_seats:
-            raise serializers.ValidationError("Available seats cannot exceed total seats.")
-
-        if base_fare is not None:
-            try:
-                from decimal import Decimal
-                if Decimal(base_fare) < 0:
-                    raise serializers.ValidationError({"base_fare": "Base fare cannot be negative."})
-            except (ValueError, TypeError):
-                raise serializers.ValidationError({"base_fare": "Base fare must be a valid number."})
-
-        return attrs
+        return fares if fares else None
 
 
 # ─── New entity serializers ─────────────────────────────────────────────────────
@@ -281,7 +218,8 @@ class AircraftSerializer(serializers.ModelSerializer):
             "id", "registration",
             "airline", "airline_name",
             "aircraft_model", "model_display",
-            "economy_capacity", "business_capacity", "first_class_capacity"
+            "economy_capacity", "business_capacity", "first_class_capacity",
+            "economy_layout", "business_layout", "first_class_layout"
         ]
 
     def get_model_display(self, obj):
@@ -292,6 +230,27 @@ class AircraftSerializer(serializers.ModelSerializer):
         import re
         if not re.match(r'^[A-Z0-9\-]+$', v):
             raise serializers.ValidationError("Registration must be alphanumeric with hyphens.")
+        return v
+
+    def validate_economy_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 3-3")
+        return v
+
+    def validate_business_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
+        return v
+
+    def validate_first_class_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
         return v
 
 
@@ -311,9 +270,14 @@ class FlightLegSerializer(serializers.ModelSerializer):
             "id", "leg_order",
             "departure_airport", "departure_airport_iata",
             "arrival_airport", "arrival_airport_iata",
+            "flight_duration_minutes", "layover_duration_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival"
         ]
+        extra_kwargs = {
+            "scheduled_departure": {"required": False, "allow_null": True},
+            "scheduled_arrival": {"required": False, "allow_null": True},
+        }
 
     def validate(self, attrs):
         dep = attrs.get("departure_airport")
@@ -322,11 +286,15 @@ class FlightLegSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"arrival_airport": "Arrival airport must differ from departure airport."}
             )
-        dep_time = attrs.get("scheduled_departure")
-        arr_time = attrs.get("scheduled_arrival")
-        if dep_time and arr_time and arr_time <= dep_time:
+        duration = attrs.get("flight_duration_minutes")
+        if duration is not None and duration <= 0:
             raise serializers.ValidationError(
-                {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
+                {"flight_duration_minutes": "Flight duration must be greater than 0 minutes."}
+            )
+        layover = attrs.get("layover_duration_minutes")
+        if layover is not None and layover < 0:
+            raise serializers.ValidationError(
+                {"layover_duration_minutes": "Layover duration cannot be negative."}
             )
         return attrs
 
@@ -347,22 +315,10 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def _validate_legs_ordering(self, legs_data):
-        """Cross-leg: each leg's departure must be after previous leg's arrival."""
-        sorted_legs = sorted(legs_data, key=lambda l: l.get("leg_order", 0))
-        for i in range(1, len(sorted_legs)):
-            prev_arr = sorted_legs[i - 1].get("scheduled_arrival")
-            curr_dep = sorted_legs[i].get("scheduled_departure")
-            if prev_arr and curr_dep and curr_dep < prev_arr:
-                raise serializers.ValidationError(
-                    f"Leg {sorted_legs[i]['leg_order']} departure must be after leg "
-                    f"{sorted_legs[i-1]['leg_order']} arrival."
-                )
-
     def validate(self, attrs):
         legs_data = attrs.get("legs", [])
-        if legs_data:
-            self._validate_legs_ordering(legs_data)
+        if not legs_data and not self.instance:
+            raise serializers.ValidationError({"legs": "At least one leg is required."})
         return attrs
 
     @transaction.atomic
@@ -380,6 +336,7 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+
         if legs_data is not None:
             instance.legs.all().delete()
             for i, leg_data in enumerate(legs_data, start=1):
@@ -388,7 +345,7 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         return instance
 
 
-# ─── Flight Instance ────────────────────────────────────────────────────────────
+# ─── Flight Instance ───────────────────────────────────────────────────────────
 
 class FlightInstanceSerializer(serializers.ModelSerializer):
     flight_no = serializers.CharField(source="flight.flight_no", read_only=True)
@@ -396,14 +353,26 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     aircraft_registration = serializers.CharField(
         source="aircraft.registration", read_only=True
     )
+    aircraft_economy_layout = serializers.CharField(
+        source="aircraft.economy_layout", read_only=True
+    )
+    aircraft_business_layout = serializers.CharField(
+        source="aircraft.business_layout", read_only=True
+    )
+    aircraft_first_class_layout = serializers.CharField(
+        source="aircraft.first_class_layout", read_only=True
+    )
     route = serializers.SerializerMethodField()
+
+    total_capacity = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
-            "aircraft", "aircraft_registration", "route",
-            "status",
+            "aircraft", "aircraft_registration", "total_capacity", "route",
+            "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
+            "status", "delay_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",
             "checkin_open", "boarding_time",
@@ -411,6 +380,11 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_total_capacity(self, obj):
+        if not obj.aircraft:
+            return 0
+        return (obj.aircraft.economy_capacity or 0) + (obj.aircraft.business_capacity or 0) + (obj.aircraft.first_class_capacity or 0)
 
     def get_route(self, obj):
         legs = obj.flight.legs.order_by('leg_order')
@@ -424,12 +398,26 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         dep = attrs.get("scheduled_departure", getattr(self.instance, "scheduled_departure", None))
         arr = attrs.get("scheduled_arrival", getattr(self.instance, "scheduled_arrival", None))
+        route = attrs.get("flight", getattr(self.instance, "flight", None))
+
+        if dep and route and not arr:
+            from datetime import timedelta
+            legs = route.legs.all()
+            if legs.exists():
+                total_mins = sum((leg.flight_duration_minutes or 0) + (leg.layover_duration_minutes or 0) for leg in legs)
+                if total_mins > 0:
+                    arr = dep + timedelta(minutes=total_mins)
+                    attrs["scheduled_arrival"] = arr
+
         if dep and arr and arr <= dep:
             raise serializers.ValidationError(
                 {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
             )
 
-
+        # Auto-set status to DELAYED when delay_minutes > 0 and status not explicitly provided
+        delay = attrs.get("delay_minutes", getattr(self.instance, "delay_minutes", 0) or 0)
+        if delay > 0 and "status" not in attrs:
+            attrs["status"] = "DELAYED"
 
         return attrs
 
@@ -437,14 +425,20 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
 # ─── Seat ──────────────────────────────────────────────────────────────────────
 
 class SeatSerializer(serializers.ModelSerializer):
+    attributes = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Seat
         fields = [
             "id", "flight_instance", "seat_number",
             "seat_class", "position", "status",
-            "exit_row", "seat_fee", "currency"
+            "exit_row", "extra_legroom", "seat_fee", "currency",
+            "last_rule_applied", "attributes",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "attributes"]
+
+    def get_attributes(self, obj):
+        return obj.attributes
 
     def validate_seat_fee(self, value):
         if value is not None and value < 0:
@@ -547,3 +541,20 @@ class FlightMealSerializer(serializers.ModelSerializer):
             for item_data in items_data:
                 FlightMealItem.objects.create(flight_meal=instance, **item_data)
         return instance
+
+
+# ─── SeatPriceTemplate ─────────────────────────────────────────────────────────
+
+class SeatPriceTemplateSerializer(serializers.ModelSerializer):
+    aircraft_model_display = serializers.CharField(
+        source="aircraft_model.__str__", read_only=True
+    )
+
+    class Meta:
+        from .models import SeatPriceTemplate
+        model = SeatPriceTemplate
+        fields = [
+            "id", "aircraft_model", "aircraft_model_display",
+            "name", "rules", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
