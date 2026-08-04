@@ -5,14 +5,14 @@ import { bookingAPI } from '@/services/booking-service/bookingService';
 
 export const createBooking = createAsyncThunk(
   'bookings/create',
-  async ({ flightId, passengers }, { rejectWithValue }) => {
+  async ({ flightId, passengers, cabinClass }, { rejectWithValue }) => {
     try {
-      return await bookingAPI.create(flightId, passengers);
+      return await bookingAPI.create(flightId, passengers, cabinClass);
     } catch (error) {
       let message = 'Booking failed';
       try {
         const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
+        message = errObj.detail || errObj.message || message;
       } catch (_) {
         message = error.message || message;
       }

@@ -109,7 +109,7 @@ export default function MyBookingsPage() {
           <p className="text-sm font-semibold text-slate-700">{error}</p>
         </div>
       ) : displayedItems.length === 0 ? (
-        <div className="plain-card rounded-3xl p-10 text-center space-y-4 max-w-md mx-auto mt-6">
+        <div className="p-10 text-center space-y-4 max-w-md mx-auto mt-6">
           <span className="material-symbols-outlined text-4xl text-slate-400">
             {showPastBookings ? "history" : "airplane_ticket"}
           </span>

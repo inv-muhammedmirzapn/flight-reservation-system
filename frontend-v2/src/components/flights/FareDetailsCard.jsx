@@ -2,20 +2,29 @@ import React from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-export default function FareDetailsCard({ flight, passengerCount = 1, onBookingAction }) {
+export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", passengerCount = 1, onBookingAction }) {
   const navigate = useNavigate();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
 
   if (!flight) return null;
 
-  const { base_fare = 0, available_seats = 0 } = flight;
-  const isWaitlisted = Number(available_seats) === 0;
+  const fareObj = flight.fares?.[selectedCabin];
+  const unitFare = Math.round(fareObj ? Number(fareObj.price) : Number(flight.base_fare) || 0);
+  const cabinAvailableSeats = fareObj?.available_seats ?? flight.available_seats;
+  const isWaitlisted = Number(cabinAvailableSeats) === 0;
 
-  const unitFare = Number(base_fare) || 0;
-  const totalBaseFare = Math.round(unitFare * passengerCount);
-  const taxesAndOther = Math.round(totalBaseFare * 0.12);
-  const grandTotal = totalBaseFare + taxesAndOther;
+  const getCabinLabel = (cabin) => {
+    const norm = (cabin || "ECONOMY").toUpperCase();
+    if (norm.includes("BUSINESS")) return "Business Fare";
+    if (norm.includes("FIRST")) return "First Class Fare";
+    return "Economy Fare";
+  };
+  const cabinLabel = getCabinLabel(selectedCabin);
+
+  const totalBaseFare = unitFare * passengerCount;
+  const gstAmount = Math.round(totalBaseFare * 0.12);
+  const grandTotal = totalBaseFare + gstAmount;
 
   const handleClick = () => {
     if (!isAuthenticated) {
@@ -40,18 +49,32 @@ export default function FareDetailsCard({ flight, passengerCount = 1, onBookingA
       </h3>
 
       {/* Breakdown Rows */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-          <span>Base Fare {passengerCount > 1 ? `(${passengerCount} passengers)` : ""}</span>
-          <span className="font-bold text-slate-950">
+      <div className="flex flex-col gap-2 text-xs font-medium text-slate-700">
+        <div className="flex items-center justify-between">
+          <span>{cabinLabel}</span>
+          <span className="text-slate-950">
+            ₹ {unitFare.toLocaleString("en-IN")}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span>Passengers</span>
+          <span className="text-slate-950">
+            {passengerCount}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between mt-4">
+          <span>Total Fare</span>
+          <span className="text-slate-950">
             ₹ {totalBaseFare.toLocaleString("en-IN")}
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-          <span>Taxes and Other</span>
-          <span className="font-bold text-slate-950">
-            ₹ {taxesAndOther.toLocaleString("en-IN")}
+        <div className="flex items-center justify-between">
+          <span>GST (12%)</span>
+          <span className="text-slate-950">
+            ₹ {gstAmount.toLocaleString("en-IN")}
           </span>
         </div>
       </div>
@@ -59,8 +82,9 @@ export default function FareDetailsCard({ flight, passengerCount = 1, onBookingA
       {/* Divider */}
       <div className="border-t border-slate-300/80 my-5" />
 
-      {/* Total Amount */}
+      {/* Grand Total Amount */}
       <div className="flex flex-col items-end gap-1">
+        <span className="text-xs font-semibold text-slate-500">Grand Total</span>
         <span className="text-2xl font-bold text-slate-950">
           ₹ {grandTotal.toLocaleString("en-IN")}
         </span>

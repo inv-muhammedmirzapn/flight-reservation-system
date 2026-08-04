@@ -1,11 +1,12 @@
 import { fetchWithAuth } from '@/services/apiClient';
 
 export const waitlistAPI = {
-  join: async (flightId, passengers = []) => {
+  join: async (flightId, passengers = [], cabinClass = 'ECONOMY') => {
     return fetchWithAuth('/waitlist/join/', {
       method: 'POST',
       body: JSON.stringify({
         flight: flightId,
+        cabin_class: cabinClass,
         passengers,
       }),
     });

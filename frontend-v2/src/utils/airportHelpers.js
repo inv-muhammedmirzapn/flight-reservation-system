@@ -7,14 +7,26 @@ export const AIRPORT_MAP = {
   TRV: { city: "Trivandrum", code: "TRV", name: "Trivandrum International Airport", country: "India" },
   BOM: { city: "Mumbai", code: "BOM", name: "Chhatrapati Shivaji Maharaj International Airport", country: "India" },
   BLR: { city: "Bengaluru", code: "BLR", name: "Kempegowda International Airport", country: "India" },
+  FRA: { city: "Frankfurt", code: "FRA", name: "Frankfurt Airport", country: "Germany" },
+  MUC: { city: "Munich", code: "MUC", name: "Munich Airport", country: "Germany" },
+  DOH: { city: "Doha", code: "DOH", name: "Hamad International Airport", country: "Qatar" },
+  IST: { city: "Istanbul", code: "IST", name: "Istanbul Airport", country: "Turkey" },
   JFK: { city: "New York", code: "JFK", name: "John F. Kennedy International Airport", country: "USA" },
   LHR: { city: "London", code: "LHR", name: "Heathrow Airport", country: "UK" },
-  HND: { city: "Tokyo", code: "HND", name: "Haneda Airport", country: "Japan font" },
+  HND: { city: "Tokyo", code: "HND", name: "Haneda Airport", country: "Japan" },
   SIN: { city: "Singapore", code: "SIN", name: "Changi Airport", country: "Singapore" }
 };
 
-export function getAirportInfo(code) {
-  if (!code) return { city: "Unknown", code: "---", name: "Airport", country: "" };
-  const upper = String(code).trim().toUpperCase();
-  return AIRPORT_MAP[upper] || { city: upper, code: upper, name: `${upper} Airport`, country: "" };
+export function getAirportInfo(input) {
+  if (!input) return { city: "Unknown", code: "---", name: "Airport", country: "" };
+  const upper = String(input).trim().toUpperCase();
+  if (AIRPORT_MAP[upper]) return AIRPORT_MAP[upper];
+
+  // Search by city name or airport name match
+  const found = Object.values(AIRPORT_MAP).find(
+    (item) => item.city.toUpperCase() === upper || item.name.toUpperCase().includes(upper)
+  );
+  if (found) return found;
+
+  return { city: upper, code: upper, name: `${upper} Airport`, country: "" };
 }

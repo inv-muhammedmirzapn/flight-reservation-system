@@ -1,4 +1,4 @@
-import { API_BASE_URL, fetchWithAuth } from '@/services/apiClient';
+import { API_BASE_URL, fetchWithAuth, getResponseData, extractErrorMessage } from '@/services/apiClient';
 
 export const authAPI = {
   register: async (userData) => {
@@ -7,8 +7,8 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
+    const data = await getResponseData(response);
+    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
   },
 
@@ -18,9 +18,22 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
+    const data = await getResponseData(response);
+    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
+  },
+
+  logout: async (refreshToken) => {
+    if (!refreshToken) return null;
+    try {
+      return await fetchWithAuth('/auth/logout/', {
+        method: 'POST',
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+    } catch (err) {
+      console.warn("Logout endpoint error:", err);
+      return null;
+    }
   },
 
   googleLogin: async (token) => {
@@ -29,8 +42,8 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
+    const data = await getResponseData(response);
+    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
   },
 
@@ -44,8 +57,8 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
+    const data = await getResponseData(response);
+    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
   },
 
@@ -55,8 +68,8 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp, new_password }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
+    const data = await getResponseData(response);
+    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
   }
 };

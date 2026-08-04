@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
+import CabinClassSelector from "@/components/flights/CabinClassSelector";
 import PassengerListSection from "@/components/flights/PassengerListSection";
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
 import toast from "react-hot-toast";
@@ -12,16 +13,23 @@ import toast from "react-hot-toast";
 export default function FlightDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
+
+  const initialCabinParam = searchParams.get("cabinClass");
+  const initialCabinKey = initialCabinParam
+    ? (initialCabinParam.toUpperCase().includes("BUSINESS") ? "BUSINESS" : initialCabinParam.toUpperCase().includes("FIRST") ? "FIRST" : "ECONOMY")
+    : "ECONOMY";
 
   const [flight, setFlight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCabin, setSelectedCabin] = useState(initialCabinKey);
 
   // Passengers state & Validation errors
   const [passengers, setPassengers] = useState([
-    { id: 1, name: "", age: "", gender: "Male" }
+    { id: 1, name: "", age: "", gender: "Male", phone_number: "" }
   ]);
   const [passengerErrors, setPassengerErrors] = useState({});
 
@@ -62,7 +70,6 @@ export default function FlightDetailPage() {
     passengers.forEach((p, index) => {
       const pErr = {};
 
-      // Name validation: max 40 chars, only alphabets
       if (!p.name || !p.name.trim()) {
         pErr.name = "Full name is required";
         isValid = false;
@@ -74,7 +81,6 @@ export default function FlightDetailPage() {
         isValid = false;
       }
 
-      // Age validation: only digits, 1-120 max
       if (!p.age) {
         pErr.age = "Age is required";
         isValid = false;
@@ -97,7 +103,6 @@ export default function FlightDetailPage() {
 
   const handlePassengersChange = (updated) => {
     setPassengers(updated);
-    // Clear errors when user modifies input
     if (Object.keys(passengerErrors).length > 0) {
       setPassengerErrors({});
     }
@@ -116,25 +121,45 @@ export default function FlightDetailPage() {
       return;
     }
 
-    const isWaitlisted = Number(flight.available_seats) === 0;
+    const formattedPassengers = passengers.map((p) => {
+      const g = p.gender === "Female" || p.gender === "F" ? "F" : p.gender === "Other" || p.gender === "O" ? "O" : "M";
+      return {
+        name: p.name.trim(),
+        age: Number(p.age),
+        gender: g,
+        phone_number: p.phone_number || ""
+      };
+    });
+
+    // Check availability for selected cabin
+    const selectedFareObj = flight.fares?.[selectedCabin];
+    const cabinAvailableSeats = selectedFareObj?.available_seats ?? flight.available_seats;
+    const isWaitlisted = Number(cabinAvailableSeats) === 0;
 
     try {
       if (isWaitlisted) {
-        const res = await waitlistAPI.join(flight.id, passengers);
+        const res = await waitlistAPI.join(flight.id, formattedPassengers, selectedCabin);
         toast.success(`Request submitted to join Waitlist for flight ${flight.flight_number}!`);
         navigate(`/booking-confirmation/waitlist/${res.id}`, {
-          state: { waitlist: res, flight, passengers }
+          state: { waitlist: res, flight, passengers: formattedPassengers }
         });
       } else {
-        const res = await bookingAPI.create(flight.id, passengers);
+        const res = await bookingAPI.create(flight.id, formattedPassengers, selectedCabin);
         toast.success("Booking confirmed successfully!");
         navigate(`/booking-confirmation/${res.id}`, {
-          state: { booking: res, flight, passengers }
+          state: { booking: res, flight, passengers: formattedPassengers }
         });
       }
     } catch (err) {
       console.error("Booking error:", err);
-      toast.error(err?.message || "Booking failed. Please try again.");
+      let errorMsg = "Booking failed. Please try again.";
+      try {
+        const parsed = typeof err.message === "string" ? JSON.parse(err.message) : err;
+        errorMsg = parsed.message || parsed.detail || errorMsg;
+      } catch (_) {
+        errorMsg = err.message || errorMsg;
+      }
+      toast.error(errorMsg);
     }
   };
 
@@ -176,8 +201,16 @@ export default function FlightDetailPage() {
   return (
     <div className="flex-1 min-h-screen mt-12 pt-12 pb-8 px-4 md:px-6 max-w-6xl mx-auto w-full">
       {/* Top Header Navigation */}
-      <div className="flex items-center justify-between mb-6 ml-4">
-        <h1 className="text-xl font-bold text-slate-950">
+      <div className="mb-6 ml-4">
+        <button
+          type="button"
+          onClick={() => navigate("/flights", { state: { showPastBookings: location.state?.showPastBookings } })}
+          className="text-xs font-semibold text-slate-600 hover:text-slate-950 cursor-pointer transition-colors flex items-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Back to Flights
+        </button>
+        <h1 className="text-xl font-bold text-slate-950 mt-3">
           Confirm Booking
         </h1>
       </div>
@@ -187,7 +220,14 @@ export default function FlightDetailPage() {
         {/* Left Panel (Scrollable) */}
         <div className="flex-1 w-full space-y-6">
           {/* Flight Itinerary Card */}
-          <FlightItineraryCard flight={flight} />
+          <FlightItineraryCard flight={flight} selectedCabinClass={selectedCabin} />
+
+          {/* Cabin Class Selection Component */}
+          <CabinClassSelector
+            flight={flight}
+            selectedCabin={selectedCabin}
+            onSelectCabin={setSelectedCabin}
+          />
 
           {/* Add Passengers Section */}
           <PassengerListSection
@@ -201,6 +241,7 @@ export default function FlightDetailPage() {
         <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-24 flex-shrink-0">
           <FareDetailsCard
             flight={flight}
+            selectedCabin={selectedCabin}
             passengerCount={passengers.length}
             onBookingAction={handleBookingAction}
           />

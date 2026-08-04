@@ -15,7 +15,12 @@ export const getResponseData = async (res) => {
   const text = await res.text();
   if (!text) return null;
   try {
-    return JSON.parse(text);
+    const json = JSON.parse(text);
+    // Unwrap global API response envelope: { status: "success", data: ... }
+    if (json && typeof json === 'object' && json.status === 'success') {
+      return json.data !== undefined ? json.data : json;
+    }
+    return json;
   } catch (_) {
     return text;
   }
@@ -24,6 +29,17 @@ export const getResponseData = async (res) => {
 export const extractErrorMessage = (data) => {
   if (typeof data === 'string') return data;
   if (data && typeof data === 'object') {
+    // Handle standard envelope error: { status: "error", message: "...", errors: { field: ["msg"] } }
+    if (data.message) {
+      if (data.errors && typeof data.errors === 'object' && Object.keys(data.errors).length > 0) {
+        const errorDetails = Object.entries(data.errors).map(([field, msgs]) => {
+          const msgStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+          return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgStr}`;
+        }).join(' · ');
+        return `${data.message}${errorDetails ? ' — ' + errorDetails : ''}`;
+      }
+      return data.message;
+    }
     if (data.detail) return data.detail;
     if (data.non_field_errors)
       return Array.isArray(data.non_field_errors)
@@ -33,10 +49,10 @@ export const extractErrorMessage = (data) => {
     // Map over keys for DRF field errors
     const errors = Object.keys(data).map((key) => {
       const fieldError = data[key];
-      const msg = Array.isArray(fieldError) ? fieldError[0] : fieldError;
+      const msg = Array.isArray(fieldError) ? fieldError.join(', ') : fieldError;
       return `${key.charAt(0).toUpperCase() + key.slice(1)}: ${msg}`;
     });
-    return errors.join(' · ');
+    if (errors.length > 0) return errors.join(' · ');
   }
   return "An unexpected error occurred.";
 };
@@ -79,11 +95,19 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
       });
 
       if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        localStorage.setItem('access_token', refreshData.access);
+        const refreshRaw = await refreshResponse.json();
+        const refreshData = (refreshRaw && refreshRaw.status === 'success' && refreshRaw.data)
+          ? refreshRaw.data
+          : refreshRaw;
+
+        const newAccess = refreshData.access;
+        const newRefresh = refreshData.refresh || localStorage.getItem('refresh_token');
+
+        if (newAccess) localStorage.setItem('access_token', newAccess);
+        if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
 
         // Retry the original request with the new token
-        headers['Authorization'] = `Bearer ${refreshData.access}`;
+        headers['Authorization'] = `Bearer ${newAccess}`;
         const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
           ...options,
           headers,

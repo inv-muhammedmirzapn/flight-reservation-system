@@ -1,7 +1,3 @@
-"""
-Serializers for M7 analytics API responses.
-These are read-only output serializers; no model binding needed.
-"""
 from rest_framework import serializers
 
 

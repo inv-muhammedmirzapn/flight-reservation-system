@@ -6,13 +6,26 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 
-from apps.flights.models import Flight
+from apps.flights.models import FlightInstance, CabinClass
+from apps.bookings.models import Booking, BookingStatus
 from .models import WaitlistEntry, WaitlistStatus
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
 from .serializers import WaitlistEntrySerializer
-from drf_spectacular.utils import extend_schema, inline_serializer
+from .services import (
+    process_waitlist_allocations,
+    join_waitlist,
+    cancel_waitlist_entry,
+    promote_waitlist_entry,
+    expire_departed_waitlist_entries,
+    get_waitlist_passenger_count,
+    WaitlistError,
+)
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
 from rest_framework import serializers as rf_serializers
 
 
@@ -30,6 +43,7 @@ class WaitlistJoinView(APIView):
             name='WaitlistJoinRequest',
             fields={
                 'flight': rf_serializers.IntegerField(),
+                'cabin_class': rf_serializers.ChoiceField(choices=['ECONOMY', 'BUSINESS', 'FIRST'], required=False, allow_null=True),
                 'passengers': rf_serializers.ListField(
                     child=inline_serializer(
                         name='WaitlistPassengerRequest',
@@ -43,97 +57,30 @@ class WaitlistJoinView(APIView):
                 )
             }
         ),
-        responses={201: WaitlistEntrySerializer}
+        responses={201: WaitlistEntrySerializer},
+        tags=["Waitlist"]
     )
     def post(self, request, *args, **kwargs):
-        flight_id = request.data.get("flight")
+        flight_id      = request.data.get("flight")
         passengers_data = request.data.get("passengers", [])
+        cabin_class    = request.data.get("cabin_class")
 
         if not flight_id:
-            return Response(
-                {"error": "flight is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
+            raise ValidationError({"error": "flight is required."})
         if not passengers_data or not isinstance(passengers_data, list) or len(passengers_data) == 0:
-            return Response({'error': 'At least one passenger is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        seat_count = len(passengers_data)
+            raise ValidationError({"error": "At least one passenger is required."})
 
         try:
-            flight = Flight.objects.get(id=flight_id)
-        except (Flight.DoesNotExist, ValueError):
-            return Response(
-                {"error": "Flight not found."},
-                status=status.HTTP_404_NOT_FOUND,
+            entry = join_waitlist(
+                user=request.user,
+                flight_id=flight_id,
+                passengers_data=passengers_data,
+                cabin_class=cabin_class,
             )
-
-        # Validate flight departure
-        if flight.departure_time <= timezone.now():
-            return Response(
-                {"error": "Cannot join the waitlist for a flight that has already departed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validate seat_count range
-        if seat_count < 1 or seat_count > 9:
-            return Response(
-                {"error": "Seat count must be between 1 and 9 seats."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Enforce that flight must be full
-        if flight.available_seats >= seat_count:
-            return Response(
-                {"error": "Waitlist tickets cannot be booked on the flight as there are enough available seats"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
-        # Validate passenger data
-        for p in passengers_data:
-            name = p.get('name', '')
-            if isinstance(name, str):
-                name = name.strip()
-            age = p.get('age')
-            gender = p.get('gender')
-    
-            if not name or not age or not gender:
-                return Response({'error': 'Name, age, and gender are required for all passengers.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            if len(name) < 2:
-                return Response({'error': 'Passenger name must be at least 2 characters.'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            try:
-                age_int = int(age)
-                if age_int < 1 or age_int > 120:
-                    return Response({'error': 'Passenger age must be between 1 and 120.'}, status=status.HTTP_400_BAD_REQUEST)
-            except (ValueError, TypeError):
-                return Response({'error': 'Passenger age must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
-                    
-            if gender not in ['M', 'F', 'O', 'Male', 'Female', 'Other']:
-                return Response({'error': "Please select a valid option for Gender."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Calculate price based on seat count
-        price = flight.base_fare * seat_count
-
-        # Create waitlist entry
-        entry = WaitlistEntry.objects.create(
-            user=request.user,
-            flight=flight,
-            seat_count=seat_count,
-            price=price,
-            status=WaitlistStatus.PENDING,
-        )
-        
-        from .models import WaitlistPassenger
-        for p_data in passengers_data:
-            WaitlistPassenger.objects.create(
-                waitlist_entry=entry,
-                name=p_data['name'],
-                age=p_data['age'],
-                gender=p_data['gender'],
-                phone_number=p_data.get('phone_number', '')
-            )
+        except WaitlistError as exc:
+            if exc.status_code == 404:
+                raise Http404(str(exc))
+            raise ValidationError({"error": str(exc)})
 
         serializer = WaitlistEntrySerializer(entry)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -150,17 +97,26 @@ class WaitlistListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="List Waitlist Entries",
+        description="Lists waitlist entries for the current user. Admins can see all entries and filter by flight.",
+        responses={200: WaitlistEntrySerializer(many=True)},
+        tags=["Waitlist"],
+        parameters=[
+            OpenApiParameter(
+                name="flight",
+                description="Filter by flight ID (Admins only)",
+                required=False,
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+            )
+        ]
+    )
     def get(self, request, *args, **kwargs):
         is_admin = IsAdminOrSuperuser().has_permission(request, self)
 
         # Auto-expire pending entries whose flights have already departed
-        now = timezone.now()
-        expired_qs = WaitlistEntry.objects.filter(
-            status=WaitlistStatus.PENDING, flight__departure_time__lte=now
-        )
-        if not is_admin:
-            expired_qs = expired_qs.filter(user=request.user)
-        expired_qs.update(status=WaitlistStatus.EXPIRED)
+        expire_departed_waitlist_entries(user=request.user)
 
         # Build list query
         if is_admin:
@@ -171,7 +127,7 @@ class WaitlistListView(APIView):
         else:
             queryset = WaitlistEntry.objects.filter(user=request.user)
 
-        queryset = queryset.order_by('-created_at')
+        queryset = queryset.select_related('flight', 'user').prefetch_related('passengers').order_by('-created_at')
 
         serializer = WaitlistEntrySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -194,13 +150,19 @@ class WaitlistDetailView(APIView):
         except (WaitlistEntry.DoesNotExist, ValueError):
             raise Http404
 
+    @extend_schema(
+        summary="Waitlist Entry Details",
+        description="Retrieves details of a specific waitlist entry.",
+        responses={200: WaitlistEntrySerializer},
+        tags=["Waitlist"]
+    )
     def get(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
         # Auto-expire if flight has departed
         if (
             entry.status == WaitlistStatus.PENDING
-            and entry.flight.departure_time <= timezone.now()
+            and entry.flight.scheduled_departure <= timezone.now()
         ):
             entry.status = WaitlistStatus.EXPIRED
             entry.save()
@@ -226,31 +188,73 @@ class WaitlistCancelView(APIView):
         except (WaitlistEntry.DoesNotExist, ValueError):
             raise Http404
 
+    @extend_schema(
+        summary="Cancel Waitlist Entry",
+        description="Cancels a pending waitlist entry and returns refund details.",
+        request=None,
+        responses={200: inline_serializer('WaitlistCancelResponse', {
+            'message': rf_serializers.CharField(),
+            'refund_amount': rf_serializers.DecimalField(max_digits=10, decimal_places=2),
+            'processing_fee': rf_serializers.DecimalField(max_digits=10, decimal_places=2),
+            'status': rf_serializers.CharField(),
+        })},
+        tags=["Waitlist"]
+    )
     def post(self, request, pk, *args, **kwargs):
         entry = self.get_object(pk)
 
-        if entry.status != WaitlistStatus.PENDING:
-            return Response(
-                {"error": "Only pending waitlist entries can be cancelled."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Cancel entry
-        entry.status = WaitlistStatus.CANCELLED
-        entry.save()
-
-        # Calculate refund (95% refund, 5% processing fee)
-        price = entry.price
-        processing_fee = round(price * Decimal("0.05"), 2)
-        refund_amount = round(price * Decimal("0.95"), 2)
+        try:
+            refund_info = cancel_waitlist_entry(entry)
+        except WaitlistError as exc:
+            raise ValidationError({"error": str(exc)})
 
         return Response(
             {
-                "message": f"Waitlist entry cancelled. A 95% refund of ${refund_amount:.2f} has been processed (after a 5% processing fee of ${processing_fee:.2f}).",
-                "refund_amount": refund_amount,
-                "processing_fee": processing_fee,
-                "status": entry.status,
+                "message": (
+                    f"Waitlist entry cancelled. A 95% refund of "
+                    f"\u20b9{refund_info['refund_amount']:.2f} has been processed "
+                    f"(after a 5% processing fee of \u20b9{refund_info['processing_fee']:.2f})."
+                ),
+                "refund_amount":  refund_info["refund_amount"],
+                "processing_fee": refund_info["processing_fee"],
+                "status":         refund_info["status"],
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+class WaitlistPromoteView(APIView):
+    """
+    POST /api/waitlist/<uuid:pk>/promote/
+    Manually promotes a pending waitlist entry to a confirmed booking.
+    Permission: IsAdminOrSuperuser.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrSuperuser]
+
+    def get_object(self, pk):
+        try:
+            return WaitlistEntry.objects.get(pk=pk)
+        except (WaitlistEntry.DoesNotExist, ValueError):
+            raise Http404
+
+    @extend_schema(
+        summary="Promote Waitlist Entry",
+        description="Manually promotes a pending waitlist entry to a confirmed booking. Admin only.",
+        request=None,
+        responses={200: inline_serializer('WaitlistPromoteResponse', {'message': rf_serializers.CharField()})},
+        tags=["Waitlist"]
+    )
+    def post(self, request, pk, *args, **kwargs):
+        entry = self.get_object(pk)
+
+        try:
+            promote_waitlist_entry(entry)
+        except WaitlistError as exc:
+            raise ValidationError({"error": str(exc)})
+
+        return Response(
+            {"message": "Waitlist entry successfully promoted to confirmed booking."},
             status=status.HTTP_200_OK,
         )
 
@@ -264,13 +268,15 @@ class WaitlistFlightCountView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        summary="Waitlist Flight Count",
+        description="Returns the total number of passengers currently on the waitlist (pending) for a specific flight.",
+        responses={200: inline_serializer('WaitlistCountResponse', {'waitlist_count': rf_serializers.IntegerField()})},
+        tags=["Waitlist"]
+    )
     def get(self, request, flight_id, *args, **kwargs):
         try:
-            # Aggregate seat counts of PENDING waitlist entries
-            result = WaitlistEntry.objects.filter(
-                flight_id=flight_id, status=WaitlistStatus.PENDING
-            ).aggregate(total=Sum("seat_count"))
-            count = result["total"] or 0
+            count = get_waitlist_passenger_count(flight_id)
         except ValueError:
             return Response(
                 {"error": "Invalid flight_id format."},

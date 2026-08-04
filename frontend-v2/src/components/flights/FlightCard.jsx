@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function FlightCard({ flight, onViewDetails }) {
+export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails }) {
   if (!flight) return null;
 
   const {
@@ -12,10 +12,25 @@ export default function FlightCard({ flight, onViewDetails }) {
     arrival_time,
     base_fare = 500,
     available_seats = 0,
-    stops = []
+    stops = [],
+    fares
   } = flight;
 
-  const isWaitlisted = available_seats === 0;
+  // Determine active fare and availability for the selected cabin class
+  const getFareForCabin = (cabin) => {
+    if (!fares) return null;
+    const norm = (cabin || "Economy").toUpperCase().replace(/\s+/g, "_");
+    if (fares[norm]) return fares[norm];
+    if (norm.includes("BUSINESS") && fares["BUSINESS"]) return fares["BUSINESS"];
+    if (norm.includes("FIRST") && fares["FIRST"]) return fares["FIRST"];
+    if (fares["ECONOMY"]) return fares["ECONOMY"];
+    return null;
+  };
+
+  const activeFare = getFareForCabin(selectedCabinClass);
+  const displayPrice = activeFare ? activeFare.price : base_fare;
+  const activeSeats = activeFare ? activeFare.available_seats : available_seats;
+  const isWaitlisted = activeSeats === 0;
 
   // Format Departure & Arrival Date and Time
   const formatDateTime = (isoString) => {
@@ -31,21 +46,24 @@ export default function FlightCard({ flight, onViewDetails }) {
     };
   };
 
-  const dep = formatDateTime(departure_time);
-  const arr = formatDateTime(arrival_time);
+  const depIso = departure_time || flight.scheduled_departure;
+  const arrIso = arrival_time || flight.scheduled_arrival;
+
+  const dep = formatDateTime(depIso);
+  const arr = formatDateTime(arrIso);
 
   // Calculate Duration
-  const calculateDuration = (depIso, arrIso) => {
-    if (!depIso || !arrIso) return "0h 0m";
-    const depMs = new Date(depIso).getTime();
-    const arrMs = new Date(arrIso).getTime();
+  const calculateDuration = (dIso, aIso) => {
+    if (!dIso || !aIso) return "0h 0m";
+    const depMs = new Date(dIso).getTime();
+    const arrMs = new Date(aIso).getTime();
     const diffMins = Math.max(0, Math.floor((arrMs - depMs) / (1000 * 60)));
     const h = Math.floor(diffMins / 60);
     const m = diffMins % 60;
     return `${h}h ${m}m`;
   };
 
-  const durationStr = calculateDuration(departure_time, arrival_time);
+  const durationStr = calculateDuration(depIso, arrIso);
 
   // Calculate Stops Text
   const stopCount = Array.isArray(stops) ? stops.length : typeof stops === "number" ? stops : 0;
@@ -60,7 +78,7 @@ export default function FlightCard({ flight, onViewDetails }) {
       }`}
     >
       {/* 1. Airline & Flight Info */}
-      <div className="flex flex-col items-center md:items-start min-w-[150px] py-3">
+      <div className="flex flex-col items-center md:items-start min-w-[150px]">
         <div className="flex items-center gap-1.5 mb-1">
           <span className="text-xs font-semibold text-slate-500">
             {flight_number}
@@ -80,7 +98,7 @@ export default function FlightCard({ flight, onViewDetails }) {
       </div>
 
       {/* 2. Departure Time & Date */}
-      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%] py-3">
+      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
         <span className="text-xs font-semibold text-slate-700 mb-2">
           {dep.dateStr}
         </span>
@@ -90,7 +108,7 @@ export default function FlightCard({ flight, onViewDetails }) {
       </div>
 
       {/* 3. Arrival Time & Date */}
-      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%] py-3">
+      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
         <span className="text-xs font-semibold text-slate-700 mb-2">
           {arr.dateStr}
         </span>
@@ -117,14 +135,17 @@ export default function FlightCard({ flight, onViewDetails }) {
       </div>
 
       {/* 5. Price & View Details Action */}
-      <div className="flex flex-col items-end gap-2 py-5 min-w-[25%]">
+      <div className="flex flex-col items-end gap-1.5 min-w-[25%]">
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+          {selectedCabinClass}
+        </span>
         <span className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-wide">
-          ₹{Math.round(base_fare)}
+          ₹{Math.round(displayPrice)}
         </span>
         <button
           type="button"
           onClick={() => onViewDetails && onViewDetails(flight)}
-          className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-primary`}
+          className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-primary mt-0.5`}
         >
           View Details
         </button>
