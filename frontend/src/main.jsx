@@ -11,11 +11,11 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "dummy-client-id.apps.googleusercontent.com";
 
 createRoot(document.getElementById("root")).render(
-    
-    <GoogleOAuthProvider clientId={clientId}>
-      <Provider store={store}>
-        <App />
-      </Provider>
-    </GoogleOAuthProvider>
-    
+
+  <GoogleOAuthProvider clientId={clientId}>
+    <Provider store={store}>
+      <App />
+    </Provider>
+  </GoogleOAuthProvider>
+
 );
