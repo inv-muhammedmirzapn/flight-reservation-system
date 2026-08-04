@@ -52,7 +52,7 @@ export default function AdminBookingsPage() {
     load(search, statusFilter, 1);
   };
 
-  const STATUS_OPTIONS = ['', 'CONFIRMED', 'PENDING_PAYMENT', 'CREATED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
+  const STATUS_OPTIONS = ['', 'CONFIRMED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
 
   return (

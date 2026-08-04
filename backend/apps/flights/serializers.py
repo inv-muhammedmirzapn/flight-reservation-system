@@ -32,12 +32,12 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     baggage_number_allowed = serializers.IntegerField(source='flight.baggage_number_allowed_per_person')
     handbag_weight_kg = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2)
     fares = serializers.SerializerMethodField()
-    flight_instance_id = serializers.IntegerField(source='id')
+    airline_logo = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
         fields = [
-            "id", "flight_number", "airline", "aircraft",
+            "id", "flight_number", "airline", "airline_logo", "aircraft",
             "source_airport", "source_airport_name", "source_terminals",
             "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
@@ -46,6 +46,14 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
         ]
+
+    def get_airline_logo(self, obj):
+        if obj.flight and obj.flight.airline and obj.flight.airline.logo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.flight.airline.logo.url)
+            return obj.flight.airline.logo.url
+        return None
 
     def _get_first_leg(self, obj):
         return obj.flight.legs.order_by('leg_order').first()
@@ -176,9 +184,19 @@ class AirportSerializer(serializers.ModelSerializer):
 
 
 class AirlineSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Airline
-        fields = ["id", "iata_airline_code", "airline_name"]
+        fields = ["id", "iata_airline_code", "airline_name", "logo", "logo_url"]
+
+    def get_logo_url(self, obj):
+        if obj.logo:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.logo.url)
+            return obj.logo.url
+        return None
 
     def validate_iata_airline_code(self, value):
         v = value.strip().upper()

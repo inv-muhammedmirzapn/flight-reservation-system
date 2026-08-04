@@ -58,6 +58,7 @@ class Airport(models.Model):
 class Airline(models.Model):
     iata_airline_code = models.CharField(max_length=2, unique=True, db_index=True)
     airline_name = models.CharField(max_length=200)
+    logo = models.ImageField(upload_to="airlines/", null=True, blank=True)
 
     class Meta:
         ordering = ["airline_name"]
@@ -215,7 +216,7 @@ class FlightInstance(models.Model):
     """
     A dated occurrence of a FlightRoute operated by a specific Aircraft.
     """
-    flight = models.ForeignKey(FlightRoute, on_delete=models.PROTECT, related_name="instances")
+    flight = models.ForeignKey(FlightRoute, on_delete=models.CASCADE, related_name="instances")
     date = models.DateField()
     aircraft = models.ForeignKey(Aircraft, on_delete=models.PROTECT, related_name="instances")
     status = models.CharField(
@@ -391,7 +392,7 @@ class Fare(models.Model):
 
 
 class FoodItem(models.Model):
-    airline = models.ForeignKey(Airline, on_delete=models.CASCADE, related_name="food_items")
+    airline = models.ForeignKey(Airline, on_delete=models.PROTECT, related_name="food_items")
     name = models.CharField(max_length=200)
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     currency = models.CharField(max_length=3, default="INR")

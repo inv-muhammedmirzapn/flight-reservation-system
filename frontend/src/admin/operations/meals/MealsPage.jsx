@@ -2,7 +2,7 @@
  * MealsPage — Flight Meals with nested Flight Meal Items.
  * Food item dropdown is filtered by the instance's airline.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
@@ -38,6 +38,7 @@ export default function MealsPage() {
   const [page, setPage] = useState(1);
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const isDeletingRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const loadMeals = (p) => {
@@ -111,17 +112,20 @@ export default function MealsPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteItem) return;
+    if (!deleteItem || isDeletingRef.current) return;
+    isDeletingRef.current = true;
     setDeleteLoading(true);
     try {
       await dispatch(removeFlightMeal(deleteItem.id)).unwrap();
-      toast.success('Meal deleted successfully.');
+      toast.success('Flight Meal deleted successfully.');
       setDeleteItem(null);
       loadMeals(page);
     } catch (err) {
-      toast.error('Failed to delete meal.');
+      const errorMsg = typeof err === 'string' ? err : (err?.detail || err?.message || 'Failed to delete flight meal.');
+      toast.error(errorMsg);
     } finally {
       setDeleteLoading(false);
+      isDeletingRef.current = false;
     }
   };
 
