@@ -127,21 +127,68 @@ export default function AdminCrudPage({
   const getDeleteDetails = (item) => {
     if (!item) return null;
     const details = {};
-    const keys = ['name', 'code', 'flight_no', 'registration', 'title', 'email', 'id'];
-    for (const key of keys) {
-      if (item[key] !== undefined && item[key] !== null) {
-        details[key.replace('_', ' ').toUpperCase()] = item[key];
-      }
+
+    // 1. Food Items (check price & food properties or entityName)
+    if (item.price !== undefined && (item.is_veg !== undefined || item.currency || item.image_url || entityName === 'foodItem')) {
+      if (item.name || item.item_name) details['ITEM NAME'] = item.name || item.item_name;
+      if (item.airline_name) details['AIRLINE'] = item.airline_name;
+      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
+      return details; // Only show Item Name, Airline, and Price
     }
-    if (Object.keys(details).length === 0) {
-      let count = 0;
+
+    // 2. Aircraft
+    if (item.registration) {
+      details['REGISTRATION'] = item.registration;
+      if (item.airline_name) details['AIRLINE'] = item.airline_name;
+      if (item.model_display || item.aircraft_model_name) details['MODEL'] = item.model_display || item.aircraft_model_name;
+    }
+    // 3. Airports
+    else if (item.iata_code) {
+      details['AIRPORT NAME'] = item.airport_name || item.name;
+      details['IATA CODE'] = item.iata_code;
+      if (item.city) details['CITY'] = item.city;
+      if (item.country_name) details['COUNTRY'] = item.country_name;
+    }
+    // 4. Airlines (require iata_airline_code)
+    else if (item.iata_airline_code) {
+      details['AIRLINE NAME'] = item.airline_name || item.name;
+      details['IATA CODE'] = item.iata_airline_code;
+      if (item.country_name || item.country) details['COUNTRY'] = item.country_name || item.country;
+    }
+    // 5. Aircraft Models
+    else if (item.manufacturer || item.model_name) {
+      if (item.manufacturer) details['MANUFACTURER'] = item.manufacturer;
+      if (item.model_name) details['MODEL NAME'] = item.model_name;
+    }
+    // 6. Countries
+    else if (item.name && (item.code || item.iso_code || item.country_code)) {
+      details['COUNTRY NAME'] = item.name;
+      details['COUNTRY CODE'] = item.code || item.iso_code || item.country_code;
+    }
+    // 7. General fallback for any other entity
+    else {
+      const nameVal = item.name || item.title || item.code || item.flight_no || item.id;
+      if (nameVal) details['NAME'] = String(nameVal);
+
       for (const [k, v] of Object.entries(item)) {
-        if (typeof v === 'string' && v.trim().length > 0 && count < 3) {
-          details[k.toUpperCase()] = v;
-          count++;
+        if (
+          !['id', 'created_at', 'updated_at', 'deleted_at'].includes(k) &&
+          (typeof v === 'string' || typeof v === 'number') &&
+          String(v).trim().length > 0 &&
+          Object.keys(details).length < 4
+        ) {
+          const label = k.replace(/_/g, ' ').toUpperCase();
+          if (!details[label]) {
+            details[label] = String(v);
+          }
         }
       }
     }
+
+    if (item.id && !details['ID']) {
+      details['ID'] = String(item.id);
+    }
+
     return details;
   };
 
@@ -500,15 +547,24 @@ export default function AdminCrudPage({
         </div>
       )}
 
-      <DeleteConfirmationModal
-        isOpen={deleteItem !== null}
-        loading={deleteLoading}
-        title={`Delete ${title}`}
-        message={`Are you sure you want to delete this ${title.toLowerCase()}?`}
-        details={getDeleteDetails(deleteItem)}
-        onClose={() => setDeleteItem(null)}
-        onConfirm={confirmDelete}
-      />
+      {(() => {
+        const singular = title.endsWith('ies')
+          ? title.slice(0, -3) + 'y'
+          : title.endsWith('Items')
+          ? title.slice(0, -1)
+          : (title.endsWith('s') && !title.endsWith('ss') ? title.slice(0, -1) : title);
+        return (
+          <DeleteConfirmationModal
+            isOpen={deleteItem !== null}
+            loading={deleteLoading}
+            title={`Delete ${singular}`}
+            message={`Are you sure you want to delete this ${singular.toLowerCase()}?`}
+            details={getDeleteDetails(deleteItem)}
+            onClose={() => setDeleteItem(null)}
+            onConfirm={confirmDelete}
+          />
+        );
+      })()}
     </div>
   );
 }
