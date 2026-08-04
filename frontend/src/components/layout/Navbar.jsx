@@ -29,14 +29,14 @@ const ADMIN_GROUPS = [
       { label: 'Meals', href: '/admin/operations/meals' },
     ],
   },
-  // {
-  //   label: 'Records',
-  //   links: [
-  //     { label: 'Bookings',       href: '/admin/records/bookings' },
-  //     { label: 'Payments',       href: '/admin/records/payments' },
-  //     { label: 'Passengers',     href: '/admin/records/passengers' },
-  //   ],
-  // },
+  {
+    label: 'Records',
+    links: [
+      { label: 'Bookings', href: '/admin/records/bookings' },
+      // { label: 'Payments', href: '/admin/records/payments' },
+      // { label: 'Passengers', href: '/admin/records/passengers' },
+    ],
+  },
   {
     label: 'System',
     links: [
