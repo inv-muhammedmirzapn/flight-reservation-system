@@ -1,14 +1,14 @@
 /**
  * AdminCrudPage — shared list + form page for all new entity CRUD screens.
  */
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
 import { Pagination } from '@/components/ui/Pagination';
-import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle, ArrowLeft, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -45,6 +45,7 @@ export default function AdminCrudPage({
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const isDeletingRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const loadList = (searchVal, pg) => {
@@ -128,44 +129,80 @@ export default function AdminCrudPage({
     if (!item) return null;
     const details = {};
 
-    // 1. Food Items (check price & food properties or entityName)
-    if (item.price !== undefined && (item.is_veg !== undefined || item.currency || item.image_url || entityName === 'foodItem')) {
+    // 1. Fares
+    if (entityName === 'fare' || item.fare_code) {
+      if (item.fare_code) details['FARE CODE'] = item.fare_code;
+      if (item.cabin_class) details['CABIN CLASS'] = item.cabin_class;
+      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
+      return details;
+    }
+
+    // 2. Flight Routes
+    if (entityName === 'flightRoute' || (item.flight_no && !item.date)) {
+      if (item.flight_no) details['FLIGHT NO'] = item.flight_no;
+      if (item.airline_name) details['AIRLINE'] = item.airline_name;
+      return details;
+    }
+
+    // 3. Flight Instances
+    if (entityName === 'flightInstance' || (item.flight_no && item.date)) {
+      if (item.flight_no) details['FLIGHT NO'] = item.flight_no;
+      if (item.date) details['DATE'] = item.date;
+      if (item.status) details['STATUS'] = item.status;
+      return details;
+    }
+
+    // 4. Seats
+    if (entityName === 'seat' || item.seat_number) {
+      if (item.seat_number) details['SEAT NUMBER'] = item.seat_number;
+      if (item.seat_class) details['CABIN CLASS'] = item.seat_class;
+      if (item.seat_fee !== undefined) details['SEAT FEE'] = `${item.currency || 'INR'} ${item.seat_fee}`;
+      return details;
+    }
+
+    // 5. Food Items
+    if (entityName === 'foodItem' || item.is_veg !== undefined || item.image_url) {
       if (item.name || item.item_name) details['ITEM NAME'] = item.name || item.item_name;
       if (item.airline_name) details['AIRLINE'] = item.airline_name;
       if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
-      return details; // Only show Item Name, Airline, and Price
+      return details;
     }
 
-    // 2. Aircraft
+    // 6. Aircraft
     if (item.registration) {
       details['REGISTRATION'] = item.registration;
       if (item.airline_name) details['AIRLINE'] = item.airline_name;
       if (item.model_display || item.aircraft_model_name) details['MODEL'] = item.model_display || item.aircraft_model_name;
+      return details;
     }
-    // 3. Airports
+    // 7. Airports
     else if (item.iata_code) {
       details['AIRPORT NAME'] = item.airport_name || item.name;
       details['IATA CODE'] = item.iata_code;
       if (item.city) details['CITY'] = item.city;
       if (item.country_name) details['COUNTRY'] = item.country_name;
+      return details;
     }
-    // 4. Airlines (require iata_airline_code)
+    // 8. Airlines
     else if (item.iata_airline_code) {
       details['AIRLINE NAME'] = item.airline_name || item.name;
       details['IATA CODE'] = item.iata_airline_code;
       if (item.country_name || item.country) details['COUNTRY'] = item.country_name || item.country;
+      return details;
     }
-    // 5. Aircraft Models
+    // 9. Aircraft Models
     else if (item.manufacturer || item.model_name) {
       if (item.manufacturer) details['MANUFACTURER'] = item.manufacturer;
       if (item.model_name) details['MODEL NAME'] = item.model_name;
+      return details;
     }
-    // 6. Countries
+    // 10. Countries
     else if (item.name && (item.code || item.iso_code || item.country_code)) {
       details['COUNTRY NAME'] = item.name;
       details['COUNTRY CODE'] = item.code || item.iso_code || item.country_code;
+      return details;
     }
-    // 7. General fallback for any other entity
+    // 11. General fallback for any other entity
     else {
       const nameVal = item.name || item.title || item.code || item.flight_no || item.id;
       if (nameVal) details['NAME'] = String(nameVal);
@@ -185,25 +222,33 @@ export default function AdminCrudPage({
       }
     }
 
-    if (item.id && !details['ID']) {
-      details['ID'] = String(item.id);
-    }
-
     return details;
   };
 
+  const getSingularTitle = (t) => {
+    if (!t) return 'Item';
+    if (t.endsWith('ies')) return t.slice(0, -3) + 'y';
+    if (t.endsWith('Items')) return t.slice(0, -1);
+    if (t.endsWith('s') && !t.endsWith('ss')) return t.slice(0, -1);
+    return t;
+  };
+
   const confirmDelete = async () => {
-    if (!deleteItem) return;
+    if (!deleteItem || isDeletingRef.current) return;
+    isDeletingRef.current = true;
     setDeleteLoading(true);
+    const singular = getSingularTitle(title);
     try {
       await dispatch(thunks.remove(deleteItem.id)).unwrap();
-      toast.success(`${title} deleted successfully.`);
+      toast.success(`${singular} deleted successfully.`);
       setDeleteItem(null);
       loadList(search, page);
     } catch (err) {
-      toast.error(err?.message || `Failed to delete ${title.toLowerCase()}.`);
+      const errorMsg = typeof err === 'string' ? err : (err?.detail || err?.message || err?.error || `Failed to delete ${singular.toLowerCase()}.`);
+      toast.error(errorMsg);
     } finally {
       setDeleteLoading(false);
+      isDeletingRef.current = false;
     }
   };
 
@@ -315,15 +360,6 @@ export default function AdminCrudPage({
           </form>
           {filterBar}
         </div>
-
-        {/* Global error */}
-        {error && (
-          <div className="admin-error">
-            <AlertTriangle size={16} />
-            <span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
-            <button onClick={() => loadList(search, page)}>Retry</button>
-          </div>
-        )}
 
         {/* Table Card */}
         <div className="admin-card admin-table-wrap">
@@ -455,13 +491,14 @@ export default function AdminCrudPage({
                   }
                   if (field.type === 'file') {
                     return (
-                      <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
-                          {field.label}
-                        </label>
-                        <input type="file" name={field.name} accept="image/*" onChange={handleChange} className="text-[13px]" />
-                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
-                      </div>
+                      <FileUploadBox
+                        key={field.name}
+                        field={field}
+                        value={form[field.name]}
+                        onChange={handleChange}
+                        errorMsg={errorMsg}
+                        existingUrl={form.image_url || form.logo_url}
+                      />
                     );
                   }
                   if (field.type === 'textarea') {
@@ -565,6 +602,74 @@ export default function AdminCrudPage({
           />
         );
       })()}
+    </div>
+  );
+}
+
+function FileUploadBox({ field, value, onChange, errorMsg, existingUrl }) {
+  const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    if (value instanceof File) {
+      const url = URL.createObjectURL(value);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (typeof value === 'string' && value) {
+      setPreview(value);
+    } else if (existingUrl) {
+      setPreview(existingUrl);
+    } else {
+      setPreview(null);
+    }
+  }, [value, existingUrl]);
+
+  return (
+    <div className="admin-form-full">
+      <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5 text-center">
+        {field.label}
+      </label>
+
+      <label className="relative flex flex-col items-center justify-center w-full min-h-[120px] p-4 border-2 border-dashed border-slate-300 hover:border-amber-500 hover:bg-amber-50/20 rounded-2xl cursor-pointer transition-all group bg-slate-50/50 text-center">
+        <input
+          type="file"
+          name={field.name}
+          accept="image/*"
+          onChange={onChange}
+          className="hidden"
+        />
+
+        {preview ? (
+          <div className="flex flex-col items-center justify-center gap-2 text-center w-full">
+            <div className="w-16 h-16 rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-white flex items-center justify-center">
+              <img src={preview} alt="Preview" className="w-full h-full object-contain p-1" />
+            </div>
+            <div className="min-w-0 text-center">
+              <span className="text-xs font-bold text-slate-800 block truncate max-w-[240px] mx-auto">
+                {value instanceof File ? value.name : 'Image Uploaded'}
+              </span>
+              <span className="text-[11px] font-semibold text-amber-700 group-hover:underline block mt-0.5">
+                Click to change image
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1.5 text-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-700 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center transition-all shadow-sm">
+              <Upload size={18} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 group-hover:text-amber-700 transition-colors block">
+                Click or drop image to upload
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                PNG, JPG, WEBP or SVG (Max 5MB)
+              </span>
+            </div>
+          </div>
+        )}
+      </label>
+
+      {errorMsg && <p className="text-xs text-[#dc2626] mt-1 text-center">{errorMsg}</p>}
     </div>
   );
 }

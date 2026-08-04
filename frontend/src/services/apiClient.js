@@ -1,7 +1,11 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const getResponseData = async (res) => {
-  if (res.status === 204) return null;
+  if (res.status === 204) {
+    // Always consume the body stream so the connection is released cleanly
+    await res.text().catch(() => {});
+    return null;
+  }
   const text = await res.text();
   if (!text) return null;
   try {
@@ -51,20 +55,28 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  // Default to application/json unless body is FormData
-  if (!('Content-Type' in headers) && !(options.body instanceof FormData)) {
+  // Default to application/json only if a body is present and not FormData
+  if (options.body && !('Content-Type' in headers) && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
-  // If a caller explicitly passed null or undefined to remove the default, clean it up
-  if (headers['Content-Type'] === null || headers['Content-Type'] === undefined) {
+  // Clean up empty or null Content-Type
+  if (!options.body || headers['Content-Type'] === null || headers['Content-Type'] === undefined) {
     delete headers['Content-Type'];
   }
 
-  let response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (netErr) {
+    if (netErr.message === 'Failed to fetch' || netErr.name === 'TypeError') {
+      throw new Error("Unable to connect to server. Please try again.");
+    }
+    throw netErr;
+  }
 
   // If unauthorized, attempt token refresh (if a refresh token is present)
   if (response.status === 401 && localStorage.getItem('refresh_token')) {

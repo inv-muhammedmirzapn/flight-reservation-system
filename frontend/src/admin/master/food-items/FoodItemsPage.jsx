@@ -62,7 +62,7 @@ export default function FoodItemsPage() {
     { name: 'is_veg', label: 'Vegetarian', type: 'checkbox' },
     { name: 'is_halal', label: 'Halal', type: 'checkbox' },
     { name: 'is_vegan', label: 'Vegan', type: 'checkbox' },
-    { name: 'image', label: 'Image (optional)', type: 'file' },
+    { name: 'image', label: 'Image (optional)', type: 'file', fullWidth: true },
   ];
 
   return (

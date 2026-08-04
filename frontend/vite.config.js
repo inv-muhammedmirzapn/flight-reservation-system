@@ -19,7 +19,13 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     proxy: {
-      '/api': 'http://127.0.0.1:8000'
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        // 5-minute timeout — cascade deletes (routes → instances → seats) can be slow
+        timeout: 300000,
+        proxyTimeout: 300000,
+      }
     }
   },
 })

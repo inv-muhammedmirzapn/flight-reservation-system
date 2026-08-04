@@ -3,7 +3,7 @@
  * leg_order is auto-assigned by row position.
  * Cross-row layover validation: each leg's departure must be after prev leg's arrival.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
@@ -189,8 +189,10 @@ export default function FlightRoutesPage() {
     }
   };
 
+  const isDeletingRef = useRef(false);
   const confirmDelete = async () => {
-    if (!deleteItem) return;
+    if (!deleteItem || isDeletingRef.current) return;
+    isDeletingRef.current = true;
     setDeleteLoading(true);
     try {
       await dispatch(removeFlightRoute(deleteItem.id)).unwrap();
@@ -201,6 +203,7 @@ export default function FlightRoutesPage() {
       toast.error('Failed to delete flight route.');
     } finally {
       setDeleteLoading(false);
+      isDeletingRef.current = false;
     }
   };
 

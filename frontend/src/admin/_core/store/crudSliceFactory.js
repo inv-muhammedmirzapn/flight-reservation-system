@@ -181,7 +181,7 @@ export function createCrudSlice(entityName, apiBasePath) {
       builder.addCase(update.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.selected = action.payload;
-        const idx = state.items.findIndex((i) => i.id === action.payload.id);
+        const idx = state.items.findIndex((i) => String(i.id) === String(action.payload.id));
         if (idx !== -1) state.items[idx] = action.payload;
       });
       builder.addCase(update.rejected, (state, action) => {
@@ -193,7 +193,7 @@ export function createCrudSlice(entityName, apiBasePath) {
       _pending(builder, remove, 'actionLoading');
       builder.addCase(remove.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.items = state.items.filter((i) => i.id !== action.payload);
+        state.items = state.items.filter((i) => String(i.id) !== String(action.payload));
         state.count = Math.max(0, state.count - 1);
       });
       _rejected(builder, remove, 'actionLoading');

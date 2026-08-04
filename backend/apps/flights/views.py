@@ -4,6 +4,7 @@ import io
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.db import IntegrityError
+from django.db.models.deletion import ProtectedError, RestrictedError
 from django.db.models import Count, Q
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.views import APIView
@@ -74,6 +75,15 @@ class AdminModelViewSet(viewsets.ModelViewSet):
             if hasattr(exc, 'message_dict'):
                 raise DRFValidationError(exc.message_dict)
             raise DRFValidationError(exc.messages)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except (IntegrityError, ProtectedError, RestrictedError) as exc:
+            return Response(
+                {"detail": "Cannot delete this item because it is referenced by existing related records (such as flights, aircraft, or food items)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # ─── Legacy Flight views (UNCHANGED) ───────────────────────────────────────────
@@ -359,6 +369,14 @@ class FlightRouteViewSet(AdminModelViewSet):
             qs = qs.filter(airline_id=airline_id)
         return qs
 
+    def destroy(self, request, *args, **kwargs):
+        """Fast delete: bulk-wipe all seats under every instance before cascade."""
+        route = self.get_object()
+        # Drop all seats in one SQL DELETE — avoids thousands of per-row Python calls
+        Seat.objects.filter(flight_instance__flight=route).delete()
+        route.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class FlightInstanceViewSet(AdminModelViewSet):
     queryset = FlightInstance.objects.select_related("flight", "aircraft").all()
@@ -379,6 +397,14 @@ class FlightInstanceViewSet(AdminModelViewSet):
         if date_to:
             qs = qs.filter(date__lte=date_to)
         return qs
+
+    def destroy(self, request, *args, **kwargs):
+        """Fast delete: bulk-wipe all seats before deleting the instance."""
+        instance = self.get_object()
+        # Drop all seats in one SQL DELETE — avoids per-row Python sync callbacks
+        Seat.objects.filter(flight_instance=instance).delete()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""
