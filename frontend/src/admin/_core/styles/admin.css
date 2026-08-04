@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@source "../../../";
+@config "../../../../tailwind.config.js";
+@source "../../../admin";
 
 /* ── Admin design tokens ─────────────────────────────────────────────────
    All admin-specific theme values. These are registered into Tailwind's
@@ -721,6 +722,8 @@
     @apply backdrop-blur-[25px] border border-white/50 overflow-hidden transition-all duration-300;
     background: rgba(255, 255, 255, 0.72);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    -webkit-backdrop-filter: blur(25px);
+    /* Safari support */
   }
 
   .navbar-badge-admin {
@@ -901,6 +904,8 @@
       @apply text-lg;
     }
 
+    /* Admin form card tightens on mobile — kept here so admin.css
+       is fully self-contained and index.css doesn't need an override. */
     .admin-form-card {
       padding: 20px 16px !important;
       border-radius: 16px !important;

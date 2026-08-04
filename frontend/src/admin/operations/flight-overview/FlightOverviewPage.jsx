@@ -46,14 +46,14 @@ export default function FlightOverviewPage() {
     const { t } = useTranslation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    
+
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
-    
+
     const [currentPage, setCurrentPage] = useState(1);
     const PAGE_SIZE = 10;
     const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
-    
+
     const [editTarget, setEditTarget] = useState(null);
     const [editStatus, setEditStatus] = useState('');
     const [editDelay, setEditDelay] = useState(0);
@@ -225,16 +225,16 @@ export default function FlightOverviewPage() {
         fetchFiltered(page, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    
+
     const handleStatusUpdate = async () => {
         if (!editTarget || !editStatus) return;
         setConfirmOpen(false);
         try {
-            await dispatch(updateFlightInstance({ 
-                id: editTarget.id, 
-                data: { status: editStatus, delay_minutes: Number(editDelay) || 0 } 
+            await dispatch(updateFlightInstance({
+                id: editTarget.id,
+                data: { status: editStatus, delay_minutes: Number(editDelay) || 0 }
             })).unwrap();
-            
+
             const delayMsg = editDelay > 0 ? ` — delayed by ${editDelay} min` : '';
             toast.success(`Flight status updated to ${editStatus}${delayMsg}`);
             setEditTarget(null);
@@ -607,7 +607,7 @@ export default function FlightOverviewPage() {
                         )}
 
                         {/* Status + Delay side by side */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 14, alignItems: 'start' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: editStatus === 'DELAYED' ? '1.4fr 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
                             <Select
                                 label="New Status"
                                 options={getStatusOptions(t).filter(o => o.value !== '')}
@@ -623,37 +623,39 @@ export default function FlightOverviewPage() {
                             />
 
                             {/* Delay stepper */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
-                                <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
-                                <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
-                                        style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                    >−</button>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={editDelay}
-                                        onChange={e => {
-                                            const v = Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0);
-                                            setEditDelay(v);
-                                            if (v > 0) setEditStatus('DELAYED');
-                                        }}
-                                        style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
-                                        style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                    >+</button>
+                            {editStatus === 'DELAYED' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
+                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
+                                            style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                        >−</button>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={editDelay}
+                                            onChange={e => {
+                                                const v = Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0);
+                                                setEditDelay(v);
+                                                if (v > 0) setEditStatus('DELAYED');
+                                            }}
+                                            style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
+                                            style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                        >+</button>
+                                    </div>
+                                    {editDelay > 0 ? (
+                                        <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
+                                    ) : (
+                                        <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
+                                    )}
                                 </div>
-                                {editDelay > 0 ? (
-                                    <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
-                                ) : (
-                                    <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
-                                )}
-                            </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
