@@ -241,50 +241,57 @@ export default function SeatMapPage() {
   return (
     <>
       <div className="smp-wrap">
-        {instanceParam && (
-          <div className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow">
-                3/4
-              </div>
-              <div>
-                <div className="text-xs font-extrabold uppercase tracking-wider text-purple-700">
-                  Instance Setup Flow • Step 3 (Seat Map & Fees)
-                </div>
-                <div className="text-sm font-bold text-slate-800">
-                  Configuring Seat Layout for Flight Instance #{instanceParam}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="smp-breadcrumb">
+          FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
+        </div>
+ 
+        <div className="smp-header">
+          <div className="smp-header-left">
+            {instanceParam && (
+              <button
+                className="smp-back"
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  if (fromPage) {
+                    navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
+                  } else {
+                    navigate('/admin/operations/flight-instances');
+                  }
+                }}
+              >
+                <ArrowLeft size={14} /> Back
+              </button>
+            )}
+            <h1 className="smp-title">Seat Pricing & Selection</h1>
+          </div>
+          {instanceParam && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}`)}
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  navigate(`/admin/operations/meals?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`);
+                }}
                 className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
               >
                 <Utensils size={14} /> Skip / Next: Flight Meals <ChevronRight size={14} />
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/admin/operations/flight-instances')}
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  if (fromPage) {
+                    navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
+                  } else {
+                    navigate('/admin/operations/flight-instances');
+                  }
+                }}
                 className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
               >
                 Finish Flow
               </button>
             </div>
-          </div>
-        )}
-
-        <div className="smp-breadcrumb">
-          FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
-        </div>
-
-        <div className="smp-header">
-          <div className="smp-header-left">
-            <button className="smp-back" onClick={() => navigate(-1)}><ArrowLeft size={14} /> Back</button>
-            <h1 className="smp-title">Seat Pricing & Selection</h1>
-          </div>
+          )}
         </div>
 
         <div className="smp-body">

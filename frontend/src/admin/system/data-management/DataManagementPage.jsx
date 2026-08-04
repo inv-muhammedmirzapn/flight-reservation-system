@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { fetchWithAuth, extractErrorMessage } from "@/services/apiClient";
 import '@/admin/_core/styles/admin.css';
-import styles from './DataManagementPage.module.css';
 
 // ── Entity definitions ────────────────────────────────────────────────────────
 const ENTITIES = [
@@ -34,44 +33,48 @@ function EntityDropdown({ value, onChange }) {
 
   const select = (id) => { onChange(id); setOpen(false); };
 
-  const triggerClass = [
-    styles.dropdownTrigger,
-    open ? styles.dropdownTriggerOpen : "",
-    selected ? styles.dropdownTriggerSelected : "",
-  ].join(" ");
-
   return (
-    <div ref={ref} className={styles.dropdown} onBlur={handleBlur} tabIndex={-1}>
-      <button type="button" onClick={() => setOpen(o => !o)} className={triggerClass}>
-        <span className={styles.dropdownTriggerLabel}>
+    <div ref={ref} className="relative" onBlur={handleBlur} tabIndex={-1}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center justify-between py-[11px] px-4 rounded-admin-sm border cursor-pointer font-ui text-[13px] transition-all duration-150 ${
+          open 
+            ? 'border-admin-accent-dark bg-admin-accent-dark/[0.03] shadow-[0_0_0_3px_rgba(112,93,0,0.08)]' 
+            : 'border-black/10 bg-white/80'
+        } ${selected ? 'font-semibold text-admin-ink' : 'font-normal text-[#9ca3af]'}`}
+      >
+        <span className="flex items-center gap-2">
           {selected ? selected.label : "Select a table…"}
         </span>
         <svg
           width="14" height="14" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" strokeWidth="2.5"
-          className={`${styles.dropdownChevron} ${open ? styles.dropdownChevronOpen : ""}`}
+          className={`text-[#9ca3af] shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {open && (
-        <div className={styles.dropdownPanel}>
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white/98 rounded-admin-md border border-black/[0.08] shadow-2xl max-h-[260px] overflow-y-auto backdrop-blur-md">
           {/* Import All */}
           <button
             type="button"
             tabIndex={0}
             onClick={() => select(ALL_MODE)}
-            className={`${styles.dropdownOption} ${styles.dropdownOptionAll} ${value === ALL_MODE ? styles.dropdownOptionActive : ""}`}
+            className={`w-full flex items-center justify-between py-2 px-4 border-b border-black/[0.06] bg-transparent cursor-pointer font-ui text-[13px] text-left transition-colors duration-100 hover:bg-black/[0.03] ${
+              value === ALL_MODE ? 'bg-admin-accent-dark/[0.06] font-bold text-admin-accent-dark' : 'font-bold text-admin-ink'
+            }`}
           >
             <span>
               Import All
-              <span className={styles.dropdownOptionFormats}>.zip · .csv · .xls · .xlsx</span>
+              <span className="font-normal text-[#9ca3af] text-[11px] ml-1.5">.zip · .csv · .xls · .xlsx</span>
             </span>
-            {value === ALL_MODE && <span className={styles.dropdownCheck}>✓</span>}
+            {value === ALL_MODE && <span className="text-xs text-admin-accent-dark">✓</span>}
           </button>
 
-          <div className={styles.dropdownDivider}>Individual Tables</div>
+          <div className="py-1.5 px-4 pt-2.5 text-[10px] font-bold text-[#bbb] uppercase tracking-[0.07em]">Individual Tables</div>
 
           {ENTITIES.map((e) => (
             <button
@@ -79,10 +82,12 @@ function EntityDropdown({ value, onChange }) {
               type="button"
               tabIndex={0}
               onClick={() => select(e.id)}
-              className={`${styles.dropdownOption} ${value === e.id ? styles.dropdownOptionActive : ""}`}
+              className={`w-full flex items-center justify-between py-2 px-4 border-none bg-transparent cursor-pointer font-ui text-[13px] text-left transition-colors duration-100 hover:bg-black/[0.03] ${
+                value === e.id ? 'bg-admin-accent-dark/[0.06] font-bold text-admin-accent-dark' : 'font-normal text-[#374151]'
+              }`}
             >
               <span>{e.label}</span>
-              {value === e.id && <span className={styles.dropdownCheck}>✓</span>}
+              {value === e.id && <span className="text-xs text-admin-accent-dark">✓</span>}
             </button>
           ))}
         </div>
@@ -102,16 +107,13 @@ function DropZone({ file, onFile, disabled, isZip }) {
     if (!disabled) { const f = e.dataTransfer.files[0]; if (f) onFile(f); }
   }, [onFile, disabled]);
 
-  const zoneClass = [
-    styles.dropzone,
-    dragging ? styles.dropzoneDragging : "",
-    file ? styles.dropzoneHasFile : "",
-    disabled ? styles.dropzoneDisabled : "",
-  ].filter(Boolean).join(" ");
-
   return (
     <div
-      className={zoneClass}
+      className={`border-2 border-dashed rounded-admin-md py-11 px-6 text-center cursor-pointer transition-all duration-150 ${
+        dragging ? 'border-admin-accent-dark bg-admin-accent-dark/[0.04]' : ''
+      } ${file ? 'border-status-green bg-[#f0fdf4]' : 'border-black/10 bg-white/40'} ${
+        disabled ? 'opacity-45 cursor-not-allowed' : ''
+      }`}
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); if (!disabled) setDragging(true); }}
       onDragLeave={() => setDragging(false)}
@@ -127,15 +129,15 @@ function DropZone({ file, onFile, disabled, isZip }) {
       />
       {file ? (
         <>
-          <span className={styles.dropzoneFileIcon}>📄</span>
-          <p className={styles.dropzoneFilename}>{file.name}</p>
-          <p className={styles.dropzoneFilesize}>{(file.size / 1024).toFixed(1)} KB — click to change</p>
+          <span className="text-4xl mb-2.5 block">📄</span>
+          <p className="font-bold text-status-green text-sm mb-1">{file.name}</p>
+          <p className="text-[11px] text-status-gray">{(file.size / 1024).toFixed(1)} KB — click to change</p>
         </>
       ) : (
         <>
-          <span className={styles.dropzoneIcon}>☁️</span>
-          <p className={styles.dropzoneTitle}>Drop file here or click to browse</p>
-          <p className={styles.dropzoneHint}>{isZip ? ".zip archive" : ".csv  ·  .xls  ·  .xlsx"}</p>
+          <span className="text-3xl mb-2.5 opacity-35 block">☁️</span>
+          <p className="font-bold text-[#374151] text-sm mb-1">Drop file here or click to browse</p>
+          <p className="text-[11px] text-[#9ca3af]">{isZip ? ".zip archive" : ".csv  ·  .xls  ·  .xlsx"}</p>
         </>
       )}
     </div>
@@ -165,34 +167,50 @@ function ReportModal({ reports, onClose }) {
 
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
-      <div className={`admin-modal ${styles.reportModal}`} onClick={(e) => e.stopPropagation()}>
+      <div className="admin-modal max-w-[640px] w-full" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal-header">
           <h2 className="admin-modal-title">Import Report</h2>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
 
         {/* Stats */}
-        <div className={styles.reportStats}>
+        <div className="grid grid-cols-4 gap-3 mb-5">
           {statCards.map(({ label, value, cardMod, valMod }) => (
-            <div key={label} className={`${styles.statCard} ${styles[`statCard${cardMod}`]}`}>
-              <div className={`${styles.statValue} ${styles[`statValue${valMod}`]}`}>{value}</div>
-              <div className={styles.statLabel}>{label}</div>
+            <div 
+              key={label} 
+              className={`text-center py-3.5 px-2.5 rounded-xl ${
+                cardMod === "Success" ? "bg-[#f0fdf4]" : cardMod === "Failure" ? "bg-[#fef2f2]" : "bg-[#f3f4f6]"
+              }`}
+            >
+              <div 
+                className={`text-2xl font-extrabold ${
+                  valMod === "Success" ? "text-[#16a34a]" : valMod === "Failure" ? "text-[#dc2626]" : valMod === "Zero" ? "text-[#9ca3af]" : "text-[#374151]"
+                }`}
+              >
+                {value}
+              </div>
+              <div className="text-[10px] font-bold text-[#6b7280] mt-0.5 uppercase tracking-[0.06em]">{label}</div>
             </div>
           ))}
         </div>
 
         {/* Per-entity breakdown */}
         {multiMode && (
-          <div className={styles.entityBreakdown}>
+          <div className="flex flex-col gap-2 mb-4">
             {reports.map((r) => {
               const ent = ENTITIES.find(e => e.id === r.entity);
               return (
-                <div key={r.entity} className={`${styles.entityRow} ${r.failed > 0 ? styles.entityRowErr : styles.entityRowOk}`}>
-                  <span className={styles.entityName}>{ent?.label || r.entity}</span>
-                  <span className={styles.entityOk}>
-                    ✓ {r.success} <span className={styles.entitySub}>(C:{r.created || 0} M:{r.updated || 0})</span>
+                <div 
+                  key={r.entity} 
+                  className={`flex items-center py-2 px-3 rounded-lg ${
+                    r.failed > 0 ? "bg-[#fef2f2] border border-[#fecaca]" : "bg-[#f0fdf4] border border-[#bbf7d0]"
+                  }`}
+                >
+                  <span className="font-bold text-[12px] flex-1">{ent?.label || r.entity}</span>
+                  <span className="text-[12px] text-[#16a34a] font-bold mr-2.5">
+                    ✓ {r.success} <span className="text-[10px] opacity-80 ml-1 font-medium">(C:{r.created || 0} M:{r.updated || 0})</span>
                   </span>
-                  {r.failed > 0 && <span className={styles.entityFail}>✕ {r.failed}</span>}
+                  {r.failed > 0 && <span className="text-[12px] text-[#dc2626] font-bold">✕ {r.failed}</span>}
                 </div>
               );
             })}
@@ -201,34 +219,42 @@ function ReportModal({ reports, onClose }) {
 
         {/* Success / error detail */}
         {totals.failed === 0 ? (
-          <div className={styles.successBanner}>
-            <p className={styles.successText}>All rows imported successfully!</p>
+          <div className="text-center py-6 bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] rounded-xl border border-[#bbf7d0]">
+            <p className="m-0 font-bold text-[#15803d] text-sm">All rows imported successfully!</p>
           </div>
         ) : (
           reports.filter(r => r.errors?.length).map(r => {
             const ent = ENTITIES.find(e => e.id === r.entity);
             return (
-              <div key={r.entity} className={styles.errorSection}>
-                <p className={styles.errorHeading}>
+              <div key={r.entity} className="mb-4">
+                <p className="m-0 mb-1.5 text-xs font-bold text-[#dc2626]">
                   {ent?.label || r.entity} — {r.errors.length} failed row{r.errors.length !== 1 ? "s" : ""}
                 </p>
-                <div className={styles.errorTableWrap}>
-                  <table className={styles.errorTable}>
+                <div className="max-h-[200px] overflow-y-auto rounded-lg border border-[#fecaca]">
+                  <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr>
-                        {["Row", "Field", "Error"].map(h => <th key={h}>{h}</th>)}
+                      <tr className="bg-[#fef2f2] sticky top-0">
+                        {["Row", "Field", "Error"].map(h => (
+                          <th key={h} className="py-1.5 px-3 text-left font-bold text-[10px] text-[#dc2626] uppercase tracking-[0.06em]">
+                            {h}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {r.errors.map((err, idx) => {
                         const entries = Object.entries(err.errors || {});
                         return entries.map(([field, msg], j) => (
-                          <tr key={`${idx}-${j}`}>
+                          <tr key={`${idx}-${j}`} className={idx % 2 === 0 ? "bg-[#fafafa]" : "bg-white"}>
                             {j === 0 && (
-                              <td rowSpan={entries.length} className={styles.errorRowNum}>#{err.row}</td>
+                              <td rowSpan={entries.length} className="py-1.5 px-3 border-t border-[#fee2e2] font-bold text-[#dc2626] vertical-align-top">
+                                #{err.row}
+                              </td>
                             )}
-                            <td className={styles.errorField}>{field}</td>
-                            <td className={styles.errorMsg}>{Array.isArray(msg) ? msg.join("; ") : String(msg)}</td>
+                            <td className="py-1.5 px-3 border-t border-[#fee2e2] font-mono text-[#7c3aed]">{field}</td>
+                            <td className="py-1.5 px-3 border-t border-[#fee2e2] text-[#374151]">
+                              {Array.isArray(msg) ? msg.join("; ") : String(msg)}
+                            </td>
                           </tr>
                         ));
                       })}
@@ -240,7 +266,7 @@ function ReportModal({ reports, onClose }) {
           })
         )}
 
-        <div className={styles.reportFooter}>
+        <div className="flex justify-end mt-6">
           <button className="btn-primary" onClick={onClose}>Done</button>
         </div>
       </div>
@@ -290,11 +316,11 @@ export default function BulkImportPage() {
           </div>
         </div>
 
-        <div className={`admin-card ${styles.card}`}>
+        <div className="admin-card p-7 max-w-[600px] mx-auto">
 
           {/* Target table */}
-          <div className={styles.field}>
-            <label className={styles.label}>Target Table</label>
+          <div className="mb-5">
+            <label className="block text-[11px] font-bold text-[#5e5e5e] mb-2 uppercase tracking-[0.07em]">Target Table</label>
             <EntityDropdown
               value={entity}
               onChange={(v) => { setEntity(v); setFile(null); setError(""); }}
@@ -303,17 +329,21 @@ export default function BulkImportPage() {
 
           {/* Required columns hint */}
           {ent && (
-            <div className={styles.colsHint}>
-              <span className={styles.colsLabel}>Required Columns:</span>
-              <div className={styles.colsList}>
-                {ent.cols.map(c => <code key={c} className={styles.colPill}>{c}</code>)}
+            <div className="mb-5 bg-admin-accent-dark/[0.03] py-2.5 px-3.5 rounded-admin-sm border border-admin-accent-dark/[0.1] flex items-center gap-3 flex-wrap">
+              <span className="text-[10px] font-bold text-[#888] uppercase tracking-[0.07em] whitespace-nowrap">Required Columns:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {ent.cols.map(c => (
+                  <code key={c} className="text-[11px] bg-admin-accent-dark/[0.08] py-[3px] px-2 rounded-full text-admin-accent-dark font-semibold">
+                    {c}
+                  </code>
+                ))}
               </div>
             </div>
           )}
 
           {/* Drop zone */}
-          <div className={styles.field}>
-            <label className={styles.label}>Upload File</label>
+          <div className="mb-5">
+            <label className="block text-[11px] font-bold text-[#5e5e5e] mb-2 uppercase tracking-[0.07em]">Upload File</label>
             <DropZone
               file={file}
               onFile={(f) => { setFile(f); setError(""); }}
@@ -324,7 +354,7 @@ export default function BulkImportPage() {
 
           {/* Error */}
           {error && (
-            <div className={`admin-error ${styles.error}`}>
+            <div className="admin-error mb-4">
               <span>{error}</span>
             </div>
           )}
@@ -332,13 +362,13 @@ export default function BulkImportPage() {
           {/* Submit */}
           <button
             id="bulk-import-submit"
-            className={`btn-primary ${styles.submit}`}
+            className="btn-primary w-full justify-center h-11 text-sm"
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
             {loading ? (
               <>
-                <span className={styles.spinner} />
+                <span className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full inline-block animate-spin mr-2" />
                 Importing…
               </>
             ) : "Run Import"}

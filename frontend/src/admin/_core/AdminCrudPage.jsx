@@ -3,7 +3,7 @@
  */
 import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
@@ -11,6 +11,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '@/admin/_core/styles/admin.css';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 export default function AdminCrudPage({
   title,
@@ -31,6 +32,7 @@ export default function AdminCrudPage({
 }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const state = useSelector((s) => s[entityName]);
   const { items, loading, actionLoading, error, validationErrors } = state || {};
 
@@ -41,6 +43,8 @@ export default function AdminCrudPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const PAGE_SIZE = 10;
 
   const loadList = (searchVal, pg) => {
@@ -120,14 +124,40 @@ export default function AdminCrudPage({
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm(`Delete this ${title}? This action cannot be undone.`)) return;
-    const promise = dispatch(thunks.remove(id)).unwrap();
-    toast.promise(promise, {
-      loading: 'Deleting…',
-      success: `${title} deleted.`,
-      error: 'Failed to delete.',
-    });
+  const getDeleteDetails = (item) => {
+    if (!item) return null;
+    const details = {};
+    const keys = ['name', 'code', 'flight_no', 'registration', 'title', 'email', 'id'];
+    for (const key of keys) {
+      if (item[key] !== undefined && item[key] !== null) {
+        details[key.replace('_', ' ').toUpperCase()] = item[key];
+      }
+    }
+    if (Object.keys(details).length === 0) {
+      let count = 0;
+      for (const [k, v] of Object.entries(item)) {
+        if (typeof v === 'string' && v.trim().length > 0 && count < 3) {
+          details[k.toUpperCase()] = v;
+          count++;
+        }
+      }
+    }
+    return details;
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
+    setDeleteLoading(true);
+    try {
+      await dispatch(thunks.remove(deleteItem.id)).unwrap();
+      toast.success(`${title} deleted successfully.`);
+      setDeleteItem(null);
+      loadList(search, page);
+    } catch (err) {
+      toast.error(err?.message || `Failed to delete ${title.toLowerCase()}.`);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleSearch = (e) => {
@@ -167,8 +197,6 @@ export default function AdminCrudPage({
     <div className="admin-page">
       <div className="admin-container">
 
-        {banner}
-
         {breadcrumb && breadcrumb.length > 0 && (
           <div className="admin-breadcrumb">
             {breadcrumb.map((b, i) => (
@@ -185,7 +213,15 @@ export default function AdminCrudPage({
           <div className="flex items-center gap-3">
             {breadcrumb && breadcrumb.length > 0 && (
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  const instance = searchParams.get('instance');
+                  if (fromPage && instance && breadcrumb && breadcrumb[0] && breadcrumb[0].href) {
+                    navigate(`${breadcrumb[0].href}?page=${fromPage}&highlightInstance=${instance}`);
+                  } else {
+                    navigate(-1);
+                  }
+                }}
                 className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#555] cursor-pointer transition-colors duration-200 flex-shrink-0 hover:bg-black/10"
               >
                 <ArrowLeft size={15} /> Back
@@ -292,11 +328,11 @@ export default function AdminCrudPage({
                     ))}
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button className="btn-icon" onClick={() => openEdit(item)} title="Edit">
-                          <Pencil size={15} />
+                        <button className="btn-secondary" onClick={() => openEdit(item)} title="Edit" style={{ padding: '6px 8px' }}>
+                          <Pencil size={14} />
                         </button>
-                        <button className="btn-icon danger" onClick={() => handleDelete(item.id)} title="Delete">
-                          <Trash2 size={15} />
+                        <button className="btn-danger" onClick={() => setDeleteItem(item)} title="Delete" style={{ padding: '6px 8px' }}>
+                          <Trash2 size={14} />
                         </button>
                         {extraActions && extraActions(item)}
                       </div>
@@ -327,6 +363,7 @@ export default function AdminCrudPage({
               <h2 className="admin-modal-title">{editId ? `Edit ${title}` : `Add ${title}`}</h2>
               <button className="btn-icon" onClick={closeForm}><X size={18} /></button>
             </div>
+            {banner && <div className="mb-4">{banner}</div>}
 
             {validationErrors?.non_field_errors && (
               <div className="admin-error">
@@ -462,6 +499,16 @@ export default function AdminCrudPage({
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteItem !== null}
+        loading={deleteLoading}
+        title={`Delete ${title}`}
+        message={`Are you sure you want to delete this ${title.toLowerCase()}?`}
+        details={getDeleteDetails(deleteItem)}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

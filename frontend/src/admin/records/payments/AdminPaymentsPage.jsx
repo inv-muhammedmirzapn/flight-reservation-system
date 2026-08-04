@@ -40,14 +40,13 @@ export default function AdminPaymentsPage() {
   const STATUS_COLORS = { SUCCESS: '#22c55e', FAILED: '#ef4444', PENDING: '#f59e0b', REFUNDED: '#8b5cf6' };
 
   return (
-    <>
-
-      <div className="admin-page-wrap">
+    <div className="admin-page">
+      <div className="admin-container">
         <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Payments</h1>
         <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>View payment records linked to bookings.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search" style={{ flex: 1 }}>
+          <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by transaction ID…" />
           </div>
@@ -107,6 +106,6 @@ export default function AdminPaymentsPage() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

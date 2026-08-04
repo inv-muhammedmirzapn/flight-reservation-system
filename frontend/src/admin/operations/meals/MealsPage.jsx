@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
+import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import {
@@ -35,6 +36,8 @@ export default function MealsPage() {
   const [form, setForm] = useState({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] });
   const [localErrors, setLocalErrors] = useState({});
   const [page, setPage] = useState(1);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const PAGE_SIZE = 10;
 
   const loadMeals = (p) => {
@@ -107,47 +110,29 @@ export default function MealsPage() {
     });
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm('Delete this meal?')) return;
-    toast.promise(dispatch(removeFlightMeal(id)).unwrap(), {
-      loading: 'Deleting…', success: 'Deleted.', error: 'Failed.',
-    });
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
+    setDeleteLoading(true);
+    try {
+      await dispatch(removeFlightMeal(deleteItem.id)).unwrap();
+      toast.success('Meal deleted successfully.');
+      setDeleteItem(null);
+      loadMeals(page);
+    } catch (err) {
+      toast.error('Failed to delete meal.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
-    <>
-
-      <div className="admin-page-wrap">
-        {instanceParam && (
-          <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-xs shadow">
-                4/4
-              </div>
-              <div>
-                <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
-                  Instance Setup Flow • Step 4 (Flight Meals)
-                </div>
-                <div className="text-sm font-bold text-slate-800">
-                  Configuring Meals for Flight Instance #{instanceParam}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/admin/operations/flight-instances')}
-              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
-            >
-              <CheckCircle2 size={14} /> Finish Instance Setup ✓
-            </button>
-          </div>
-        )}
+    <div className="admin-page">
+      <div className="admin-container">
 
         {instanceParam && (
           <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
             <span>
-              <Link to="/admin/operations/flight-instances">Flight Instances</Link>
+              <Link to={searchParams.get('fromPage') ? `/admin/operations/flight-instances?page=${searchParams.get('fromPage')}&highlightInstance=${instanceParam}` : "/admin/operations/flight-instances"}>Flight Instances</Link>
               <span style={{ margin: '0 8px' }}>/</span>
             </span>
             <span>Meals (Instance #{instanceParam})</span>
@@ -155,12 +140,21 @@ export default function MealsPage() {
         )}
         <div className="flex items-center gap-3.5 mb-7 justify-between">
           <div className="flex items-center gap-3.5">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-[#555] cursor-pointer transition-colors hover:bg-black/10"
-            >
-              <ArrowLeft size={15} /> Back
-            </button>
+            {instanceParam && (
+              <button
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  if (fromPage) {
+                    navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
+                  } else {
+                    navigate('/admin/operations/flight-instances');
+                  }
+                }}
+                className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-[#555] cursor-pointer transition-colors hover:bg-black/10"
+              >
+                <ArrowLeft size={15} /> Back
+              </button>
+            )}
             <h1 className="admin-page-title">Flight Meals</h1>
           </div>
           <button className="btn-primary" onClick={openCreate}><Plus size={15} /> Add Meal</button>
@@ -179,12 +173,17 @@ export default function MealsPage() {
             <div className="admin-empty"><p>No meals yet.</p></div>
           ) : (
             <table className="admin-table">
-              <thead><tr><th>Meal Name</th><th>Flight Instance</th><th>Items</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Meal Name</th><th>Flight Instance</th><th>Items</th><th className="text-right">Actions</th></tr></thead>
               <tbody>
                 {meals.map((meal) => (
-                  <tr key={meal.id}>
+                  <tr key={meal.id} className="admin-row">
                     <td><strong>{meal.name}</strong></td>
-                    <td>{meal.flight_instance}</td>
+                    <td>
+                      {(() => {
+                        const inst = instances.find((i) => String(i.id) === String(meal.flight_instance));
+                        return inst ? `${inst.flight_no} — ${inst.date}` : meal.flight_instance;
+                      })()}
+                    </td>
                     <td>
                       {(meal.items || []).map((item, i) => (
                         <span key={i} className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-1.5 py-0.5 mr-1">
@@ -192,10 +191,14 @@ export default function MealsPage() {
                         </span>
                       ))}
                     </td>
-                    <td>
-                      <div className="flex gap-1.5">
-                        <button className="btn-secondary" onClick={() => openEdit(meal)}><Pencil size={13} /> Edit</button>
-                        <button className="btn-danger" onClick={() => handleDelete(meal.id)}><Trash2 size={13} /> Delete</button>
+                    <td className="text-right whitespace-nowrap">
+                      <div className="flex gap-1.5 items-center justify-end">
+                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(meal)} style={{ padding: '6px 8px' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(meal)} style={{ padding: '6px 8px' }}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -223,6 +226,32 @@ export default function MealsPage() {
               </h2>
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
             </div>
+
+            {instanceParam && (
+              <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-xs shadow">
+                    4/4
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                      Instance Setup Flow • Step 4 (Flight Meals)
+                    </div>
+                    <div className="text-sm font-bold text-slate-800">
+                      Configuring Meals for Flight Instance #{instanceParam}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/operations/flight-instances')}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                >
+                  <CheckCircle2 size={14} /> Finish Instance Setup ✓
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -269,6 +298,23 @@ export default function MealsPage() {
           </div>
         </div>
       )}
-    </>
+
+      <DeleteConfirmationModal
+        isOpen={deleteItem !== null}
+        loading={deleteLoading}
+        title="Delete Meal"
+        message="Are you sure you want to delete this meal?"
+        details={(() => {
+          if (!deleteItem) return null;
+          const inst = instances.find((i) => String(i.id) === String(deleteItem.flight_instance));
+          return {
+            NAME: deleteItem.name,
+            INSTANCE: inst ? `${inst.flight_no} — ${inst.date}` : deleteItem.flight_instance,
+          };
+        })()}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={confirmDelete}
+      />
+    </div>
   );
 }

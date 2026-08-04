@@ -245,8 +245,8 @@ export default function FlightOverviewPage() {
     };
 
     return (
-        <>
-            <div className="admin-page-wrap">
+        <div className="admin-page">
+            <div className="admin-container">
 
                 {/* Header */}
                 <div className="flex justify-between items-start flex-wrap gap-4 mb-8">
@@ -268,7 +268,7 @@ export default function FlightOverviewPage() {
                         }}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 300px', maxWidth: 480 }}
                     >
-                        <div className="admin-toolbar-search" style={{ flex: 1, width: 'auto' }}>
+                        <div className="admin-toolbar-search">
                             <Search size={14} className="search-icon" />
                             <input
                                 className="filter-input"
@@ -725,6 +725,6 @@ export default function FlightOverviewPage() {
                 </Modal>
 
             </div>
-        </>
+        </div>
     );
 }

@@ -85,6 +85,8 @@ export default function FaresPage() {
     fetchList: (params) => fetchFares({ ...params, flight_instance: instanceParam || '' }),
   };
 
+  const fromPage = searchParams.get('fromPage');
+
   const flowBanner = instanceParam ? (
     <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
       <div className="flex items-center gap-3">
@@ -104,21 +106,27 @@ export default function FaresPage() {
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
-          onClick={() => navigate(`/admin/operations/seat-map?instance=${instanceParam}`)}
+          onClick={() => navigate(`/admin/operations/seat-map?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`)}
           className="px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
         >
           <Armchair size={14} /> Skip / Next: Seats <ChevronRight size={14} />
         </button>
         <button
           type="button"
-          onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}`)}
+          onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`)}
           className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all border-none"
         >
           <Utensils size={14} /> Skip to Meals <ChevronRight size={14} />
         </button>
         <button
           type="button"
-          onClick={() => navigate('/admin/operations/flight-instances')}
+          onClick={() => {
+            if (fromPage) {
+              navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
+            } else {
+              navigate('/admin/operations/flight-instances');
+            }
+          }}
           className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
         >
           Finish Flow
@@ -139,7 +147,7 @@ export default function FaresPage() {
         validateForm={validateForm}
         thunks={modifiedThunks}
         banner={flowBanner}
-        saveAndNextUrl={instanceParam ? `/admin/operations/seat-map?instance=${instanceParam}` : null}
+        saveAndNextUrl={instanceParam ? `/admin/operations/seat-map?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
       />
     </>
   );

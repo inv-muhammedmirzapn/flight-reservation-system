@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
+import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
@@ -47,6 +48,8 @@ export default function FlightRoutesPage() {
   const [search, setSearch] = useState('');
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const PAGE_SIZE = 10;
 
   const load = (s, p) => dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
@@ -186,13 +189,19 @@ export default function FlightRoutesPage() {
     }
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm('Delete this flight route?')) return;
-    toast.promise(dispatch(removeFlightRoute(id)).unwrap(), {
-      loading: 'Deleting…',
-      success: 'Deleted.',
-      error: 'Failed to delete.',
-    });
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
+    setDeleteLoading(true);
+    try {
+      await dispatch(removeFlightRoute(deleteItem.id)).unwrap();
+      toast.success('Flight route deleted successfully.');
+      setDeleteItem(null);
+      load(search, page);
+    } catch (err) {
+      toast.error('Failed to delete flight route.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const formatMins = (mins) => {
@@ -205,9 +214,8 @@ export default function FlightRoutesPage() {
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
   return (
-    <>
-
-      <div className="admin-page-wrap">
+    <div className="admin-page">
+      <div className="admin-container">
         <div className="flex justify-between items-center mb-7">
           <div>
             <h1 className="admin-page-title">Flight Routes</h1>
@@ -220,7 +228,7 @@ export default function FlightRoutesPage() {
 
         {/* Search */}
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search" style={{ flex: 1 }}>
+          <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
           </div>
@@ -249,12 +257,12 @@ export default function FlightRoutesPage() {
               <thead>
                 <tr>
                   <th>Flight No</th><th>Airline</th><th>Legs &amp; Duration</th>
-                  <th>Baggage (kg)</th><th>Handbag (kg)</th><th>Actions</th>
+                  <th>Baggage (kg)</th><th>Handbag (kg)</th><th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {routes.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} className="admin-row">
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
                     <td>
@@ -274,10 +282,14 @@ export default function FlightRoutesPage() {
                     </td>
                     <td>{r.baggage_weight_allowed_per_person}</td>
                     <td>{r.handbag_weight_allowed_per_person}</td>
-                    <td>
-                      <div className="flex gap-1.5">
-                        <button className="btn-secondary" onClick={() => openEdit(r)}><Pencil size={13} /> Edit</button>
-                        <button className="btn-danger" onClick={() => handleDelete(r.id)}><Trash2 size={13} /> Delete</button>
+                    <td className="text-right whitespace-nowrap">
+                      <div className="flex gap-1.5 items-center justify-end">
+                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(r)} style={{ padding: '6px 8px' }}>
+                          <Pencil size={14} />
+                        </button>
+                         <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -508,6 +520,16 @@ export default function FlightRoutesPage() {
           </div>
         </div>
       )}
-    </>
+
+      <DeleteConfirmationModal
+        isOpen={deleteItem !== null}
+        loading={deleteLoading}
+        title="Delete Flight Route"
+        message="Are you sure you want to delete this flight route?"
+        details={deleteItem ? { 'FLIGHT NO': deleteItem.flight_no, AIRLINE: deleteItem.airline_name, ID: deleteItem.id } : null}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={confirmDelete}
+      />
+    </div>
   );
 }

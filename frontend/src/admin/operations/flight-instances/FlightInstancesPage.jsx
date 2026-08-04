@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
+import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ComboInput } from '@/components/ui/ComboInput';
@@ -49,9 +50,10 @@ const STATUS_COLORS = {
 export default function FlightInstancesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const routeParam = searchParams.get('route');
   const autoCreate = searchParams.get('autoCreate');
+  const highlightInstance = searchParams.get('highlightInstance');
 
   const { items: instances, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightInstance);
   const { items: routes } = useSelector((s) => s.flightRoute);
@@ -63,17 +65,31 @@ export default function FlightInstancesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [activeSearch, setActiveSearch] = useState('');
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const initialPage = isNaN(pageParam) ? 1 : pageParam;
+  const [page, setPage] = useState(initialPage);
   const PAGE_SIZE = 10;
 
   const load = (s, p) => dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
 
+  const pageStr = searchParams.get('page') || '1';
+
   useEffect(() => {
-    load(search, page);
+    const p = parseInt(pageStr, 10);
+    const resolvedPage = isNaN(p) ? 1 : p;
+    setPage(resolvedPage);
+    load(activeSearch, resolvedPage);
+  }, [pageStr, activeSearch]);
+
+  useEffect(() => {
     dispatch(fetchFlightRoutes({ page_size: 500 }));
     dispatch(fetchAircraft({ page_size: 500 }));
     dispatch(fetchAirports({ page_size: 500 }));
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (routeParam && autoCreate && routes.length > 0) {
@@ -83,6 +99,53 @@ export default function FlightInstancesPage() {
       setShowForm(true);
     }
   }, [routeParam, autoCreate, routes]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      const tableContainer = document.querySelector('.admin-table-wrap');
+      if (tableContainer && !tableContainer.contains(e.target)) {
+        const isInteractiveModal = e.target.closest('.admin-modal') || e.target.closest('.toast') || e.target.closest('.admin-sidebar') || e.target.closest('.admin-navbar');
+        if (isInteractiveModal) return;
+
+        setSearchParams((prev) => {
+          if (!prev.has('highlightInstance')) return prev;
+          const nextParams = new URLSearchParams(prev);
+          nextParams.delete('highlightInstance');
+          return nextParams;
+        });
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [setSearchParams]);
+
+  const handleRowClick = (e, instId) => {
+    const tag = e.target.tagName.toLowerCase();
+    if (
+      tag === 'button' ||
+      tag === 'a' ||
+      tag === 'input' ||
+      tag === 'svg' ||
+      tag === 'path' ||
+      e.target.closest('a') ||
+      e.target.closest('button') ||
+      e.target.closest('input')
+    ) {
+      return;
+    }
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      const currentHighlight = nextParams.get('highlightInstance');
+      if (currentHighlight === String(instId)) {
+        nextParams.delete('highlightInstance');
+      } else {
+        nextParams.set('highlightInstance', String(instId));
+      }
+      return nextParams;
+    });
+  };
 
   const calculateArrival = (routeObj, depStr) => {
     if (!routeObj || !depStr || !routeObj.legs || routeObj.legs.length === 0) return '';
@@ -205,7 +268,7 @@ export default function FlightInstancesPage() {
       if (followUpTarget && targetId) {
         navigate(`/admin/operations/${followUpTarget}?instance=${targetId}`);
       } else {
-        load(search, page);
+        load(activeSearch, page);
       }
     } catch (err) {
       // DRF field errors come as { fieldName: ["msg", ...] | "msg" }
@@ -229,52 +292,26 @@ export default function FlightInstancesPage() {
     }
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm('Delete this instance?')) return;
-    toast.promise(dispatch(removeFlightInstance(id)).unwrap(), {
-      loading: 'Deleting…', success: 'Deleted.', error: 'Failed.',
-    });
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
+    setDeleteLoading(true);
+    try {
+      await dispatch(removeFlightInstance(deleteItem.id)).unwrap();
+      toast.success('Flight instance deleted successfully.');
+      setDeleteItem(null);
+      load(activeSearch, page);
+    } catch (err) {
+      toast.error('Failed to delete flight instance.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
   return (
-    <>
-      <div className="admin-page-wrap">
-        {routeParam && (
-          <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow">
-                1/4
-              </div>
-              <div>
-                <div className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
-                  Instance Setup Flow • Step 1 (Flight Instance)
-                </div>
-                <div className="text-sm font-bold text-slate-800">
-                  Creating Flight Instance for Route #{routeParam}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => navigate(`/admin/operations/fares?route=${routeParam}`)}
-                className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
-              >
-                Skip / Next: Fares <ChevronRight size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/admin/operations/flight-routes')}
-                className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
-              >
-                Finish Flow
-              </button>
-            </div>
-          </div>
-        )}
+    <div className="admin-page">
+      <div className="admin-container">
 
         <div className="flex justify-between items-center mb-7">
           <div>
@@ -284,8 +321,19 @@ export default function FlightInstancesPage() {
           <button className="btn-primary" onClick={openCreate} id="add-fi-btn"><Plus size={15} /> Add Instance</button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search" style={{ flex: 1 }}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          setActiveSearch(search);
+          const p = parseInt(searchParams.get('page') || '1', 10);
+          if (p !== 1) {
+            setSearchParams((prev) => {
+              const nextParams = new URLSearchParams(prev);
+              nextParams.set('page', '1');
+              return nextParams;
+            });
+          }
+        }} className="flex gap-2 mb-5">
+          <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input
               value={search}
@@ -296,7 +344,18 @@ export default function FlightInstancesPage() {
               <button
                 type="button"
                 className="clear-search-btn"
-                onClick={() => { setSearch(''); setPage(1); load('', 1); }}
+                onClick={() => {
+                  setSearch('');
+                  setActiveSearch('');
+                  const p = parseInt(searchParams.get('page') || '1', 10);
+                  if (p !== 1) {
+                    setSearchParams((prev) => {
+                      const nextParams = new URLSearchParams(prev);
+                      nextParams.set('page', '1');
+                      return nextParams;
+                    });
+                  }
+                }}
                 title="Clear search"
               >
                 <X size={13} />
@@ -321,47 +380,50 @@ export default function FlightInstancesPage() {
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
                 <thead>
-                  <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th>Actions</th></tr>
+                  <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th className="text-right">Actions</th></tr>
                 </thead>
                 <tbody>
-                  {instances.map((inst) => (
-                    <tr key={inst.id}>
-                      <td><strong>{inst.flight_no}</strong></td>
-                      <td>{inst.date}</td>
-                      <td>{inst.aircraft_registration}</td>
-                      <td>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
-                          {inst.status}
-                        </span>
-                      </td>
-                      <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
-                      <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                            <Link to={`/admin/operations/fares?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
-                              <Banknote size={13} /> Fares
-                            </Link>
-                            <Link to={`/admin/operations/seat-map?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
-                              <Armchair size={13} /> Seats
-                            </Link>
-                            <Link to={`/admin/operations/meals?instance=${inst.id}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
-                              <Utensils size={13} /> Meals
-                            </Link>
-                          </div>
+                  {instances.map((inst) => {
+                    const isHighlighted = String(inst.id) === String(highlightInstance);
+                    return (
+                      <tr key={inst.id} onClick={(e) => handleRowClick(e, inst.id)} className={`admin-row ${isHighlighted ? 'admin-row-highlight' : ''}`}>
+                        <td><strong>{inst.flight_no}</strong></td>
+                        <td>{inst.date}</td>
+                        <td>{inst.aircraft_registration}</td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
+                            {inst.status}
+                          </span>
+                        </td>
+                        <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
+                        <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
+                        <td className="text-right whitespace-nowrap">
+                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
+                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                                <Banknote size={13} /> Fares
+                              </Link>
+                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                                <Armchair size={13} /> Seats
+                              </Link>
+                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                                <Utensils size={13} /> Meals
+                              </Link>
+                            </div>
 
-                          <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-                            <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
-                              <Pencil size={14} />
-                            </button>
-                            <button className="btn-danger" title="Delete" onClick={() => handleDelete(inst.id)} style={{ padding: '6px 8px' }}>
-                              <Trash2 size={14} />
-                            </button>
+                            <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+                              <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
+                                <Pencil size={14} />
+                              </button>
+                              <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(inst)} style={{ padding: '6px 8px' }}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -373,7 +435,13 @@ export default function FlightInstancesPage() {
           totalPages={totalPages}
           totalCount={count || instances?.length || 0}
           pageSize={PAGE_SIZE}
-          onPageChange={(p) => { setPage(p); load(search, p); }}
+          onPageChange={(p) => {
+            setSearchParams((prev) => {
+              const nextParams = new URLSearchParams(prev);
+              nextParams.set('page', String(p));
+              return nextParams;
+            });
+          }}
           entityLabel="instances"
         />
       </div>
@@ -387,6 +455,41 @@ export default function FlightInstancesPage() {
               </h2>
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
             </div>
+
+            {routeParam && (
+              <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow">
+                    1/4
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                      Instance Setup Flow • Step 1 (Flight Instance)
+                    </div>
+                    <div className="text-sm font-bold text-slate-800">
+                      Creating Flight Instance for Route #{routeParam}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/operations/fares?route=${routeParam}`)}
+                    className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                  >
+                    Skip / Next: Fares <ChevronRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/operations/flight-routes')}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
+                  >
+                    Finish Flow
+                  </button>
+                </div>
+              </div>
+            )}
 
             {validationErrors?.non_field_errors && (
               <div className="admin-error">
@@ -468,6 +571,16 @@ export default function FlightInstancesPage() {
           </div>
         </div>
       )}
-    </>
+
+      <DeleteConfirmationModal
+        isOpen={deleteItem !== null}
+        loading={deleteLoading}
+        title="Delete Flight Instance"
+        message="Are you sure you want to delete this flight instance?"
+        details={deleteItem ? { 'FLIGHT NO': deleteItem.flight_no, DATE: deleteItem.date, AIRCRAFT: deleteItem.aircraft_registration } : null}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={confirmDelete}
+      />
+    </div>
   );
 }

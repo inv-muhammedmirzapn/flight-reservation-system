@@ -38,14 +38,13 @@ export default function AdminPassengersPage() {
   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
 
   return (
-    <>
-
-      <div className="admin-page-wrap">
+    <div className="admin-page">
+      <div className="admin-container">
         <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Passengers</h1>
         <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>View passenger records linked to bookings.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search" style={{ flex: 1 }}>
+          <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or passport…" />
           </div>
@@ -102,6 +101,6 @@ export default function AdminPassengersPage() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -50,14 +50,13 @@ export default function AdminBookingsPage() {
 
 
   return (
-    <>
-
-      <div className="admin-page-wrap">
+    <div className="admin-page">
+      <div className="admin-container">
         <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Bookings</h1>
         <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>Search by PNR and filter by booking status.</p>
 
         <form onSubmit={handleSearch} className="flex gap-2 mb-5 flex-wrap items-center">
-          <div className="admin-toolbar-search" style={{ flex: 1, minWidth: 200 }}>
+          <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search PNR…" />
           </div>
@@ -132,6 +131,6 @@ export default function AdminBookingsPage() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

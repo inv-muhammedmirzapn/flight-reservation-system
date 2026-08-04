@@ -246,11 +246,23 @@
   }
 
   .admin-table tbody tr {
-    @apply transition-colors duration-[120ms];
+    @apply transition-colors duration-[120ms] cursor-pointer;
   }
 
   .admin-table tbody tr:hover td {
     background: rgba(112, 93, 0, 0.025);
+  }
+
+  .admin-row-highlight td {
+    background-color: rgba(112, 93, 0, 0.06) !important;
+  }
+
+  .admin-row-highlight:hover td {
+    background-color: rgba(112, 93, 0, 0.09) !important;
+  }
+
+  .admin-row-highlight td:first-child {
+    box-shadow: inset 4px 0 0 0 #705d00 !important;
   }
 
   /* ── Status badge system ───────────────────────────────────────────── */
@@ -916,5 +928,30 @@
     .admin-controls-bar {
       @apply !flex-col !items-stretch;
     }
+  }
+
+  /* Delete Confirmation Modal Animations */
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes modalZoomIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .modal-backdrop-animate {
+    animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .modal-card-animate {
+    animation: modalZoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 }
