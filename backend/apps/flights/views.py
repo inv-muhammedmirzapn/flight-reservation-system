@@ -396,6 +396,32 @@ class FlightInstanceViewSet(AdminModelViewSet):
         date_to = self.request.query_params.get("date_to")
         if date_to:
             qs = qs.filter(date__lte=date_to)
+
+        status = self.request.query_params.get("status")
+        if status:
+            qs = qs.filter(status__iexact=status)
+
+        date = self.request.query_params.get("date")
+        if date:
+            qs = qs.filter(date=date)
+
+        arrival_date = self.request.query_params.get("arrival_date")
+        if arrival_date:
+            qs = qs.filter(scheduled_arrival__date=arrival_date)
+
+        source = self.request.query_params.get("source")
+        if source:
+            qs = qs.filter(flight__legs__departure_airport__iata_code__iexact=source, flight__legs__leg_order=1)
+
+        destination = self.request.query_params.get("destination")
+        if destination:
+            from django.db.models import Max, F
+            route_ids = FlightLeg.objects.values('flight').annotate(max_order=Max('leg_order')).filter(
+                arrival_airport__iata_code__iexact=destination,
+                leg_order=F('max_order')
+            ).values_list('flight_id', flat=True)
+            qs = qs.filter(flight_id__in=route_ids)
+
         return qs
 
     def destroy(self, request, *args, **kwargs):

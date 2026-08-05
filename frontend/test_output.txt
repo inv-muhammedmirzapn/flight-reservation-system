@@ -1,37 +1,83 @@
 
-> frontend@0.0.0 test
-> vitest run src/components/auth/__tests__/AdminLoginForm.test.jsx
-
-
  RUN  v4.1.10 /home/muhammedmirzapn/flight-management/frontend
 
- ❯ src/components/auth/__tests__/AdminLoginForm.test.jsx (5 tests | 1 failed) 541ms
-     ✓ renders login form elements correctly 269ms
-     × shows error if submitting empty fields 42ms
-     ✓ dispatches loginUser on valid form submission 100ms
-     ✓ shows error toast if login fails 92ms
-     ✓ shows loading state on button when loading is true in state 34ms
+ ❯ src/components/__tests__/Navbar.test.jsx (7 tests | 3 failed) 449ms
+     ✓ does not render notifications bell when user is not authenticated 174ms
+     ✓ renders notifications bell when user is authenticated 48ms
+     ✓ displays the unread notification badge when count is greater than 0 22ms
+     ✓ navigates to notifications page when bell is clicked 19ms
+     × navigates to landing page when logo is clicked for non-admin users 58ms
+     × navigates to admin flights page when logo is clicked for admin users 30ms
+     × renders notifications option inside profile dropdown 94ms
+ ❯ src/components/ui/__tests__/DateTimePicker.test.jsx (5 tests | 1 failed) 787ms
+     ✓ renders label and value 114ms
+     ✓ opens calendar and time popup on trigger click 260ms
+     ✓ calls onChange when selecting a day 300ms
+     × calls onChange when changing the time input 98ms
+     ✓ calls onChange with empty string when cleared 12ms
+ ❯ src/components/ui/__tests__/Select.test.jsx (4 tests | 4 failed) 414ms
+     × renders label and selected option 132ms
+     × toggles dropdown options list on click 186ms
+     × calls onChange with correct event structure when option is selected 52ms
+     × supports keyboard navigation (ArrowDown, ArrowUp, Enter) 41ms
+ ❯ src/components/ui/__tests__/DateSwitcher.test.jsx (3 tests | 1 failed) 420ms
+     × renders previous, current, and next dates relative to the active date 293ms
+     ✓ calls onDateChange with previous date when clicking previous card 67ms
+     ✓ calls onDateChange with next date when clicking next card 56ms
+ ❯ src/store/__tests__/crudSliceFactory.test.js (0 test)
+ ❯ src/routes/guards/__tests__/ProtectedRoute.test.jsx (5 tests | 1 failed) 74ms
+     ✓ renders children when guest accesses a guestOnly route 40ms
+     ✓ redirects to /flights when authenticated user accesses a guestOnly route 4ms
+     × redirects to /admin/flights when authenticated admin accesses a guestOnly route 13ms
+     ✓ renders children when authenticated user accesses a non-guestOnly route 3ms
+     ✓ redirects to / when unauthenticated user accesses a protected route 6ms
+ ❯ src/admin/_core/__tests__/adminPages.test.jsx (0 test)
+ ✓ src/pages/user/__tests__/UserFlightsList.test.jsx (6 tests) 4102ms
+     ✓ renders all flights initially  812ms
+     ✓ dispatches fetchFlights when filter options are interacted with  407ms
+     ✓ does not dispatch fetchFlights on slider change, but dispatches immediately on mouse release  302ms
+     ✓ renders a "Waiting List" badge if a flight has 0 available seats  2132ms
+ ✓ src/components/auth/__tests__/LoginForm.test.jsx (6 tests) 766ms
+     ✓ renders login form elements correctly  445ms
+ ✓ src/components/ui/__tests__/PassengerSelector.test.jsx (3 tests) 977ms
+     ✓ calls corresponding setters when passenger options are clicked  565ms
+ ✓ src/components/__tests__/BookingConfirmModal.test.jsx (8 tests) 775ms
+     ✓ renders modal with flight details  402ms
+ ✓ src/pages/user/__tests__/UserFlightDetail.test.jsx (2 tests) 1049ms
+     ✓ redirects to /login and shows toast if not logged in when clicking Book Now  766ms
+ ✓ src/components/ui/__tests__/DatePicker.test.jsx (4 tests) 929ms
+     ✓ opens calendar on input click  329ms
+     ✓ calls onChange with selected date when a day is clicked  405ms
+ ✓ src/pages/auth/login/__tests__/AdminLoginPage.test.jsx (5 tests) 925ms
+     ✓ renders login form elements correctly  570ms
+ ✓ src/pages/user/__tests__/MyBookingsPage.test.jsx (3 tests) 2712ms
+     ✓ renders DELAYED flight status badge in booking list item  672ms
+     ✓ disables cancellation and displays reason when flight is cancelled  1926ms
+ ✓ src/pages/user/__tests__/NotificationsPage.test.jsx (5 tests) 1379ms
+     ✓ renders loading state when loading  1066ms
+ ✓ src/components/ui/__tests__/ChangePasswordModal.test.jsx (1 test) 248ms
+ ✓ src/pages/landing/__tests__/LandingPage.test.jsx (3 tests) 155ms
+ ✓ src/admin/operations/meals/__tests__/MealsPage.test.jsx (2 tests) 173ms
+ ✓ src/admin/operations/fares/__tests__/FaresPage.test.jsx (2 tests) 90ms
+ ✓ src/store/__tests__/waitlistSlice.test.js (10 tests) 23ms
+ ❯ src/admin/analytics/__tests__/AnalyticsDashboard.test.jsx (11 tests | 2 failed) 4561ms
+     ✓ renders the page heading  773ms
+     × renders all 6 KPI card labels after data loads 459ms
+     ✓ displays correct total bookings count 128ms
+     ✓ displays correct confirmed and cancelled counts 74ms
+     ✓ displays cancellation rate from API 240ms
+     × displays average occupancy computed from occupancy data 1433ms
+     ✓ calls all 7 API endpoints on mount 86ms
+     ✓ auto-refreshes after 30 seconds without user interaction 98ms
+     ✓ shows error message and Retry button when API fails  821ms
+     ✓ renders all 6 chart section headings 239ms
+     ✓ renders the filter bar 194ms
+ ✓ src/store/__tests__/bookingSlice.test.js (11 tests) 165ms
+ ✓ src/store/__tests__/notificationsSlice.test.js (5 tests) 51ms
+ ✓ src/routes/__tests__/routing.test.jsx (1 test) 5ms
 
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  src/components/auth/__tests__/AdminLoginForm.test.jsx > AdminLoginForm Component > shows error if submitting empty fields
-AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
-
-Number of calls: 0
-
- ❯ src/components/auth/__tests__/AdminLoginForm.test.jsx:82:25
-     80|     fireEvent.click(submitBtn);
-     81|
-     82|     expect(toast.error).toHaveBeenCalledWith('Please enter both userna…
-       |                         ^
-     83|     expect(screen.getByText('⚠️Please enter both username and password…
-     84|     expect(mockDispatch).not.toHaveBeenCalled();
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
-
-
- Test Files  1 failed (1)
-      Tests  1 failed | 4 passed (5)
-   Start at  12:44:06
-   Duration  2.03s (transform 165ms, setup 151ms, import 307ms, tests 541ms, environment 853ms)
+ Test Files  8 failed | 17 passed (25)
+      Tests  12 failed | 100 passed (112)
+   Start at  10:38:22
+   Duration  52.51s (transform 9.12s, setup 6.43s, import 53.28s, tests 21.23s, environment 56.57s)
 

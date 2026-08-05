@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchFlightInstances, updateFlightInstance } from '@/admin/_core/store/adminSlices';
-import { Modal } from '@/components/ui/Modal';
+import { fetchFlightInstances, updateFlightInstance, fetchAirports } from '@/admin/_core/store/adminSlices';
 import { Select } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import { Edit2, Eye, Plane, RefreshCw, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
@@ -49,8 +48,11 @@ export default function FlightOverviewPage() {
 
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
+    const { items: airports = [] } = useSelector(s => s.airport || {});
 
     const [currentPage, setCurrentPage] = useState(1);
+    const [sourceFocus, setSourceFocus] = useState(false);
+    const [destFocus, setDestFocus] = useState(false);
     const PAGE_SIZE = 10;
     const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
 
@@ -76,7 +78,6 @@ export default function FlightOverviewPage() {
     const [filterOpen, setFilterOpen] = useState(false);
 
     // Draft states for advanced filters modal
-    const [draftSearch, setDraftSearch] = useState('');
     const [draftStatus, setDraftStatus] = useState('');
     const [draftDate, setDraftDate] = useState('');
     const [draftArrivalDate, setDraftArrivalDate] = useState('');
@@ -108,15 +109,38 @@ export default function FlightOverviewPage() {
     // Initial load
     useEffect(() => {
         fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+        dispatch(fetchAirports({ page_size: 500 }));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Lock background page scroll when any modal is open
+    const anyModalOpen = filterOpen || (!!editTarget && !confirmOpen) || confirmOpen;
+    useEffect(() => {
+        if (anyModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [anyModalOpen]);
 
     // Quick search input change handler (only updates local state, fetching happens on submit/clear)
     const handleSearchChange = (e) => {
         setSearchInput(e.target.value);
     };
 
+    const getAirportSuggestions = (query) => {
+        if (!query || query.trim().length < 1) return [];
+        const cleanQuery = query.toLowerCase().trim();
+        return airports.filter(a => 
+            a.iata_code?.toLowerCase().includes(cleanQuery) || 
+            a.city?.toLowerCase().includes(cleanQuery) || 
+            a.airport_name?.toLowerCase().includes(cleanQuery)
+        ).slice(0, 5);
+    };
+
     const handleOpenFilters = () => {
-        setDraftSearch(activeSearch);
         setDraftStatus(statusFilter);
         setDraftDate(dateFilter);
         setDraftArrivalDate(arrivalDateFilter);
@@ -128,8 +152,6 @@ export default function FlightOverviewPage() {
     };
 
     const handleApplyFilters = () => {
-        setActiveSearch(draftSearch);
-        setSearchInput(draftSearch);
         setStatusFilter(draftStatus);
         setDateFilter(draftDate);
         setArrivalDateFilter(draftArrivalDate);
@@ -139,7 +161,7 @@ export default function FlightOverviewPage() {
         setSortOrder(draftSortOrder);
 
         setCurrentPage(1);
-        fetchFiltered(1, buildParams(draftSearch, draftStatus, draftDate, draftArrivalDate, draftSource, draftDest, draftSortBy, draftSortOrder));
+        fetchFiltered(1, buildParams(activeSearch, draftStatus, draftDate, draftArrivalDate, draftSource, draftDest, draftSortBy, draftSortOrder));
         setFilterOpen(false);
     };
 
@@ -155,7 +177,6 @@ export default function FlightOverviewPage() {
         setSortOrder('desc');
 
         // Also reset drafts
-        setDraftSearch('');
         setDraftStatus('');
         setDraftDate('');
         setDraftArrivalDate('');
@@ -340,48 +361,7 @@ export default function FlightOverviewPage() {
                     </div>
                 </div>
 
-                {/* Active Filter Chips / Badges */}
-                {hasActiveFilters && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginRight: 4 }}>{t("admin.activeFilters", { defaultValue: 'Active Filters:' })}</span>
-                        {statusFilter && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>Status: {statusFilter}</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('status')} />
-                            </div>
-                        )}
-                        {dateFilter && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>Departure: {dateFilter}</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('date')} />
-                            </div>
-                        )}
-                        {arrivalDateFilter && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>Arrival: {arrivalDateFilter}</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('arrivalDate')} />
-                            </div>
-                        )}
-                        {sourceFilter && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>From: {sourceFilter.toUpperCase()}</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('source')} />
-                            </div>
-                        )}
-                        {destFilter && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>To: {destFilter.toUpperCase()}</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('dest')} />
-                            </div>
-                        )}
-                        {(sortBy !== 'scheduled_departure' || sortOrder !== 'desc') && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(112,93,0,0.08)', border: '1px solid rgba(112,93,0,0.15)', borderRadius: 20, fontSize: 12, color: '#705d00', fontWeight: 600 }}>
-                                <span>Sort: {sortBy.replace('_', ' ')} ({sortOrder === 'asc' ? 'Asc' : 'Desc'})</span>
-                                <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveFilter('sort')} />
-                            </div>
-                        )}
-                    </div>
-                )}
+
 
                 {/* Error */}
                 {error && (
@@ -450,279 +430,316 @@ export default function FlightOverviewPage() {
                 </div>
 
                 {/* Advanced Filters & Sorting Modal */}
-                <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title={t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '8px 4px', maxHeight: '70vh', overflowY: 'auto' }} className="sidebar-scroll">
-
-                        {/* Sorting Section */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                <Select
-                                    options={[
-                                        { value: 'scheduled_departure', label: 'Departure Time' },
-                                        { value: 'scheduled_arrival', label: 'Arrival Time' },
-                                        { value: 'flight__flight_number', label: 'Flight Number' },
-                                        { value: 'status', label: 'Status' }
-                                    ]}
-                                    value={draftSortBy}
-                                    onChange={(e) => setDraftSortBy(e.target.value)}
-                                />
-                                <Select
-                                    options={[
-                                        { value: 'asc', label: 'Ascending' },
-                                        { value: 'desc', label: 'Descending' }
-                                    ]}
-                                    value={draftSortOrder}
-                                    onChange={(e) => setDraftSortOrder(e.target.value)}
-                                />
+                {filterOpen && (
+                    <div className="admin-modal-overlay" onClick={() => setFilterOpen(false)}>
+                        <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="admin-modal-header">
+                                <h2 className="admin-modal-title">
+                                    {t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}
+                                </h2>
+                                <button className="btn-icon" onClick={() => setFilterOpen(false)}><X size={16} /></button>
                             </div>
-                        </div>
 
-                        {/* Flight Search */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.searchQuery", { defaultValue: 'Search Query' })}</label>
-                            <div className="admin-toolbar-search" style={{ width: '100%' }}>
-                                <Search size={14} className="search-icon" />
-                                <input
-                                    className="filter-input"
-                                    type="text"
-                                    placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
-                                    value={draftSearch}
-                                    onChange={(e) => setDraftSearch(e.target.value)}
-                                />
-                                {draftSearch && (
-                                    <button
-                                        type="button"
-                                        className="clear-search-btn"
-                                        onClick={() => setDraftSearch('')}
-                                        title="Clear search"
-                                    >
-                                        <X size={13} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                {/* Sorting Section */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <Select
+                                            options={[
+                                                { value: 'scheduled_departure', label: 'Departure Time' },
+                                                { value: 'scheduled_arrival', label: 'Arrival Time' },
+                                                { value: 'flight__flight_number', label: 'Flight Number' },
+                                                { value: 'status', label: 'Status' }
+                                            ]}
+                                            value={draftSortBy}
+                                            onChange={(e) => setDraftSortBy(e.target.value)}
+                                        />
+                                        <Select
+                                            options={[
+                                                { value: 'asc', label: 'Ascending' },
+                                                { value: 'desc', label: 'Descending' }
+                                            ]}
+                                            value={draftSortOrder}
+                                            onChange={(e) => setDraftSortOrder(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Routing Section */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.sourceAirport", { defaultValue: 'Source Airport (IATA)' })}</label>
-                                <div style={{ position: 'relative' }}>
-                                    <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
-                                    <input
-                                        className="filter-input"
-                                        type="text"
-                                        placeholder="e.g. BOM"
-                                        maxLength={5}
-                                        value={draftSource}
-                                        onChange={(e) => setDraftSource(e.target.value)}
-                                        style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+
+                                {/* Routing Section */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div style={{ position: 'relative' }}>
+                                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.sourceAirport", { defaultValue: 'Source Airport (IATA)' })}</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
+                                            <input
+                                                className="filter-input"
+                                                type="text"
+                                                placeholder="e.g. BOM"
+                                                maxLength={5}
+                                                value={draftSource}
+                                                onChange={(e) => setDraftSource(e.target.value)}
+                                                onFocus={() => setSourceFocus(true)}
+                                                onBlur={() => setSourceFocus(false)}
+                                                style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                        {sourceFocus && getAirportSuggestions(draftSource).length > 0 && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                                {getAirportSuggestions(draftSource).map(apt => (
+                                                    <div
+                                                        key={apt.id}
+                                                        onMouseDown={() => {
+                                                            setDraftSource(apt.iata_code);
+                                                            setSourceFocus(false);
+                                                        }}
+                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 2 }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <span style={{ fontWeight: 700, color: '#705d00', fontSize: 13 }}>{apt.iata_code}</span>
+                                                        <span style={{ fontSize: 11, color: '#5e5e5e' }}>{apt.city} ({apt.airport_name})</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ position: 'relative' }}>
+                                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.destAirport", { defaultValue: 'Destination Airport (IATA)' })}</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
+                                            <input
+                                                className="filter-input"
+                                                type="text"
+                                                placeholder="e.g. DEL"
+                                                maxLength={5}
+                                                value={draftDest}
+                                                onChange={(e) => setDraftDest(e.target.value)}
+                                                onFocus={() => setDestFocus(true)}
+                                                onBlur={() => setDestFocus(false)}
+                                                style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                        {destFocus && getAirportSuggestions(draftDest).length > 0 && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                                {getAirportSuggestions(draftDest).map(apt => (
+                                                    <div
+                                                        key={apt.id}
+                                                        onMouseDown={() => {
+                                                            setDraftDest(apt.iata_code);
+                                                            setDestFocus(false);
+                                                        }}
+                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 2 }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <span style={{ fontWeight: 700, color: '#705d00', fontSize: 13 }}>{apt.iata_code}</span>
+                                                        <span style={{ fontSize: 11, color: '#5e5e5e' }}>{apt.city} ({apt.airport_name})</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Status and Dates */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <Select
+                                        label={t("admin.table.status", { defaultValue: 'Status' })}
+                                        options={getStatusOptions(t)}
+                                        value={draftStatus}
+                                        onChange={(e) => setDraftStatus(e.target.value)}
                                     />
+                                    <div />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div>
+                                        <DatePicker
+                                            label={t("admin.modals.departureDate", { defaultValue: 'Departure Date' })}
+                                            placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
+                                            value={draftDate}
+                                            onChange={(val) => setDraftDate(val)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <DatePicker
+                                            label={t("admin.modals.arrivalDate", { defaultValue: 'Arrival Date' })}
+                                            placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
+                                            value={draftArrivalDate}
+                                            onChange={(val) => setDraftArrivalDate(val)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.destAirport", { defaultValue: 'Destination Airport (IATA)' })}</label>
-                                <div style={{ position: 'relative' }}>
-                                    <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
-                                    <input
-                                        className="filter-input"
-                                        type="text"
-                                        placeholder="e.g. DEL"
-                                        maxLength={5}
-                                        value={draftDest}
-                                        onChange={(e) => setDraftDest(e.target.value)}
-                                        style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
-                                    />
-                                </div>
+
+                            <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-8">
+                                <button
+                                    onClick={handleClearFilters}
+                                    className="btn-secondary"
+                                >
+                                    {t("admin.modals.resetAll", { defaultValue: 'Reset All' })}
+                                </button>
+                                <button
+                                    onClick={handleApplyFilters}
+                                    className="btn-primary"
+                                >
+                                    {t("admin.modals.applyFilters", { defaultValue: 'Apply Filters' })}
+                                </button>
                             </div>
-                        </div>
-
-                        {/* Status and Dates */}
-                        <div>
-                            <Select
-                                label={t("admin.table.status", { defaultValue: 'Status' })}
-                                options={getStatusOptions(t)}
-                                value={draftStatus}
-                                onChange={(e) => setDraftStatus(e.target.value)}
-                            />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div>
-                                <DatePicker
-                                    label={t("admin.modals.departureDate", { defaultValue: 'Departure Date' })}
-                                    placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
-                                    value={draftDate}
-                                    onChange={(val) => setDraftDate(val)}
-                                />
-                            </div>
-                            <div>
-                                <DatePicker
-                                    label={t("admin.modals.arrivalDate", { defaultValue: 'Arrival Date' })}
-                                    placeholder={t("admin.modals.anyDate", { defaultValue: 'Any date' })}
-                                    value={draftArrivalDate}
-                                    onChange={(val) => setDraftArrivalDate(val)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Space to allow DatePicker calendar dropdowns to render without causing scroll cuts */}
-                        <div style={{ height: 180 }} />
-
-                        {/* Action buttons */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 16 }}>
-                            <button
-                                onClick={handleClearFilters}
-                                style={{ padding: '10px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer', transition: 'background 0.2s' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                            >
-                                {t("admin.modals.resetAll", { defaultValue: 'Reset All' })}
-                            </button>
-                            <button
-                                onClick={handleApplyFilters}
-                                style={{ padding: '10px 22px', background: '#1a1c1d', color: '#ffd700', fontWeight: 700, fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#2a2d2e'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#1a1c1d'}
-                            >
-                                {t("admin.modals.applyFilters", { defaultValue: 'Apply Filters' })}
-                            </button>
                         </div>
                     </div>
-                </Modal>
+                )}
 
                 {/* Edit Status Modal */}
-                <Modal isOpen={!!editTarget && !confirmOpen} onClose={() => setEditTarget(null)} title="Update Flight Status">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '4px 0' }}>
-
-                        {/* Flight identifier banner */}
-                        {editTarget && (
-                            <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.12)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 18, fontWeight: 900, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{editTarget.flight_number}</span>
-                                <span style={{ fontSize: 13, color: '#9e9488' }}>·</span>
-                                <span style={{ fontSize: 13, color: '#5e5e5e', fontWeight: 500 }}>
-                                    {editTarget.route?.source?.iata_code} → {editTarget.route?.destination?.iata_code}
-                                </span>
+                {!!editTarget && !confirmOpen && (
+                    <div className="admin-modal-overlay" onClick={() => setEditTarget(null)}>
+                        <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="admin-modal-header">
+                                <h2 className="admin-modal-title">Update Flight Status</h2>
+                                <button className="btn-icon" onClick={() => setEditTarget(null)}><X size={16} /></button>
                             </div>
-                        )}
 
-                        {/* Status + Delay side by side */}
-                        <div style={{ display: 'grid', gridTemplateColumns: editStatus === 'DELAYED' ? '1.4fr 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
-                            <Select
-                                label="New Status"
-                                options={getStatusOptions(t).filter(o => o.value !== '')}
-                                value={editStatus}
-                                onChange={(e) => {
-                                    const nextStatus = e.target.value;
-                                    setEditStatus(nextStatus);
-                                    // Auto reset delay to 0 if they change status away from DELAYED
-                                    if (nextStatus !== 'DELAYED') {
-                                        setEditDelay(0);
-                                    }
-                                }}
-                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '4px 0' }}>
+                                {/* Flight identifier banner */}
+                                <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.12)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span style={{ fontSize: 18, fontWeight: 900, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{editTarget.flight_number}</span>
+                                    <span style={{ fontSize: 13, color: '#9e9488' }}>·</span>
+                                    <span style={{ fontSize: 13, color: '#5e5e5e', fontWeight: 500 }}>
+                                        {editTarget.route?.source?.iata_code} → {editTarget.route?.destination?.iata_code}
+                                    </span>
+                                </div>
 
-                            {/* Delay stepper */}
-                            {editStatus === 'DELAYED' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
-                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
-                                            style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                        >−</button>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={editDelay}
-                                            onChange={e => {
-                                                const v = Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0);
-                                                setEditDelay(v);
-                                                if (v > 0) setEditStatus('DELAYED');
-                                            }}
-                                            style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
-                                            style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                        >+</button>
-                                    </div>
-                                    {editDelay > 0 ? (
-                                        <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
-                                    ) : (
-                                        <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
+                                {/* Status + Delay side by side */}
+                                <div style={{ display: 'grid', gridTemplateColumns: editStatus === 'DELAYED' ? '1.4fr 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
+                                    <Select
+                                        label="New Status"
+                                        options={getStatusOptions(t).filter(o => o.value !== '')}
+                                        value={editStatus}
+                                        onChange={(e) => {
+                                            const nextStatus = e.target.value;
+                                            setEditStatus(nextStatus);
+                                            // Auto reset delay to 0 if they change status away from DELAYED
+                                            if (nextStatus !== 'DELAYED') {
+                                                setEditDelay(0);
+                                            }
+                                        }}
+                                    />
+
+                                    {/* Delay stepper */}
+                                    {editStatus === 'DELAYED' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
+                                            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
+                                                    style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                                >−</button>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={editDelay}
+                                                    onChange={e => {
+                                                        const v = Math.max(0, parseInt(e.target.value.replace(/\D/g, '')) || 0);
+                                                        setEditDelay(v);
+                                                        if (v > 0) setEditStatus('DELAYED');
+                                                    }}
+                                                    style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
+                                                    style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                                >+</button>
+                                            </div>
+                                            {editDelay > 0 ? (
+                                                <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
+                                            ) : (
+                                                <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                            <button
-                                onClick={() => setEditTarget(null)}
-                                style={{ padding: '9px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer' }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (editStatus === 'DELAYED' && Number(editDelay) <= 0) {
-                                        toast.error("Please enter a delay greater than 0 minutes for Delayed status.");
-                                        return;
-                                    }
-                                    if (editStatus !== 'DELAYED' && Number(editDelay) > 0) {
-                                        toast.error("Delay minutes can only be set when flight status is Delayed.");
-                                        return;
-                                    }
-                                    setConfirmOpen(true);
-                                }}
-                                disabled={actionLoading}
-                                style={{ padding: '9px 22px', background: '#1a1c1d', color: '#ffd700', fontWeight: 700, fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer', opacity: actionLoading ? 0.7 : 1 }}
-                            >
-                                Save
-                            </button>
+                                <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-4">
+                                    <button
+                                        onClick={() => setEditTarget(null)}
+                                        className="btn-secondary"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (editStatus === 'DELAYED' && Number(editDelay) <= 0) {
+                                                toast.error("Please enter a delay greater than 0 minutes for Delayed status.");
+                                                return;
+                                            }
+                                            if (editStatus !== 'DELAYED' && Number(editDelay) > 0) {
+                                                toast.error("Delay minutes can only be set when flight status is Delayed.");
+                                                return;
+                                            }
+                                            setConfirmOpen(true);
+                                        }}
+                                        disabled={actionLoading}
+                                        className="btn-primary"
+                                        style={{ opacity: actionLoading ? 0.7 : 1 }}
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                </Modal>
+                )}
 
                 {/* Confirmation Modal */}
-                <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Update">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '12px 4px' }}>
-                        <p style={{ fontSize: 14, color: '#1a1c1d', margin: 0, lineHeight: 1.7 }}>
-                            You are about to update <strong>{editTarget?.flight_number}</strong>:
-                        </p>
-                        <div style={{ background: 'rgba(112,93,0,0.06)', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Status</span>
-                                <span style={{ fontWeight: 800, color: '#1a1c1d' }}>{editStatus}</span>
+                {confirmOpen && (
+                    <div className="admin-modal-overlay" onClick={() => setConfirmOpen(false)}>
+                        <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="admin-modal-header">
+                                <h2 className="admin-modal-title">Confirm Update</h2>
+                                <button className="btn-icon" onClick={() => setConfirmOpen(false)}><X size={16} /></button>
                             </div>
-                            <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Delay</span>
-                                <span style={{ fontWeight: 800, color: editDelay > 0 ? '#92400e' : '#1a1c1d' }}>
-                                    {editDelay > 0 ? `${editDelay} minutes` : 'No delay'}
-                                </span>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '12px 4px' }}>
+                                <p style={{ fontSize: 14, color: '#1a1c1d', margin: 0, lineHeight: 1.7 }}>
+                                    You are about to update <strong>{editTarget?.flight_number}</strong>:
+                                </p>
+                                <div style={{ background: 'rgba(112,93,0,0.06)', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Status</span>
+                                        <span style={{ fontWeight: 800, color: '#1a1c1d' }}>{editStatus}</span>
+                                    </div>
+                                    <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Delay</span>
+                                        <span style={{ fontWeight: 800, color: editDelay > 0 ? '#92400e' : '#1a1c1d' }}>
+                                            {editDelay > 0 ? `${editDelay} minutes` : 'No delay'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p style={{ fontSize: 12, color: '#9e9488', margin: 0 }}>This will update the live flight record and notify affected passengers.</p>
+                                <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-4">
+                                    <button
+                                        onClick={() => setConfirmOpen(false)}
+                                        className="btn-secondary"
+                                    >
+                                        Go Back
+                                    </button>
+                                    <button
+                                        onClick={handleStatusUpdate}
+                                        disabled={actionLoading}
+                                        className="btn-primary"
+                                        style={{ opacity: actionLoading ? 0.7 : 1 }}
+                                    >
+                                        {actionLoading ? 'Updating...' : 'Confirm Update'}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        <p style={{ fontSize: 12, color: '#9e9488', margin: 0 }}>This will update the live flight record and notify affected passengers.</p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                            <button
-                                onClick={() => setConfirmOpen(false)}
-                                style={{ padding: '10px 18px', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#5e5e5e', cursor: 'pointer' }}
-                            >
-                                Go Back
-                            </button>
-                            <button
-                                onClick={handleStatusUpdate}
-                                disabled={actionLoading}
-                                style={{ padding: '10px 22px', background: '#1a1c1d', color: '#ffd700', fontWeight: 700, fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer', opacity: actionLoading ? 0.7 : 1 }}
-                            >
-                                {actionLoading ? 'Updating...' : 'Confirm Update'}
-                            </button>
                         </div>
                     </div>
-                </Modal>
+                )}
 
             </div>
         </div>

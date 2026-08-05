@@ -491,12 +491,17 @@
   }
 
   .leg-airports-row {
-    @apply grid gap-2 items-end mb-3;
+    @apply grid gap-2 items-start mb-3;
     grid-template-columns: 1fr auto 1fr;
   }
 
+  .leg-arrow-container {
+    @apply flex flex-col items-center;
+  }
+
   .leg-arrow {
-    @apply flex items-center justify-center pb-2 text-[#999999] text-lg leading-none;
+    @apply flex items-center justify-center text-[#999999] text-lg leading-none;
+    height: 38px;
   }
 
   .leg-details-row {
@@ -508,7 +513,7 @@
       @apply grid-cols-1;
     }
 
-    .leg-arrow {
+    .leg-arrow-container {
       @apply hidden;
     }
 
