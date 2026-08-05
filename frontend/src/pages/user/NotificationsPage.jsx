@@ -134,7 +134,7 @@ export default function NotificationsPage() {
 
   return (
     <div style={{
-      padding: '120px 24px 48px',
+      padding: '88px 24px 48px',
       display: 'flex',
       justifyContent: 'center',
     }}>

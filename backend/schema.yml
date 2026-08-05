@@ -4,27 +4,224 @@ info:
   version: 1.0.0
   description: API documentation for the Flight Management System
 paths:
+  /api/analytics/flight-occupancy/:
+    get:
+      operationId: analytics_flight_occupancy_list
+      description: Returns occupancy statistics (booked_seats / total_seats) for the
+        top N most-booked flights.
+      summary: Flight Occupancy
+      parameters:
+      - in: query
+        name: top
+        schema:
+          type: integer
+        description: 'Number of flights to return (default: 20)'
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlightOccupancy'
+          description: ''
+  /api/analytics/monthly-revenue/:
+    get:
+      operationId: analytics_monthly_revenue_list
+      description: Returns revenue grouped by calendar month for the last 12 months.
+      summary: Monthly Revenue
+      parameters:
+      - in: query
+        name: months
+        schema:
+          type: integer
+        description: 'Number of past months to include (default: 12)'
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonthlyRevenue'
+          description: ''
+  /api/analytics/peak-booking-hours/:
+    get:
+      operationId: analytics_peak_booking_hours_list
+      description: Returns the number of bookings made during each hour of the day
+        (UTC). All 24 hours are always returned; hours with no bookings show 0.
+      summary: Peak Booking Hours
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PeakBookingHour'
+          description: ''
+  /api/analytics/popular-routes/:
+    get:
+      operationId: analytics_popular_routes_list
+      description: Returns the top N routes ordered by number of confirmed bookings.
+      summary: Popular Routes
+      parameters:
+      - in: query
+        name: top
+        schema:
+          type: integer
+        description: 'Number of top routes to return (default: 10)'
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PopularRoute'
+          description: ''
+  /api/analytics/summary/:
+    get:
+      operationId: analytics_summary_retrieve
+      description: 'Returns aggregated summary statistics: total revenue from confirmed
+        bookings, total booking count, confirmed/cancelled breakdown, and cancellation
+        rate.'
+      summary: Booking Analytics Summary
+      tags:
+      - Analytics
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryStats'
+          description: ''
   /api/auth/change-password/:
     post:
       operationId: auth_change_password_create
       tags:
       - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordResponse'
+          description: ''
+  /api/auth/email/request-otp/:
+    post:
+      operationId: auth_email_request_otp_create
+      description: Send a 6-digit OTP to the user's *new* email address to verify
+        ownership.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestEmailOTPRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RequestEmailOTPRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RequestEmailOTPRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestEmailOTPResponse'
+          description: ''
+  /api/auth/email/verify-otp/:
+    post:
+      operationId: auth_email_verify_otp_create
+      description: Verify the OTP and update the user's email address.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailOTPRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailOTPRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailOTPRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyEmailOTPResponse'
+          description: ''
   /api/auth/google-login/:
     post:
       operationId: auth_google_login_create
       tags:
       - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+        required: true
       security:
       - jwtAuth: []
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleLoginResponse'
+          description: ''
   /api/auth/login/:
     post:
       operationId: auth_login_create
@@ -50,6 +247,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomTokenObtainPair'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
+  /api/auth/password/forgot/:
+    post:
+      operationId: auth_password_forgot_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ForgotPassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ForgotPassword'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+          description: ''
+  /api/auth/password/reset/:
+    post:
+      operationId: auth_password_reset_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
           description: ''
   /api/auth/profile/:
     get:
@@ -80,6 +357,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/Profile'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -170,9 +448,24 @@ paths:
   /api/bookings/:
     get:
       operationId: bookings_list
-      summary: List all bookings for the authenticated user
+      description: |-
+        ViewSet for handling M3 Bookings.
+        Includes the endpoint for cancelling a booking, which triggers auto-allocation.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
       tags:
-      - Bookings
+      - bookings
       security:
       - jwtAuth: []
       responses:
@@ -180,26 +473,27 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Booking'
+                $ref: '#/components/schemas/PaginatedBookingList'
           description: ''
     post:
       operationId: bookings_create
-      summary: Create a new booking
+      description: |-
+        Book a flight.
+        Expects: { "flight": "<flight-uuid>", "passengers": [...] }
+        Delegates to the service layer for seat-locking and validation.
       tags:
-      - Bookings
+      - bookings
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Booking'
+              $ref: '#/components/schemas/BookingCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Booking'
+              $ref: '#/components/schemas/BookingCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Booking'
+              $ref: '#/components/schemas/BookingCreateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -213,7 +507,9 @@ paths:
   /api/bookings/{id}/:
     get:
       operationId: bookings_retrieve
-      summary: Retrieve a booking
+      description: |-
+        ViewSet for handling M3 Bookings.
+        Includes the endpoint for cancelling a booking, which triggers auto-allocation.
       parameters:
       - in: path
         name: id
@@ -221,7 +517,7 @@ paths:
           type: string
         required: true
       tags:
-      - Bookings
+      - bookings
       security:
       - jwtAuth: []
       responses:
@@ -231,89 +527,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Booking'
           description: ''
-    put:
-      operationId: bookings_update
-      summary: Update a booking
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - Bookings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Booking'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Booking'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Booking'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Booking'
-          description: ''
-    patch:
-      operationId: bookings_partial_update
-      summary: Partially update a booking
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - Bookings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedBooking'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedBooking'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedBooking'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Booking'
-          description: ''
-    delete:
-      operationId: bookings_destroy
-      summary: Delete a booking
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - Bookings
-      security:
-      - jwtAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/bookings/{id}/cancel/:
     post:
       operationId: bookings_cancel_create
-      summary: Cancel a booking
+      description: |-
+        Cancel a booking. This increments the flight's available seats
+        and triggers the waitlist auto-allocation logic.
       parameters:
       - in: path
         name: id
@@ -321,7 +540,19 @@ paths:
           type: string
         required: true
       tags:
-      - Bookings
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -331,23 +562,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/Booking'
           description: ''
-        '400':
-          description: No response body
-        '404':
+  /api/bookings/passengers/:
+    get:
+      operationId: bookings_passengers_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPassengerList'
+          description: ''
+  /api/bookings/passengers/{id}/:
+    get:
+      operationId: bookings_passengers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Passenger'
+          description: ''
+  /api/bulk-upload/import/:
+    post:
+      operationId: bulk_upload_import_create
+      description: |-
+        POST /api/bulk-upload/import/
+        Multipart form fields:
+          - entity  (string): one of ENTITY_IMPORTERS keys, or "all"
+          - file    (file):   .csv / .xls / .xlsx  — or .zip when entity is "all"
+      tags:
+      - bulk-upload
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
           description: No response body
   /api/flights/:
     get:
       operationId: flights_list
-      description: |-
-        List flights — 10 per page by default.
-        Query params:
-          ?page=N            page number
-          ?page_size=N       override page size (max 100)
-          ?search=<text>     OR-match on flight_number, airline, source, destination
-          ?status=<STATUS>   exact match on status field
-          ?source=<IATA>     case-insensitive contains match on source_airport
-          ?destination=<IATA> case-insensitive contains match on destination_airport
-          ?date=<YYYY-MM-DD> filter by departure date (local date of departure_time)
       tags:
       - flights
       security:
@@ -360,46 +639,16 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Flight'
-          description: ''
-    post:
-      operationId: flights_create
-      description: |-
-        Create a new Flight.
-        Requires ADMIN role or superuser.
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Flight'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
+                  $ref: '#/components/schemas/FlightInstance'
           description: ''
   /api/flights/{id}/:
     get:
       operationId: flights_retrieve
-      description: Retrieve details of a single flight.
       parameters:
       - in: path
         name: id
         schema:
-          type: string
-          format: uuid
+          type: integer
         required: true
       tags:
       - flights
@@ -411,121 +660,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Flight'
+                $ref: '#/components/schemas/FlightInstance'
           description: ''
-    delete:
-      operationId: flights_destroy
-      description: |-
-        Delete a single flight.
-        Requires ADMIN role or superuser.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        required: true
+  /api/flights/bounds/:
+    get:
+      operationId: flights_bounds_retrieve
       tags:
       - flights
       security:
       - jwtAuth: []
+      - {}
       responses:
-        '204':
+        '200':
           description: No response body
-  /api/flights/{id}/update/:
-    put:
-      operationId: flights_update_update
-      description: |-
-        Update an existing flight.
-        Requires ADMIN role or superuser.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Flight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Flight'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
-          description: ''
-    patch:
-      operationId: flights_update_partial_update
-      description: |-
-        Partially update an existing flight.
-        Requires ADMIN role or superuser.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - flights
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedFlight'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Flight'
-          description: ''
-  /api/flights/bulk-import/:
-    post:
-      operationId: flights_bulk_import_create
-      description: |-
-        POST /api/flights/bulk-import/
-
-        Accepts two formats — both admin-only:
-
-        1. JSON body (list or {"flights": [...]}):
-           Content-Type: application/json
-
-        2. CSV file upload:
-           Content-Type: multipart/form-data
-           Field name: "file"
-           Required CSV headers (matching model field names):
-             flight_number, airline, aircraft, source_airport,
-             destination_airport, departure_time, arrival_time,
-             base_fare, total_seats, available_seats, status
-
-        Returns: { created_count, created_flights, errors }
+  /api/flights/calendar/:
+    get:
+      operationId: flights_calendar_retrieve
       tags:
       - flights
       security:
       - jwtAuth: []
+      - {}
       responses:
         '200':
           description: No response body
@@ -534,8 +689,7 @@ paths:
       operationId: flights_stats_retrieve
       description: |-
         GET /api/flights/stats/
-        Returns aggregate flight counts by status — always across ALL flights,
-        independent of pagination or filters. Public endpoint.
+        Returns aggregate flight instance counts by status.
       tags:
       - flights
       security:
@@ -543,65 +697,2612 @@ paths:
       - {}
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightStatsResponse'
+          description: ''
+  /api/flights/v2/aircraft/:
+    get:
+      operationId: flights_v2_aircraft_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAircraftList'
+          description: ''
+    post:
+      operationId: flights_v2_aircraft_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+          description: ''
+  /api/flights/v2/aircraft-models/:
+    get:
+      operationId: flights_v2_aircraft_models_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAircraftModelList'
+          description: ''
+    post:
+      operationId: flights_v2_aircraft_models_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AircraftModel'
+          description: ''
+  /api/flights/v2/aircraft-models/{id}/:
+    get:
+      operationId: flights_v2_aircraft_models_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft model.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AircraftModel'
+          description: ''
+    put:
+      operationId: flights_v2_aircraft_models_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft model.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AircraftModel'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AircraftModel'
+          description: ''
+    patch:
+      operationId: flights_v2_aircraft_models_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft model.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraftModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraftModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraftModel'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AircraftModel'
+          description: ''
+    delete:
+      operationId: flights_v2_aircraft_models_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft model.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
           description: No response body
+  /api/flights/v2/aircraft/{id}/:
+    get:
+      operationId: flights_v2_aircraft_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+          description: ''
+    put:
+      operationId: flights_v2_aircraft_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Aircraft'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+          description: ''
+    patch:
+      operationId: flights_v2_aircraft_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraft'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraft'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAircraft'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aircraft'
+          description: ''
+    delete:
+      operationId: flights_v2_aircraft_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this aircraft.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/airlines/:
+    get:
+      operationId: flights_v2_airlines_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAirlineList'
+          description: ''
+    post:
+      operationId: flights_v2_airlines_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airline'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airline'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airline'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airline'
+          description: ''
+  /api/flights/v2/airlines/{id}/:
+    get:
+      operationId: flights_v2_airlines_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airline.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airline'
+          description: ''
+    put:
+      operationId: flights_v2_airlines_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airline.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airline'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airline'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airline'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airline'
+          description: ''
+    patch:
+      operationId: flights_v2_airlines_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airline.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAirline'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAirline'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAirline'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airline'
+          description: ''
+    delete:
+      operationId: flights_v2_airlines_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airline.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/airports/:
+    get:
+      operationId: flights_v2_airports_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAirportList'
+          description: ''
+    post:
+      operationId: flights_v2_airports_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
+  /api/flights/v2/airports/{id}/:
+    get:
+      operationId: flights_v2_airports_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airport.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
+    put:
+      operationId: flights_v2_airports_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airport.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
+    patch:
+      operationId: flights_v2_airports_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airport.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAirport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAirport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAirport'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
+    delete:
+      operationId: flights_v2_airports_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this airport.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/airports/import-openflights/:
+    post:
+      operationId: flights_v2_airports_import_openflights_create
+      description: |-
+        POST /api/v2/airports/import-openflights/
+        Import airport data from OpenFlights.
+        Accepts:
+          - A file upload (in form-data request.FILES['file'])
+          - Or if no file is uploaded, fetches automatically from OpenFlights URL.
+          - ?overwrite=true query param to overwrite existing records.
+          - ?limit=N to limit the number of imported records.
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Airport'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Airport'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Airport'
+          description: ''
+  /api/flights/v2/countries/:
+    get:
+      operationId: flights_v2_countries_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCountryList'
+          description: ''
+  /api/flights/v2/countries/{id}/:
+    get:
+      operationId: flights_v2_countries_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this country.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Country'
+          description: ''
+  /api/flights/v2/fares/:
+    get:
+      operationId: flights_v2_fares_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFareList'
+          description: ''
+    post:
+      operationId: flights_v2_fares_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fare'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Fare'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Fare'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fare'
+          description: ''
+  /api/flights/v2/fares/{id}/:
+    get:
+      operationId: flights_v2_fares_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fare.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fare'
+          description: ''
+    put:
+      operationId: flights_v2_fares_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fare.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fare'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Fare'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Fare'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fare'
+          description: ''
+    patch:
+      operationId: flights_v2_fares_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fare.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFare'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFare'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFare'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fare'
+          description: ''
+    delete:
+      operationId: flights_v2_fares_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this fare.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/flight-instances/:
+    get:
+      operationId: flights_v2_flight_instances_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFlightInstanceList'
+          description: ''
+    post:
+      operationId: flights_v2_flight_instances_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+  /api/flights/v2/flight-instances/{id}/:
+    get:
+      operationId: flights_v2_flight_instances_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+    put:
+      operationId: flights_v2_flight_instances_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+    patch:
+      operationId: flights_v2_flight_instances_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightInstance'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+    delete:
+      operationId: flights_v2_flight_instances_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/flight-instances/{id}/apply-premium-pricing/:
+    post:
+      operationId: flights_v2_flight_instances_apply_premium_pricing_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+  /api/flights/v2/flight-instances/{id}/generate-seats/:
+    post:
+      operationId: flights_v2_flight_instances_generate_seats_create
+      description: |-
+        POST /api/v2/flight-instances/{id}/generate-seats/
+        Auto-creates Seat rows. Skips if seats already exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight instance.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightInstance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightInstance'
+          description: ''
+  /api/flights/v2/flight-meals/:
+    get:
+      operationId: flights_v2_flight_meals_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFlightMealList'
+          description: ''
+    post:
+      operationId: flights_v2_flight_meals_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightMeal'
+          description: ''
+  /api/flights/v2/flight-meals/{id}/:
+    get:
+      operationId: flights_v2_flight_meals_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight meal.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightMeal'
+          description: ''
+    put:
+      operationId: flights_v2_flight_meals_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight meal.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightMeal'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightMeal'
+          description: ''
+    patch:
+      operationId: flights_v2_flight_meals_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight meal.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightMeal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightMeal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightMeal'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightMeal'
+          description: ''
+    delete:
+      operationId: flights_v2_flight_meals_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight meal.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/flight-routes/:
+    get:
+      operationId: flights_v2_flight_routes_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFlightRouteList'
+          description: ''
+    post:
+      operationId: flights_v2_flight_routes_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightRoute'
+          description: ''
+  /api/flights/v2/flight-routes/{id}/:
+    get:
+      operationId: flights_v2_flight_routes_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight route.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightRoute'
+          description: ''
+    put:
+      operationId: flights_v2_flight_routes_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight route.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightRoute'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightRoute'
+          description: ''
+    patch:
+      operationId: flights_v2_flight_routes_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight route.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightRoute'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightRoute'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFlightRoute'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightRoute'
+          description: ''
+    delete:
+      operationId: flights_v2_flight_routes_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this flight route.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/food-items/:
+    get:
+      operationId: flights_v2_food_items_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFoodItemList'
+          description: ''
+    post:
+      operationId: flights_v2_food_items_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+          description: ''
+  /api/flights/v2/food-items/{id}/:
+    get:
+      operationId: flights_v2_food_items_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this food item.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+          description: ''
+    put:
+      operationId: flights_v2_food_items_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this food item.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+          description: ''
+    patch:
+      operationId: flights_v2_food_items_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this food item.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFoodItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFoodItem'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFoodItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodItem'
+          description: ''
+    delete:
+      operationId: flights_v2_food_items_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this food item.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/seat-price-templates/:
+    get:
+      operationId: flights_v2_seat_price_templates_list
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSeatPriceTemplateList'
+          description: ''
+    post:
+      operationId: flights_v2_seat_price_templates_create
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+  /api/flights/v2/seat-price-templates/{id}/:
+    get:
+      operationId: flights_v2_seat_price_templates_retrieve
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    put:
+      operationId: flights_v2_seat_price_templates_update
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeatPriceTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    patch:
+      operationId: flights_v2_seat_price_templates_partial_update
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSeatPriceTemplate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPriceTemplate'
+          description: ''
+    delete:
+      operationId: flights_v2_seat_price_templates_destroy
+      description: |-
+        CRUD for attribute→price rule templates keyed by aircraft model.
+        GET  /api/v2/seat-price-templates/?aircraft_model=<id>
+        POST /api/v2/seat-price-templates/  {name, aircraft_model, rules:[{attribute, price}]}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat price template.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/seats/:
+    get:
+      operationId: flights_v2_seats_list
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSeatList'
+          description: ''
+    post:
+      operationId: flights_v2_seats_create
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+  /api/flights/v2/seats/{id}/:
+    get:
+      operationId: flights_v2_seats_retrieve
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    put:
+      operationId: flights_v2_seats_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    patch:
+      operationId: flights_v2_seats_partial_update
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat.
+        required: true
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    delete:
+      operationId: flights_v2_seats_destroy
+      description: 'Base viewset: list/retrieve public, write actions admin-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this seat.
+        required: true
+      tags:
+      - flights
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/flights/v2/seats/bulk-price/:
+    post:
+      operationId: flights_v2_seats_bulk_price_create
+      description: |-
+        POST /api/v2/seats/bulk-price/
+        Body: {"seat_ids": [1, 2, 3], "price": 250, "rule_label": "window"}
+        Sets seat_fee = price and last_rule_applied = rule_label for all listed seats.
+        Returns counts and any conflict warnings (seats that already had a different rule).
+      tags:
+      - flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+  /api/notifications/:
+    get:
+      operationId: notifications_list
+      description: API endpoint that allows users to view and manage their notifications.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/notifications/{id}/:
+    get:
+      operationId: notifications_retrieve
+      description: API endpoint that allows users to view and manage their notifications.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/notifications/{id}/read/:
+    patch:
+      operationId: notifications_read_partial_update
+      description: Mark a specific notification as read.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/notifications/mark-all-read/:
+    post:
+      operationId: notifications_mark_all_read_create
+      description: Mark all notifications as read for the current user.
+      tags:
+      - Notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+          description: ''
+  /api/waitlist/:
+    get:
+      operationId: waitlist_list
+      description: Lists waitlist entries for the current user. Admins can see all
+        entries and filter by flight.
+      summary: List Waitlist Entries
+      parameters:
+      - in: query
+        name: flight
+        schema:
+          type: string
+          format: uuid
+        description: Filter by flight ID (Admins only)
+      tags:
+      - Waitlist
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WaitlistEntry'
+          description: ''
+  /api/waitlist/{id}/:
+    get:
+      operationId: waitlist_retrieve
+      description: Retrieves details of a specific waitlist entry.
+      summary: Waitlist Entry Details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Waitlist
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistEntry'
+          description: ''
+  /api/waitlist/{id}/cancel/:
+    post:
+      operationId: waitlist_cancel_create
+      description: Cancels a pending waitlist entry and returns refund details.
+      summary: Cancel Waitlist Entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Waitlist
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistCancelResponse'
+          description: ''
+  /api/waitlist/{id}/promote/:
+    post:
+      operationId: waitlist_promote_create
+      description: Manually promotes a pending waitlist entry to a confirmed booking.
+        Admin only.
+      summary: Promote Waitlist Entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Waitlist
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistPromoteResponse'
+          description: ''
+  /api/waitlist/flight/{flight_id}/:
+    get:
+      operationId: waitlist_flight_retrieve
+      description: Returns the total number of passengers currently on the waitlist
+        (pending) for a specific flight.
+      summary: Waitlist Flight Count
+      parameters:
+      - in: path
+        name: flight_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Waitlist
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistCountResponse'
+          description: ''
+  /api/waitlist/join/:
+    post:
+      operationId: waitlist_join_create
+      description: |-
+        POST /api/waitlist/join/
+        Joins the waitlist for a flight if it is full.
+        Permission: IsAuthenticated.
+      tags:
+      - Waitlist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaitlistJoinRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WaitlistJoinRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WaitlistJoinRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistEntry'
+          description: ''
 components:
   schemas:
+    Aircraft:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        registration:
+          type: string
+          maxLength: 20
+        airline:
+          type: integer
+        airline_name:
+          type: string
+          readOnly: true
+        aircraft_model:
+          type: integer
+        model_display:
+          type: string
+          readOnly: true
+        economy_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        business_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        first_class_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - aircraft_model
+      - airline
+      - airline_name
+      - id
+      - model_display
+      - registration
+    AircraftModel:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        manufacturer:
+          type: string
+          maxLength: 100
+        model_name:
+          type: string
+          maxLength: 100
+      required:
+      - id
+      - manufacturer
+      - model_name
+    Airline:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        iata_airline_code:
+          type: string
+          maxLength: 2
+        airline_name:
+          type: string
+          maxLength: 200
+      required:
+      - airline_name
+      - iata_airline_code
+      - id
+    Airport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        iata_code:
+          type: string
+          maxLength: 3
+        airport_name:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        timezone:
+          type: string
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        country:
+          type: integer
+        country_name:
+          type: string
+          readOnly: true
+        terminals: {}
+      required:
+      - airport_name
+      - city
+      - country
+      - country_name
+      - iata_code
+      - id
     BlankEnum:
       enum:
       - ''
     Booking:
       type: object
+      description: Full booking representation including nested flight instance summary.
       properties:
         id:
           type: string
           format: uuid
           readOnly: true
-        user:
+        flight_id_input:
           type: integer
+          writeOnly: true
+        flight_detail:
+          allOf:
+          - $ref: '#/components/schemas/FlightInstanceSummary'
           readOnly: true
-        flight:
-          type: string
-          format: uuid
+        cabin_class:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CabinClassFbfEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
         seat_count:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          readOnly: true
         total_price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/BookingStatusEnum'
-          readOnly: true
         created_at:
           type: string
           format: date-time
           readOnly: true
-        updated_at:
-          type: string
-          format: date-time
+        passengers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Passenger'
           readOnly: true
       required:
       - created_at
-      - flight
+      - flight_detail
+      - flight_id_input
       - id
+      - passengers
+      - seat_count
       - status
       - total_price
-      - updated_at
-      - user
+    BookingCreateRequest:
+      type: object
+      properties:
+        flight:
+          type: integer
+        cabin_class:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CabinClass6adEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        passengers:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingPassengerRequest'
+      required:
+      - flight
+      - passengers
+    BookingPassengerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        gender:
+          $ref: '#/components/schemas/Gender521Enum'
+        phone_number:
+          type: string
+      required:
+      - age
+      - gender
+      - name
     BookingStatusEnum:
       enum:
-      - PENDING
       - CONFIRMED
       - CANCELLED
       type: string
       description: |-
-        * `PENDING` - Pending
         * `CONFIRMED` - Confirmed
         * `CANCELLED` - Cancelled
+    CabinClass6adEnum:
+      enum:
+      - ECONOMY
+      - BUSINESS
+      - FIRST
+      type: string
+      description: |-
+        * `ECONOMY` - ECONOMY
+        * `BUSINESS` - BUSINESS
+        * `FIRST` - FIRST
+    CabinClassFbfEnum:
+      enum:
+      - ECONOMY
+      - BUSINESS
+      - FIRST
+      type: string
+      description: |-
+        * `ECONOMY` - Economy
+        * `BUSINESS` - Business
+        * `FIRST` - First
+    ChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+      required:
+      - new_password
+      - old_password
+    ChangePasswordResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Country:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        iso_code:
+          type: string
+          maxLength: 3
+      required:
+      - id
+      - iso_code
+      - name
     CustomTokenObtainPair:
       type: object
       properties:
@@ -614,125 +3315,118 @@ components:
       required:
       - password
       - username
-    Flight:
+    Fare:
       type: object
-      description: Serializer for the Flight model, handling representation and validation.
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
           readOnly: true
-        flight_number:
+        flight_instance:
+          type: integer
+        fare_code:
           type: string
           maxLength: 20
-        airline:
-          type: string
-          maxLength: 100
-        aircraft:
-          type: string
-          maxLength: 100
-        source_airport:
-          type: string
-          maxLength: 10
-        destination_airport:
-          type: string
-          maxLength: 10
-        departure_time:
-          type: string
-          format: date-time
-        arrival_time:
-          type: string
-          format: date-time
-        base_fare:
+        cabin_class:
+          $ref: '#/components/schemas/CabinClassFbfEnum'
+        price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        total_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+        currency:
+          type: string
+          maxLength: 3
         available_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
-        status:
-          $ref: '#/components/schemas/FlightStatusEnum'
-        external_id:
           type: string
-          nullable: true
-          maxLength: 100
-        sync_source:
+          readOnly: true
+        refund_type:
+          $ref: '#/components/schemas/RefundTypeEnum'
+        change_fee:
           type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        meal_included:
+          type: boolean
+        baggage_allowance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
           nullable: true
-          maxLength: 50
-        stops: {}
+          description: Override flight-level baggage allowance (kg). Leave blank to
+            use flight default.
       required:
-      - aircraft
-      - airline
-      - arrival_time
       - available_seats
-      - base_fare
-      - departure_time
-      - destination_airport
-      - flight_number
+      - cabin_class
+      - fare_code
+      - flight_instance
       - id
-      - source_airport
-      - total_seats
-    FlightStatusEnum:
-      enum:
-      - SCHEDULED
-      - DELAYED
-      - CANCELLED
-      - BOARDING
-      - DEPARTED
-      - ARRIVED
-      type: string
-      description: |-
-        * `SCHEDULED` - Scheduled
-        * `DELAYED` - Delayed
-        * `CANCELLED` - Cancelled
-        * `BOARDING` - Boarding
-        * `DEPARTED` - Departed
-        * `ARRIVED` - Arrived
-    GenderEnum:
-      enum:
-      - MALE
-      - FEMALE
-      - OTHER
-      type: string
-      description: |-
-        * `MALE` - Male
-        * `FEMALE` - Female
-        * `OTHER` - Other
-    PatchedBooking:
+      - price
+    FlightInstance:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
-          readOnly: true
-        user:
           type: integer
           readOnly: true
         flight:
+          type: integer
+        flight_no:
           type: string
-          format: uuid
-        seat_count:
+          readOnly: true
+        flight_number:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+        aircraft:
+          type: integer
+        aircraft_registration:
+          type: string
+          readOnly: true
+        total_capacity:
+          type: string
+          readOnly: true
+        route:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status43bEnum'
+        delay_minutes:
           type: integer
           maximum: 9223372036854775807
           minimum: 0
           format: int64
-        total_price:
+          description: Delay in minutes (0 = no delay)
+        scheduled_departure:
           type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/BookingStatusEnum'
-          readOnly: true
+          format: date-time
+        scheduled_arrival:
+          type: string
+          format: date-time
+        actual_departure:
+          type: string
+          format: date-time
+          nullable: true
+        actual_arrival:
+          type: string
+          format: date-time
+          nullable: true
+        checkin_open:
+          type: string
+          format: date-time
+          nullable: true
+        boarding_time:
+          type: string
+          format: date-time
+          nullable: true
+        boarding_gate:
+          type: string
+          maxLength: 10
+        departure_terminal:
+          type: string
+          maxLength: 10
+        arrival_terminal:
+          type: string
+          maxLength: 10
         created_at:
           type: string
           format: date-time
@@ -741,60 +3435,1131 @@ components:
           type: string
           format: date-time
           readOnly: true
-    PatchedFlight:
+      required:
+      - aircraft
+      - aircraft_registration
+      - created_at
+      - date
+      - flight
+      - flight_no
+      - flight_number
+      - id
+      - route
+      - scheduled_arrival
+      - scheduled_departure
+      - total_capacity
+      - updated_at
+    FlightInstanceSummary:
       type: object
-      description: Serializer for the Flight model, handling representation and validation.
+      description: Lightweight FlightInstance info embedded in booking responses.
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
           readOnly: true
         flight_number:
           type: string
-          maxLength: 20
+          readOnly: true
         airline:
           type: string
-          maxLength: 100
-        aircraft:
-          type: string
-          maxLength: 100
+          readOnly: true
         source_airport:
           type: string
-          maxLength: 10
+          readOnly: true
         destination_airport:
           type: string
+          readOnly: true
+        scheduled_departure:
+          type: string
+          format: date-time
+        scheduled_arrival:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/Status43bEnum'
+      required:
+      - airline
+      - destination_airport
+      - flight_number
+      - id
+      - scheduled_arrival
+      - scheduled_departure
+      - source_airport
+    FlightLeg:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        leg_order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        departure_airport:
+          type: integer
+        departure_airport_iata:
+          type: string
+          readOnly: true
+        arrival_airport:
+          type: integer
+        arrival_airport_iata:
+          type: string
+          readOnly: true
+        flight_duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Duration of flight leg in minutes
+        layover_duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Layover duration before this leg in minutes
+        scheduled_departure:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_arrival:
+          type: string
+          format: date-time
+          nullable: true
+        actual_departure:
+          type: string
+          format: date-time
+          nullable: true
+        actual_arrival:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - arrival_airport
+      - arrival_airport_iata
+      - departure_airport
+      - departure_airport_iata
+      - id
+      - leg_order
+    FlightMeal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_instance:
+          type: integer
+        name:
+          type: string
+          maxLength: 200
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightMealItem'
+      required:
+      - flight_instance
+      - id
+      - items
+      - name
+    FlightMealItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        food_item:
+          type: integer
+        food_item_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - food_item
+      - food_item_name
+      - id
+    FlightOccupancy:
+      type: object
+      properties:
+        flight_number:
+          type: string
+        airline:
+          type: string
+        route:
+          type: string
+        total_seats:
+          type: integer
+        booked_seats:
+          type: integer
+        available_seats:
+          type: integer
+        occupancy_rate:
+          type: number
+          format: double
+          description: Percentage of seats that are booked (0–100)
+      required:
+      - airline
+      - available_seats
+      - booked_seats
+      - flight_number
+      - occupancy_rate
+      - route
+      - total_seats
+    FlightRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_no:
+          type: string
+          maxLength: 20
+        airline:
+          type: integer
+        airline_name:
+          type: string
+          readOnly: true
+        baggage_weight_allowed_per_person:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        baggage_number_allowed_per_person:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        handbag_weight_allowed_per_person:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightLeg'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - airline
+      - airline_name
+      - created_at
+      - flight_no
+      - id
+      - legs
+      - updated_at
+    FlightStatsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        scheduled:
+          type: integer
+        delayed:
+          type: integer
+        cancelled:
+          type: integer
+        boarding:
+          type: integer
+        departed:
+          type: integer
+        arrived:
+          type: integer
+      required:
+      - arrived
+      - boarding
+      - cancelled
+      - delayed
+      - departed
+      - scheduled
+      - total
+    FoodItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        airline:
+          type: integer
+        airline_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
+        is_veg:
+          type: boolean
+        is_halal:
+          type: boolean
+        is_vegan:
+          type: boolean
+        image:
+          type: string
+          format: uri
+          nullable: true
+        image_url:
+          type: string
+          readOnly: true
+      required:
+      - airline
+      - airline_name
+      - id
+      - image_url
+      - name
+    ForgotPassword:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    ForgotPasswordResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Gender521Enum:
+      enum:
+      - M
+      - F
+      - O
+      type: string
+      description: |-
+        * `M` - M
+        * `F` - F
+        * `O` - O
+    Gender608Enum:
+      enum:
+      - M
+      - F
+      - O
+      type: string
+      description: |-
+        * `M` - Male
+        * `F` - Female
+        * `O` - Other
+    GoogleLoginRequest:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+      - token
+    GoogleLoginResponse:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+      required:
+      - access
+      - email
+      - id
+      - refresh
+      - role
+      - username
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
+    LogoutResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    MonthlyRevenue:
+      type: object
+      properties:
+        month:
+          type: string
+          description: Calendar month in YYYY-MM format
+        revenue:
+          type: number
+          format: double
+      required:
+      - month
+      - revenue
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        notification_type:
+          allOf:
+          - $ref: '#/components/schemas/NotificationTypeEnum'
+          readOnly: true
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - message
+      - notification_type
+      - title
+    NotificationTypeEnum:
+      enum:
+      - BOOKING_CONFIRMED
+      - BOOKING_CANCELLED
+      - WAITLIST_ALLOCATED
+      - FLIGHT_DELAYED
+      - FLIGHT_CANCELLED
+      - FLIGHT_BOARDING
+      - FLIGHT_DEPARTED
+      - FLIGHT_ARRIVED
+      type: string
+      description: |-
+        * `BOOKING_CONFIRMED` - Booking Confirmed
+        * `BOOKING_CANCELLED` - Booking Cancelled
+        * `WAITLIST_ALLOCATED` - Waitlist Allocated
+        * `FLIGHT_DELAYED` - Flight Delayed
+        * `FLIGHT_CANCELLED` - Flight Cancelled
+        * `FLIGHT_BOARDING` - Flight Boarding
+        * `FLIGHT_DEPARTED` - Flight Departed
+        * `FLIGHT_ARRIVED` - Flight Arrived
+    NullEnum:
+      enum:
+      - null
+    PaginatedAircraftList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Aircraft'
+    PaginatedAircraftModelList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AircraftModel'
+    PaginatedAirlineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Airline'
+    PaginatedAirportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Airport'
+    PaginatedBookingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+    PaginatedCountryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Country'
+    PaginatedFareList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fare'
+    PaginatedFlightInstanceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightInstance'
+    PaginatedFlightMealList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightMeal'
+    PaginatedFlightRouteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightRoute'
+    PaginatedFoodItemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodItem'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedPassengerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Passenger'
+    PaginatedSeatList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Seat'
+    PaginatedSeatPriceTemplateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatPriceTemplate'
+    Passenger:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        booking:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 255
+        full_name:
+          type: string
+          readOnly: true
+        age:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        gender:
+          $ref: '#/components/schemas/Gender608Enum'
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        seat_number:
+          type: string
+          nullable: true
+          description: Allocated seat number (e.g. 12A)
           maxLength: 10
-        departure_time:
+      required:
+      - age
+      - booking
+      - full_name
+      - gender
+      - id
+      - name
+    PatchedAircraft:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        registration:
           type: string
-          format: date-time
-        arrival_time:
+          maxLength: 20
+        airline:
+          type: integer
+        airline_name:
           type: string
-          format: date-time
-        base_fare:
+          readOnly: true
+        aircraft_model:
+          type: integer
+        model_display:
+          type: string
+          readOnly: true
+        economy_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        business_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        first_class_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+    PatchedAircraftModel:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        manufacturer:
+          type: string
+          maxLength: 100
+        model_name:
+          type: string
+          maxLength: 100
+    PatchedAirline:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        iata_airline_code:
+          type: string
+          maxLength: 2
+        airline_name:
+          type: string
+          maxLength: 200
+    PatchedAirport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        iata_code:
+          type: string
+          maxLength: 3
+        airport_name:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        timezone:
+          type: string
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        country:
+          type: integer
+        country_name:
+          type: string
+          readOnly: true
+        terminals: {}
+    PatchedFare:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_instance:
+          type: integer
+        fare_code:
+          type: string
+          maxLength: 20
+        cabin_class:
+          $ref: '#/components/schemas/CabinClassFbfEnum'
+        price:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        total_seats:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+        currency:
+          type: string
+          maxLength: 3
         available_seats:
+          type: string
+          readOnly: true
+        refund_type:
+          $ref: '#/components/schemas/RefundTypeEnum'
+        change_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        meal_included:
+          type: boolean
+        baggage_allowance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+          description: Override flight-level baggage allowance (kg). Leave blank to
+            use flight default.
+    PatchedFlightInstance:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight:
+          type: integer
+        flight_no:
+          type: string
+          readOnly: true
+        flight_number:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+        aircraft:
+          type: integer
+        aircraft_registration:
+          type: string
+          readOnly: true
+        total_capacity:
+          type: string
+          readOnly: true
+        route:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status43bEnum'
+        delay_minutes:
           type: integer
           maximum: 9223372036854775807
-          minimum: -9223372036854775808
+          minimum: 0
           format: int64
-        status:
-          $ref: '#/components/schemas/FlightStatusEnum'
-        external_id:
+          description: Delay in minutes (0 = no delay)
+        scheduled_departure:
           type: string
-          nullable: true
-          maxLength: 100
-        sync_source:
+          format: date-time
+        scheduled_arrival:
           type: string
+          format: date-time
+        actual_departure:
+          type: string
+          format: date-time
           nullable: true
-          maxLength: 50
-        stops: {}
+        actual_arrival:
+          type: string
+          format: date-time
+          nullable: true
+        checkin_open:
+          type: string
+          format: date-time
+          nullable: true
+        boarding_time:
+          type: string
+          format: date-time
+          nullable: true
+        boarding_gate:
+          type: string
+          maxLength: 10
+        departure_terminal:
+          type: string
+          maxLength: 10
+        arrival_terminal:
+          type: string
+          maxLength: 10
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedFlightMeal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_instance:
+          type: integer
+        name:
+          type: string
+          maxLength: 200
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightMealItem'
+    PatchedFlightRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_no:
+          type: string
+          maxLength: 20
+        airline:
+          type: integer
+        airline_name:
+          type: string
+          readOnly: true
+        baggage_weight_allowed_per_person:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        baggage_number_allowed_per_person:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        handbag_weight_allowed_per_person:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightLeg'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedFoodItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        airline:
+          type: integer
+        airline_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
+        is_veg:
+          type: boolean
+        is_halal:
+          type: boolean
+        is_vegan:
+          type: boolean
+        image:
+          type: string
+          format: uri
+          nullable: true
+        image_url:
+          type: string
+          readOnly: true
+    PatchedNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        notification_type:
+          allOf:
+          - $ref: '#/components/schemas/NotificationTypeEnum'
+          readOnly: true
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedProfile:
       type: object
       properties:
@@ -803,10 +4568,10 @@ components:
           readOnly: true
         username:
           type: string
-          readOnly: true
         email:
           type: string
           format: email
+          readOnly: true
         first_name:
           type: string
         last_name:
@@ -824,7 +4589,7 @@ components:
           nullable: true
         gender:
           oneOf:
-          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/ProfileGenderEnum'
           - $ref: '#/components/schemas/BlankEnum'
         country:
           type: string
@@ -843,6 +4608,105 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedSeat:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_instance:
+          type: integer
+        seat_number:
+          type: string
+          maxLength: 5
+        seat_class:
+          $ref: '#/components/schemas/SeatClassEnum'
+        position:
+          oneOf:
+          - $ref: '#/components/schemas/PositionEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        status:
+          $ref: '#/components/schemas/SeatStatusEnum'
+        exit_row:
+          type: boolean
+        extra_legroom:
+          type: boolean
+        seat_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
+        last_rule_applied:
+          type: string
+          maxLength: 50
+        attributes:
+          type: string
+          readOnly: true
+    PatchedSeatPriceTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aircraft_model:
+          type: integer
+        aircraft_model_display:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        rules:
+          description: 'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom",
+            "price": <number>} dicts ordered by priority (last wins on conflict).'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PeakBookingHour:
+      type: object
+      properties:
+        hour:
+          type: integer
+          description: Hour of day (0–23, UTC)
+        bookings:
+          type: integer
+      required:
+      - bookings
+      - hour
+    PopularRoute:
+      type: object
+      properties:
+        source:
+          type: string
+        destination:
+          type: string
+        route:
+          type: string
+          description: Human-readable route label, e.g. JFK → LAX
+        bookings:
+          type: integer
+      required:
+      - bookings
+      - destination
+      - route
+      - source
+    PositionEnum:
+      enum:
+      - window
+      - aisle
+      - middle
+      type: string
+      description: |-
+        * `window` - Window
+        * `aisle` - Aisle
+        * `middle` - Middle
     Profile:
       type: object
       properties:
@@ -851,10 +4715,10 @@ components:
           readOnly: true
         username:
           type: string
-          readOnly: true
         email:
           type: string
           format: email
+          readOnly: true
         first_name:
           type: string
         last_name:
@@ -872,7 +4736,7 @@ components:
           nullable: true
         gender:
           oneOf:
-          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/ProfileGenderEnum'
           - $ref: '#/components/schemas/BlankEnum'
         country:
           type: string
@@ -893,10 +4757,32 @@ components:
           readOnly: true
       required:
       - created_at
+      - email
+      - first_name
       - id
+      - last_name
       - role
       - updated_at
-      - username
+    ProfileGenderEnum:
+      enum:
+      - MALE
+      - FEMALE
+      - OTHER
+      type: string
+      description: |-
+        * `MALE` - Male
+        * `FEMALE` - Female
+        * `OTHER` - Other
+    RefundTypeEnum:
+      enum:
+      - REFUNDABLE
+      - NON_REFUNDABLE
+      - PARTIAL
+      type: string
+      description: |-
+        * `REFUNDABLE` - Refundable
+        * `NON_REFUNDABLE` - Non-Refundable
+        * `PARTIAL` - Partial
     Register:
       type: object
       properties:
@@ -922,6 +4808,47 @@ components:
       - email
       - password
       - username
+    RequestEmailOTPRequest:
+      type: object
+      properties:
+        new_email:
+          type: string
+          format: email
+      required:
+      - new_email
+    RequestEmailOTPResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ResetPassword:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+        otp:
+          type: string
+          writeOnly: true
+          maxLength: 6
+          minLength: 6
+        new_password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - new_password
+      - otp
+    ResetPasswordResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     RoleEnum:
       enum:
       - ADMIN
@@ -930,6 +4857,154 @@ components:
       description: |-
         * `ADMIN` - Admin
         * `CUSTOMER` - Customer
+    Seat:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flight_instance:
+          type: integer
+        seat_number:
+          type: string
+          maxLength: 5
+        seat_class:
+          $ref: '#/components/schemas/SeatClassEnum'
+        position:
+          oneOf:
+          - $ref: '#/components/schemas/PositionEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        status:
+          $ref: '#/components/schemas/SeatStatusEnum'
+        exit_row:
+          type: boolean
+        extra_legroom:
+          type: boolean
+        seat_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
+        last_rule_applied:
+          type: string
+          maxLength: 50
+        attributes:
+          type: string
+          readOnly: true
+      required:
+      - attributes
+      - flight_instance
+      - id
+      - seat_class
+      - seat_number
+    SeatClassEnum:
+      enum:
+      - ECONOMY
+      - BUSINESS
+      - FIRST
+      type: string
+      description: |-
+        * `ECONOMY` - Economy
+        * `BUSINESS` - Business
+        * `FIRST` - First
+    SeatPriceTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aircraft_model:
+          type: integer
+        aircraft_model_display:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        rules:
+          description: 'List of {"attribute": "window"|"aisle"|"middle"|"exit_row"|"extra_legroom",
+            "price": <number>} dicts ordered by priority (last wins on conflict).'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - aircraft_model
+      - aircraft_model_display
+      - created_at
+      - id
+      - name
+      - updated_at
+    SeatStatusEnum:
+      enum:
+      - AVAILABLE
+      - HELD
+      - BOOKED
+      - BLOCKED
+      type: string
+      description: |-
+        * `AVAILABLE` - Available
+        * `HELD` - Held
+        * `BOOKED` - Booked
+        * `BLOCKED` - Blocked
+    Status43bEnum:
+      enum:
+      - SCHEDULED
+      - DELAYED
+      - CANCELLED
+      - BOARDING
+      - DEPARTED
+      - ARRIVED
+      type: string
+      description: |-
+        * `SCHEDULED` - Scheduled
+        * `DELAYED` - Delayed
+        * `CANCELLED` - Cancelled
+        * `BOARDING` - Boarding
+        * `DEPARTED` - Departed
+        * `ARRIVED` - Arrived
+    SummaryStats:
+      type: object
+      properties:
+        total_bookings:
+          type: integer
+        confirmed_bookings:
+          type: integer
+        cancelled_bookings:
+          type: integer
+        cancellation_rate:
+          type: number
+          format: double
+          description: Percentage of bookings that were cancelled
+        total_revenue:
+          type: number
+          format: double
+          description: Total revenue from confirmed bookings (sum of base fares)
+        total_flights:
+          type: integer
+          description: Total number of flight records in the system
+        scheduled_flights:
+          type: integer
+          description: Number of flights currently in SCHEDULED status
+        avg_occupancy:
+          type: number
+          format: double
+          description: Average occupancy percentage across all flights
+      required:
+      - avg_occupancy
+      - cancellation_rate
+      - cancelled_bookings
+      - confirmed_bookings
+      - scheduled_flights
+      - total_bookings
+      - total_flights
+      - total_revenue
     TokenRefresh:
       type: object
       properties:
@@ -938,10 +5013,202 @@ components:
           readOnly: true
         refresh:
           type: string
-          writeOnly: true
       required:
       - access
       - refresh
+    VerifyEmailOTPRequest:
+      type: object
+      properties:
+        new_email:
+          type: string
+          format: email
+        otp:
+          type: string
+      required:
+      - new_email
+      - otp
+    VerifyEmailOTPResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - detail
+      - email
+    WaitlistCancelResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        refund_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        processing_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          type: string
+      required:
+      - message
+      - processing_fee
+      - refund_amount
+      - status
+    WaitlistCountResponse:
+      type: object
+      properties:
+        waitlist_count:
+          type: integer
+      required:
+      - waitlist_count
+    WaitlistEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        flight:
+          type: integer
+        flight_detail:
+          allOf:
+          - $ref: '#/components/schemas/FlightInstanceSummary'
+          readOnly: true
+        seat_count:
+          type: integer
+          maximum: 9
+          minimum: 1
+        cabin_class:
+          $ref: '#/components/schemas/CabinClassFbfEnum'
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/WaitlistEntryStatusEnum'
+          readOnly: true
+        booking:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        queue_position:
+          type: string
+          readOnly: true
+        passengers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitlistPassenger'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - booking
+      - created_at
+      - flight
+      - flight_detail
+      - id
+      - passengers
+      - price
+      - queue_position
+      - status
+      - updated_at
+      - user
+      - username
+    WaitlistEntryStatusEnum:
+      enum:
+      - PENDING
+      - CONFIRMED
+      - CANCELLED
+      - EXPIRED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `CONFIRMED` - Confirmed
+        * `CANCELLED` - Cancelled
+        * `EXPIRED` - Expired
+    WaitlistJoinRequest:
+      type: object
+      properties:
+        flight:
+          type: integer
+        cabin_class:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CabinClass6adEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        passengers:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitlistPassengerRequest'
+      required:
+      - flight
+      - passengers
+    WaitlistPassenger:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        age:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        gender:
+          $ref: '#/components/schemas/Gender608Enum'
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+      required:
+      - age
+      - gender
+      - id
+      - name
+    WaitlistPassengerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        gender:
+          $ref: '#/components/schemas/Gender521Enum'
+        phone_number:
+          type: string
+      required:
+      - age
+      - gender
+      - name
+    WaitlistPromoteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
   securitySchemes:
     jwtAuth:
       type: http

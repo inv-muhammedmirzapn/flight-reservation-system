@@ -1,0 +1,962 @@
+@import "tailwindcss";
+@config "../../../../tailwind.config.js";
+@source "../../../admin";
+
+/* ── Admin design tokens ─────────────────────────────────────────────────
+   All admin-specific theme values. These are registered into Tailwind's
+   theme so utilities like bg-admin-accent, rounded-admin-lg, font-ui etc.
+   are generated automatically.
+   ─────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Admin Colors */
+  --color-admin-accent: #ffd700;
+  --color-admin-accent-dark: #705d00;
+  --color-admin-bg: #f5f3ee;
+  --color-admin-surface: rgba(255, 255, 255, 0.80);
+  --color-admin-border: rgba(0, 0, 0, 0.07);
+  --color-admin-ink: #1a1c1d;
+  --color-admin-muted: #888888;
+
+  /* Status Colors */
+  --color-status-green: #059669;
+  --color-status-green-bg: #ecfdf5;
+  --color-status-amber: #d97706;
+  --color-status-amber-bg: #fffbeb;
+  --color-status-red: #dc2626;
+  --color-status-red-bg: #fef2f2;
+  --color-status-blue: #2563eb;
+  --color-status-blue-bg: #eff6ff;
+  --color-status-gray: #6b7280;
+  --color-status-gray-bg: #f3f4f6;
+  --color-status-purple: #7c3aed;
+  --color-status-purple-bg: #f5f3ff;
+
+  /* Admin Border Radius */
+  --radius-admin-sm: 10px;
+  --radius-admin-md: 14px;
+  --radius-admin-lg: 20px;
+  --radius-admin-xl: 24px;
+
+  /* Admin Font */
+  --font-ui: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+
+  /* Admin Font Sizes */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 28px;
+
+  /* Admin Shadows */
+  --shadow-admin: 0 4px 24px rgba(0, 0, 0, 0.07);
+  --shadow-admin-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+
+  /* Admin Animations */
+  --animate-shimmer: shimmer 1.4s infinite;
+  --animate-spin-slow: spin 0.75s linear infinite;
+  --animate-spin-slow-sm: spin 0.7s linear infinite;
+  --animate-fade-in: fadeIn 0.15s ease;
+  --animate-slide-up: slideUp 0.2s ease;
+}
+
+
+
+
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+@layer components {
+
+  /* ── Global admin page wrapper ─────────────────────────────────────── */
+  .admin-page {
+    @apply min-h-screen font-ui pt-[88px] pb-[60px];
+    background: linear-gradient(135deg, #f7f4ee 0%, #edeade 50%, #f0ede4 100%);
+  }
+
+  .admin-page-wrap {
+    @apply w-[95%] max-w-[1800px] mx-auto pt-[88px] px-6 pb-12;
+  }
+
+  .admin-container {
+    @apply w-[95%] max-w-[1800px] mx-auto px-6;
+  }
+
+  /* ── Page header ────────────────────────────────────────────────────── */
+  .admin-page-header {
+    @apply flex items-start justify-between gap-4 mb-8 flex-wrap;
+  }
+
+  .admin-page-title {
+    @apply font-ui text-2xl font-extrabold text-admin-ink tracking-[-0.02em] m-0 leading-tight;
+  }
+
+  .admin-page-subtitle {
+    @apply text-sm text-admin-muted mt-1 mb-0;
+  }
+
+  .admin-breadcrumb {
+    @apply flex items-center gap-2 text-xs text-admin-muted mb-3 font-semibold tracking-[0.04em] uppercase;
+  }
+
+  .admin-breadcrumb a {
+    @apply text-admin-accent-dark no-underline;
+  }
+
+  .admin-breadcrumb a:hover {
+    @apply underline;
+  }
+
+  .admin-breadcrumb span {
+    @apply opacity-50;
+  }
+
+  /* ── Card ───────────────────────────────────────────────────────────── */
+  .admin-card {
+    @apply bg-admin-surface backdrop-blur-[24px] border border-white/50 rounded-admin-lg shadow-admin;
+  }
+
+  /* ── Stat cards row ─────────────────────────────────────────────────── */
+  .admin-stat-grid {
+    @apply grid gap-4 mb-6;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .admin-stat-card {
+    @apply bg-admin-surface backdrop-blur-[24px] border border-white/50 rounded-admin-md shadow-admin py-5 px-6 flex items-center gap-4 transition-all duration-[180ms] cursor-default;
+  }
+
+  .admin-stat-card:hover {
+    @apply -translate-y-0.5 shadow-admin-lg;
+  }
+
+  .admin-stat-icon {
+    @apply w-11 h-11 rounded-xl flex items-center justify-center shrink-0;
+  }
+
+  .admin-stat-label {
+    @apply text-xs font-bold tracking-[0.07em] uppercase text-admin-muted mb-1;
+  }
+
+  .admin-stat-value {
+    @apply text-xl font-extrabold text-admin-ink font-ui leading-none;
+  }
+
+  .admin-stat-sub {
+    @apply text-[11px] text-[#aaaaaa] mt-0.5;
+  }
+
+  /* ── Toolbar (search + actions) ────────────────────────────────────── */
+  .admin-toolbar {
+    @apply flex items-center gap-3 mb-5 flex-wrap;
+  }
+
+  .admin-toolbar-search {
+    @apply relative w-70 max-w-full;
+  }
+
+  .admin-toolbar-search .search-icon {
+    @apply absolute left-[11px] top-1/2 -translate-y-1/2 text-admin-muted pointer-events-none;
+  }
+
+  .admin-toolbar-search input {
+    @apply w-full rounded-lg border border-black/10 text-sm bg-white/85 outline-none font-ui text-admin-ink transition-all duration-150;
+    padding: 7px 30px 7px 32px;
+  }
+
+  .admin-toolbar-search input:focus {
+    @apply border-admin-accent-dark bg-white;
+    box-shadow: 0 0 0 3px rgba(112, 93, 0, 0.1);
+  }
+
+  .admin-toolbar-search .clear-search-btn {
+    @apply absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none p-0.5 rounded-full flex items-center justify-center text-admin-muted cursor-pointer transition-colors duration-150;
+  }
+
+  .admin-toolbar-search .clear-search-btn:hover {
+    @apply text-admin-ink bg-black/[0.06];
+  }
+
+  /* ── Table ──────────────────────────────────────────────────────────── */
+  .admin-table-wrap {
+    @apply overflow-x-auto rounded-admin-lg;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table {
+    @apply w-full min-w-[600px] border-collapse;
+  }
+
+  .admin-table thead th {
+    @apply text-xs font-bold tracking-[0.07em] uppercase text-admin-muted border-b-[1.5px] border-black/[0.07] bg-white/70 sticky top-0 z-2 whitespace-nowrap text-left cursor-pointer select-none;
+    padding: 11px 16px;
+  }
+
+  .admin-table thead th:hover {
+    @apply text-admin-accent-dark;
+  }
+
+  .admin-table thead th .sort-icon {
+    @apply opacity-40 ml-1 text-[10px];
+  }
+
+  .admin-table thead th.sorted .sort-icon {
+    @apply opacity-100 text-admin-accent-dark;
+  }
+
+  .admin-table tbody td {
+    @apply border-b border-black/[0.04] text-base text-admin-ink align-middle;
+    padding: 12px 16px;
+  }
+
+  .admin-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .admin-table tbody tr {
+    @apply transition-colors duration-[120ms] cursor-pointer;
+  }
+
+  .admin-table tbody tr:hover td {
+    background: rgba(112, 93, 0, 0.025);
+  }
+
+  .admin-row-highlight td {
+    background-color: rgba(112, 93, 0, 0.06) !important;
+  }
+
+  .admin-row-highlight:hover td {
+    background-color: rgba(112, 93, 0, 0.09) !important;
+  }
+
+  .admin-row-highlight td:first-child {
+    box-shadow: inset 4px 0 0 0 #705d00 !important;
+  }
+
+  /* ── Status badge system ───────────────────────────────────────────── */
+  .status-badge {
+    @apply inline-flex items-center gap-[5px] text-[11px] font-bold px-[9px] py-[3px] rounded-full uppercase tracking-[0.05em] whitespace-nowrap;
+  }
+
+  .status-badge::before {
+    @apply inline-block w-1.5 h-1.5 rounded-full shrink-0;
+    content: '';
+    background: currentColor;
+  }
+
+  /* Status variants */
+  .status-scheduled,
+  .status-confirmed,
+  .status-available,
+  .status-paid,
+  .status-active {
+    @apply bg-status-green-bg text-status-green;
+  }
+
+  .status-delayed,
+  .status-pending,
+  .status-hold,
+  .status-partially_refunded {
+    @apply bg-status-amber-bg text-status-amber;
+  }
+
+  .status-cancelled,
+  .status-blocked,
+  .status-failed,
+  .status-refunded {
+    @apply bg-status-red-bg text-status-red;
+  }
+
+  .status-boarding,
+  .status-in_progress,
+  .status-processing {
+    @apply bg-status-blue-bg text-status-blue;
+  }
+
+  .status-departed,
+  .status-arrived,
+  .status-completed {
+    @apply bg-status-purple-bg text-status-purple;
+  }
+
+  .status-draft,
+  .status-unknown {
+    @apply bg-status-gray-bg text-status-gray;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 font-bold py-[9px] px-[18px] rounded-admin-sm border-none cursor-pointer whitespace-nowrap bg-admin-accent text-[#1a1c1d] font-ui text-sm transition-all duration-150;
+    box-shadow: 0 4px 14px rgba(255, 215, 0, 0.3);
+  }
+
+  .btn-primary:hover {
+    @apply -translate-y-px;
+    background: #f0c800;
+    box-shadow: 0 6px 18px rgba(255, 215, 0, 0.4);
+  }
+
+  .btn-primary:active {
+    @apply translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-1.5 font-bold py-2 px-3.5 rounded-admin-sm border border-black/[0.08] cursor-pointer bg-black/[0.06] text-[#1a1c1d] font-ui text-sm transition-colors duration-150;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-black/10;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-[5px] font-bold py-[7px] px-[13px] rounded-admin-sm border border-[#fecaca] cursor-pointer bg-status-red-bg text-status-red font-ui text-sm transition-colors duration-150;
+  }
+
+  .btn-danger:hover {
+    @apply bg-[#fee2e2];
+  }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-lg border-none cursor-pointer bg-transparent text-[#888888] transition-colors duration-150;
+  }
+
+  .btn-icon:hover {
+    @apply bg-black/[0.07] text-[#1a1c1d];
+  }
+
+  .btn-icon.danger:hover {
+    @apply bg-status-red-bg text-status-red;
+  }
+
+  /* ── Form modal ─────────────────────────────────────────────────────── */
+  .admin-modal-overlay {
+    @apply fixed inset-0 backdrop-blur-[6px] z-[300] flex items-center justify-center p-4 animate-fade-in;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .admin-modal {
+    @apply bg-white rounded-admin-xl w-[96vw] max-w-[660px] max-h-[90vh] overflow-y-auto animate-slide-up;
+    padding: 40px 40px;
+    padding-top: 40px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+  }
+
+  .admin-modal-header {
+    @apply flex items-center justify-between mb-6;
+  }
+
+  .admin-modal-title {
+    @apply font-ui text-xl font-extrabold text-admin-ink m-0;
+  }
+
+  .admin-form-grid {
+    @apply grid gap-5;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .admin-form-full {
+    @apply col-span-full;
+  }
+
+  /* ── Skeleton loader ────────────────────────────────────────────────── */
+  .skeleton {
+    @apply rounded-md animate-shimmer;
+    background: linear-gradient(90deg, #ede9df 25%, #e5e0d5 50%, #ede9df 75%);
+    background-size: 200% 100%;
+  }
+
+  .skeleton-row {
+    @apply flex gap-4 items-center border-b border-black/[0.04];
+    padding: 13px 16px;
+  }
+
+  /* ── Empty state ────────────────────────────────────────────────────── */
+  .admin-empty {
+    @apply flex flex-col items-center justify-center text-center text-[#aaaaaa] px-6 py-[60px];
+  }
+
+  .admin-empty-icon {
+    @apply w-16 h-16 rounded-full flex items-center justify-center mb-4;
+    background: rgba(112, 93, 0, 0.07);
+  }
+
+  .admin-empty h3 {
+    @apply text-md font-bold text-[#5e5e5e] mt-0 mb-2;
+  }
+
+  .admin-empty p {
+    @apply text-sm mt-0 mb-5;
+  }
+
+  /* ── Error state ────────────────────────────────────────────────────── */
+  .admin-error {
+    @apply flex items-center gap-2.5 bg-status-red-bg border border-[#fecaca] rounded-admin-md text-status-red text-sm mb-5;
+    padding: 14px 18px;
+  }
+
+  .admin-error button {
+    @apply ml-auto bg-status-red text-white border-none rounded-lg text-xs font-bold cursor-pointer transition-opacity duration-150;
+    padding: 5px 12px;
+  }
+
+  .admin-error button:hover {
+    @apply opacity-85;
+  }
+
+  /* ── Pagination ─────────────────────────────────────────────────────── */
+  .admin-pagination {
+    @apply flex items-center justify-center gap-2 pt-5 pb-2;
+  }
+
+  .admin-pagination-info {
+    @apply text-sm text-admin-muted px-3;
+  }
+
+  /* ── Loading spinner ────────────────────────────────────────────────── */
+  .admin-spinner-wrap {
+    @apply flex justify-center p-12;
+  }
+
+  .admin-spinner {
+    @apply w-9 h-9 rounded-full border-[3px] border-admin-accent-dark/15 animate-spin-slow;
+    border-top-color: var(--color-admin-accent-dark);
+  }
+
+  .admin-spinner-sm {
+    @apply w-7 h-7 rounded-full border-[2.5px] border-slate-900/[0.12] animate-spin-slow-sm;
+    border-top-color: #0f172a;
+  }
+
+  /* ── Detail card (Bookings / Passengers / Payments) ─────────────────── */
+  .detail-card {
+    @apply bg-white rounded-admin-lg shadow-admin-lg mt-6;
+    padding: 28px;
+  }
+
+  .detail-card h3 {
+    @apply font-bold text-md mb-4 text-admin-ink;
+  }
+
+  .kv {
+    @apply grid gap-x-5 gap-y-1.5 text-sm;
+    grid-template-columns: auto 1fr;
+  }
+
+  .kv dt {
+    @apply font-bold text-admin-muted;
+  }
+
+  .kv dd {
+    @apply text-admin-ink m-0;
+  }
+
+  /* ── Flight Route Legs ──────────────────────────────────────────────── */
+  .leg-row {
+    @apply rounded-xl mb-3;
+    background: rgba(112, 93, 0, 0.04);
+    border: 1px solid rgba(112, 93, 0, 0.12);
+    padding: 16px;
+  }
+
+  .leg-airports-row {
+    @apply grid gap-2 items-start mb-3;
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .leg-arrow-container {
+    @apply flex flex-col items-center;
+  }
+
+  .leg-arrow {
+    @apply flex items-center justify-center text-[#999999] text-lg leading-none;
+    height: 38px;
+  }
+
+  .leg-details-row {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  @media (max-width: 600px) {
+    .leg-airports-row {
+      @apply grid-cols-1;
+    }
+
+    .leg-arrow-container {
+      @apply hidden;
+    }
+
+    .leg-details-row {
+      @apply grid-cols-1;
+    }
+  }
+
+  /* ── Meal item rows ─────────────────────────────────────────────────── */
+  .item-row {
+    @apply rounded-[10px] mb-2.5 grid gap-2.5 items-end;
+    background: rgba(112, 93, 0, 0.04);
+    border: 1px solid rgba(112, 93, 0, 0.12);
+    padding: 12px;
+    grid-template-columns: 1fr auto auto;
+  }
+
+  /* ── Seat Map Page ──────────────────────────────────────────────────── */
+  .smp-wrap {
+    @apply w-[95%] max-w-[1600px] mx-auto pt-[88px] px-5 pb-6;
+  }
+
+  .smp-body {
+    @apply flex gap-6 items-start;
+  }
+
+  .smp-sidebar {
+    @apply w-[300px] shrink-0 sticky top-[88px] overflow-y-auto;
+    max-height: calc(100vh - 104px);
+  }
+
+  .smp-main {
+    @apply flex-1 min-w-0 overflow-y-auto pr-1;
+    max-height: calc(100vh - 88px);
+  }
+
+  .smp-breadcrumb {
+    @apply text-[11px] font-bold text-slate-500 uppercase tracking-[1px] mb-3;
+  }
+
+  .smp-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .smp-header-left {
+    @apply flex items-center gap-4;
+  }
+
+  .smp-back {
+    @apply flex items-center gap-1 border-none rounded-md text-sm font-semibold text-[#333333] cursor-pointer transition-colors duration-200;
+    background: rgba(0, 0, 0, .05);
+    padding: 6px 12px;
+  }
+
+  .smp-back:hover {
+    background: rgba(0, 0, 0, .08);
+  }
+
+  .smp-title {
+    @apply text-2xl font-extrabold text-admin-ink m-0;
+  }
+
+  .smp-section {
+    @apply mb-3;
+  }
+
+  .smp-section-label {
+    @apply text-[11px] font-bold text-slate-500 uppercase tracking-[0.8px] mb-1.5 block;
+  }
+
+  .smp-instance-row {
+    @apply flex items-center gap-2 w-full;
+  }
+
+  .smp-chip-group {
+    @apply flex flex-wrap gap-2 pb-2.5 border-b border-slate-200 mb-2.5;
+  }
+
+  .smp-chip-group:last-child {
+    @apply border-b-0 pb-0 mb-0;
+  }
+
+  .smp-chip {
+    @apply rounded-full border border-slate-300 bg-white text-slate-600 text-xs font-semibold cursor-pointer transition-all duration-150;
+    padding: 4px 12px;
+  }
+
+  .smp-chip:hover {
+    @apply bg-slate-50 border-slate-400;
+  }
+
+  .smp-chip.on {
+    @apply bg-slate-900 text-white border-slate-900;
+  }
+
+  .smp-ctab {
+    @apply rounded-md border border-slate-300 bg-white text-slate-600 text-xs font-semibold cursor-pointer transition-all duration-150;
+    padding: 4px 12px;
+  }
+
+  .smp-ctab:hover {
+    @apply bg-slate-50 border-slate-400;
+  }
+
+  .smp-ctab.on {
+    @apply bg-slate-800 text-white border-slate-800;
+  }
+
+  .smp-warning {
+    @apply flex items-center gap-1.5 bg-amber-100 text-amber-700 rounded-md text-xs font-semibold mt-2;
+    padding: 6px 10px;
+  }
+
+  .smp-plane {
+    @apply flex justify-center py-3;
+  }
+
+  .smp-fuselage {
+    @apply bg-white w-fit min-w-[380px] relative;
+    border-radius: 190px 190px 12px 12px;
+    padding: 110px 36px 40px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .08);
+    touch-action: none;
+  }
+
+  .smp-class-hdr {
+    @apply text-[10px] font-extrabold uppercase tracking-[1.2px] text-center rounded my-3 mb-1.5;
+    padding: 6px 0 4px;
+  }
+
+  .smp-row {
+    @apply flex items-center justify-center gap-[3px] mb-1;
+  }
+
+  .smp-grp {
+    @apply flex gap-[3px];
+  }
+
+  .smp-aisle {
+    @apply w-[22px];
+  }
+
+  .smp-rn {
+    @apply text-[9px] text-[#999999] w-4 text-center font-bold;
+  }
+
+  .smp-seat {
+    @apply w-7 h-7 border-[1.5px] border-gray-300 rounded flex items-center justify-center cursor-pointer relative bg-white select-none transition-transform duration-100 text-[8px] font-bold text-[#666666];
+  }
+
+  .smp-seat.una {
+    @apply bg-gray-100 cursor-not-allowed opacity-50;
+  }
+
+  .smp-seat.free {
+    @apply bg-green-100 border-green-400;
+  }
+
+  .smp-seat.prem {
+    @apply bg-blue-100 border-blue-300;
+  }
+
+  .smp-seat.sprem {
+    @apply bg-purple-100 border-purple-400;
+  }
+
+  .smp-seat.sel {
+    @apply scale-105 z-5;
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, .3);
+  }
+
+  .smp-conflict {
+    @apply absolute w-[13px] h-[13px] rounded-full bg-red-500 text-white flex items-center justify-center z-10;
+    top: -5px;
+    right: -5px;
+  }
+
+  .smp-legend {
+    @apply flex gap-4 items-center justify-center text-[11px] text-slate-600 mb-0;
+    padding: 4px 0 8px;
+  }
+
+  .smp-lbox {
+    @apply w-4 h-4 rounded border border-[#cccccc];
+  }
+
+  .smp-lbox.fr {
+    @apply bg-green-400 border-green-500;
+  }
+
+  .smp-lbox.pr {
+    @apply bg-blue-300 border-blue-400;
+  }
+
+  .smp-lbox.sp {
+    @apply bg-purple-400 border-purple-500;
+  }
+
+  .smp-bar {
+    @apply bg-white rounded-[10px] flex items-center gap-3 sticky bottom-8 z-[200] border border-slate-200 w-fit mx-auto mt-4;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, .12);
+    padding: 10px 16px;
+    margin-bottom: 0;
+  }
+
+  /* ── FlightOverviewPage glass-card table rules ──────────────────────── */
+  .admin-row:hover {
+    background: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  .act:hover {
+    background: rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .filter-input:focus {
+    border-color: var(--color-admin-accent-dark) !important;
+    box-shadow: 0 0 0 3px rgba(112, 93, 0, 0.1) !important;
+  }
+
+  /* ── Glass Card & Admin Utilities ────────────────────────────────────── */
+  .glass-card {
+    @apply backdrop-blur-[25px] border border-white/50 overflow-hidden transition-all duration-300;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    -webkit-backdrop-filter: blur(25px);
+    /* Safari support */
+  }
+
+  .navbar-badge-admin {
+    @apply text-[#ba1a1a] bg-[#ffdad6] border-[#ffb4ab];
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    @apply bg-transparent mt-5 mb-5;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    @apply rounded-[10px];
+    background: rgba(112, 93, 0, 0.2);
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(112, 93, 0, 0.4);
+  }
+
+  /* ── Analytics Dashboard: KPI Grid ──────────────────────────────────── */
+  .kpi-grid {
+    @apply grid grid-cols-3 gap-4 mb-6;
+  }
+
+  @media (min-width: 1024px) {
+    .kpi-grid {
+      @apply grid-cols-5 gap-3;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .kpi-grid {
+      @apply gap-4;
+    }
+  }
+
+  /* ── Analytics Dashboard: KPI Card ──────────────────────────────────── */
+  .kpi-card {
+    @apply flex items-center gap-3.5 rounded-admin-lg min-w-0 relative cursor-default transition-all duration-200;
+    padding: 18px 20px;
+  }
+
+  .kpi-card:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (min-width: 1024px) {
+    .kpi-card {
+      @apply gap-2.5;
+      padding: 16px 14px;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .kpi-card {
+      @apply gap-3.5;
+      padding: 22px 20px;
+    }
+  }
+
+  /* ── Analytics Dashboard: KPI Icon ──────────────────────────────────── */
+  .kpi-icon-wrap {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center shrink-0;
+  }
+
+  @media (min-width: 1024px) {
+    .kpi-icon-wrap {
+      @apply w-10 h-10 rounded-xl;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .kpi-icon-wrap {
+      @apply w-12 h-12 rounded-2xl;
+    }
+  }
+
+  /* ── Analytics Dashboard: KPI Text ──────────────────────────────────── */
+  .kpi-text {
+    @apply flex-1 min-w-0;
+  }
+
+  .kpi-label {
+    @apply text-[10px] font-bold tracking-[0.07em] uppercase text-admin-muted mb-1 whitespace-nowrap overflow-hidden text-ellipsis;
+  }
+
+  .kpi-value {
+    @apply font-ui font-extrabold text-[22px] leading-none whitespace-nowrap overflow-hidden text-ellipsis transition-colors duration-300;
+  }
+
+  @media (min-width: 1440px) {
+    .kpi-value {
+      @apply text-[26px];
+    }
+  }
+
+  .kpi-sub {
+    @apply text-[11px] text-admin-muted mt-[3px] whitespace-nowrap overflow-hidden text-ellipsis;
+  }
+
+  /* ── Analytics Dashboard: KPI Tooltip ────────────────────────────────── */
+  .kpi-tooltip {
+    @apply invisible opacity-0 pointer-events-none absolute left-1/2 -translate-x-1/2 translate-y-1 backdrop-blur-[10px] text-admin-accent font-bold text-sm rounded-admin-sm whitespace-nowrap z-[100] transition-all duration-150;
+    bottom: calc(100% + 8px);
+    background: rgba(26, 28, 29, 0.95);
+    padding: 7px 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .kpi-tooltip::after {
+    @apply absolute left-1/2 -translate-x-1/2 border-[6px] border-transparent;
+    content: '';
+    top: 100%;
+    border-top-color: rgba(26, 28, 29, 0.95);
+  }
+
+  .kpi-card:hover .kpi-tooltip {
+    @apply visible opacity-100 translate-y-0;
+  }
+
+  /* ── Analytics Dashboard: Chart Card ─────────────────────────────────── */
+  .chart-card {
+    @apply backdrop-blur-[25px] border border-white/50 rounded-admin-lg flex flex-col gap-5 min-w-0 overflow-hidden;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    padding: 24px;
+  }
+
+  .chart-card-title {
+    @apply font-ui text-[15px] font-bold text-admin-ink;
+  }
+
+  /* ── Analytics Dashboard: Chart Grid ─────────────────────────────────── */
+  .chart-grid-2 {
+    @apply grid grid-cols-1 gap-5 mb-5;
+  }
+
+  @media (min-width: 900px) {
+    .chart-grid-2 {
+      @apply grid-cols-2;
+    }
+  }
+
+  /* ── Analytics Dashboard: Legend ─────────────────────────────────────── */
+  .occupancy-legend {
+    @apply flex gap-[18px] justify-end mt-3 flex-wrap;
+  }
+
+  .occupancy-legend-item {
+    @apply flex items-center gap-[5px] text-[11px] text-[#5e5e5e];
+  }
+
+  .occupancy-legend-dot {
+    @apply w-2.5 h-2.5 rounded shrink-0;
+  }
+
+  /* ── Responsive: Mobile overrides ────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .kpi-grid {
+      @apply grid-cols-2 gap-2.5;
+    }
+
+    .kpi-card {
+      @apply gap-2.5;
+      padding: 14px 12px;
+    }
+
+    .kpi-icon-wrap {
+      @apply w-9 h-9;
+    }
+
+    .kpi-value {
+      @apply text-lg;
+    }
+
+    /* Admin form card tightens on mobile — kept here so admin.css
+       is fully self-contained and index.css doesn't need an override. */
+    .admin-form-card {
+      padding: 20px 16px !important;
+      border-radius: 16px !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .admin-controls-bar {
+      @apply !flex-col !items-stretch;
+    }
+  }
+
+  /* Delete Confirmation Modal Animations */
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes modalZoomIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .modal-backdrop-animate {
+    animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .modal-card-animate {
+    animation: modalZoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+}

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 /* ─────────────────────────────────────────────────── */
 
-export default function BookingConfirmModal({ flight, totalPassengers = 1, onClose }) {
+export default function BookingConfirmModal({ flight, totalPassengers = 1, onClose, selectedClass = 'Economy', pricePerPax = null, classAvailableSeats = null }) {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -85,8 +85,12 @@ export default function BookingConfirmModal({ flight, totalPassengers = 1, onClo
       name: p.name.trim(),
       phone_number: p.phone_number?.trim() || ''
     }));
-    
-    dispatch(createBooking({ flightId: flight.id, passengers: cleanedPassengers }));
+
+    // Map display name → backend enum value (backend expects 'ECONOMY', 'BUSINESS', 'FIRST')
+    const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+    const cabinClassKey = selectedClass ? (CLASS_MAP[selectedClass] || selectedClass.toUpperCase()) : null;
+
+    dispatch(createBooking({ flightId: flight.id, passengers: cleanedPassengers, cabinClass: cabinClassKey }));
   };
 
   const handlePassengerChange = (index, field, value) => {
@@ -275,7 +279,7 @@ export default function BookingConfirmModal({ flight, totalPassengers = 1, onClo
               {[
                 { label: t('flights.flightLabel', 'FLIGHT'), value: flight.flight_number },
                 { label: t('flights.airlineLabel', 'AIRLINE'), value: flight.airline },
-                { label: t('flights.aircraftLabel', 'AIRCRAFT'), value: flight.aircraft },
+                { label: 'CLASS', value: `${selectedClass} Class` },
               ].map(({ label, value }) => (
                 <div key={label} style={{ flex: '1 1 120px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#9e9488', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
@@ -380,14 +384,14 @@ export default function BookingConfirmModal({ flight, totalPassengers = 1, onClo
             <div>
               <div style={{ fontSize: 11, color: '#5e5e5e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('flights.totalFare', 'Total Fare')}</div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontSize: 28, fontWeight: 800, color: '#1a1c1d', letterSpacing: '-0.02em' }}>
-                {INR(flight.base_fare * passengers.length)}
+                {INR((pricePerPax ?? flight.base_fare) * passengers.length)}
               </div>
+              <div style={{ fontSize: 11, color: '#9e9488', marginTop: 2 }}>{selectedClass} · {passengers.length} × {INR(pricePerPax ?? flight.base_fare)}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#065f46', fontSize: 12, fontWeight: 700 }}>
-                <Users size={13} />{flight.available_seats} {t('flights.seatsLeft', 'seats left')}
+                <Users size={13} />{classAvailableSeats ?? flight.available_seats} {t('flights.seatsLeft', 'seats left')}
               </div>
-              <div style={{ fontSize: 11, color: '#5e5e5e', marginTop: 2 }}>{passengers.length} x {INR(flight.base_fare)}</div>
             </div>
           </div>
 

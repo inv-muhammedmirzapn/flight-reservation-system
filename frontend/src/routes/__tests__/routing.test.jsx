@@ -16,10 +16,8 @@ vi.mock('@/pages/user/MyBookingsPage', () => ({ default: () => null }));
 vi.mock('@/pages/user/BookingConfirmationPage', () => ({ default: () => null }));
 vi.mock('@/pages/user-profile/ProfilePage', () => ({ default: () => null }));
 vi.mock('@/pages/user/NotificationsPage', () => ({ default: () => null }));
-vi.mock('@/pages/admin/AdminFlightsList', () => ({ default: () => null }));
-vi.mock('@/pages/admin/AdminFlightForm', () => ({ default: () => null }));
-vi.mock('@/pages/admin/AdminFlightDetail', () => ({ default: () => null }));
-vi.mock('@/pages/admin/AnalyticsDashboard', () => ({ default: () => null }));
+vi.mock('@/admin/analytics/AnalyticsDashboard', () => ({ default: () => null }));
+vi.mock('@/admin/analytics/AnalyticsDashboard', () => ({ default: () => null }));
 
 describe('Router Configuration', () => {
   it('should not wrap the landing page (index route) with ProtectedRoute guestOnly', () => {

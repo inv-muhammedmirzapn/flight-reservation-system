@@ -18,12 +18,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'corsheaders',
+    'django_filters',
 ] + [
-    'apps.users', 'apps.flights', 'apps.bookings', 'apps.route_optimization', 'apps.pricing',
-    'apps.waitlist', 'apps.analytics', 'apps.delays', 'apps.notifications', 'apps.comparison',
-    'apps.fare_prediction', 'apps.search', 'apps.caching', 'apps.bulk_upload'
+    'apps.users', 'apps.flights', 'apps.bookings',
+    'apps.waitlist', 'apps.analytics', 'apps.notifications', 'apps.bulk_upload'
 ]
 
 MIDDLEWARE = [
@@ -58,6 +59,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LANGUAGE_CODE = 'en-us'
@@ -71,7 +74,23 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'apps.flights.pagination.StandardPagination',
+    'PAGE_SIZE': 10,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'config.exceptions.custom_exception_handler',
+    'DEFAULT_RENDERER_CLASSES': (
+        'config.renderers.StandardizedJSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10000/day',
+        'user': '100000/day',
+        'login': '60/minute',
+    }
 }
 
 SPECTACULAR_SETTINGS = {
@@ -79,12 +98,52 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for the Flight Management System',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+        'config.swagger_hooks.categorize_tags_hook',
+    ],
+    'SWAGGER_UI_SETTINGS': {
+        'tagsSorter': 'alpha',
+        'operationsSorter': 'alpha',
+        'docExpansion': 'none',
+    },
 }
 
 AUTHENTICATION_BACKENDS = [
     'apps.users.backends.EmailOrUsernameModelBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'apps.users.validators.StrongPasswordValidator',
+    },
+]
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -94,3 +153,41 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

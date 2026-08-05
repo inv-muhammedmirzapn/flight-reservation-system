@@ -1,5 +1,135 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar } from 'lucide-react';
+import React, { useState, useRef, useEffect, useId, useLayoutEffect } from 'react';
+import { ChevronLeft, ChevronRight, X, Calendar, Clock } from 'lucide-react';
+
+/* ─────────────────────────────────────────────
+   TimeInput: custom HH : MM keyboard input
+───────────────────────────────────────────── */
+function TimeInput({ timeVal, onTimeChange, selectId }) {
+  const [hRaw, setHRaw] = useState(() => timeVal.split(':')[0] || '00');
+  const [mRaw, setMRaw] = useState(() => timeVal.split(':')[1] || '00');
+  const [hFocused, setHFocused] = useState(false);
+  const [mFocused, setMFocused] = useState(false);
+  const minRef = useRef(null);
+
+  // Sync inbound value changes (e.g. preset click)
+  useEffect(() => {
+    const [h, m] = timeVal.split(':');
+    setHRaw(h || '00');
+    setMRaw(m || '00');
+  }, [timeVal]);
+
+  const commit = (h, m) => {
+    const hc = String(Math.min(23, Math.max(0, parseInt(h, 10) || 0))).padStart(2, '0');
+    const mc = String(Math.min(59, Math.max(0, parseInt(m, 10) || 0))).padStart(2, '0');
+    onTimeChange(`${hc}:${mc}`);
+    return { hc, mc };
+  };
+
+  const segStyle = (focused) => ({
+    width: 36,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 800,
+    fontFamily: 'Inter, monospace',
+    background: focused ? 'rgba(112,93,0,0.06)' : '#f5f5f3',
+    border: focused ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.12)',
+    borderRadius: 7,
+    padding: '5px 4px',
+    outline: 'none',
+    color: '#1a1c1d',
+    cursor: 'text',
+    boxShadow: focused ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+    letterSpacing: 1,
+  });
+
+  return (
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Hours */}
+      <input
+        id={`${selectId}-h`}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        value={hFocused ? hRaw : hRaw.padStart(2, '0')}
+        style={segStyle(hFocused)}
+        onFocus={e => { setHFocused(true); e.target.select(); }}
+        onBlur={() => {
+          setHFocused(false);
+          const { hc } = commit(hRaw || '00', mRaw || '00');
+          setHRaw(hc);
+        }}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setHRaw(val);
+          // auto-advance after 2 digits
+          if (val.length === 2) {
+            commit(val, mRaw || '00');
+            minRef.current?.focus();
+          }
+        }}
+        onKeyDown={e => {
+          const h = parseInt(hRaw, 10) || 0;
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = String((h + 1) % 24).padStart(2, '0');
+            setHRaw(next);
+            commit(next, mRaw);
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = String((h - 1 + 24) % 24).padStart(2, '0');
+            setHRaw(next);
+            commit(next, mRaw);
+          }
+        }}
+      />
+
+      <span style={{ fontSize: 15, fontWeight: 900, color: '#705d00', lineHeight: 1 }}>:</span>
+
+      {/* Minutes */}
+      <input
+        ref={minRef}
+        id={`${selectId}-m`}
+        type="text"
+        inputMode="numeric"
+        maxLength={2}
+        value={mFocused ? mRaw : (mRaw || '00').padStart(2, '0')}
+        style={segStyle(mFocused)}
+        onFocus={e => { setMFocused(true); e.target.select(); }}
+        onBlur={() => {
+          setMFocused(false);
+          const { mc } = commit(hRaw || '00', mRaw || '00');
+          setMRaw(mc);
+        }}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setMRaw(val);
+          if (val.length === 2) commit(hRaw || '00', val);
+        }}
+        onKeyDown={e => {
+          const m = parseInt(mRaw, 10) || 0;
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = String((m + 5) % 60).padStart(2, '0');
+            setMRaw(next);
+            commit(hRaw, next);
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = String((m - 5 + 60) % 60).padStart(2, '0');
+            setMRaw(next);
+            commit(hRaw, next);
+          }
+        }}
+      />
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', marginLeft: 2, letterSpacing: '0.04em' }}>24h</span>
+    </div>
+  );
+}
 
 export default function DateTimePicker({
   id,
@@ -9,6 +139,7 @@ export default function DateTimePicker({
   value,
   onChange,
   disabled = false,
+  error,
   style = {},
   ...props
 }) {
@@ -18,10 +149,14 @@ export default function DateTimePicker({
   ];
 
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const TIME_PRESETS = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
 
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState({});
+
   const containerRef = useRef(null);
+  const popoverRef = useRef(null);
   const uniqueId = useId();
   const selectId = id || uniqueId;
   const selectName = name || id;
@@ -34,11 +169,11 @@ export default function DateTimePicker({
     if (value.includes('T')) {
       const parts = value.split('T');
       dateVal = parts[0];
-      timeVal = parts[1].substring(0, 5);
+      timeVal = parts[1].substring(0, 5) || '12:00';
     } else if (value.includes(' ')) {
       const parts = value.split(' ');
       dateVal = parts[0];
-      timeVal = parts[1].substring(0, 5);
+      timeVal = parts[1].substring(0, 5) || '12:00';
     } else {
       dateVal = value;
     }
@@ -48,10 +183,76 @@ export default function DateTimePicker({
   const [viewYear, setViewYear] = useState(initialCalendarDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialCalendarDate.getMonth());
 
+  // Update view month/year if value changes externally
+  useEffect(() => {
+    if (dateVal) {
+      const parsed = new Date(dateVal);
+      if (!isNaN(parsed.getTime())) {
+        setViewYear(parsed.getFullYear());
+        setViewMonth(parsed.getMonth());
+      }
+    }
+  }, [dateVal]);
+
+  // Compute fixed position for the popover so it never clips off-screen or off-modal
+  const updatePopoverPosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const popoverHeight = 370; // approx popover height
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    let top;
+    // Prefer opening downwards unless space below is constrained and space above is larger
+    if (spaceBelow < popoverHeight && rect.top > spaceBelow) {
+      top = rect.top - popoverHeight - 6;
+    } else {
+      top = rect.bottom + 6;
+    }
+
+    // Always clamp top to prevent overflowing above top of viewport
+    top = Math.max(10, Math.min(top, window.innerHeight - popoverHeight - 10));
+
+    let left = rect.left;
+    if (left + 290 > window.innerWidth) {
+      left = Math.max(10, window.innerWidth - 300);
+    }
+
+    setPopoverStyle({
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      width: '290px',
+      zIndex: 99999,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updatePopoverPosition();
+    }
+  }, [isOpen]);
+
+  // Handle window scroll/resize to update fixed position
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScrollOrResize = () => updatePopoverPosition();
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen]);
+
   // Close calendar on click outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -63,12 +264,16 @@ export default function DateTimePicker({
     };
   }, [isOpen]);
 
-  const handleOpen = () => {
+  const handleToggle = () => {
     if (disabled) return;
-    const activeDate = dateVal ? new Date(dateVal) : new Date();
-    setViewYear(activeDate.getFullYear());
-    setViewMonth(activeDate.getMonth());
-    setIsOpen(true);
+    if (isOpen) {
+      setIsOpen(false);
+    } else {
+      const activeDate = dateVal ? new Date(dateVal) : new Date();
+      setViewYear(activeDate.getFullYear());
+      setViewMonth(activeDate.getMonth());
+      setIsOpen(true);
+    }
   };
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -159,8 +364,10 @@ export default function DateTimePicker({
 
   const triggerStyle = {
     width: '100%',
-    background: disabled ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.65)',
-    border: isFocused && !disabled ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
+    background: disabled ? 'rgba(0,0,0,0.03)' : '#ffffff',
+    border: error 
+      ? '1.5px solid #b91c1c' 
+      : (isFocused && !disabled ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.15)'),
     borderRadius: 10,
     padding: '9px 13px',
     fontSize: 14,
@@ -173,7 +380,9 @@ export default function DateTimePicker({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    boxShadow: isFocused && !disabled ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none',
+    boxShadow: error 
+      ? (isFocused ? '0 0 0 3px rgba(185,28,28,0.1)' : 'none')
+      : (isFocused && !disabled ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none'),
     transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
     ...style,
   };
@@ -202,7 +411,7 @@ export default function DateTimePicker({
           data-testid="datetime-trigger"
           type="button"
           disabled={disabled}
-          onClick={handleOpen}
+          onClick={handleToggle}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           style={triggerStyle}
@@ -251,20 +460,15 @@ export default function DateTimePicker({
 
         {isOpen && (
           <div
+            ref={popoverRef}
             className="glass-card"
             style={{
-              position: 'absolute',
-              top: 'calc(100% + 5px)',
-              left: 0,
-              zIndex: 2000,
-              width: 280,
               padding: 16,
               borderRadius: 16,
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.12)',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.18)',
+              ...popoverStyle,
             }}
           >
             {/* Header */}
@@ -358,25 +562,15 @@ export default function DateTimePicker({
               })}
             </div>
 
-            {/* Time selector */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-              <label htmlFor={`${selectId}-time-input`} style={{ fontSize: 12, fontWeight: 700, color: '#5e5e5e' }}>Time</label>
-              <input
-                id={`${selectId}-time-input`}
-                type="time"
-                value={timeVal}
-                onChange={(e) => handleTimeChange(e.target.value)}
-                style={{
-                  border: '1.5px solid rgba(0,0,0,0.1)',
-                  borderRadius: 8,
-                  padding: '5px 8px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#fff',
-                  outline: 'none',
-                  color: '#1a1c1d',
-                }}
-              />
+            {/* Time selector section */}
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Clock size={13} style={{ color: '#9e9488' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Time</span>
+                </div>
+                <TimeInput timeVal={timeVal} onTimeChange={handleTimeChange} selectId={selectId} />
+              </div>
             </div>
 
             {/* Done button */}

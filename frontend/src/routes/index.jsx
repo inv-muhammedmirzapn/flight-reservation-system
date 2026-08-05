@@ -17,15 +17,40 @@ const TicketDetailPage = lazy(() => import('@/pages/user/TicketDetailPage'));
 const BookingConfirmationPage = lazy(() => import('@/pages/user/BookingConfirmationPage'));
 const ProfilePage = lazy(() => import('@/pages/user-profile/ProfilePage'));
 const NotificationsPage = lazy(() => import('@/pages/user/NotificationsPage'));
-const AdminFlightsList = lazy(() => import('@/pages/admin/AdminFlightsList'));
-const AdminFlightForm = lazy(() => import('@/pages/admin/AdminFlightForm'));
-const AdminFlightDetail = lazy(() => import('@/pages/admin/AdminFlightDetail'));
-const AnalyticsDashboard = lazy(() => import('@/pages/admin/AnalyticsDashboard'));
+const AnalyticsDashboard = lazy(() => import('@/admin/analytics/AnalyticsDashboard'));
+
+// ── New admin entity pages ──────────────────────────────────────────────────────
+// Master data
+const AirportsPage = lazy(() => import('@/admin/master/airports/AirportsPage'));
+const AirlinesPage = lazy(() => import('@/admin/master/airlines/AirlinesPage'));
+const AircraftModelsPage = lazy(() => import('@/admin/master/aircraft/AircraftModelsPage'));
+const AircraftPage = lazy(() => import('@/admin/master/aircraft/AircraftPage'));
+const FoodItemsPage = lazy(() => import('@/admin/master/food-items/FoodItemsPage'));
+// Operations
+const FlightRoutesPage = lazy(() => import('@/admin/operations/flight-routes/FlightRoutesPage'));
+const FlightInstancesPage = lazy(() => import('@/admin/operations/flight-instances/FlightInstancesPage'));
+const FlightOverviewPage = lazy(() => import('@/admin/operations/flight-overview/FlightOverviewPage'));
+const SeatMapPage = lazy(() => import('@/admin/operations/seat-map/SeatMapPage'));
+const FaresPage = lazy(() => import('@/admin/operations/fares/FaresPage'));
+const MealsPage = lazy(() => import('@/admin/operations/meals/MealsPage'));
+// Records
+const AdminBookingsPage = lazy(() => import('@/admin/records/bookings/AdminBookingsPage'));
+const AdminPaymentsPage = lazy(() => import('@/admin/records/payments/AdminPaymentsPage'));
+const AdminPassengersPage = lazy(() => import('@/admin/records/passengers/AdminPassengersPage'));
+// System
+const DataManagementPage = lazy(() => import('@/admin/system/data-management/DataManagementPage'));
 
 const LoadingFallback = () => (
   <div className="flex-grow flex items-center justify-center min-h-[50vh]">
     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#705d00]"></div>
   </div>
+);
+
+// Helper to wrap a page in ProtectedRoute + Suspense (admin-only)
+const adminRoute = (element) => (
+  <ProtectedRoute adminOnly>
+    <Suspense fallback={<LoadingFallback />}>{element}</Suspense>
+  </ProtectedRoute>
 );
 
 const router = createBrowserRouter([
@@ -171,57 +196,32 @@ const router = createBrowserRouter([
         ),
       },
 
-      // Authenticated Admin Routes
-      {
-        path: 'admin/flights',
-        element: (
-          <ProtectedRoute adminOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <AdminFlightsList />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin/flights/new',
-        element: (
-          <ProtectedRoute adminOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <AdminFlightForm />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin/flights/:id',
-        element: (
-          <ProtectedRoute adminOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <AdminFlightDetail />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin/flights/:id/edit',
-        element: (
-          <ProtectedRoute adminOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <AdminFlightForm />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin/analytics',
-        element: (
-          <ProtectedRoute adminOnly>
-            <Suspense fallback={<LoadingFallback />}>
-              <AnalyticsDashboard />
-            </Suspense>
-          </ProtectedRoute>
-        ),
-      },
+      // Admin home
+      { path: 'admin/flights', element: <Navigate to="/admin/overview" replace /> },
+      { path: 'admin/analytics', element: adminRoute(<AnalyticsDashboard />) },
+
+      // ── Master Data ─────────────────────────────────────────────────────────
+      { path: 'admin/master/airports', element: adminRoute(<AirportsPage />) },
+      { path: 'admin/master/airlines', element: adminRoute(<AirlinesPage />) },
+      { path: 'admin/master/aircraft-models', element: adminRoute(<AircraftModelsPage />) },
+      { path: 'admin/master/aircraft', element: adminRoute(<AircraftPage />) },
+      { path: 'admin/master/food-items', element: adminRoute(<FoodItemsPage />) },
+
+      // ── Operations ──────────────────────────────────────────────────────────
+      { path: 'admin/overview', element: adminRoute(<FlightOverviewPage />) },
+      { path: 'admin/operations/flight-routes', element: adminRoute(<FlightRoutesPage />) },
+      { path: 'admin/operations/flight-instances', element: adminRoute(<FlightInstancesPage />) },
+      { path: 'admin/operations/seat-map', element: adminRoute(<SeatMapPage />) },
+      { path: 'admin/operations/fares', element: adminRoute(<FaresPage />) },
+      { path: 'admin/operations/meals', element: adminRoute(<MealsPage />) },
+
+      // ── Records ─────────────────────────────────────────────────────────────
+      { path: 'admin/records/bookings', element: adminRoute(<AdminBookingsPage />) },
+      { path: 'admin/records/payments', element: adminRoute(<AdminPaymentsPage />) },
+      { path: 'admin/records/passengers', element: adminRoute(<AdminPassengersPage />) },
+
+      // ── System ───────────────────────────────────────────────────────────────
+      { path: 'admin/system/data-management', element: adminRoute(<DataManagementPage />) },
 
       // Fallback
       {
@@ -233,3 +233,4 @@ const router = createBrowserRouter([
 ]);
 
 export default router;
+

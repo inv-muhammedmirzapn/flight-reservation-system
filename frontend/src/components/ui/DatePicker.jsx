@@ -161,19 +161,18 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
           onClick={handleOpen}
           style={{
             width: '100%',
-            padding: isTransparent ? '0 24px 0 0' : '12px 36px 12px 14px',
-            background: isTransparent ? 'transparent' : 'rgba(255, 255, 255, 0.45)',
-            border: isTransparent ? 'none' : '1px solid rgba(255, 255, 255, 0.6)',
-            borderRadius: isTransparent ? 0 : 12,
+            padding: isTransparent ? '0 24px 0 0' : '9px 36px 9px 13px',
+            background: isTransparent ? 'transparent' : '#ffffff',
+            border: isTransparent ? 'none' : '1.5px solid rgba(0,0,0,0.15)',
+            borderRadius: isTransparent ? 0 : 10,
             outline: 'none',
             fontSize: isTransparent ? '0.9375rem' : 14,
-            fontWeight: 600,
-            color: '#1a1c1d',
+            fontWeight: isTransparent ? 600 : 500,
+            color: value ? '#1a1c1d' : '#9e9488',
             cursor: 'pointer',
-            backdropFilter: isTransparent ? 'none' : 'blur(8px)',
-            WebkitBackdropFilter: isTransparent ? 'none' : 'blur(8px)',
-            transition: 'all 0.2s',
-            fontFamily: isTransparent ? 'Inter, sans-serif' : 'inherit',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+            fontFamily: 'Inter, sans-serif',
+            boxSizing: 'border-box',
           }}
           className="datepicker-input"
         />

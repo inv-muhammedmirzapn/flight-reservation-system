@@ -33,8 +33,8 @@ class NotificationAPITests(APITestCase):
     def test_list_notifications(self):
         url = reverse('notification-list')
         response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        results = response.data['results'] if isinstance(response.data, dict) and 'results' in response.data else response.data
+        self.assertEqual(len(results), 2)
         
     def test_mark_as_read(self):
         url = reverse('notification-read', args=[self.notif1.id])

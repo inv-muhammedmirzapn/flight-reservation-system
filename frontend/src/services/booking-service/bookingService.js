@@ -5,10 +5,14 @@ export const bookingAPI = {
    * Create a new booking for a flight.
    * POST /api/bookings/
    */
-  create: async (flightId, passengers) => {
+  create: async (flightId, passengers, cabinClass) => {
     return fetchWithAuth('/bookings/', {
       method: 'POST',
-      body: JSON.stringify({ flight: flightId, passengers }),
+      body: JSON.stringify({
+        flight: flightId,
+        passengers,
+        ...(cabinClass ? { cabin_class: cabinClass } : {}),
+      }),
     });
   },
 

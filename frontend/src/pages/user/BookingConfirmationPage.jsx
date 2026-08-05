@@ -196,6 +196,51 @@ export default function BookingConfirmationPage() {
           </div>
         </div>
 
+        {/* Passenger details with seat numbers */}
+        {booking.passengers && booking.passengers.length > 0 && (
+          <div
+            className="glass-card fade-up-2"
+            style={{ borderRadius: 22, padding: '24px 32px', marginBottom: 20, position: 'relative', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Users size={18} color="#705d00" />
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1c1d' }}>
+                Passenger & Seat Details
+              </h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {booking.passengers.map((p, idx) => (
+                <div
+                  key={p.id || idx}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.4)',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255,255,255,0.6)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#705d00' }}>{idx + 1}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d' }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: '#5e5e5e' }}>{p.age} yrs · {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'Other'}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Seat</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#15803d' }}>{p.seat_number || '—'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="fade-up-3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link

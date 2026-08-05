@@ -1,9 +1,12 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
 export default function RootLayout() {
+  const location = useLocation();
+  const isAdminLogin = location.pathname === '/admin/login';
+
   return (
     <>
       {/* Global toast notifications — Passenger themed */}
@@ -45,13 +48,13 @@ export default function RootLayout() {
       <div className="page-bg-blob-2" />
 
       {/* Single Navbar handles both guest and authenticated states */}
-      <Navbar />
+      {!isAdminLogin && <Navbar />}
 
       <main>
         <Outlet />
       </main>
 
-      <Footer />
+      {!isAdminLogin && <Footer />}
     </>
   );
 }

@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchFlights, clearFlightsList } from '@/store/flightSlice';
-import { Plane, Search, ArrowRight, Filter, X } from 'lucide-react';
+import { API_BASE_URL, getResponseData } from '@/services/apiClient';
+import { Plane, Search, ArrowRight, Filter, X, ArrowLeftRight, Users, ChevronDown } from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 import DateSwitcher from '@/components/ui/DateSwitcher';
 import PassengerSelector from '@/components/ui/PassengerSelector';
 import { Pagination } from '@/components/ui/Pagination';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 
 import { INR, fmtTime, fmtDate, diffHM } from '@/utils/formatters';
 
@@ -42,12 +44,22 @@ function StatusBadge({ status }) {
 }
 
 /* ── FlightCard (horizontal Stitch style) ─────────────────── */
-function FlightCard({ flight }) {
+function FlightCard({ flight, cabinClass }) {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const depTime = fmtTime(flight.departure_time);
   const arrTime = fmtTime(flight.arrival_time);
   const duration = diffHM(flight.departure_time, flight.arrival_time);
+
+  // Resolve displayed price: use per-class fare if available
+  const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+  const classKey = CLASS_MAP[cabinClass] || 'ECONOMY';
+  const isEnriched = !!flight.fares;
+  const faresData = flight.fares || {};
+  const selectedFare = faresData[classKey];
+  const displayPrice = selectedFare ? selectedFare.price : parseFloat(flight.base_fare);
+  // Use per-class available seats if available, otherwise if it's enriched but missing this class, it's 0.
+  const displaySeats = selectedFare ? selectedFare.available_seats : (isEnriched ? 0 : flight.available_seats);
 
   return (
     <Link
@@ -91,9 +103,14 @@ function FlightCard({ flight }) {
             <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1c1d', lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
               {depTime}
             </div>
-            <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 2, fontWeight: 600 }}>
+            <div style={{ fontSize: 14, color: '#1a1c1d', marginTop: 2, fontWeight: 800 }}>
               {flight.source_airport}
             </div>
+            {flight.source_airport_name && (
+              <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, maxWidth: 120, margin: '0 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={flight.source_airport_name}>
+                {flight.source_airport_name}
+              </div>
+            )}
           </div>
 
           {/* Duration line */}
@@ -133,9 +150,14 @@ function FlightCard({ flight }) {
             <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1c1d', lineHeight: 1.1, fontFamily: "'Plus Jakarta Sans', Inter, sans-serif" }}>
               {arrTime}
             </div>
-            <div style={{ fontSize: 13, color: '#5e5e5e', marginTop: 2, fontWeight: 600 }}>
+            <div style={{ fontSize: 14, color: '#1a1c1d', marginTop: 2, fontWeight: 800 }}>
               {flight.destination_airport}
             </div>
+            {flight.destination_airport_name && (
+              <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, maxWidth: 120, margin: '0 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={flight.destination_airport_name}>
+                {flight.destination_airport_name}
+              </div>
+            )}
           </div>
         </div>
 
@@ -143,19 +165,23 @@ function FlightCard({ flight }) {
         <div className="flight-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 240px' }}>
           <div className="flight-card-meta-top" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 14 }}>{flight.flight_number}</span>
-            <StatusBadge status={flight.status} />
-            {flight.available_seats === 0 && (
+            {flight.status === 'DELAYED' && flight.delay_minutes > 0 ? (
               <span style={{
-                background: '#ffedd5',
-                color: '#9a3412',
-                border: '1px solid #fed7aa',
-                borderRadius: 9999,
-                padding: '2px 10px',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
+                background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                ⏱ DELAYED +{flight.delay_minutes}m
+              </span>
+            ) : (
+              <StatusBadge status={flight.status} />
+            )}
+            {displaySeats <= 0 && (
+              <span style={{
+                background: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa',
+                borderRadius: 9999, padding: '2px 10px', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
               }}>
                 {t("flights.waitingList", { defaultValue: 'Waiting List' })}
               </span>
@@ -164,7 +190,7 @@ function FlightCard({ flight }) {
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{flight.airline} · {flight.aircraft}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e' }}>{fmtDate(flight.departure_time)}</div>
           <div style={{ fontSize: 12, color: '#5e5e5e', marginTop: 2 }}>
-            💺 {flight.available_seats} / {flight.total_seats} seats
+            💺 {displaySeats} seats · {cabinClass}
           </div>
         </div>
       </div>
@@ -177,8 +203,11 @@ function FlightCard({ flight }) {
           fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
           letterSpacing: '-0.01em',
         }}>
-          {INR(flight.base_fare)}
+          {INR(displayPrice)}
         </div>
+        {selectedFare && (
+          <div style={{ fontSize: 11, color: '#705d00', fontWeight: 600, marginTop: -6 }}>{cabinClass} Class</div>
+        )}
         <div style={{
           background: '#ffd700',
           color: '#1a1c1d',
@@ -203,19 +232,234 @@ function FlightCard({ flight }) {
   );
 }
 
+const FieldWrap = ({ label, children, center }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: center ? 'center' : 'flex-start', textAlign: center ? 'center' : 'left' }}>
+    <span style={{ fontSize: 10, fontWeight: 800, color: '#9e9488', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{label}</span>
+    {children}
+  </div>
+);
+
+/* ── Fixed Top Search Bar ────────────────────────────────── */
+function SearchBar({
+  initialSource, initialDestination, initialDepDate, initialArrDate,
+  initialAdults, initialChildrenCount, initialInfants, initialCabinClass,
+  onSearch
+}) {
+  const [source, setSource] = useState(initialSource);
+  const [destination, setDestination] = useState(initialDestination);
+  const [depDate, setDepDate] = useState(initialDepDate);
+  const [arrDate, setArrDate] = useState(initialArrDate);
+  const [adults, setAdults] = useState(initialAdults);
+  const [childrenCount, setChildrenCount] = useState(initialChildrenCount);
+  const [infants, setInfants] = useState(initialInfants);
+  const [cabinClass, setCabinClass] = useState(initialCabinClass);
+
+  useEffect(() => setSource(initialSource), [initialSource]);
+  useEffect(() => setDestination(initialDestination), [initialDestination]);
+  useEffect(() => setDepDate(initialDepDate), [initialDepDate]);
+  useEffect(() => setArrDate(initialArrDate), [initialArrDate]);
+  useEffect(() => setAdults(initialAdults), [initialAdults]);
+  useEffect(() => setChildrenCount(initialChildrenCount), [initialChildrenCount]);
+  useEffect(() => setInfants(initialInfants), [initialInfants]);
+  useEffect(() => setCabinClass(initialCabinClass), [initialCabinClass]);
+
+  const [showPax, setShowPax] = useState(false);
+  const paxRef = useRef(null);
+  const [showClass, setShowClass] = useState(false);
+  const classRef = useRef(null);
+
+  useEffect(() => {
+    function outside(e) {
+      if (paxRef.current && !paxRef.current.contains(e.target)) setShowPax(false);
+      if (classRef.current && !classRef.current.contains(e.target)) setShowClass(false);
+    }
+    document.addEventListener('mousedown', outside);
+    return () => document.removeEventListener('mousedown', outside);
+  }, []);
+
+  const paxLabel = `${adults} Adult${adults > 1 ? 's' : ''}${childrenCount ? `, ${childrenCount} Child` : ''}${infants ? `, ${infants} Infant` : ''}`;
+
+  const swap = () => { const t = source; setSource(destination); setDestination(t); };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 'calc(1rem + 64px + 10px)',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '95%',
+      maxWidth: 1800,
+      zIndex: 49,
+      borderRadius: '1rem',
+      border: '1px solid rgba(255,255,255,0.4)',
+      background: 'rgba(255,255,255,0.92)',
+      backdropFilter: 'blur(30px)',
+      WebkitBackdropFilter: 'blur(30px)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+      height: 64,
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 1rem',
+      gap: 0,
+    }}>
+      {/* All search fields in one flex row */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', minWidth: 0 }}>
+
+        {/* FROM */}
+        <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FieldWrap label="From" center>
+            <LocationAutocomplete
+              placeholder="City or Airport"
+              value={source}
+              onChange={setSource}
+              style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+            />
+          </FieldWrap>
+        </div>
+
+        {/* Swap Button — inline flex item */}
+        <button onClick={swap} style={{
+          flexShrink: 0, width: 32, alignSelf: 'center',
+          background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.4)',
+          borderRadius: '50%', height: 32,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 4px',
+        }}>
+          <ArrowLeftRight size={13} color="#705d00" />
+        </button>
+
+        {/* TO */}
+        <div style={{ flex: 2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FieldWrap label="To" center>
+            <LocationAutocomplete
+              placeholder="City or Airport"
+              value={destination}
+              onChange={setDestination}
+              style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: '#1a1c1d', width: '100%', fontFamily: 'Inter,sans-serif', textAlign: 'center' }}
+            />
+          </FieldWrap>
+        </div>
+
+        {/* DEPARTURE DATE */}
+        <div style={{ flex: 1.4, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+          <FieldWrap label="Departure">
+            <DatePicker
+              value={depDate}
+              onChange={setDepDate}
+              placeholder="Add date"
+              variant="transparent"
+            />
+          </FieldWrap>
+        </div>
+
+        {/* RETURN DATE */}
+        <div style={{ flex: 1.2, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', display: 'flex', alignItems: 'center' }}>
+          <FieldWrap label="Return">
+            <DatePicker
+              value={arrDate}
+              onChange={setArrDate}
+              placeholder="Add return"
+              variant="transparent"
+            />
+          </FieldWrap>
+        </div>
+
+        {/* PASSENGERS */}
+        <div ref={paxRef} style={{ flex: 1.1, minWidth: 0, padding: '0 14px', borderRight: '1px solid #e8e4da', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowPax(v => !v)}>
+          <FieldWrap label="Travellers">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{paxLabel}</span>
+              <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
+            </div>
+          </FieldWrap>
+          {showPax && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
+              background: '#fff', borderRadius: 16, padding: 20, minWidth: 280,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
+            }} onClick={e => e.stopPropagation()}>
+              {[['Adults', adults, setAdults, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'Age 12+'], ['Children', childrenCount, setChildrenCount, [0, 1, 2, 3, 4, 5, 6], 'Age 2-11'], ['Infants', infants, setInfants, [0, 1, 2, 3, 4, 5, 6], 'Under 2']].map(([lbl, val, setter, opts, sub]) => (
+                <div key={lbl} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1c1d' }}>{lbl} <span style={{ fontSize: 10, color: '#9e9488', fontWeight: 400 }}>({sub})</span></div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {opts.map(o => (
+                      <button key={o} onClick={() => setter(o)} style={{
+                        width: 34, height: 34, borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: val === o ? '#ffd700' : '#f5f5f5',
+                        color: val === o ? '#1a1c1d' : '#5e5e5e',
+                        fontWeight: 700, fontSize: 13,
+                      }}>{o}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CLASS */}
+        <div ref={classRef} style={{ flex: 1, minWidth: 0, padding: '0 14px', position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowClass(v => !v)}>
+          <FieldWrap label="Class">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1c1d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cabinClass}</span>
+              <ChevronDown size={13} color="#9e9488" style={{ flexShrink: 0 }} />
+            </div>
+          </FieldWrap>
+          {showClass && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 9999,
+              background: '#fff', borderRadius: 16, padding: 14, minWidth: 160,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.14)', border: '1px solid #f0ede5',
+              display: 'flex', flexDirection: 'column', gap: 6
+            }} onClick={e => e.stopPropagation()}>
+              {['Economy', 'Business', 'First'].map(c => (
+                <button key={c} onClick={() => { setCabinClass(c); setShowClass(false); }} style={{
+                  padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: cabinClass === c ? '#ffd700' : 'transparent',
+                  color: cabinClass === c ? '#1a1c1d' : '#5e5e5e',
+                  fontWeight: cabinClass === c ? 800 : 600, fontSize: 13,
+                  textAlign: 'left', transition: 'all 0.15s ease'
+                }}
+                  onMouseEnter={e => { if (cabinClass !== c) e.currentTarget.style.background = '#f5f5f5' }}
+                  onMouseLeave={e => { if (cabinClass !== c) e.currentTarget.style.background = 'transparent' }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SEARCH BUTTON */}
+      <button style={{
+        marginLeft: 12, padding: '0 20px', height: 42, borderRadius: 10,
+        background: '#ffd700', border: 'none', cursor: 'pointer',
+        fontWeight: 800, fontSize: 14, color: '#1a1c1d',
+        boxShadow: '0 4px 16px rgba(255,215,0,0.4)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        flexShrink: 0, whiteSpace: 'nowrap',
+        transition: 'background 0.2s',
+      }}
+        onClick={() => onSearch({ source, destination, depDate, arrDate, adults, childrenCount, infants, cabinClass })}
+        onMouseEnter={e => e.currentTarget.style.background = '#ffe333'}
+        onMouseLeave={e => e.currentTarget.style.background = '#ffd700'}
+      >
+        <Search size={14} /> Search
+      </button>
+    </div>
+  );
+}
+
 /* ── Sidebar Filters ──────────────────────────────────────── */
 function Sidebar({
-  source, setSource,
-  destination, setDestination,
   statusFilter, setStatusFilter,
   minFare, setMinFare, absMin,
   maxFare, setMaxFare, absMax,
-  depDate, setDepDate,
-  arrDate, setArrDate,
-  adults, setAdults,
-  childrenCount, setChildrenCount,
-  infants, setInfants,
   stopsFilter, setStopsFilter,
+  airlinesFilter, setAirlinesFilter,
+  baggageFilter, setBaggageFilter,
+  availableAirlines,
   onClearFilters,
   mobileFiltersOpen, setMobileFiltersOpen
 }) {
@@ -249,7 +493,7 @@ function Sidebar({
     <>
       {/* Overlay for mobile drawer */}
       <div className={`sidebar-overlay ${mobileFiltersOpen ? 'open' : ''}`} onClick={() => setMobileFiltersOpen(false)} />
-      
+
       <aside className={`sidebar-aside ${mobileFiltersOpen ? 'open' : ''}`} style={{
         width: 260,
         flexShrink: 0,
@@ -267,11 +511,11 @@ function Sidebar({
           position: 'relative'
         }}>
           {/* Close button (mobile only) */}
-          <button 
-            className="mobile-close-btn" 
-            onClick={() => setMobileFiltersOpen(false)} 
-            style={{ 
-              display: 'none', background: 'rgba(0,0,0,0.05)', border: 'none', 
+          <button
+            className="mobile-close-btn"
+            onClick={() => setMobileFiltersOpen(false)}
+            style={{
+              display: 'none', background: 'rgba(0,0,0,0.05)', border: 'none',
               position: 'absolute', top: 12, right: 12, cursor: 'pointer',
               borderRadius: '50%', padding: 6, zIndex: 10
             }}
@@ -284,216 +528,186 @@ function Sidebar({
             overflowY: 'auto',
             flex: 1,
           }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h2 style={{
-            fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-            fontSize: 22, fontWeight: 700, color: '#1a1c1d',
-          }}>
-            {t("flights.filters", { defaultValue: 'Filters' })}
-          </h2>
-          <button
-            onClick={onClearFilters}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#705d00',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 6,
-            }}
-            onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
-            onMouseOut={(e) => e.target.style.background = 'transparent'}
-          >
-            {t("flights.clearAll", { defaultValue: 'Clear All' })}
-          </button>
-        </div>
-
-        {/* Route inputs */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.route", { defaultValue: 'Route' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.7)',
-              borderRadius: 10, padding: '8px 12px',
-            }}>
-              <Search size={14} color="#5e5e5e" />
-              <input
-                type="text"
-                placeholder={t("flights.fromLabel", { defaultValue: 'From (e.g. COK)' })}
-                value={source}
-                onChange={e => setSource(e.target.value)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{
+                fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
+                fontSize: 22, fontWeight: 700, color: '#1a1c1d',
+              }}>
+                {t("flights.filters", { defaultValue: 'Filters' })}
+              </h2>
+              <button
+                onClick={onClearFilters}
                 style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#705d00',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 6,
                 }}
-              />
+                onMouseOver={(e) => e.target.style.background = 'rgba(112,93,0,0.1)'}
+                onMouseOut={(e) => e.target.style.background = 'transparent'}
+              >
+                {t("flights.clearAll", { defaultValue: 'Clear All' })}
+              </button>
             </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.7)',
-              borderRadius: 10, padding: '8px 12px',
-            }}>
-              <Search size={14} color="#5e5e5e" />
-              <input
-                type="text"
-                placeholder={t("flights.toLabel", { defaultValue: 'To (e.g. DEL)' })}
-                value={destination}
-                onChange={e => setDestination(e.target.value)}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: '#1a1c1d', fontFamily: 'Inter, sans-serif',
-                }}
-              />
+
+            {/* Airline Filter */}
+            {availableAirlines.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Airlines</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {availableAirlines.map(airline => (
+                    <label key={airline} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={airlinesFilter.includes(airline)}
+                        onChange={() => {
+                          if (airlinesFilter.includes(airline)) setAirlinesFilter(airlinesFilter.filter(a => a !== airline));
+                          else setAirlinesFilter([...airlinesFilter, airline]);
+                        }}
+                        style={{ accentColor: '#705d00' }}
+                      />
+                      <span style={{ color: '#1a1c1d' }}>{airline}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Baggage Filter */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>Baggage</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[{ label: 'Check-in Baggage', value: 'checkin' }, { label: 'Cabin Baggage', value: 'cabin' }].map(opt => (
+                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={baggageFilter.includes(opt.value)}
+                      onChange={() => {
+                        if (baggageFilter.includes(opt.value)) setBaggageFilter(baggageFilter.filter(b => b !== opt.value));
+                        else setBaggageFilter([...baggageFilter, opt.value]);
+                      }}
+                      style={{ accentColor: '#705d00' }}
+                    />
+                    <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Dates filter */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.dates", { defaultValue: 'Dates' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <DatePicker
-              label={t("flights.departure", { defaultValue: 'Departure' })}
-              placeholder={t("flights.addDeparture", { defaultValue: 'Add departure' })}
-              value={depDate}
-              onChange={setDepDate}
-            />
-            <DatePicker
-              label={t("flights.arrival", { defaultValue: 'Arrival' })}
-              placeholder={t("flights.addArrival", { defaultValue: 'Add arrival' })}
-              value={arrDate}
-              onChange={setArrDate}
-            />
-          </div>
-        </div>
+            {/* Price Range */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
 
-        {/* Passengers Selector */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.passengers", { defaultValue: 'Passengers' })}</h3>
-          <PassengerSelector
-            adults={adults}
-            setAdults={setAdults}
-            childrenCount={childrenCount}
-            setChildrenCount={setChildrenCount}
-            infants={infants}
-            setInfants={setInfants}
-            variant="default"
-          />
-        </div>
+              <div style={{ marginBottom: 16 }}>
+                <label htmlFor="min-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
+                <input
+                  id="min-price-slider"
+                  type="range"
+                  min={absMin}
+                  max={localMaxFare}
+                  value={localMinFare}
+                  onChange={e => setLocalMinFare(Number(e.target.value))}
+                  onMouseUp={() => commitMinFare(localMinFare)}
+                  onTouchEnd={() => commitMinFare(localMinFare)}
+                  onKeyUp={() => commitMinFare(localMinFare)}
+                  style={{ width: '100%', accentColor: '#705d00' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
+                  <span>{INR(absMin)}</span>
+                  <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMinFare)}</span>
+                </div>
+              </div>
 
-        {/* Price Range */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.priceRange", { defaultValue: 'Price Range' })}</h3>
-
-          <div style={{ marginBottom: 16 }}>
-            <label htmlFor="min-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.minPrice", { defaultValue: 'Min Price' })}</label>
-            <input
-              id="min-price-slider"
-              type="range"
-              min={absMin}
-              max={localMaxFare}
-              value={localMinFare}
-              onChange={e => setLocalMinFare(Number(e.target.value))}
-              onMouseUp={() => commitMinFare(localMinFare)}
-              onTouchEnd={() => commitMinFare(localMinFare)}
-              onKeyUp={() => commitMinFare(localMinFare)}
-              style={{ width: '100%', accentColor: '#705d00' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
-              <span>{INR(absMin)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMinFare)}</span>
+              <div>
+                <label htmlFor="max-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
+                <input
+                  id="max-price-slider"
+                  type="range"
+                  min={localMinFare}
+                  max={absMax}
+                  value={localMaxFare}
+                  onChange={e => setLocalMaxFare(Number(e.target.value))}
+                  onMouseUp={() => commitMaxFare(localMaxFare)}
+                  onTouchEnd={() => commitMaxFare(localMaxFare)}
+                  onKeyUp={() => commitMaxFare(localMaxFare)}
+                  style={{ width: '100%', accentColor: '#705d00' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
+                  <span>{INR(localMinFare)}</span>
+                  <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMaxFare)}</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="max-price-slider" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#5e5e5e', textTransform: 'uppercase', marginBottom: 6 }}>{t("flights.maxPrice", { defaultValue: 'Max Price' })}</label>
-            <input
-              id="max-price-slider"
-              type="range"
-              min={localMinFare}
-              max={absMax}
-              value={localMaxFare}
-              onChange={e => setLocalMaxFare(Number(e.target.value))}
-              onMouseUp={() => commitMaxFare(localMaxFare)}
-              onTouchEnd={() => commitMaxFare(localMaxFare)}
-              onKeyUp={() => commitMaxFare(localMaxFare)}
-              style={{ width: '100%', accentColor: '#705d00' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5e5e5e', marginTop: 4 }}>
-              <span>{INR(localMinFare)}</span>
-              <span style={{ fontWeight: 700, color: '#705d00' }}>{INR(localMaxFare)}</span>
+            {/* Stops filter */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.stops", { defaultValue: 'Stops' })}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { label: t("flights.nonStop", { defaultValue: 'Non-stop' }), value: 0 },
+                  { label: t("flights.oneStop", { defaultValue: '1 Stop' }), value: 1 },
+                  { label: t("flights.twoPlusStops", { defaultValue: '2+ Stops' }), value: 2 },
+                ].map(opt => {
+                  const isChecked = stopsFilter.includes(opt.value);
+                  return (
+                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setStopsFilter(stopsFilter.filter(v => v !== opt.value));
+                          } else {
+                            setStopsFilter([...stopsFilter, opt.value]);
+                          }
+                        }}
+                        style={{ accentColor: '#705d00' }}
+                      />
+                      <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Stops filter */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.stops", { defaultValue: 'Stops' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { label: t("flights.nonStop", { defaultValue: 'Non-stop' }), value: 0 },
-              { label: t("flights.oneStop", { defaultValue: '1 Stop' }), value: 1 },
-              { label: t("flights.twoPlusStops", { defaultValue: '2+ Stops' }), value: 2 },
-            ].map(opt => {
-              const isChecked = stopsFilter.includes(opt.value);
-              return (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+            {/* Status filter */}
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.status", { defaultValue: 'Status' })}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
                   <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {
-                      if (isChecked) {
-                        setStopsFilter(stopsFilter.filter(v => v !== opt.value));
-                      } else {
-                        setStopsFilter([...stopsFilter, opt.value]);
-                      }
-                    }}
+                    type="radio"
+                    name="status"
+                    value=""
+                    checked={statusFilter === ''}
+                    onChange={() => setStatusFilter('')}
                     style={{ accentColor: '#705d00' }}
                   />
-                  <span style={{ color: '#1a1c1d' }}>{opt.label}</span>
+                  <span style={{ color: '#1a1c1d' }}>{t("flights.allStatuses", { defaultValue: 'All Statuses' })}</span>
                 </label>
-              );
-            })}
+                {statuses.map(s => (
+                  <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="status"
+                      value={s}
+                      checked={statusFilter === s}
+                      onChange={() => setStatusFilter(s)}
+                      style={{ accentColor: '#705d00' }}
+                    />
+                    <span style={{ color: '#1a1c1d' }}>{s.charAt(0) + s.slice(1).toLowerCase()}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Status filter */}
-        <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1c1d', marginBottom: 12 }}>{t("flights.status", { defaultValue: 'Status' })}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="radio"
-                name="status"
-                value=""
-                checked={statusFilter === ''}
-                onChange={() => setStatusFilter('')}
-                style={{ accentColor: '#705d00' }}
-              />
-              <span style={{ color: '#1a1c1d' }}>{t("flights.allStatuses", { defaultValue: 'All Statuses' })}</span>
-            </label>
-            {statuses.map(s => (
-              <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="status"
-                  value={s}
-                  checked={statusFilter === s}
-                  onChange={() => setStatusFilter(s)}
-                  style={{ accentColor: '#705d00' }}
-                />
-                <span style={{ color: '#1a1c1d' }}>{s.charAt(0) + s.slice(1).toLowerCase()}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </aside>
-  </>
+      </aside>
+    </>
   );
 }
 
@@ -502,16 +716,27 @@ export default function UserFlightsList() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { list: flights, count, totalPages, loading, error } = useSelector(state => state.flights);
-  
+
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [airlinesFilter, setAirlinesFilter] = useState([]);
+  const [baggageFilter, setBaggageFilter] = useState([]);
 
   // Sorting fallback to ensure flight entries are sorted chronologically by departure time
   const sortedFlights = useMemo(() => {
     if (!flights) return [];
-    return [...flights].sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+    let result = [...flights].sort((a, b) => new Date(a.departure_time) - new Date(b.departure_time));
+    if (airlinesFilter.length > 0) result = result.filter(f => airlinesFilter.includes(f.airline));
+    return result;
+  }, [flights, airlinesFilter]);
+
+  // Derive available airlines from current flight list
+  const availableAirlines = useMemo(() => {
+    if (!flights) return [];
+    return [...new Set(flights.map(f => f.airline).filter(Boolean))].sort();
   }, [flights]);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const [cabinClass, setCabinClass] = useState(searchParams.get('class') || 'Economy');
   const source = searchParams.get('from') || '';
   const destination = searchParams.get('to') || '';
   const statusFilter = searchParams.get('status') || '';
@@ -531,21 +756,18 @@ export default function UserFlightsList() {
   const stopsParam = searchParams.get('stops');
   const stopsFilter = useMemo(() => stopsParam ? stopsParam.split(',').map(Number) : [], [stopsParam]);
 
-  const setSource = (val) => {
+  const handleSearch = (params) => {
+    setCabinClass(params.cabinClass);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (val) next.set('from', val);
-      else next.delete('from');
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setDestination = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (val) next.set('to', val);
-      else next.delete('to');
+      if (params.source) next.set('from', params.source); else next.delete('from');
+      if (params.destination) next.set('to', params.destination); else next.delete('to');
+      if (params.depDate) next.set('depDate', params.depDate); else next.delete('depDate');
+      if (params.arrDate) next.set('arrDate', params.arrDate); else next.delete('arrDate');
+      if (params.adults > 0) next.set('adults', params.adults.toString()); else next.delete('adults');
+      if (params.childrenCount >= 0) next.set('children', params.childrenCount.toString()); else next.delete('children');
+      if (params.infants >= 0) next.set('infants', params.infants.toString()); else next.delete('infants');
+      if (params.cabinClass) next.set('class', params.cabinClass); else next.delete('class');
       next.delete('page');
       return next;
     }, { replace: true });
@@ -591,43 +813,6 @@ export default function UserFlightsList() {
     }, { replace: true });
   };
 
-  const setArrDate = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (val) next.set('arrDate', val);
-      else next.delete('arrDate');
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setAdults = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('adults', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setChildrenCount = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('children', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
-  const setInfants = (val) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('infants', val.toString());
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  };
-
   const setStopsFilter = (val) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -651,16 +836,11 @@ export default function UserFlightsList() {
 
   useEffect(() => {
     let nextParams = null;
-    const todayStr = new Date().toISOString().split('T')[0];
 
     if (searchParams.toString() === '') {
       nextParams = new URLSearchParams({
-        adults: '1',
-        depDate: todayStr
+        adults: '1'
       });
-    } else if (!searchParams.get('depDate')) {
-      nextParams = new URLSearchParams(searchParams);
-      nextParams.set('depDate', todayStr);
     }
 
     if (nextParams) {
@@ -681,10 +861,11 @@ export default function UserFlightsList() {
         min_fare: minFare || undefined,
         max_fare: maxFare || undefined,
         stops: stopsFilter.length > 0 ? stopsFilter.join(',') : undefined,
+        class: cabinClass || undefined,
         ordering: 'departure_time',
       }
     }));
-  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, searchParams]);
+  }, [dispatch, pageParam, statusFilter, source, destination, depDate, arrDate, minFare, maxFare, stopsFilter, cabinClass, searchParams]);
 
   // Clear flights on unmount to prevent showing old data briefly
   useEffect(() => {
@@ -699,16 +880,51 @@ export default function UserFlightsList() {
   };
 
   const handleClearFilters = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    setAirlinesFilter([]);
+    setBaggageFilter([]);
     setSearchParams(new URLSearchParams({
-      adults: '1',
-      depDate: todayStr
+      adults: '1'
     }), { replace: true });
   };
 
-  // Static bounds for server-side pagination slider
-  const absMin = 0;
-  const absMax = 100000;
+  // Dynamic bounds for server-side pagination slider
+  const [absMin, setAbsMin] = useState(0);
+  const [absMax, setAbsMax] = useState(100000);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchBounds() {
+      try {
+        const params = new URLSearchParams();
+        if (source) params.set('source', source);
+        if (destination) params.set('destination', destination);
+        if (depDate) params.set('date', depDate);
+        if (cabinClass && cabinClass !== 'Economy') params.set('cabin_class', cabinClass);
+
+        const res = await fetch(`${API_BASE_URL}/flights/bounds/?${params}`);
+        if (!res.ok) return;
+        const data = await getResponseData(res);
+        
+        if (active) {
+          const parsedMin = data?.min ? Math.floor(parseFloat(data.min)) : 0;
+          let parsedMax = data?.max ? Math.ceil(parseFloat(data.max)) : 100000;
+
+          if (parsedMax <= parsedMin && parsedMin > 0) {
+            parsedMax = parsedMin + 1000;
+          }
+
+          setAbsMin(parsedMin);
+          setAbsMax(parsedMax);
+        }
+      } catch (err) {
+        console.error("Failed to fetch absolute fare bounds", err);
+      }
+    }
+
+    fetchBounds();
+    return () => { active = false; };
+  }, [source, destination, depDate, cabinClass]);
 
 
 
@@ -834,7 +1050,18 @@ export default function UserFlightsList() {
         }
       `}</style>
 
-      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '120px 24px 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <SearchBar
+        initialSource={source}
+        initialDestination={destination}
+        initialDepDate={depDate}
+        initialArrDate={arrDate}
+        initialAdults={adults}
+        initialChildrenCount={childrenCount}
+        initialInfants={infants}
+        initialCabinClass={cabinClass}
+        onSearch={handleSearch}
+      />
+      <div style={{ width: '95%', maxWidth: 1800, margin: '0 auto', padding: '170px 0 48px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Page Header
         <div className="glass-card" style={{
@@ -870,19 +1097,15 @@ export default function UserFlightsList() {
 
           {/* Sidebar */}
           <Sidebar
-            source={source} setSource={setSource}
-            destination={destination} setDestination={setDestination}
             statusFilter={statusFilter} setStatusFilter={setStatusFilter}
             minFare={minFare ?? absMin} setMinFare={setMinFare}
             absMin={absMin}
             maxFare={maxFare ?? absMax} setMaxFare={setMaxFare}
             absMax={absMax}
-            depDate={depDate} setDepDate={setDepDate}
-            arrDate={arrDate} setArrDate={setArrDate}
-            adults={adults} setAdults={setAdults}
-            childrenCount={childrenCount} setChildrenCount={setChildrenCount}
-            infants={infants} setInfants={setInfants}
             stopsFilter={stopsFilter} setStopsFilter={setStopsFilter}
+            airlinesFilter={airlinesFilter} setAirlinesFilter={setAirlinesFilter}
+            baggageFilter={baggageFilter} setBaggageFilter={setBaggageFilter}
+            availableAirlines={availableAirlines}
             onClearFilters={handleClearFilters}
             mobileFiltersOpen={mobileFiltersOpen} setMobileFiltersOpen={setMobileFiltersOpen}
           />
@@ -895,18 +1118,21 @@ export default function UserFlightsList() {
               borderRadius: 16, padding: '14px 24px', marginBottom: 24,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 15, color: '#1a1c1d' }}>
+              {/* Spacer to balance the right-side count */}
+              <div style={{ flex: 1 }} />
+              {/* Centered route label */}
+              <div style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 700, fontSize: 15, color: '#1a1c1d' }}>
                 <span>{source || t("flights.anyOrigin", { defaultValue: 'Any Origin' })}</span>
                 <Plane size={16} color="#705d00" />
                 <span>{destination || t("flights.anyDestination", { defaultValue: 'Any Destination' })}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}>
                 <div style={{ fontSize: 13, color: '#5e5e5e' }}>
                   {t(count === 1 ? "flights.flightsFound_one" : "flights.flightsFound_other", { count: count, defaultValue: `${count} flights found` })}
                   {statusFilter && ` · ${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}`}
                 </div>
                 {/* Mobile Filter Button */}
-                <button 
+                <button
                   className="mobile-filter-btn"
                   onClick={() => setMobileFiltersOpen(true)}
                   style={{
@@ -921,10 +1147,12 @@ export default function UserFlightsList() {
               </div>
             </div>
 
-            {/* Quick Date Switcher */}
             <DateSwitcher
               activeDate={depDate}
               onDateChange={setDepDate}
+              source={source}
+              destination={destination}
+              cabinClass={cabinClass}
             />
 
             {/* States */}
@@ -954,7 +1182,7 @@ export default function UserFlightsList() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
                 {sortedFlights.map(flight => (
-                  <FlightCard key={flight.id} flight={flight} />
+                  <FlightCard key={flight.id} flight={flight} cabinClass={cabinClass || 'Economy'} />
                 ))}
 
                 {/* Server-side pagination bar */}

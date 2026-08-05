@@ -1,13 +1,17 @@
 import { fetchWithAuth } from '@/services/apiClient';
 
 export const waitlistAPI = {
-  join: async (flightId, passengers = []) => {
+  join: async (flightId, passengers = [], cabinClass = null) => {
+    const body = {
+      flight: flightId,
+      passengers,
+    };
+    if (cabinClass) {
+      body.cabin_class = cabinClass;
+    }
     return fetchWithAuth('/waitlist/join/', {
       method: 'POST',
-      body: JSON.stringify({
-        flight: flightId,
-        passengers,
-      }),
+      body: JSON.stringify(body),
     });
   },
 
@@ -22,6 +26,12 @@ export const waitlistAPI = {
 
   cancel: async (id) => {
     return fetchWithAuth(`/waitlist/${id}/cancel/`, {
+      method: 'POST',
+    });
+  },
+
+  promote: async (id) => {
+    return fetchWithAuth(`/waitlist/${id}/promote/`, {
       method: 'POST',
     });
   },

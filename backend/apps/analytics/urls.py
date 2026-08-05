@@ -5,6 +5,8 @@ from .views import (
     PopularRoutesView,
     FlightOccupancyView,
     PeakBookingHoursView,
+    AirlinePerformanceView,
+    AircraftUtilizationView,
 )
 
 app_name = "analytics"
@@ -15,4 +17,6 @@ urlpatterns = [
     path("popular-routes/", PopularRoutesView.as_view(), name="analytics-popular-routes"),
     path("flight-occupancy/", FlightOccupancyView.as_view(), name="analytics-flight-occupancy"),
     path("peak-booking-hours/", PeakBookingHoursView.as_view(), name="analytics-peak-booking-hours"),
+    path("airline-performance/", AirlinePerformanceView.as_view(), name="analytics-airline-performance"),
+    path("aircraft-utilization/", AircraftUtilizationView.as_view(), name="analytics-aircraft-utilization"),
 ]

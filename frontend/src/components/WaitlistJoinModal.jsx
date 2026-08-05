@@ -5,7 +5,7 @@ import { X, ArrowRight, Clock, Users, AlertCircle, Loader, ShieldAlert } from 'l
 import toast from 'react-hot-toast';
 import { INR } from '@/utils/formatters';
 
-export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 1 }) {
+export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 1, selectedClass = null, pricePerPax = null }) {
   const dispatch = useDispatch();
   const { joinLoading, joinError, lastJoined } = useSelector((s) => s.waitlist);
   const [passengers, setPassengers] = useState(
@@ -73,8 +73,16 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
       name: p.name.trim(),
       phone_number: p.phone_number?.trim() || ''
     }));
+
+    // Map display name → backend enum value (backend expects 'ECONOMY', 'BUSINESS', 'FIRST')
+    const CLASS_MAP = { 'Economy': 'ECONOMY', 'Business': 'BUSINESS', 'First': 'FIRST' };
+    const cabinClassKey = selectedClass ? (CLASS_MAP[selectedClass] || selectedClass.toUpperCase()) : null;
     
-    dispatch(joinWaitlist({ flightId: flight.id, passengers: cleanedPassengers }));
+    dispatch(joinWaitlist({ 
+      flightId: flight.id, 
+      passengers: cleanedPassengers,
+      cabinClass: cabinClassKey
+    }));
   };
 
   const handlePassengerChange = (index, field, value) => {
@@ -106,7 +114,8 @@ export default function WaitlistJoinModal({ flight, onClose, initialSeatCount = 
     if (e.target === e.currentTarget) onClose();
   };
 
-  const totalPrice = flight.base_fare * passengers.length;
+  const basePrice = pricePerPax || flight.base_fare;
+  const totalPrice = basePrice * passengers.length;
 
   return (
     <>

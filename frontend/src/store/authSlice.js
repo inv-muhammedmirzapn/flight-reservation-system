@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '@/services/auth-service/authService';
+import { extractErrorMessage } from '@/services/apiClient';
 
 const decodeToken = (token) => {
   if (!token) return null;
@@ -22,8 +23,7 @@ export const fetchProfile = createAsyncThunk(
     } catch (error) {
       let message = 'Could not load user profile';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
+        message = extractErrorMessage(JSON.parse(error.message));
       } catch (_) {}
       return rejectWithValue(message);
     }
@@ -58,8 +58,7 @@ export const loginUser = createAsyncThunk(
     } catch (error) {
       let message = 'Login failed';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || errObj.non_field_errors?.[0] || message;
+        message = extractErrorMessage(JSON.parse(error.message));
       } catch (_) {}
       return rejectWithValue(message);
     }
@@ -90,8 +89,7 @@ export const googleLoginUser = createAsyncThunk(
     } catch (error) {
       let message = 'Google Login failed';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || errObj.error || message;
+        message = extractErrorMessage(JSON.parse(error.message));
       } catch (_) {}
       return rejectWithValue(message);
     }
