@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
-import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw, ChevronDown } from 'lucide-react';
 
 /**
  * AnalyticsFilterBar
@@ -12,6 +12,52 @@ import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw } from
  *  - onFilterChange(filters): called with { startDate, endDate, airlineId, aircraftId }
  *  - disabled: bool — disables controls while parent is loading
  */
+function TailwindDropdown({ value, onChange, options, placeholder, disabled, className }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (open) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const selectedOpt = options.find(o => String(o.value) === String(value));
+  const display = selectedOpt ? selectedOpt.label : placeholder;
+
+  return (
+    <div className="relative w-full" ref={ref}>
+      <div
+        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-[#705d00] bg-white ring-2 ring-[#705d00]/10' : ''}`}
+        onClick={() => !disabled && setOpen(!open)}
+      >
+        <span className="truncate">{display}</span>
+        <ChevronDown size={14} className={`text-[#5e5e5e] shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </div>
+
+      {open && (
+        <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white/95 backdrop-blur-xl border border-black/10 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-50 max-h-60 overflow-y-auto py-1.5">
+          <div
+            className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${!value ? 'bg-[#ffd700]/20 text-[#705d00] font-bold' : 'text-[#1a1c1d] hover:bg-black/5 font-medium'}`}
+            onClick={() => { onChange(''); setOpen(false); }}
+          >
+            {placeholder}
+          </div>
+          {options.map(opt => (
+            <div
+              key={opt.value}
+              className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${String(value) === String(opt.value) ? 'bg-[#ffd700]/20 text-[#705d00] font-bold' : 'text-[#1a1c1d] hover:bg-black/5 font-medium'}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalyticsFilterBar({ onFilterChange, disabled = false }) {
   const [airlines, setAirlines] = useState([]);
   const [aircraft, setAircraft] = useState([]);
@@ -54,15 +100,10 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
     [color-scheme:light]
   `;
 
-  const selectCls = `
-    w-full rounded-lg border border-black/10 bg-white/85 text-sm text-admin-ink font-ui
-    outline-none transition-all duration-150 px-3 py-[7px]
-    focus:border-admin-accent-dark focus:bg-white
-    disabled:opacity-40 disabled:cursor-not-allowed
-  `;
+
 
   return (
-    <div className="backdrop-blur-[25px] border border-white/50 overflow-hidden bg-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg px-5 py-4 mb-6 flex flex-wrap gap-4 items-end">
+    <div className="relative z-50 backdrop-blur-[25px] border border-white/50 bg-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg px-5 py-4 mb-6 flex flex-wrap gap-4 items-end">
 
       {/* Label */}
       <div className="flex items-center gap-2 text-admin-accent-dark font-bold text-sm self-center mr-1">
@@ -105,19 +146,14 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <Plane size={11} /> Airline
         </label>
-        <select
+        <TailwindDropdown
           value={filters.airlineId}
-          onChange={e => handleFieldChange('airlineId', e.target.value)}
+          onChange={val => handleFieldChange('airlineId', val)}
           disabled={disabled}
-          className={selectCls}
-        >
-          <option value="">All Airlines</option>
-          {airlines.map(a => (
-            <option key={a.id} value={a.id}>
-              {a.iata_airline_code} – {a.airline_name}
-            </option>
-          ))}
-        </select>
+          className={inputCls}
+          placeholder="All Airlines"
+          options={airlines.map(a => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }))}
+        />
       </div>
 
       {/* Aircraft */}
@@ -125,19 +161,14 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <LayoutGrid size={11} /> Aircraft
         </label>
-        <select
+        <TailwindDropdown
           value={filters.aircraftId}
-          onChange={e => handleFieldChange('aircraftId', e.target.value)}
+          onChange={val => handleFieldChange('aircraftId', val)}
           disabled={disabled}
-          className={selectCls}
-        >
-          <option value="">All Aircraft</option>
-          {aircraft.map(ac => (
-            <option key={ac.id} value={ac.id}>
-              {ac.registration}
-            </option>
-          ))}
-        </select>
+          className={inputCls}
+          placeholder="All Aircraft"
+          options={aircraft.map(ac => ({ value: ac.id, label: ac.registration }))}
+        />
       </div>
 
 
