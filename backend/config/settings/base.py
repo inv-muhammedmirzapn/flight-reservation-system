@@ -23,9 +23,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
 ] + [
-    'apps.users', 'apps.flights', 'apps.bookings', 'apps.route_optimization', 'apps.pricing',
-    'apps.waitlist', 'apps.analytics', 'apps.delays', 'apps.notifications', 'apps.comparison',
-    'apps.fare_prediction', 'apps.search', 'apps.caching', 'apps.bulk_upload'
+    'apps.users', 'apps.flights', 'apps.bookings',
+    'apps.waitlist', 'apps.analytics', 'apps.notifications', 'apps.bulk_upload'
 ]
 
 MIDDLEWARE = [
