@@ -475,7 +475,10 @@ export default function FlightRoutesPage() {
                         value={leg.departure_airport}
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
-                      <div className="leg-arrow">→</div>
+                      <div className="leg-arrow-container select-none">
+                        <div style={{ height: 21 }} />
+                        <div className="leg-arrow">→</div>
+                      </div>
                       <Select id={`arr_apt_${i}`} label="Arrival Airport" options={airportOptions}
                         value={leg.arrival_airport}
                         onChange={(e) => updateLeg(i, 'arrival_airport', e.target.value)}

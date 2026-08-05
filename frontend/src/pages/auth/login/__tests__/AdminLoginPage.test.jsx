@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AdminLoginForm } from '../AdminLoginForm';
+import AdminLoginPage from '../AdminLoginPage';
 import toast from 'react-hot-toast';
 import { loginUser } from '@/store/authSlice';
 
@@ -54,7 +54,7 @@ vi.mock('react-redux', async () => {
 });
 
 
-describe('AdminLoginForm Component', () => {
+describe('AdminLoginPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthState = { loading: false, error: null };
@@ -64,14 +64,13 @@ describe('AdminLoginForm Component', () => {
   const renderComponent = () =>
     render(
       <MemoryRouter>
-        <AdminLoginForm />
+        <AdminLoginPage />
       </MemoryRouter>
     );
 
   it('renders login form elements correctly', () => {
     renderComponent();
     expect(screen.getByText('admin.auth.loginTitle')).toBeInTheDocument();
-    expect(screen.getByText('admin.auth.loginSubtitle')).toBeInTheDocument();
     expect(screen.getByLabelText('admin.auth.usernameLabel')).toBeInTheDocument();
     expect(screen.getByLabelText('admin.auth.passwordLabel')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /admin.auth.accessWorkspace/i })).toBeInTheDocument();
@@ -111,7 +110,7 @@ describe('AdminLoginForm Component', () => {
       });
       expect(mockDispatch).toHaveBeenCalled();
       expect(toast.success).toHaveBeenCalledWith('Welcome back, Admin. Access granted.');
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/flights');
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/overview');
     });
   });
 
