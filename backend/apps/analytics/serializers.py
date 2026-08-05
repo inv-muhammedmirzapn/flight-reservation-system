@@ -17,9 +17,6 @@ class SummaryStatsSerializer(serializers.Serializer):
     scheduled_flights = serializers.IntegerField(
         help_text="Number of flights currently in SCHEDULED status"
     )
-    avg_occupancy = serializers.FloatField(
-        help_text="Average occupancy percentage across all flights"
-    )
 
 
 class MonthlyRevenueSerializer(serializers.Serializer):

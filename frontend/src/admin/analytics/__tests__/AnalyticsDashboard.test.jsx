@@ -97,7 +97,6 @@ describe('AnalyticsDashboard', () => {
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.getByText('Cancellation Rate')).toBeInTheDocument();
-    expect(screen.getByText('Avg Occupancy')).toBeInTheDocument();
   });
 
   it('displays correct total bookings count', async () => {
@@ -116,10 +115,6 @@ describe('AnalyticsDashboard', () => {
     await waitFor(() => expect(screen.getByText('16.67%')).toBeInTheDocument());
   });
 
-  it('displays average occupancy computed from occupancy data', async () => {
-    render(<AnalyticsDashboard />);
-    await waitFor(() => expect(screen.getByText('67.5%')).toBeInTheDocument());
-  });
 
   it('calls all 7 API endpoints on mount', async () => {
     render(<AnalyticsDashboard />);
