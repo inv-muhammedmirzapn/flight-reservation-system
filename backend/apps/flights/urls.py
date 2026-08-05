@@ -11,6 +11,7 @@ from .views import (
     SeatPriceTemplateViewSet,
 )
 from .views_calendar import FlightFaresCalendarView, FlightFareBoundsView
+from .views_meals import FlightMealsView
 
 app_name = "apps/flights"
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("stats/", FlightStatsView.as_view(), name="flight-stats"),
     path("calendar/", FlightFaresCalendarView.as_view(), name="flight-calendar"),
     path("bounds/", FlightFareBoundsView.as_view(), name="flight-bounds"),
+    path("<int:instance_id>/meals/", FlightMealsView.as_view(), name="flight-meals"),
     path("<int:id>/", FlightDetailView.as_view(), name="flight-detail"),
 
 

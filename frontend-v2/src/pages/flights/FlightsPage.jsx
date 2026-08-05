@@ -147,7 +147,7 @@ export default function FlightsPage() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, depDate, filters]);
+  }, [from, to, depDate, cabinClassParam, filters]);
 
   const handleViewDetails = (flight) => {
     if (flight && flight.id) {

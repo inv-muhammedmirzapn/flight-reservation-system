@@ -214,9 +214,9 @@ class FlightListCreateView(APIView):
                 qs = qs.filter(Q(seats__status="AVAILABLE") | Q(fares__available_seats__gt=0))
         elif waitlist_mode == "waitlisted_only":
             if class_key:
-                qs = qs.filter(Q(fares__cabin_class=class_key, fares__available_seats__lte=0) | ~Q(seats__seat_class=class_key, seats__status="AVAILABLE"))
+                qs = qs.filter(Q(fares__cabin_class=class_key, fares__available_seats__lte=0))
             else:
-                qs = qs.filter(Q(fares__available_seats__lte=0) | ~Q(seats__status="AVAILABLE"))
+                qs = qs.filter(Q(fares__available_seats__lte=0))
 
         qs = qs.distinct()
 

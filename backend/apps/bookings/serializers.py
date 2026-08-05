@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Booking, Passenger
+from .models import Booking, Passenger, PassengerMeal
 from apps.flights.models import FlightInstance
 
 
@@ -27,12 +27,38 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
         return last_leg.arrival_airport.iata_code if last_leg else None
 
 
+class PassengerMealSerializer(serializers.ModelSerializer):
+    food_item_name = serializers.CharField(source='food_item.name', read_only=True, default=None)
+    flight_meal_name = serializers.CharField(source='flight_meal.name', read_only=True, default=None)
+    leg_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PassengerMeal
+        fields = [
+            'id', 'food_item', 'flight_meal', 'flight_leg',
+            'food_item_name', 'flight_meal_name', 'leg_info',
+            'quantity', 'unit_price',
+        ]
+        read_only_fields = ['id', 'unit_price', 'food_item_name', 'flight_meal_name', 'leg_info']
+
+    def get_leg_info(self, obj):
+        if obj.flight_leg:
+            return {
+                'id': obj.flight_leg.id,
+                'leg_order': obj.flight_leg.leg_order,
+                'departure': obj.flight_leg.departure_airport.iata_code,
+                'arrival': obj.flight_leg.arrival_airport.iata_code,
+            }
+        return None
+
+
 class PassengerSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='name', read_only=True)
+    selected_meals = PassengerMealSerializer(many=True, read_only=True)
 
     class Meta:
         model = Passenger
-        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number', 'seat_number']
+        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number', 'meal_preference', 'seat_number', 'selected_meals']
 
     def validate_age(self, value):
         if value < 0:

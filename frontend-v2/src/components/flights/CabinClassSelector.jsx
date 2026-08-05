@@ -41,14 +41,14 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
               </div>
               <span className="text-xs font-bold mt-1">{cabin.label}</span>
               {cabinPrice != null ? (
-                <span className={`text-xs font-extrabold ${isSelected ? "text-[#ffeb00]" : "text-emerald-700"}`}>
+                <span className={`text-sm font-extrabold ${isSelected ? "text-[#ffeb00]" : "text-emerald-700"}`}>
                   ₹{Number(cabinPrice).toLocaleString("en-IN")}
                 </span>
               ) : (
                 <span className="text-[10px] text-slate-400">N/A</span>
               )}
               <span
-                className={`text-[9px] font-semibold ${
+                className={`text-[10px] mt-2 font-semibold ${
                   isAvailable
                     ? isSelected
                       ? "text-slate-300"
@@ -58,6 +58,13 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
               >
                 {isAvailable ? `${seatsCount} seats` : "Waitlist"}
               </span>
+
+              {fareObj?.meal_included && (
+                <span className={`text-[10px] font-extrabold flex items-center gap-0.5 mt-0.5 ${isSelected ? "text-amber-300" : "text-amber-800"}`}>
+                  <span className="material-symbols-outlined text-[11px]">restaurant</span>
+                  Meal Included
+                </span>
+              )}
             </button>
           );
         })}

@@ -86,13 +86,19 @@ class BookingViewSet(mixins.CreateModelMixin,
             serializer = self.get_serializer(booking)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except DjangoValidationError as e:
-            msg = e.message if isinstance(getattr(e, 'message', None), str) else (
-                e.messages[0] if getattr(e, 'messages', None) else str(e)
-            )
-            raise ValidationError({'detail': msg})
+            if hasattr(e, 'message_dict'):
+                detail = e.message_dict
+            elif hasattr(e, 'messages') and e.messages:
+                detail = e.messages[0]
+            else:
+                detail = getattr(e, 'message', str(e))
+            return Response({'detail': detail}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            detail = e.detail.get('detail', e.detail) if isinstance(getattr(e, 'detail', None), dict) else getattr(e, 'detail', str(e))
+            return Response({'detail': detail}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.exception("Booking failed")
-            return Response({'detail': 'Booking failed. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Booking failed: %s", str(e))
+            return Response({'detail': f'Booking failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):

@@ -187,17 +187,30 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         <span>{durationStr}</span>
       </div>
 
-      {/* Airline Badge */}
-      <div className="inline-flex items-center gap-10 bg-sky-100/70 border border-sky-200/60 rounded-xl p-2 mb-8">
-        <span className="text-xs font-bold text-slate-900">{airline}</span>
-        <span className="inline-flex items-center gap-3">
-          <span className="text-xs font-medium text-slate-600">
-            {flight_number}
+      {/* Airline Badge & Square Meal Badge */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="inline-flex items-center gap-6 sm:gap-10 bg-sky-100/70 border border-sky-200/60 rounded-xl p-2">
+          <span className="text-xs font-bold text-slate-900">{airline}</span>
+          <span className="inline-flex items-center gap-3">
+            <span className="text-xs font-medium text-slate-600">
+              {flight_number}
+            </span>
+            <span className="text-xs font-medium text-slate-600">
+              {aircraft}
+            </span>
           </span>
-          <span className="text-xs font-medium text-slate-600">
-            {aircraft}
-          </span>
-        </span>
+        </div>
+
+        {activeFare?.meal_included && (
+          <div
+            className="w-9 h-9 rounded-xl bg-amber-100/90 border border-amber-300/80 text-amber-950 flex items-center justify-center shadow-2xs flex-shrink-0"
+            title="Complimentary Meal Included"
+          >
+            <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">
+              restaurant
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Vertical Timeline Route Details Container */}

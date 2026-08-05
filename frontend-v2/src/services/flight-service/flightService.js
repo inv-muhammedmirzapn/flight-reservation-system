@@ -54,6 +54,13 @@ export const flightsAPI = {
     return fetchWithAuth(`/flights/${id}/`);
   },
 
+  getMeals: async (instanceId, params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.cabin_class) qs.set('cabin_class', params.cabin_class);
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetchWithAuth(`/flights/${instanceId}/meals/${query}`);
+  },
+
   // Admin V2 CRUD Operations
   create: async (flightData) => {
     return fetchWithAuth('/flights/v2/', {

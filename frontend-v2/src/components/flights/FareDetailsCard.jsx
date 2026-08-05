@@ -2,7 +2,14 @@ import React from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", passengerCount = 1, onBookingAction }) {
+export default function FareDetailsCard({
+  flight,
+  selectedCabin = "ECONOMY",
+  passengerCount = 1,
+  mealTotal = 0,
+  onBookingAction,
+  actionButtonText,
+}) {
   const navigate = useNavigate();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
@@ -23,13 +30,14 @@ export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", pas
   const cabinLabel = getCabinLabel(selectedCabin);
 
   const totalBaseFare = unitFare * passengerCount;
-  const gstAmount = Math.round(totalBaseFare * 0.12);
-  const grandTotal = totalBaseFare + gstAmount;
+  const subTotalWithMeals = totalBaseFare + mealTotal;
+  const gstAmount = Math.round(subTotalWithMeals * 0.12);
+  const grandTotal = subTotalWithMeals + gstAmount;
 
   const handleClick = () => {
     if (!isAuthenticated) {
       navigate("/login");
-    } else {
+    } else if (onBookingAction) {
       onBookingAction();
     }
   };
@@ -38,9 +46,7 @@ export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", pas
     ? isWaitlisted
       ? "Login to Join Waitlist"
       : "Login to Book Ticket"
-    : isWaitlisted
-    ? "Join Waitlist"
-    : "Book Ticket";
+    : actionButtonText || (isWaitlisted ? "Join Waitlist" : "Book Ticket");
 
   return (
     <div className="booking-container-card w-full shadow-xs animate-fade-in transition-all duration-300">
@@ -51,8 +57,8 @@ export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", pas
       {/* Breakdown Rows */}
       <div className="flex flex-col gap-2 text-xs font-medium text-slate-700">
         <div className="flex items-center justify-between">
-          <span>{cabinLabel}</span>
-          <span className="text-slate-950">
+          <span>{cabinLabel} (per person)</span>
+          <span className="text-slate-950 font-bold">
             ₹ {unitFare.toLocaleString("en-IN")}
           </span>
         </div>
@@ -70,6 +76,18 @@ export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", pas
             ₹ {totalBaseFare.toLocaleString("en-IN")}
           </span>
         </div>
+
+        {mealTotal > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1 text-amber-800 font-semibold">
+              <span className="material-symbols-outlined text-sm">restaurant</span>
+              In-Flight Meals
+            </span>
+            <span className="text-amber-900 font-bold">
+              ₹ {mealTotal.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <span>GST (12%)</span>
@@ -94,9 +112,10 @@ export default function FareDetailsCard({ flight, selectedCabin = "ECONOMY", pas
       <button
         type="button"
         onClick={handleClick}
-        className={`w-full mt-6 p-2.5 text-base sm:text-lg rounded-2xl font-bold cursor-pointer transition-all duration-200 active:scale-95 btn-primary`}
+        className="w-full mt-6 py-3 px-4 text-xs font-bold rounded-xl cursor-pointer transition-all duration-200 active:scale-95 btn-primary flex items-center justify-center gap-2"
       >
-        {buttonText}
+        <span>{buttonText}</span>
+        <span className="material-symbols-outlined text-xs">arrow_forward</span>
       </button>
     </div>
   );

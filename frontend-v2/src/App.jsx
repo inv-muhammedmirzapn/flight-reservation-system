@@ -9,6 +9,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import FlightsPage from "@/pages/flights/FlightsPage";
 import FlightDetailPage from "@/pages/flights/FlightDetailPage";
+import BookingCheckoutPage from "@/pages/bookings/BookingCheckoutPage";
 import BookingConfirmationPage from "@/pages/bookings/BookingConfirmationPage";
 import MyBookingsPage from "@/pages/bookings/MyBookingsPage";
 import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
@@ -40,6 +41,14 @@ function AppContent() {
             <Route path="/register" element={<RegisterPage />} />
 
             {/* Protected Routes (Authentication Required) */}
+            <Route
+              path="/flights/:id/checkout"
+              element={
+                <ProtectedRoute>
+                  <BookingCheckoutPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/notifications"
               element={

@@ -77,7 +77,7 @@ class FlightFaresCalendarView(APIView):
         if waitlist_mode == "available_only":
             qs = qs.filter(Q(seats__seat_class=class_key, seats__status="AVAILABLE") | Q(fares__cabin_class=class_key, fares__available_seats__gt=0))
         elif waitlist_mode == "waitlisted_only":
-            qs = qs.filter(Q(fares__cabin_class=class_key, fares__available_seats__lte=0) | ~Q(seats__seat_class=class_key, seats__status="AVAILABLE"))
+            qs = qs.filter(Q(fares__cabin_class=class_key, fares__available_seats__lte=0))
 
         qs = qs.distinct().prefetch_related('fares', 'flight', 'seats')
 
@@ -88,8 +88,12 @@ class FlightFaresCalendarView(APIView):
             except ValueError:
                 pass
         
+        now = timezone.now()
         fares_by_date = {}
         for instance in qs:
+            if instance.scheduled_departure and instance.scheduled_departure <= now:
+                continue
+
             date_str = str(instance.date)
             instance_fares = instance.fares.all()
             
@@ -100,8 +104,10 @@ class FlightFaresCalendarView(APIView):
                 if max_fare_val is not None and float(f.price) > max_fare_val:
                     continue
                 
-                if instance.seats.exists():
-                    is_avail = instance.seats.filter(seat_class=f.cabin_class, status="AVAILABLE").exists()
+                # Check seat table ONLY if seat records exist for this specific class_key
+                has_seats_for_class = instance.seats.filter(seat_class=class_key).exists()
+                if has_seats_for_class:
+                    is_avail = instance.seats.filter(seat_class=class_key, status="AVAILABLE").exists()
                 else:
                     is_avail = f.available_seats > 0
 

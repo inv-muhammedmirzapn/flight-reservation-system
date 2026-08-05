@@ -9,7 +9,7 @@ export default function PassengerListSection({
   const handleAddPassenger = () => {
     const updated = [
       ...passengers,
-      { id: Date.now(), name: "", age: "", gender: "Male" }
+      { id: Date.now(), name: "", age: "", gender: "Male", phone_number: "" }
     ];
     onChangePassengers(updated);
   };
@@ -45,11 +45,23 @@ export default function PassengerListSection({
     onChangePassengers(updated);
   };
 
+  const handlePhoneChange = (index, rawValue) => {
+    const sanitized = rawValue.replace(/[^0-9+\s-]/g, "").slice(0, 15);
+    const updated = [...passengers];
+    updated[index] = { ...updated[index], phone_number: sanitized };
+    onChangePassengers(updated);
+  };
+
   return (
     <div className="booking-container-card space-y-4 animate-fade-in transition-all duration-300">
-      <h3 className="text-xl font-bold text-slate-950 mb-4">
-        Add Passengers
-      </h3>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-2xl bg-gray-200 text-gray-900 flex items-center justify-center font-bold shadow-xs">
+          <span className="material-symbols-outlined text-xl">people</span>
+        </div>
+        <h3 className="text-xl font-bold text-slate-950">
+          Add Passengers
+        </h3>
+      </div>
 
       {/* Passenger List Cards */}
       <div className="space-y-4">
@@ -59,6 +71,7 @@ export default function PassengerListSection({
           return (
             <div
               key={passenger.id || index}
+              style={{ zIndex: 50 - index }}
               className="relative timeline-card animate-fade-in transition-all duration-300"
             >
               <div className="flex items-center justify-between mb-5">
@@ -146,6 +159,20 @@ export default function PassengerListSection({
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* Phone Number (Optional) Field */}
+              <div className="mt-3">
+                <label className="text-[10px] font-bold text-slate-400 tracking-wider block mb-1.5 px-2">
+                  Phone Number (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 98765 43210"
+                  value={passenger.phone_number || ""}
+                  onChange={(e) => handlePhoneChange(index, e.target.value)}
+                  className="input-field transition-all duration-200"
+                />
               </div>
             </div>
           );
