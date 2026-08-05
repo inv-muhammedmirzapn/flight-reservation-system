@@ -314,15 +314,11 @@ export default function AnalyticsDashboard() {
                             <div style={{ fontSize: 12, color: MUTED }}>Revenue: <b style={{ color: DARK }}>{INR(d?.total_revenue)}</b></div>
                             <div style={{ fontSize: 12, color: MUTED }}>Bookings: <b style={{ color: DARK }}>{d?.total_bookings?.toLocaleString()}</b></div>
                             <div style={{ fontSize: 12, color: MUTED }}>Cancel rate: <b style={{ color: RED }}>{d?.cancellation_rate}%</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: PURPLE }}>{d?.avg_occupancy}%</b></div>
+                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: GOLD }}>{d?.avg_occupancy}%</b></div>
                           </div>
                         );
                       }} />
-                      <Bar dataKey="total_revenue" radius={[4, 4, 0, 0]} maxBarSize={32}>
-                        {airlinePerf.map((_, i) => (
-                          <Cell key={i} fill={`hsl(${45 + i * 15},80%,${55 - i * 2}%)`} />
-                        ))}
-                      </Bar>
+                      <Bar dataKey="total_revenue" radius={[4, 4, 0, 0]} maxBarSize={32} fill={GOLD} />
                     </BarChart>
                   </ResponsiveContainer>
                   {/* Mini table */}
