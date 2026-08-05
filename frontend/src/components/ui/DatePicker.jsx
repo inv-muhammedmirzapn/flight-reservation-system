@@ -13,7 +13,6 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
   const WEEKDAYS = t('datePicker.weekdays', { returnObjects: true }) || ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState({});
   
   // Parse initial date or default to today's date for calendar view state
   const initialDate = value ? new Date(value) : new Date();
@@ -24,36 +23,6 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
   const isTransparent = variant === 'transparent';
-
-  const updateDropdownPosition = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    
-    // Check if dropdown goes offscreen horizontally
-    let left = rect.left;
-    if (left + 280 > window.innerWidth) {
-      left = Math.max(10, rect.right - 280);
-    }
-    
-    // Check if dropdown goes offscreen vertically
-    const dropdownHeight = 310;
-    let top = rect.bottom + 5;
-    if (top + dropdownHeight > window.innerHeight) {
-      // Place above the input if there is space, otherwise constrain to viewport
-      if (rect.top - dropdownHeight - 5 > 0) {
-        top = rect.top - dropdownHeight - 5;
-      } else {
-        top = Math.max(10, window.innerHeight - dropdownHeight - 10);
-      }
-    }
-    
-    setDropdownStyle({
-      position: 'fixed',
-      top: top,
-      left: left,
-      zIndex: 9999,
-    });
-  };
 
   // Close calendar on click outside
   useEffect(() => {
@@ -69,23 +38,10 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Recompute position on scroll / resize while open
-  useEffect(() => {
-    if (!isOpen) return;
-    updateDropdownPosition();
-    window.addEventListener('scroll', updateDropdownPosition, true);
-    window.addEventListener('resize', updateDropdownPosition);
-    return () => {
-      window.removeEventListener('scroll', updateDropdownPosition, true);
-      window.removeEventListener('resize', updateDropdownPosition);
-    };
-  }, [isOpen]);
-
   const handleOpen = () => {
     const activeDate = value ? new Date(value) : new Date();
     setViewYear(activeDate.getFullYear());
     setViewMonth(activeDate.getMonth());
-    updateDropdownPosition();
     setIsOpen(true);
   };
 
@@ -216,12 +172,15 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
         )}
       </div>
 
-      {isOpen && ReactDOM.createPortal(
+      {isOpen && (
         <div
           ref={dropdownRef}
           className="glass-card"
           style={{
-            ...dropdownStyle,
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            zIndex: 9999,
             width: 280,
             padding: 16,
             borderRadius: 16,
@@ -230,6 +189,7 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
             boxShadow: '0 8px 32px rgba(112, 93, 0, 0.08)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
+            animation: 'fadeSlideDown 0.15s ease',
           }}
         >
           {/* Header */}
@@ -328,8 +288,7 @@ export default function DatePicker({ label, placeholder, value, onChange, varian
               );
             })}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

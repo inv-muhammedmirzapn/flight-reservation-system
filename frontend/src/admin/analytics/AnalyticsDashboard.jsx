@@ -32,7 +32,7 @@ const REFRESH_INTERVAL_MS = 30_000;
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
   return (
-    <div className="backdrop-blur-[25px] border border-white/50 overflow-hidden bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex items-center gap-3.5 rounded-admin-lg min-w-0 relative cursor-default transition-all duration-200 py-[18px] px-[20px] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] lg:gap-2.5 lg:px-[14px] lg:py-[16px] xl:gap-3.5 xl:px-[20px] xl:py-[22px] group">
+    <div className="backdrop-blur-[25px] border border-white/50 bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex items-center gap-3.5 rounded-admin-lg min-w-0 relative cursor-default transition-all duration-200 py-[18px] px-[20px] hover:z-50 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] lg:gap-2.5 lg:px-[14px] lg:py-[16px] xl:gap-3.5 xl:px-[20px] xl:py-[22px] group">
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 lg:w-10 lg:h-10 lg:rounded-xl xl:w-12 xl:h-12 xl:rounded-2xl" style={{ background: `${accent}18` }}>
         {icon}
       </div>
@@ -44,7 +44,7 @@ function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
         {sub && !loading && <div className="text-[11px] text-[#5e5e5e] mt-[3px] whitespace-nowrap overflow-hidden text-ellipsis">{sub}</div>}
       </div>
       {tooltip && !loading && (
-        <div className="invisible opacity-0 pointer-events-none absolute left-1/2 -translate-x-1/2 translate-y-1 backdrop-blur-[10px] text-[#ffd700] font-bold text-sm rounded-admin-sm whitespace-nowrap z-[100] transition-all duration-150 bottom-[calc(100%+8px)] bg-[rgba(26,28,29,0.95)] py-[7px] px-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] after:absolute after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:content-[''] after:top-[100%] after:border-t-[rgba(26,28,29,0.95)] group-hover:visible group-hover:opacity-100 group-hover:translate-y-0">{tooltip}</div>
+        <div className="invisible opacity-0 pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1 backdrop-blur-[10px] text-[#ffd700] font-bold text-sm rounded-admin-sm whitespace-nowrap z-[100] transition-all duration-150 top-[calc(100%+8px)] bg-[rgba(26,28,29,0.95)] py-[7px] px-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] after:absolute after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:content-[''] after:bottom-[100%] after:border-b-[rgba(26,28,29,0.95)] group-hover:visible group-hover:opacity-100 group-hover:translate-y-0">{tooltip}</div>
       )}
     </div>
   );
@@ -53,7 +53,7 @@ function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
 // ─── Chart Card ──────────────────────────────────────────────────────────────
 function ChartCard({ title, children, loading, action }) {
   return (
-    <div className="backdrop-blur-[25px] border border-white/50 overflow-hidden bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg p-6">
+    <div className="backdrop-blur-[25px] border border-white/50 bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="text-base font-bold text-[#1a1c1d]">{title}</div>
         {action}
@@ -126,8 +126,13 @@ export default function AnalyticsDashboard() {
         fetchAirlinePerformance(10, { startDate: f.startDate, endDate: f.endDate }),
         fetchAircraftUtilization(10, { startDate: f.startDate, endDate: f.endDate }),
       ]);
-      setSummary(s); setMonthly(m); setRoutes(r); setOccupancy(o); setPeakHours(p);
-      setAirlinePerf(ap); setAircraftUtil(au);
+      setSummary(s);
+      setMonthly((m || []).sort((a, b) => new Date(a.month) - new Date(b.month)));
+      setRoutes((r || []).sort((a, b) => (b.bookings || 0) - (a.bookings || 0)));
+      setOccupancy((o || []).sort((a, b) => (b.occupancy_rate || 0) - (a.occupancy_rate || 0)));
+      setPeakHours((p || []).sort((a, b) => (a.hour || 0) - (b.hour || 0)));
+      setAirlinePerf((ap || []).sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0)));
+      setAircraftUtil((au || []).sort((a, b) => (b.avg_occupancy || 0) - (a.avg_occupancy || 0)));
     } catch (err) {
       if (!isSilent) setError(err.message || 'Failed to load analytics data.');
     } finally {

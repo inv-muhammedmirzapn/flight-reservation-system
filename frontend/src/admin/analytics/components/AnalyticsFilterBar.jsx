@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw, ChevronDown } from 'lucide-react';
+import DatePicker from '@/components/ui/DatePicker';
 
 /**
  * AnalyticsFilterBar
@@ -116,13 +117,13 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <Calendar size={11} /> From
         </label>
-        <input
-          type="date"
+        <DatePicker
+          variant="transparent"
           value={filters.startDate}
-          max={filters.endDate || undefined}
-          onChange={e => handleFieldChange('startDate', e.target.value)}
+          onChange={val => handleFieldChange('startDate', val)}
           disabled={disabled}
           className={inputCls}
+          placeholder="Select Date"
         />
       </div>
 
@@ -131,13 +132,13 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <Calendar size={11} /> To
         </label>
-        <input
-          type="date"
+        <DatePicker
+          variant="transparent"
           value={filters.endDate}
-          min={filters.startDate || undefined}
-          onChange={e => handleFieldChange('endDate', e.target.value)}
+          onChange={val => handleFieldChange('endDate', val)}
           disabled={disabled}
           className={inputCls}
+          placeholder="Select Date"
         />
       </div>
 
