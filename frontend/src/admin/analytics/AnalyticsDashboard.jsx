@@ -32,7 +32,7 @@ const REFRESH_INTERVAL_MS = 30_000;
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
   return (
-    <div className="backdrop-blur-[25px] border border-white/50 overflow-hidden bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex items-center gap-3.5 rounded-admin-lg min-w-0 relative cursor-default transition-all duration-200 py-[18px] px-[20px] hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] lg:gap-2.5 lg:px-[14px] lg:py-[16px] xl:gap-3.5 xl:px-[20px] xl:py-[22px] group">
+    <div className="backdrop-blur-[25px] border border-white/50 bg-[rgba(255,255,255,0.72)] shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex items-center gap-3.5 rounded-admin-lg min-w-0 relative cursor-default transition-all duration-200 py-[18px] px-[20px] hover:z-50 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] lg:gap-2.5 lg:px-[14px] lg:py-[16px] xl:gap-3.5 xl:px-[20px] xl:py-[22px] group">
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 lg:w-10 lg:h-10 lg:rounded-xl xl:w-12 xl:h-12 xl:rounded-2xl" style={{ background: `${accent}18` }}>
         {icon}
       </div>
@@ -44,7 +44,7 @@ function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
         {sub && !loading && <div className="text-[11px] text-[#5e5e5e] mt-[3px] whitespace-nowrap overflow-hidden text-ellipsis">{sub}</div>}
       </div>
       {tooltip && !loading && (
-        <div className="invisible opacity-0 pointer-events-none absolute left-1/2 -translate-x-1/2 translate-y-1 backdrop-blur-[10px] text-[#ffd700] font-bold text-sm rounded-admin-sm whitespace-nowrap z-[100] transition-all duration-150 bottom-[calc(100%+8px)] bg-[rgba(26,28,29,0.95)] py-[7px] px-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] after:absolute after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:content-[''] after:top-[100%] after:border-t-[rgba(26,28,29,0.95)] group-hover:visible group-hover:opacity-100 group-hover:translate-y-0">{tooltip}</div>
+        <div className="invisible opacity-0 pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1 backdrop-blur-[10px] text-[#ffd700] font-bold text-sm rounded-admin-sm whitespace-nowrap z-[100] transition-all duration-150 top-[calc(100%+8px)] bg-[rgba(26,28,29,0.95)] py-[7px] px-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] after:absolute after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:content-[''] after:bottom-[100%] after:border-b-[rgba(26,28,29,0.95)] group-hover:visible group-hover:opacity-100 group-hover:translate-y-0">{tooltip}</div>
       )}
     </div>
   );
@@ -71,7 +71,7 @@ function ChartCard({ title, children, loading, action }) {
 function Empty() {
   return (
     <div className="h-72 flex flex-col items-center justify-center gap-2 text-[#5e5e5e]">
-      <BarChart2 size={32} style={{ opacity: 0.3 }} />
+      <BarChart2 size={32} className="opacity-30" />
       <span className="text-sm">No data</span>
     </div>
   );
@@ -81,14 +81,10 @@ function Empty() {
 const CustomTooltip = ({ active, payload, label, currency }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12,
-      padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, marginBottom: 6 }}>{label}</div>
+    <div className="bg-white/95 backdrop-blur-[10px] border border-black/[0.08] rounded-xl py-2.5 px-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
+      <div className="text-xs font-bold text-[#5e5e5e] mb-1.5">{label}</div>
       {payload.map((p, i) => (
-        <div key={i} style={{ fontSize: 14, fontWeight: 700, color: p.color || DARK }}>
+        <div key={i} className="text-sm font-bold" style={{ color: p.color || '#1a1c1d' }}>
           {currency ? INR(p.value) : p.value.toLocaleString()}
         </div>
       ))}
@@ -310,25 +306,24 @@ export default function AnalyticsDashboard() {
                         const d = payload[0]?.payload;
                         return (
                           <div className="bg-white/95 backdrop-blur-xl border border-black/8 rounded-xl px-3.5 py-2.5 shadow-2xl min-w-[180px]">
-                            <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>{d?.airline_name}</div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Revenue: <b style={{ color: DARK }}>{INR(d?.total_revenue)}</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Bookings: <b style={{ color: DARK }}>{d?.total_bookings?.toLocaleString()}</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Cancel rate: <b style={{ color: RED }}>{d?.cancellation_rate}%</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: GOLD }}>{d?.avg_occupancy}%</b></div>
+                            <div className="text-[13px] font-bold text-[#1a1c1d] mb-1">{d?.airline_name}</div>
+                            <div className="text-xs text-[#5e5e5e]">Revenue: <b className="text-[#1a1c1d]">{INR(d?.total_revenue)}</b></div>
+                            <div className="text-xs text-[#5e5e5e]">Bookings: <b className="text-[#1a1c1d]">{d?.total_bookings?.toLocaleString()}</b></div>
+                            <div className="text-xs text-[#5e5e5e]">Cancel rate: <b className="text-[#e11d48]">{d?.cancellation_rate}%</b></div>
+                            <div className="text-xs text-[#5e5e5e]">Avg occupancy: <b className="text-[#ffd700]">{d?.avg_occupancy}%</b></div>
                           </div>
                         );
                       }} />
                       <Bar dataKey="total_revenue" radius={[4, 4, 0, 0]} maxBarSize={32} fill={GOLD} />
                     </BarChart>
                   </ResponsiveContainer>
-                  {/* Mini table */}
                   <div className="mt-4 space-y-1.5">
                     {airlinePerf.slice(0, 5).map(a => (
-                      <div key={a.airline_id} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg" style={{ background: 'rgba(112,93,0,0.04)' }}>
-                        <span className="font-semibold" style={{ color: DARK }}>{a.iata_code} <span style={{ color: MUTED, fontWeight: 400 }}>{a.airline_name}</span></span>
+                      <div key={a.airline_id} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-[#705d00]/[0.04]">
+                        <span className="font-semibold text-[#1a1c1d]">{a.iata_code} <span className="text-[#5e5e5e] font-normal">{a.airline_name}</span></span>
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold" style={{ color: GOLD_DARK }}>{INR(a.total_revenue)}</span>
-                          <span style={{ color: MUTED }}>{a.avg_occupancy}% occ.</span>
+                          <span className="font-semibold text-[#705d00]">{INR(a.total_revenue)}</span>
+                          <span className="text-[#5e5e5e]">{a.avg_occupancy}% occ.</span>
                         </div>
                       </div>
                     ))}
@@ -339,7 +334,7 @@ export default function AnalyticsDashboard() {
 
             {/* Aircraft Utilization */}
             <ChartCard title="Aircraft Utilization" loading={loading} action={
-              <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: PURPLE }}>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-[#7c3aed]">
                 <Gauge size={13} /> Top 10
               </span>
             }>
@@ -355,13 +350,13 @@ export default function AnalyticsDashboard() {
                         const d = payload[0]?.payload;
                         return (
                           <div className="bg-white/95 backdrop-blur-xl border border-black/8 rounded-xl px-3.5 py-2.5 shadow-2xl min-w-[200px]">
-                            <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>{label} · {d?.aircraft_model}</div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Flights: <b style={{ color: DARK }}>{d?.total_flights}</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: GOLD_DARK }}>{d?.avg_occupancy}%</b></div>
-                            <div style={{ marginTop: 6, fontSize: 12 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED }}><span>Economy</span><b style={{ color: DARK }}>{d?.economy_fill_rate}%</b></div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED }}><span>Business</span><b style={{ color: DARK }}>{d?.business_fill_rate}%</b></div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED }}><span>First</span><b style={{ color: DARK }}>{d?.first_fill_rate}%</b></div>
+                            <div className="text-[13px] font-bold text-[#1a1c1d] mb-1">{label} · {d?.aircraft_model}</div>
+                            <div className="text-xs text-[#5e5e5e]">Flights: <b className="text-[#1a1c1d]">{d?.total_flights}</b></div>
+                            <div className="text-xs text-[#5e5e5e]">Avg occupancy: <b className="text-[#705d00]">{d?.avg_occupancy}%</b></div>
+                            <div className="mt-1.5 text-xs">
+                              <div className="flex justify-between text-[#5e5e5e]"><span>Economy</span><b className="text-[#1a1c1d]">{d?.economy_fill_rate}%</b></div>
+                              <div className="flex justify-between text-[#5e5e5e]"><span>Business</span><b className="text-[#1a1c1d]">{d?.business_fill_rate}%</b></div>
+                              <div className="flex justify-between text-[#5e5e5e]"><span>First</span><b className="text-[#1a1c1d]">{d?.first_fill_rate}%</b></div>
                             </div>
                           </div>
                         );
@@ -374,20 +369,19 @@ export default function AnalyticsDashboard() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  {/* Cabin fill breakdown */}
                   <div className="mt-4 space-y-1.5">
-                    {aircraftUtil.slice(0, 4).map(ac => (
-                      <div key={ac.aircraft_id} className="flex items-center gap-3 text-xs px-2 py-1.5 rounded-lg" style={{ background: 'rgba(112,93,0,0.04)' }}>
-                        <span className="font-semibold w-20 flex-shrink-0" style={{ color: DARK }}>{ac.registration}</span>
+                    {aircraftUtil.slice(0, 5).map(ac => (
+                      <div key={ac.aircraft_id} className="flex items-center gap-3 text-xs px-2 py-1.5 rounded-lg bg-[#705d00]/[0.04]">
+                        <span className="font-semibold w-20 flex-shrink-0 text-[#1a1c1d]">{ac.registration}</span>
                         <div className="flex-1 flex gap-2">
                           {[['E', ac.economy_fill_rate, GREEN], ['B', ac.business_fill_rate, BLUE], ['F', ac.first_fill_rate, GOLD_DARK]].map(([cls, rate, color]) => (
                             <div key={cls} className="flex items-center gap-1">
-                              <span style={{ color: MUTED }}>{cls}:</span>
+                              <span className="text-[#5e5e5e]">{cls}:</span>
                               <span className="font-semibold" style={{ color }}>{rate}%</span>
                             </div>
                           ))}
                         </div>
-                        <span style={{ color: MUTED }}>{ac.total_flights} flt</span>
+                        <span className="text-[#5e5e5e]">{ac.total_flights} flt</span>
                       </div>
                     ))}
                   </div>

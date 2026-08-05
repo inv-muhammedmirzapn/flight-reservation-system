@@ -53,7 +53,6 @@ def get_summary_stats(start_date=None, end_date=None,
       - total_revenue      (sum of total_price for confirmed bookings)
       - total_flights      (total FlightInstance records in DB)
       - scheduled_flights  (FlightInstances with SCHEDULED status)
-      - avg_occupancy      (average occupancy % across all instances with seats > 0)
     Supports optional filtering by date range, airline, aircraft.
     """
     base_qs = _apply_booking_filters(
@@ -79,17 +78,6 @@ def get_summary_stats(start_date=None, end_date=None,
     total_flights = fi_qs.count()
     scheduled_flights = fi_qs.filter(status=InstanceStatus.SCHEDULED).count()
 
-    # Average occupancy: (booked seats / total seats) * 100
-    from django.db.models import Count as DCount
-    instances_qs = fi_qs.annotate(
-        total_seat_count=DCount('seats'),
-        booked_seat_count=DCount('seats', filter=Q(seats__status='BOOKED')),
-    ).filter(total_seat_count__gt=0)
-
-    total_capacity = sum(fi.total_seat_count for fi in instances_qs)
-    total_booked = sum(fi.booked_seat_count for fi in instances_qs)
-    avg_occupancy = round((total_booked / total_capacity * 100), 1) if total_capacity > 0 else 0.0
-
     return {
         "total_bookings": total,
         "confirmed_bookings": confirmed,
@@ -98,7 +86,6 @@ def get_summary_stats(start_date=None, end_date=None,
         "total_revenue": total_revenue,
         "total_flights": total_flights,
         "scheduled_flights": scheduled_flights,
-        "avg_occupancy": avg_occupancy,
     }
 
 
@@ -358,6 +345,7 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
             'avg_occupancy': avg_occupancy,
         })
 
+    results.sort(key=lambda x: x['total_revenue'], reverse=True)
     return results
 
 
@@ -437,4 +425,5 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
             'first_fill_rate': round(first_bkd / first_cap * 100, 1) if first_cap > 0 else 0.0,
         })
 
+    results.sort(key=lambda x: x['avg_occupancy'], reverse=True)
     return results

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
-import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw, ChevronDown } from 'lucide-react';
+import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
  * AnalyticsFilterBar
@@ -58,6 +58,146 @@ function TailwindDropdown({ value, onChange, options, placeholder, disabled, cla
   );
 }
 
+function TailwindDatePicker({ value, onChange, min, max, disabled, className, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  
+  const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
+
+  useEffect(() => {
+    if (value) setViewDate(new Date(value));
+  }, [value]);
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (open) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  
+  const handleSelect = (day) => {
+    const newDate = new Date(year, month, day);
+    const yyyy = newDate.getFullYear();
+    const mm = String(newDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(newDate.getDate()).padStart(2, '0');
+    onChange(`${yyyy}-${mm}-${dd}`);
+    setOpen(false);
+  };
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  const isDayDisabled = (day) => {
+    if (!day) return true;
+    const d = new Date(year, month, day);
+    d.setHours(0,0,0,0);
+    if (min) {
+      const minD = new Date(min);
+      minD.setHours(0,0,0,0);
+      if (d < minD) return true;
+    }
+    if (max) {
+      const maxD = new Date(max);
+      maxD.setHours(0,0,0,0);
+      if (d > maxD) return true;
+    }
+    return false;
+  };
+
+  const isDaySelected = (day) => {
+    if (!value || !day) return false;
+    const valD = new Date(value);
+    return valD.getFullYear() === year && valD.getMonth() === month && valD.getDate() === day;
+  };
+
+  const displayValue = value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : placeholder;
+
+  return (
+    <div className="relative w-full" ref={ref}>
+      <div
+        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-[#705d00] bg-white ring-2 ring-[#705d00]/10' : ''}`}
+        onClick={() => !disabled && setOpen(!open)}
+      >
+        <span className="truncate">{displayValue}</span>
+        <Calendar size={14} className="text-[#5e5e5e] shrink-0" />
+      </div>
+
+      {open && (
+        <div className="absolute top-[calc(100%+6px)] left-0 w-[260px] bg-white/95 backdrop-blur-xl border border-black/10 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button 
+              type="button" 
+              onClick={(e) => { e.stopPropagation(); setViewDate(new Date(year, month - 1, 1)); }}
+              className="p-1 hover:bg-black/5 rounded-md transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} className="text-[#1a1c1d]" />
+            </button>
+            <div className="text-sm font-bold text-[#1a1c1d]">
+              {new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </div>
+            <button 
+              type="button" 
+              onClick={(e) => { e.stopPropagation(); setViewDate(new Date(year, month + 1, 1)); }}
+              className="p-1 hover:bg-black/5 rounded-md transition-colors cursor-pointer"
+            >
+              <ChevronRight size={16} className="text-[#1a1c1d]" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+              <div key={d} className="text-[10px] font-bold text-[#5e5e5e] uppercase">{d}</div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day, idx) => {
+              if (!day) return <div key={`empty-${idx}`} className="h-7" />;
+              const disabledDay = isDayDisabled(day);
+              const selected = isDaySelected(day);
+              
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  disabled={disabledDay}
+                  onClick={(e) => { e.stopPropagation(); handleSelect(day); }}
+                  className={`
+                    h-7 w-full rounded-md flex items-center justify-center text-[13px] font-medium transition-colors
+                    ${disabledDay ? 'text-black/20 cursor-not-allowed' : 'cursor-pointer'}
+                    ${selected ? 'bg-[#ffd700] text-[#705d00] font-bold shadow-sm' : ''}
+                    ${!disabledDay && !selected ? 'text-[#1a1c1d] hover:bg-black/5' : ''}
+                  `}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          
+          {value && (
+            <div className="mt-3 pt-3 border-t border-black/5 text-center flex justify-center">
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onChange(''); setOpen(false); }}
+                className="text-xs font-bold text-[#b91c1c] hover:bg-[#b91c1c]/10 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+              >
+                Clear Filter
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalyticsFilterBar({ onFilterChange, disabled = false }) {
   const [airlines, setAirlines] = useState([]);
   const [aircraft, setAircraft] = useState([]);
@@ -103,7 +243,7 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
 
 
   return (
-    <div className="relative z-50 backdrop-blur-[25px] border border-white/50 bg-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg px-5 py-4 mb-6 flex flex-wrap gap-4 items-end">
+    <div className="relative z-[60] backdrop-blur-[25px] border border-white/50 bg-white/70 shadow-[0_10px_30px_rgba(0,0,0,0.04)] rounded-admin-lg px-5 py-4 mb-6 flex flex-wrap gap-4 items-end">
 
       {/* Label */}
       <div className="flex items-center gap-2 text-admin-accent-dark font-bold text-sm self-center mr-1">
@@ -116,13 +256,13 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <Calendar size={11} /> From
         </label>
-        <input
-          type="date"
+        <TailwindDatePicker
           value={filters.startDate}
           max={filters.endDate || undefined}
-          onChange={e => handleFieldChange('startDate', e.target.value)}
+          onChange={val => handleFieldChange('startDate', val)}
           disabled={disabled}
           className={inputCls}
+          placeholder="Any Date"
         />
       </div>
 
@@ -131,13 +271,13 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <label className="text-xs font-bold uppercase tracking-[0.07em] text-admin-muted flex items-center gap-1">
           <Calendar size={11} /> To
         </label>
-        <input
-          type="date"
+        <TailwindDatePicker
           value={filters.endDate}
           min={filters.startDate || undefined}
-          onChange={e => handleFieldChange('endDate', e.target.value)}
+          onChange={val => handleFieldChange('endDate', val)}
           disabled={disabled}
           className={inputCls}
+          placeholder="Any Date"
         />
       </div>
 
