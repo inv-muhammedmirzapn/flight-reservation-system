@@ -17,9 +17,6 @@ class SummaryStatsSerializer(serializers.Serializer):
     scheduled_flights = serializers.IntegerField(
         help_text="Number of flights currently in SCHEDULED status"
     )
-    avg_occupancy = serializers.FloatField(
-        help_text="Average occupancy percentage across all flights"
-    )
 
 
 class MonthlyRevenueSerializer(serializers.Serializer):
@@ -64,9 +61,6 @@ class AirlinePerformanceSerializer(serializers.Serializer):
     cancellation_rate = serializers.FloatField(
         help_text="Percentage of total bookings that were cancelled"
     )
-    avg_occupancy = serializers.FloatField(
-        help_text="Average seat occupancy percentage across all this airline's flights"
-    )
 
 
 class AircraftUtilizationSerializer(serializers.Serializer):
@@ -78,9 +72,7 @@ class AircraftUtilizationSerializer(serializers.Serializer):
     total_flights = serializers.IntegerField(
         help_text="Total number of flight instances operated by this aircraft"
     )
-    avg_occupancy = serializers.FloatField(
-        help_text="Average overall seat occupancy percentage"
-    )
+
     economy_fill_rate = serializers.FloatField(
         help_text="Economy cabin fill rate (booked / total economy seats) %"
     )

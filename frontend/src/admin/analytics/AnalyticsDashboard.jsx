@@ -121,7 +121,7 @@ export default function AnalyticsDashboard() {
         fetchAnalyticsSummary(dateFilters),
         fetchMonthlyRevenue(12, dateFilters),
         fetchPopularRoutes(10, dateFilters),
-        fetchFlightOccupancy(15, dateFilters),
+        fetchFlightOccupancy(10, dateFilters),
         fetchPeakBookingHours(dateFilters),
         fetchAirlinePerformance(10, { startDate: f.startDate, endDate: f.endDate }),
         fetchAircraftUtilization(10, { startDate: f.startDate, endDate: f.endDate }),
@@ -132,7 +132,7 @@ export default function AnalyticsDashboard() {
       setOccupancy((o || []).sort((a, b) => (b.occupancy_rate || 0) - (a.occupancy_rate || 0)));
       setPeakHours((p || []).sort((a, b) => (a.hour || 0) - (b.hour || 0)));
       setAirlinePerf((ap || []).sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0)));
-      setAircraftUtil((au || []).sort((a, b) => (b.avg_occupancy || 0) - (a.avg_occupancy || 0)));
+      setAircraftUtil((au || []).sort((a, b) => (b.total_flights || 0) - (a.total_flights || 0)));
     } catch (err) {
       if (!isSilent) setError(err.message || 'Failed to load analytics data.');
     } finally {
@@ -319,7 +319,6 @@ export default function AnalyticsDashboard() {
                             <div style={{ fontSize: 12, color: MUTED }}>Revenue: <b style={{ color: DARK }}>{INR(d?.total_revenue)}</b></div>
                             <div style={{ fontSize: 12, color: MUTED }}>Bookings: <b style={{ color: DARK }}>{d?.total_bookings?.toLocaleString()}</b></div>
                             <div style={{ fontSize: 12, color: MUTED }}>Cancel rate: <b style={{ color: RED }}>{d?.cancellation_rate}%</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: GOLD }}>{d?.avg_occupancy}%</b></div>
                           </div>
                         );
                       }} />
@@ -333,7 +332,6 @@ export default function AnalyticsDashboard() {
                         <span className="font-semibold" style={{ color: DARK }}>{a.iata_code} <span style={{ color: MUTED, fontWeight: 400 }}>{a.airline_name}</span></span>
                         <div className="flex items-center gap-3">
                           <span className="font-semibold" style={{ color: GOLD_DARK }}>{INR(a.total_revenue)}</span>
-                          <span style={{ color: MUTED }}>{a.avg_occupancy}% occ.</span>
                         </div>
                       </div>
                     ))}
@@ -353,7 +351,7 @@ export default function AnalyticsDashboard() {
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={aircraftUtil} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: MUTED }} tickLine={false} axisLine={false} />
                       <YAxis type="category" dataKey="registration" tick={{ fontSize: 11, fill: DARK, fontWeight: 600 }} width={80} tickLine={false} axisLine={false} />
                       <Tooltip content={({ active, payload, label }) => {
                         if (!active || !payload?.length) return null;
@@ -362,7 +360,6 @@ export default function AnalyticsDashboard() {
                           <div className="bg-white/95 backdrop-blur-xl border border-black/8 rounded-xl px-3.5 py-2.5 shadow-2xl min-w-[200px]">
                             <div style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 4 }}>{label} · {d?.aircraft_model}</div>
                             <div style={{ fontSize: 12, color: MUTED }}>Flights: <b style={{ color: DARK }}>{d?.total_flights}</b></div>
-                            <div style={{ fontSize: 12, color: MUTED }}>Avg occupancy: <b style={{ color: GOLD_DARK }}>{d?.avg_occupancy}%</b></div>
                             <div style={{ marginTop: 6, fontSize: 12 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED }}><span>Economy</span><b style={{ color: DARK }}>{d?.economy_fill_rate}%</b></div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED }}><span>Business</span><b style={{ color: DARK }}>{d?.business_fill_rate}%</b></div>
@@ -371,12 +368,7 @@ export default function AnalyticsDashboard() {
                           </div>
                         );
                       }} />
-                      <Bar dataKey="avg_occupancy" radius={[0, 6, 6, 0]} maxBarSize={20}>
-                        {aircraftUtil.map((ac, i) => {
-                          const c = ac.avg_occupancy >= 80 ? GOLD_DARK : ac.avg_occupancy >= 60 ? '#9b7d00' : ac.avg_occupancy >= 40 ? '#c9a800' : GOLD;
-                          return <Cell key={i} fill={c} />;
-                        })}
-                      </Bar>
+                      <Bar dataKey="total_flights" radius={[0, 6, 6, 0]} maxBarSize={20} fill={GOLD} />
                     </BarChart>
                   </ResponsiveContainer>
                   {/* Cabin fill breakdown */}

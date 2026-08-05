@@ -90,14 +90,13 @@ describe('AnalyticsDashboard', () => {
     );
   });
 
-  it('renders all 6 KPI card labels after data loads', async () => {
+  it('renders all 5 KPI card labels after data loads', async () => {
     render(<AnalyticsDashboard />);
     await waitFor(() => expect(screen.getByText('Total Revenue')).toBeInTheDocument());
     expect(screen.getByText('Total Bookings')).toBeInTheDocument();
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.getByText('Cancellation Rate')).toBeInTheDocument();
-    expect(screen.getByText('Avg Occupancy')).toBeInTheDocument();
   });
 
   it('displays correct total bookings count', async () => {
@@ -116,17 +115,13 @@ describe('AnalyticsDashboard', () => {
     await waitFor(() => expect(screen.getByText('16.67%')).toBeInTheDocument());
   });
 
-  it('displays average occupancy computed from occupancy data', async () => {
-    render(<AnalyticsDashboard />);
-    await waitFor(() => expect(screen.getByText('67.5%')).toBeInTheDocument());
-  });
 
   it('calls all 7 API endpoints on mount', async () => {
     render(<AnalyticsDashboard />);
     await waitFor(() => expect(fetchAnalyticsSummary).toHaveBeenCalledTimes(1));
     expect(fetchMonthlyRevenue).toHaveBeenCalledWith(12, expect.any(Object));
     expect(fetchPopularRoutes).toHaveBeenCalledWith(10, expect.any(Object));
-    expect(fetchFlightOccupancy).toHaveBeenCalledWith(15, expect.any(Object));
+    expect(fetchFlightOccupancy).toHaveBeenCalledWith(10, expect.any(Object));
     expect(fetchPeakBookingHours).toHaveBeenCalledWith(expect.any(Object));
     expect(fetchAirlinePerformance).toHaveBeenCalledWith(10, expect.any(Object));
     expect(fetchAircraftUtilization).toHaveBeenCalledWith(10, expect.any(Object));

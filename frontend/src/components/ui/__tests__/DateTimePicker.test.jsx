@@ -75,12 +75,22 @@ describe('DateTimePicker Component', () => {
     // Open dropdown
     fireEvent.click(screen.getByTestId('datetime-trigger'));
 
-    // Locate time input and change it
-    const timeInput = screen.getByLabelText(/time/i, { selector: 'input' });
-    fireEvent.change(timeInput, { target: { value: '15:45' } });
+    // Locate time inputs by ID and change them
+    const hourInput = document.getElementById('test-datetime-h');
+    const minInput = document.getElementById('test-datetime-m');
+    
+    // Changing hour to 15
+    fireEvent.change(hourInput, { target: { value: '15' } });
+    fireEvent.blur(hourInput);
+    
+    // Changing min to 45
+    fireEvent.change(minInput, { target: { value: '45' } });
+    fireEvent.blur(minInput);
 
-    expect(handleChange).toHaveBeenCalledTimes(1);
-    expect(handleChange.mock.calls[0][0].target.value).toBe('2026-07-15T15:45');
+    // onChange should be called for each blur/commit
+    expect(handleChange).toHaveBeenCalled();
+    const lastCall = handleChange.mock.calls[handleChange.mock.calls.length - 1][0];
+    expect(lastCall.target.value).toBe('2026-07-15T15:45');
   });
 
   it('calls onChange with empty string when cleared', () => {

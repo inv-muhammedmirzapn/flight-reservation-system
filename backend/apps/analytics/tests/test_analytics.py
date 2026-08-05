@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.flights.models import Flight
+from apps.flights.models import Country, Airport, Airline, AircraftModel, Aircraft, FlightRoute, FlightLeg, FlightInstance, Seat, SeatStatus
 from apps.bookings.models import Booking, BookingStatus
 
 User = get_user_model()
@@ -17,18 +17,33 @@ User = get_user_model()
 
 def make_flight(flight_number, src="JFK", dst="LAX", fare=200.00,
                 total=100, available=80):
-    return Flight.objects.create(
-        flight_number=flight_number,
-        airline="TestAir",
-        aircraft="Boeing 737",
-        source_airport=src,
-        destination_airport=dst,
-        departure_time=timezone.now() + timezone.timedelta(hours=2),
-        arrival_time=timezone.now() + timezone.timedelta(hours=7),
-        base_fare=fare,
-        total_seats=total,
-        available_seats=available,
+    country, _ = Country.objects.get_or_create(name="USA", iso_code="USA")
+    src_airport, _ = Airport.objects.get_or_create(iata_code=src, airport_name=f"{src} Airport", city=src, country=country)
+    dst_airport, _ = Airport.objects.get_or_create(iata_code=dst, airport_name=f"{dst} Airport", city=dst, country=country)
+    airline, _ = Airline.objects.get_or_create(iata_airline_code="TA", airline_name="TestAir")
+    ac_model, _ = AircraftModel.objects.get_or_create(manufacturer="Boeing", model_name="737")
+    aircraft, _ = Aircraft.objects.get_or_create(registration=f"N{flight_number}", airline=airline, aircraft_model=ac_model)
+    route, _ = FlightRoute.objects.get_or_create(flight_no=flight_number, airline=airline)
+    FlightLeg.objects.get_or_create(flight=route, leg_order=1, departure_airport=src_airport, arrival_airport=dst_airport)
+    
+    fi = FlightInstance.objects.create(
+        flight=route, 
+        date=timezone.now().date(),
+        aircraft=aircraft,
+        scheduled_departure=timezone.now() + timezone.timedelta(hours=2),
+        scheduled_arrival=timezone.now() + timezone.timedelta(hours=7)
     )
+    
+    booked_count = total - available
+    seats = []
+    for i in range(total):
+        status = SeatStatus.BOOKED if i < booked_count else SeatStatus.AVAILABLE
+        seats.append(Seat(flight_instance=fi, seat_number=str(i), seat_class="ECONOMY", status=status))
+    Seat.objects.bulk_create(seats)
+    
+    # Store fare on the instance for test usage
+    fi._test_fare = fare
+    return fi
 
 
 class AnalyticsBaseTestCase(APITestCase):
@@ -57,18 +72,21 @@ class AnalyticsBaseTestCase(APITestCase):
         for _ in range(3):
             Booking.objects.create(
                 user=self.user, flight=self.flight1,
-                status=BookingStatus.CONFIRMED
+                status=BookingStatus.CONFIRMED,
+                total_price=self.flight1._test_fare
             )
         for _ in range(2):
             Booking.objects.create(
                 user=self.user, flight=self.flight2,
-                status=BookingStatus.CONFIRMED
+                status=BookingStatus.CONFIRMED,
+                total_price=self.flight2._test_fare
             )
 
         # Cancelled booking
         Booking.objects.create(
             user=self.user, flight=self.flight1,
-            status=BookingStatus.CANCELLED
+            status=BookingStatus.CANCELLED,
+            total_price=self.flight1._test_fare
         )
 
     def admin_auth(self):

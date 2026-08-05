@@ -56,7 +56,7 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByTestId('child')).not.toBeInTheDocument();
     const navigateEl = screen.getByTestId('navigate');
     expect(navigateEl).toBeInTheDocument();
-    expect(navigateEl.getAttribute('data-to')).toBe('/admin/flights');
+    expect(navigateEl.getAttribute('data-to')).toBe('/admin/overview');
   });
 
   it('renders children when authenticated user accesses a non-guestOnly route', () => {

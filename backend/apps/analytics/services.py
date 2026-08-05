@@ -55,7 +55,6 @@ def get_summary_stats(start_date=None, end_date=None,
       - total_revenue      (sum of total_price for confirmed bookings)
       - total_flights      (total FlightInstance records in DB)
       - scheduled_flights  (FlightInstances with SCHEDULED status)
-      - avg_occupancy      (average occupancy % across all instances with seats > 0)
     Supports optional filtering by date range, airline, aircraft.
     """
     base_qs = _apply_booking_filters(
@@ -81,16 +80,6 @@ def get_summary_stats(start_date=None, end_date=None,
     total_flights = fi_qs.count()
     scheduled_flights = fi_qs.filter(status=InstanceStatus.SCHEDULED).count()
 
-    # Average occupancy: (booked seats / total seats) * 100
-    instances_qs = fi_qs.annotate(
-        total_seat_count=Count('seats'),
-        booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED')),
-    ).filter(total_seat_count__gt=0)
-
-    total_capacity = sum(fi.total_seat_count for fi in instances_qs)
-    total_booked = sum(fi.booked_seat_count for fi in instances_qs)
-    avg_occupancy = round((total_booked / total_capacity * 100), 1) if total_capacity > 0 else 0.0
-
     return {
         "total_bookings": total,
         "confirmed_bookings": confirmed,
@@ -99,7 +88,6 @@ def get_summary_stats(start_date=None, end_date=None,
         "total_revenue": total_revenue,
         "total_flights": total_flights,
         "scheduled_flights": scheduled_flights,
-        "avg_occupancy": avg_occupancy,
     }
 
 
@@ -270,7 +258,7 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
     Returns per-airline aggregated performance stats (confirmed bookings only).
     Each item: {
         airline_id, airline_name, iata_code,
-        total_revenue, total_bookings, cancellation_rate, avg_occupancy
+        total_revenue, total_bookings, cancellation_rate
     }
     """
     # Confirmed booking stats per airline
@@ -328,22 +316,6 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
         total_cancelled = cancelled_map.get(aid, 0)
         cancellation_rate = round(total_cancelled / total_all * 100, 2) if total_all > 0 else 0.0
 
-        # Occupancy for this airline's instances
-        fi_qs = FlightInstance.objects.filter(flight__airline_id=aid)
-        if start_date:
-            fi_qs = fi_qs.filter(scheduled_departure__date__gte=start_date)
-        if end_date:
-            fi_qs = fi_qs.filter(scheduled_departure__date__lte=end_date)
-
-        fi_qs = fi_qs.annotate(
-            total_seat_count=Count('seats'),
-            booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED')),
-        ).filter(total_seat_count__gt=0)
-
-        total_cap = sum(fi.total_seat_count for fi in fi_qs)
-        total_bkd = sum(fi.booked_seat_count for fi in fi_qs)
-        avg_occupancy = round(total_bkd / total_cap * 100, 1) if total_cap > 0 else 0.0
-
         results.append({
             'airline_id': aid,
             'airline_name': airline.airline_name,
@@ -351,7 +323,6 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
             'total_revenue': float(item['total_revenue'] or 0),
             'total_bookings': item['total_bookings'],
             'cancellation_rate': cancellation_rate,
-            'avg_occupancy': avg_occupancy,
         })
 
     return results
@@ -364,7 +335,7 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
     Returns per-aircraft utilization stats.
     Each item: {
         aircraft_id, registration, aircraft_model, manufacturer,
-        total_flights, avg_occupancy,
+        total_flights,
         economy_fill_rate, business_fill_rate, first_fill_rate
     }
     """
@@ -395,8 +366,6 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
             continue
 
         instances = fi_qs.filter(aircraft_id=ac_id).annotate(
-            total_seat_count=Count('seats'),
-            booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED')),
             # Cabin-class fill rates
             eco_total=Count('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY)),
             eco_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY, seats__status='BOOKED')),
@@ -404,11 +373,7 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
             biz_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.BUSINESS, seats__status='BOOKED')),
             first_total=Count('seats', filter=Q(seats__seat_class=CabinClass.FIRST)),
             first_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.FIRST, seats__status='BOOKED')),
-        ).filter(total_seat_count__gt=0)
-
-        total_cap = sum(fi.total_seat_count for fi in instances)
-        total_bkd = sum(fi.booked_seat_count for fi in instances)
-        avg_occupancy = round(total_bkd / total_cap * 100, 1) if total_cap > 0 else 0.0
+        )
 
         eco_cap = sum(fi.eco_total for fi in instances)
         eco_bkd = sum(fi.eco_booked for fi in instances)
@@ -424,7 +389,6 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
             'manufacturer': ac.aircraft_model.manufacturer,
             'airline_name': ac.airline.airline_name,
             'total_flights': flight_count_map[ac_id],
-            'avg_occupancy': avg_occupancy,
             'economy_fill_rate': round(eco_bkd / eco_cap * 100, 1) if eco_cap > 0 else 0.0,
             'business_fill_rate': round(biz_bkd / biz_cap * 100, 1) if biz_cap > 0 else 0.0,
             'first_fill_rate': round(first_bkd / first_cap * 100, 1) if first_cap > 0 else 0.0,

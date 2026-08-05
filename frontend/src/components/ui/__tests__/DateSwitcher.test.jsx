@@ -1,24 +1,38 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import DateSwitcher from '../DateSwitcher';
 
 describe('DateSwitcher Component', () => {
-  it('renders previous, current, and next dates relative to the active date', () => {
+  beforeAll(() => {
+    global.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('{}')
+      })
+    );
+  });
+
+  it('renders previous, current, and next dates relative to the active date', async () => {
     // July 15, 2026
     const activeDate = '2026-07-15';
-    render(<DateSwitcher activeDate={activeDate} onDateChange={() => {}} />);
+    await act(async () => {
+      render(<DateSwitcher activeDate={activeDate} onDateChange={() => {}} />);
+    });
 
     // Active/current date should be present
-    expect(screen.getByText('15 Jul 2026')).toBeInTheDocument();
+    expect(screen.getByText('15 Jul')).toBeInTheDocument();
     // Previous date (July 14) should be present
     expect(screen.getByText('14 Jul')).toBeInTheDocument();
     // Next date (July 16) should be present
     expect(screen.getByText('16 Jul')).toBeInTheDocument();
   });
 
-  it('calls onDateChange with previous date when clicking previous card', () => {
+  it('calls onDateChange with previous date when clicking previous card', async () => {
     const handleDateChange = vi.fn();
-    render(<DateSwitcher activeDate="2026-07-15" onDateChange={handleDateChange} />);
+    await act(async () => {
+      render(<DateSwitcher activeDate="2026-07-15" onDateChange={handleDateChange} />);
+    });
 
     const prevCard = screen.getByText('14 Jul').closest('button');
     expect(prevCard).toBeInTheDocument();
@@ -27,9 +41,11 @@ describe('DateSwitcher Component', () => {
     expect(handleDateChange).toHaveBeenCalledWith('2026-07-14');
   });
 
-  it('calls onDateChange with next date when clicking next card', () => {
+  it('calls onDateChange with next date when clicking next card', async () => {
     const handleDateChange = vi.fn();
-    render(<DateSwitcher activeDate="2026-07-15" onDateChange={handleDateChange} />);
+    await act(async () => {
+      render(<DateSwitcher activeDate="2026-07-15" onDateChange={handleDateChange} />);
+    });
 
     const nextCard = screen.getByText('16 Jul').closest('button');
     expect(nextCard).toBeInTheDocument();

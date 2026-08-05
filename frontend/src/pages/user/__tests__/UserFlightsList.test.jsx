@@ -101,18 +101,39 @@ const renderComponent = (initialEntries = ['/flights'], preloadedFlights = sampl
 };
 
 describe('UserFlightsList Component', () => {
-  it('renders all flights initially', () => {
-    renderComponent();
+  beforeAll(() => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url && url.includes('/api/flights/bounds/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ min_fare: 5000, max_fare: 15000 }),
+          text: () => Promise.resolve(JSON.stringify({ min_fare: 5000, max_fare: 15000 }))
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('{}')
+      });
+    });
+  });
+
+  it('renders all flights initially', async () => {
+    await act(async () => {
+      renderComponent();
+    });
     expect(screen.getByText('AG-101')).toBeInTheDocument();
     expect(screen.getByText('AG-102')).toBeInTheDocument();
     expect(screen.getByText('AG-103')).toBeInTheDocument();
     expect(screen.getByText('3 flights found')).toBeInTheDocument();
   });
 
-  it('sorts flights chronologically by departure time on the client-side', () => {
+  it('sorts flights chronologically by departure time on the client-side', async () => {
     // Provide unsorted flights (AG-103 departs at 14:00, AG-101 departs at 12:00, AG-102 departs at 13:00)
     const unsortedFlights = [sampleFlights[2], sampleFlights[0], sampleFlights[1]];
-    renderComponent(['/flights'], unsortedFlights);
+    await act(async () => {
+      renderComponent(['/flights'], unsortedFlights);
+    });
 
     // Verify they are rendered in chronological order: AG-101 (12:00), AG-102 (13:00), AG-103 (14:00)
     const flightElements = screen.getAllByText(/AG-10/);
@@ -121,9 +142,11 @@ describe('UserFlightsList Component', () => {
     expect(flightElements[2]).toHaveTextContent('AG-103');
   });
 
-  it('dispatches fetchFlights with correct query parameters from the URL', () => {
+  it('dispatches fetchFlights with correct query parameters from the URL', async () => {
     vi.clearAllMocks();
-    renderComponent(['/flights?stops=0&adults=2&children=1&minFare=6000&maxFare=10000']);
+    await act(async () => {
+      renderComponent(['/flights?stops=0&adults=2&children=1&minFare=6000&maxFare=10000']);
+    });
     expect(fetchFlights).toHaveBeenCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({
@@ -136,9 +159,11 @@ describe('UserFlightsList Component', () => {
     );
   });
 
-  it('dispatches fetchFlights when filter options are interacted with', () => {
+  it('dispatches fetchFlights when filter options are interacted with', async () => {
     vi.clearAllMocks();
-    renderComponent();
+    await act(async () => {
+      renderComponent();
+    });
     // Click "Non-stop" checkbox
     const nonstopCheckbox = screen.getByLabelText('Non-stop');
     fireEvent.click(nonstopCheckbox);
@@ -154,10 +179,12 @@ describe('UserFlightsList Component', () => {
     );
   });
 
-  it('does not dispatch fetchFlights on slider change, but dispatches immediately on mouse release', () => {
+  it('does not dispatch fetchFlights on slider change, but dispatches immediately on mouse release', async () => {
     vi.clearAllMocks();
 
-    renderComponent();
+    await act(async () => {
+      renderComponent();
+    });
 
     // Find the Min Price input slider
     const minPriceSlider = screen.getByLabelText('Min Price');
@@ -187,14 +214,16 @@ describe('UserFlightsList Component', () => {
     );
   });
 
-  it('renders a "Waiting List" badge if a flight has 0 available seats', () => {
+  it('renders a "Waiting List" badge if a flight has 0 available seats', async () => {
     const waitlistedFlight = {
       ...sampleFlights[0],
       id: 99,
       flight_number: 'AG-999',
       available_seats: 0
     };
-    renderComponent(['/flights'], [waitlistedFlight]);
+    await act(async () => {
+      renderComponent(['/flights'], [waitlistedFlight]);
+    });
     expect(screen.getByText('Waiting List')).toBeInTheDocument();
   });
 });

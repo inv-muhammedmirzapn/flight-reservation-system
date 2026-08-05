@@ -111,7 +111,7 @@ describe('AdminLoginForm Component', () => {
       });
       expect(mockDispatch).toHaveBeenCalled();
       expect(toast.success).toHaveBeenCalledWith('Welcome back, Admin. Access granted.');
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/flights');
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/overview');
     });
   });
 

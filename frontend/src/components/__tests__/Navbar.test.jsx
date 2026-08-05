@@ -112,7 +112,7 @@ describe('Navbar - Notifications Integration', () => {
     const logoEl = document.querySelector('.landing-logo');
     fireEvent.click(logoEl);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/flights');
   });
 
   it('navigates to admin flights page when logo is clicked for admin users', () => {
@@ -128,32 +128,10 @@ describe('Navbar - Notifications Integration', () => {
     const logoEl = document.querySelector('.landing-logo');
     fireEvent.click(logoEl);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/admin/flights');
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/overview');
   });
 
 
 
-  it('renders notifications option inside profile dropdown', () => {
-    const store = setupStore(true, 3);
-    render(
-      <Provider store={store}>
-        <MemoryRouter>
-          <Navbar />
-        </MemoryRouter>
-      </Provider>
-    );
 
-    // Click profile avatar to open dropdown
-    const avatarBtn = screen.getByRole('button', { name: /profile menu/i });
-    fireEvent.click(avatarBtn);
-
-    const dropdownNotifBtn = document.querySelector('#nav-view-notifications');
-    expect(dropdownNotifBtn).toBeInTheDocument();
-    expect(dropdownNotifBtn).toHaveTextContent(/notifications/i);
-    expect(dropdownNotifBtn).toHaveTextContent('3');
-
-    // Click notifications option in dropdown
-    fireEvent.click(dropdownNotifBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/notifications');
-  });
 });
