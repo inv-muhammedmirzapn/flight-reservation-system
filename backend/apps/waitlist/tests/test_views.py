@@ -1,197 +1,442 @@
+from datetime import timedelta
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.test import APITestCase
+from django.test import TestCase
 from django.utils import timezone
-from datetime import timedelta
-from decimal import Decimal
+from rest_framework import status
+from rest_framework.test import APIClient
 
-from apps.flights.models import (
-    Country, Airport, Airline, AircraftModel, Aircraft,
-    FlightRoute, FlightLeg, FlightInstance, Seat, Fare,
-    InstanceStatus, CabinClass, SeatStatus
-)
+from apps.flights.models import Flight, FlightStatus
 from apps.bookings.models import Booking, BookingStatus
-from apps.bookings.services import create_booking
 from apps.waitlist.models import WaitlistEntry, WaitlistStatus
 
 User = get_user_model()
 
 
-class WaitlistViewSetTests(APITestCase):
+class WaitlistTests(TestCase):
     def setUp(self):
         # Create users
-        self.customer1 = User.objects.create_user(
-            username="customer1", email="c1@example.com", password="password"
+        self.customer_a = User.objects.create_user(
+            username="customer_a",
+            email="customer_a@example.com",
+            password="password",
         )
-        self.customer2 = User.objects.create_user(
-            username="customer2", email="c2@example.com", password="password"
+        self.customer_b = User.objects.create_user(
+            username="customer_b",
+            email="customer_b@example.com",
+            password="password",
         )
-        self.admin_user = User.objects.create_superuser(
-            username="admin", email="admin@example.com", password="password"
+        self.admin_user = User.objects.create_user(
+            username="admin_user",
+            email="admin@example.com",
+            password="password",
         )
-        self.admin_user.profile.role = "ADMIN"
-        self.admin_user.profile.save()
+        # Setup admin profile role
+        from apps.users.models import Profile
+        profile, _ = Profile.objects.get_or_create(user=self.admin_user)
+        profile.role = Profile.Role.ADMIN
+        profile.save()
+        self.admin_user = User.objects.get(pk=self.admin_user.pk)
 
-        # Create master data
-        self.country = Country.objects.create(name="India", iso_code="IND")
-        self.airport_dep = Airport.objects.create(
-            airport_name="DEL", iata_code="DEL", city="New Delhi", country=self.country
-        )
-        self.airport_arr = Airport.objects.create(
-            airport_name="BOM", iata_code="BOM", city="Mumbai", country=self.country
-        )
-        self.airline = Airline.objects.create(
-            airline_name="Air India", iata_airline_code="AI"
-        )
-        self.aircraft_model = AircraftModel.objects.create(
-            manufacturer="Boeing", model_name="737"
-        )
-        self.aircraft = Aircraft.objects.create(
-            registration="VT-AI1", aircraft_model=self.aircraft_model, airline=self.airline,
-            economy_capacity=1, business_capacity=0, first_class_capacity=0
-        )
-        
-        # Create route and legs
-        self.route = FlightRoute.objects.create(airline=self.airline, flight_no="AI101")
-        self.dep_time = timezone.now() + timedelta(days=2)
-        self.arr_time = self.dep_time + timedelta(hours=2)
-        self.leg = FlightLeg.objects.create(
-            flight=self.route, leg_order=1,
-            departure_airport=self.airport_dep, arrival_airport=self.airport_arr,
-            scheduled_departure=self.dep_time, scheduled_arrival=self.arr_time
-        )
-        
-        # Create FlightInstance
-        self.flight_instance = FlightInstance.objects.create(
-            flight=self.route, aircraft=self.aircraft, date=self.dep_time.date(),
-            scheduled_departure=self.dep_time, scheduled_arrival=self.arr_time,
-            status=InstanceStatus.SCHEDULED
-        )
-        
-        # Create Economy Fare (1 seat capacity)
-        self.fare_eco = Fare.objects.create(
-            flight_instance=self.flight_instance, fare_code="ECO", cabin_class=CabinClass.ECONOMY,
-            price=Decimal("1500.00"), available_seats=1
-        )
-        
-        # Create 1 seat
-        self.seat = Seat.objects.create(
-            flight_instance=self.flight_instance, seat_number="1A",
-            seat_class=CabinClass.ECONOMY, status=SeatStatus.AVAILABLE
+        self.client_a = APIClient()
+        self.client_a.force_authenticate(user=self.customer_a)
+
+        self.client_b = APIClient()
+        self.client_b.force_authenticate(user=self.customer_b)
+
+        self.client_admin = APIClient()
+        self.client_admin.force_authenticate(user=self.admin_user)
+
+        self.client_anon = APIClient()
+
+        # Create flight
+        self.flight = Flight.objects.create(
+            flight_number="FL999",
+            airline="Waitlist Airline",
+            aircraft="Airbus A320",
+            source_airport="JFK",
+            destination_airport="LAX",
+            departure_time=timezone.now() + timedelta(days=1),
+            arrival_time=timezone.now() + timedelta(days=1, hours=6),
+            base_fare=100.00,
+            total_seats=10,
+            available_seats=10,
+            status=FlightStatus.SCHEDULED,
         )
 
-        # Occupy the flight instance completely so waitlisting is allowed
-        self.booking_c1 = create_booking(
-            flight_id=self.flight_instance.id, user=self.customer1,
-            passengers_data=[{"name": "Pax One", "age": 28, "gender": "M"}],
-            cabin_class=CabinClass.ECONOMY
+    def test_join_waitlist_when_seats_available(self):
+        # Flight has 10 available seats. Attempting to join waitlist should fail.
+        url = reverse("waitlist-join")
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
+        response = self.client_a.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["message"],
+            "Waitlist tickets cannot be booked on the flight as there are enough available seats",
         )
 
-        # Create waitlist entry for customer 2
-        self.waitlist_entry = WaitlistEntry.objects.create(
-            user=self.customer2, flight=self.flight_instance, cabin_class=CabinClass.ECONOMY,
-            seat_count=1, price=Decimal("1500.00"), status=WaitlistStatus.PENDING
+    def test_join_waitlist_success(self):
+        # Make flight full
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        url = reverse("waitlist-join")
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}, {"name": "Bob", "age": 22, "gender": "F"}]}
+        response = self.client_a.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Check waitlist entry
+        entry = WaitlistEntry.objects.get(id=response.data["id"])
+        self.assertEqual(entry.user, self.customer_a)
+        self.assertEqual(entry.flight, self.flight)
+        self.assertEqual(entry.seat_count, 2)
+        self.assertEqual(entry.price, 200.00)  # base_fare 100 * 2 seats
+        self.assertEqual(entry.status, WaitlistStatus.PENDING)
+
+    def test_join_waitlist_duplicate(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        # Join waitlist once
+        WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
         )
 
-        # URLs
-        self.join_url = reverse("waitlist-join")
-        self.list_url = reverse("waitlist-list")
+        url = reverse("waitlist-join")
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
+        response = self.client_a.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["message"],
+            "You are already on the waitlist for this flight",
+        )
 
-    def test_join_waitlist_api_success(self):
-        # customer2 is already on the waitlist, customer1 can join waitlist after cancelling booking
-        self.booking_c1.status = BookingStatus.CANCELLED
-        self.booking_c1.save()
-        self.seat.status = SeatStatus.AVAILABLE
-        self.seat.save()
-        self.fare_eco.available_seats = 1
-        self.fare_eco.save()
-        
-        # Join waitlist for customer 1 fails because seat is now available (rule validation)
-        self.client.force_authenticate(user=self.customer1)
-        payload = {
-            "flight": self.flight_instance.id,
-            "cabin_class": "ECONOMY",
-            "passengers": [{"name": "Pax C1", "age": 30, "gender": "M"}]
-        }
-        response = self.client.post(self.join_url, payload, format="json")
+    def test_join_waitlist_invalid_seat_count(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        url = reverse("waitlist-join")
+
+        # Exceeds max seats of 9
+        passengers_10 = [{"name": "Alice", "age": 20, "gender": "M"}] * 10
+        response = self.client_a.post(url, {"flight": str(self.flight.id), "passengers": passengers_10}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Re-fill the seat to allow waitlisting
-        self.seat.status = SeatStatus.BOOKED
-        self.seat.save()
-        self.fare_eco.available_seats = 0
-        self.fare_eco.save()
+        # Zero seat count
+        response = self.client_a.post(url, {"flight": str(self.flight.id), "passengers": []}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Try joining again when full
-        response = self.client.post(self.join_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["status"], "PENDING")
+        # Missing passenger data
+        response = self.client_a.post(url, {"flight": str(self.flight.id), "passengers": [{}]}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_list_waitlist_entries_customer(self):
-        self.client.force_authenticate(user=self.customer2)
-        response = self.client.get(self.list_url)
+    def test_join_waitlist_flight_departed(self):
+        self.flight.available_seats = 0
+        self.flight.departure_time = timezone.now() - timedelta(hours=1)
+        self.flight.save()
+
+        url = reverse("waitlist-join")
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
+        response = self.client_a.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["message"],
+            "Cannot join the waitlist for a flight that has already departed.",
+        )
+
+    def test_list_waitlist_entries_customer_vs_admin(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        # Create entries
+        entry_a = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_b = WaitlistEntry.objects.create(
+            user=self.customer_b,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        url = reverse("waitlist-list")
+
+        # Customer A list
+        response = self.client_a.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # customer2 has 1 entry
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(self.waitlist_entry.id))
+        self.assertEqual(response.data[0]["id"], str(entry_a.id))
 
-        # customer1 has no entries
-        self.client.force_authenticate(user=self.customer1)
-        response2 = self.client.get(self.list_url)
-        self.assertEqual(response2.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response2.data), 0)
-
-    def test_list_waitlist_entries_admin(self):
-        self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get(self.list_url)
+        # Admin list (sees all)
+        response = self.client_admin.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data), 2)
 
-    def test_retrieve_waitlist_entry_permissions(self):
-        detail_url = reverse("waitlist-detail", kwargs={"pk": self.waitlist_entry.id})
+        # Anon list (denied)
+        response = self.client_anon.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_waitlist_order_by_latest(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        entry_old = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_old.created_at = timezone.now() - timedelta(seconds=10)
+        entry_old.save()
+
+        entry_new = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_new.created_at = timezone.now()
+        entry_new.save()
+
+        url = reverse("waitlist-list")
+        response = self.client_a.get(url)
         
-        # customer2 owner can retrieve
-        self.client.force_authenticate(user=self.customer2)
-        response = self.client.get(detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        # Latest should be first
+        self.assertEqual(response.data[0]["id"], str(entry_new.id))
+        self.assertEqual(response.data[1]["id"], str(entry_old.id))
 
-        # customer1 non-owner gets 403 Forbidden
-        self.client.force_authenticate(user=self.customer1)
-        response2 = self.client.get(detail_url)
-        self.assertEqual(response2.status_code, status.HTTP_403_FORBIDDEN)
+    def test_waitlist_detail_and_queue_position(self):
+        self.flight.available_seats = 0
+        self.flight.save()
 
-    def test_cancel_waitlist_entry_api_success(self):
-        cancel_url = reverse("waitlist-cancel", kwargs={"pk": self.waitlist_entry.id})
-        self.client.force_authenticate(user=self.customer2)
-        response = self.client.post(cancel_url)
+        entry_a = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+        # Artificially delay creation slightly to ensure ordering
+        timezone_now = timezone.now()
+        entry_b = WaitlistEntry.objects.create(
+            user=self.customer_b,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+        entry_b.created_at = timezone_now + timedelta(seconds=1)
+        entry_b.save()
+
+        # Detail for customer A
+        url_a = reverse("waitlist-detail", kwargs={"pk": entry_a.id})
+        response = self.client_a.get(url_a)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("Waitlist entry cancelled", response.data["message"])
-        self.assertEqual(Decimal(response.data["refund_amount"]), Decimal("1425.00")) # 95% of 1500.00
-        self.assertEqual(Decimal(response.data["processing_fee"]), Decimal("75.00")) # 5% of 1500.00
+        self.assertEqual(response.data["queue_position"], 1)
 
-    def test_promote_waitlist_entry_admin_only(self):
-        promote_url = reverse("waitlist-promote", kwargs={"pk": self.waitlist_entry.id})
-        
-        # customer2 cannot promote (forbidden)
-        self.client.force_authenticate(user=self.customer2)
-        response = self.client.post(promote_url)
+        # Detail for customer B
+        url_b = reverse("waitlist-detail", kwargs={"pk": entry_b.id})
+        response = self.client_b.get(url_b)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["queue_position"], 2)
+
+        # Customer A trying to view B's detail should fail
+        response = self.client_a.get(url_b)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        # admin can promote (first free the seat so promotion succeeds)
-        self.seat.status = SeatStatus.AVAILABLE
-        self.seat.save()
-        self.fare_eco.available_seats = 1
-        self.fare_eco.save()
-
-        self.client.force_authenticate(user=self.admin_user)
-        response2 = self.client.post(promote_url)
-        self.assertEqual(response2.status_code, status.HTTP_200_OK)
-        self.assertIn("promoted to confirmed booking", response2.data["message"])
-
-    def test_get_waitlist_passenger_count_api(self):
-        count_url = reverse("waitlist-flight-count", kwargs={"flight_id": self.flight_instance.id})
-        # Unauthenticated request (AllowAny)
-        response = self.client.get(count_url)
+        # Admin viewing B's detail should succeed
+        response = self.client_admin.get(url_b)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["waitlist_count"], 1)
+        self.assertEqual(response.data["queue_position"], 2)
+
+    def test_cancel_waitlist_entry(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        entry = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        url = reverse("waitlist-cancel", kwargs={"pk": entry.id})
+        response = self.client_a.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verify response contains refund calculations (95% refund)
+        # Original price = 200.00. Processing fee 5% = 10.00. Refund = 190.00.
+        self.assertEqual(float(response.data["refund_amount"]), 190.00)
+        self.assertEqual(float(response.data["processing_fee"]), 10.00)
+        self.assertEqual(response.data["message"], "Waitlist entry cancelled. A 95% refund of ₹190.00 has been processed (after a 5% processing fee of ₹10.00).")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, WaitlistStatus.CANCELLED)
+
+        # Cancel again should fail
+        response = self.client_a.post(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "Only pending waitlist entries can be cancelled.")
+
+    def test_public_waitlist_flight_count(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+        WaitlistEntry.objects.create(
+            user=self.customer_b,
+            flight=self.flight,
+            seat_count=3,
+            price=300.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        url = reverse("waitlist-flight-count", kwargs={"flight_id": self.flight.id})
+        response = self.client_anon.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Total seats waitlisted = 2 + 3 = 5
+        self.assertEqual(response.data["waitlist_count"], 5)
+
+    def test_waitlist_flight_departure_expiration(self):
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        entry = WaitlistEntry.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        # Move departure time to the past
+        self.flight.departure_time = timezone.now() - timedelta(hours=1)
+        self.flight.save()
+
+        # Retrieve detail - should return status EXPIRED
+        url = reverse("waitlist-detail", kwargs={"pk": entry.id})
+        response = self.client_a.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], WaitlistStatus.EXPIRED)
+
+        # Verify database updated
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, WaitlistStatus.EXPIRED)
+
+    def test_auto_allocation_on_booking_cancellation(self):
+        # 1. Setup flight with 0 available seats
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        # 2. User A has a booking for 2 seats
+        booking_a = Booking.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            total_price=200.00,
+            status=BookingStatus.CONFIRMED,
+        )
+
+        # 3. User B joins waitlist for 2 seats
+        entry_b = WaitlistEntry.objects.create(
+            user=self.customer_b,
+            flight=self.flight,
+            seat_count=2,
+            price=200.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        # 4. Cancel A's booking using API view action
+        url = reverse("bookings:booking-cancel", kwargs={"pk": booking_a.pk})
+        response = self.client_a.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # 5. Verify B is promoted to CONFIRMED booking
+        booking_a.refresh_from_db()
+        self.assertEqual(booking_a.status, BookingStatus.CANCELLED)
+
+        # Waitlist entry for B should be confirmed and linked to a new booking
+        entry_b.refresh_from_db()
+        self.assertEqual(entry_b.status, WaitlistStatus.CONFIRMED)
+        self.assertIsNotNone(entry_b.booking)
+        self.assertEqual(entry_b.booking.user, self.customer_b)
+        self.assertEqual(entry_b.booking.seat_count, 2)
+        self.assertEqual(entry_b.booking.status, BookingStatus.CONFIRMED)
+
+        # Flight available seats should still be 0 (since the 2 freed seats went immediately to B)
+        self.flight.refresh_from_db()
+        self.assertEqual(self.flight.available_seats, 0)
+
+    def test_auto_allocation_insufficient_seats_skipped(self):
+        # 1. Setup flight with 0 available seats
+        self.flight.available_seats = 0
+        self.flight.save()
+
+        # 2. User A has booking for 2 seats
+        booking_a = Booking.objects.create(
+            user=self.customer_a,
+            flight=self.flight,
+            seat_count=2,
+            total_price=200.00,
+            status=BookingStatus.CONFIRMED,
+        )
+
+        # 3. User B joins waitlist for 3 seats (needs more than 2)
+        entry_b = WaitlistEntry.objects.create(
+            user=self.customer_b,
+            flight=self.flight,
+            seat_count=3,
+            price=300.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        # 4. User A joins waitlist for 1 seat (needs 1)
+        # Note: we need to use a different user to prevent duplicate waitlist check
+        user_c = User.objects.create_user(username="customer_c", password="password")
+        entry_c = WaitlistEntry.objects.create(
+            user=user_c,
+            flight=self.flight,
+            seat_count=1,
+            price=100.00,
+            status=WaitlistStatus.PENDING,
+        )
+
+        # 5. Cancel A's booking (frees 2 seats)
+        url = reverse("bookings:booking-cancel", kwargs={"pk": booking_a.pk})
+        response = self.client_a.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # B needs 3, so B cannot be confirmed. B remains PENDING.
+        entry_b.refresh_from_db()
+        self.assertEqual(entry_b.status, WaitlistStatus.PENDING)
+
+        # C needs 1, which fits in 2. C should be CONFIRMED.
+        entry_c.refresh_from_db()
+        self.assertEqual(entry_c.status, WaitlistStatus.CONFIRMED)
+        self.assertIsNotNone(entry_c.booking)
+        self.assertEqual(entry_c.booking.user, user_c)
+        self.assertEqual(entry_c.booking.seat_count, 1)
+
+        # Available seats goes to 1 (2 freed - 1 allocated to C)
+        self.flight.refresh_from_db()
+        self.assertEqual(self.flight.available_seats, 1)

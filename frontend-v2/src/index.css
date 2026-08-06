@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Reset ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #eef2ff 0%, #fefce8 55%, #ecfdf5 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  flex: 1;
+}
+
+/* ─── Reusable Tailwind Components ───────────────────── */
+@layer components {
+
+  /* Primary Action Button (Yellow/Gold Accent) */
+  .btn-primary {
+    @apply font-semibold bg-primary-container hover:bg-yellow-400 active:scale-95 shadow-md shadow-yellow-500/10 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-200 cursor-pointer;
+  }
+
+  /* Secondary Glass Button */
+  .btn-secondary {
+    @apply bg-white/40 hover:bg-white/60 border border-black/5 shadow-sm text-on-surface cursor-pointer backdrop-blur-sm transition-all duration-200 active:scale-95;
+  }
+
+  /* Ghost Interactive Button / Icon Button wrapper */
+  .btn-ghost {
+    @apply flex items-center justify-center text-slate-600 hover:text-primary hover:bg-slate-500/5 active:scale-90 transition-all duration-200 cursor-pointer;
+  }
+
+  /* Danger Action Button (Red Accent) */
+  .btn-danger {
+    @apply font-semibold bg-rose-500 hover:bg-rose-600 text-white active:scale-95 shadow-md shadow-rose-600/10 hover:shadow-lg hover:shadow-rose-600/20 transition-all duration-200 cursor-pointer;
+  }
+
+  /* Form Inputs */
+  .airport-input-field {
+    @apply w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-xl text-slate-800 placeholder-slate-300 transition-colors focus:placeholder-slate-400;
+  }
+
+  .input-field {
+    @apply w-full bg-[#f3f3f3] rounded-xl text-sm border-none outline-none focus:outline-none focus:ring-0 px-3 py-2 text-slate-800 placeholder-slate-300 transition-colors focus:placeholder-slate-400;
+  }
+
+  .input-field:focus {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Premium Glass Cards & Modals */
+  .glass-card {
+    @apply bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl transition-all duration-300 hover:shadow-yellow-500/5 hover:border-yellow-500/10;
+  }
+
+  .plain-card {
+    @apply bg-white shadow-sm border border-slate-100 transition-all duration-300;
+  }
+
+  .booking-container-card {
+    @apply bg-[#f3f4f6] rounded-3xl px-5 py-7 transition-all duration-300;
+  }
+
+  .timeline-card {
+    @apply bg-white rounded-2xl px-4 py-6 shadow-sm border border-slate-100/60 transition-all duration-200;
+  }
+
+  .cabin-option-card {
+    @apply p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col items-start gap-1;
+  }
+
+  .cabin-option-card-selected {
+    @apply bg-slate-950 text-white border-slate-950 shadow-md;
+  }
+
+  .cabin-option-card-default {
+    @apply bg-white text-slate-800 border-slate-200/80 hover:bg-slate-100/80 shadow;
+  }
+
+  .field-error {
+    @apply text-[10px] font-medium text-rose-500;
+  }
+}

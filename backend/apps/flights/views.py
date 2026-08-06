@@ -49,7 +49,7 @@ from .services import (
 logger = logging.getLogger(__name__)
 
 class AdminModelViewSet(viewsets.ModelViewSet):
-    """Base viewset: list/retrieve public, write actions admin-only."""
+    """Base viewset: list/retrieve require authentication, write actions admin-only."""
     pagination_class = StandardPagination
 
     def get_permissions(self):
@@ -86,7 +86,7 @@ class AdminModelViewSet(viewsets.ModelViewSet):
             )
 
 
-# ─── Legacy Flight views (UNCHANGED) ───────────────────────────────────────────
+# ─── Legacy Flight views ────────────────────────────────────────────────────────
 
 class FlightPagination(PageNumberPagination):
     """Return 10 flights per page. Clients pass ?page=N."""
@@ -127,36 +127,148 @@ class FlightListCreateView(APIView):
         if flight_number:
             qs = qs.filter(flight__flight_no__icontains=flight_number)
 
-        airline = request.query_params.get("airline", "").strip()
-        if airline:
-            qs = qs.filter(flight__airline__airline_name__icontains=airline)
+        airline_param = request.query_params.get("airline", request.query_params.get("airlines", "")).strip()
+        if airline_param:
+            airline_list = [a.strip() for a in airline_param.split(",") if a.strip()]
+            if len(airline_list) == 1:
+                qs = qs.filter(flight__airline__airline_name__icontains=airline_list[0])
+            elif len(airline_list) > 1:
+                airline_q = Q()
+                for a in airline_list:
+                    airline_q |= Q(flight__airline__airline_name__icontains=a)
+                qs = qs.filter(airline_q)
 
         status_filter = request.query_params.get("status", "").strip()
         if status_filter:
             qs = qs.filter(status__iexact=status_filter)
 
-        min_price = request.query_params.get("min_price", "").strip()
+        min_price = request.query_params.get("min_fare", request.query_params.get("min_price", "")).strip()
         if min_price:
             try:
                 qs = qs.filter(fares__price__gte=float(min_price))
             except ValueError:
                 pass
         
-        max_price = request.query_params.get("max_price", "").strip()
+        max_price = request.query_params.get("max_fare", request.query_params.get("max_price", "")).strip()
         if max_price:
             try:
                 qs = qs.filter(fares__price__lte=float(max_price))
             except ValueError:
                 pass
 
+        # Stops filtering (0 stops = 1 leg, 1 stop = 2 legs, 2+ stops = >=3 legs)
+        stops_param = request.query_params.get("stops", "").strip()
+        if stops_param != "":
+            try:
+                stops_num = int(stops_param)
+                from django.db.models import OuterRef, Subquery, IntegerField
+                total_legs_subquery = Subquery(
+                    FlightLeg.objects.filter(flight_id=OuterRef("flight_id"))
+                    .values("flight_id")
+                    .annotate(cnt=Count("id"))
+                    .values("cnt")[:1],
+                    output_field=IntegerField()
+                )
+                qs = qs.annotate(total_legs=total_legs_subquery)
+                if stops_num == 0:
+                    qs = qs.filter(total_legs=1)
+                elif stops_num == 1:
+                    qs = qs.filter(total_legs=2)
+                elif stops_num >= 2:
+                    qs = qs.filter(total_legs__gte=3)
+            except ValueError:
+                pass
+
+        # Waitlist mode filtering
+        cabin_param = request.query_params.get("cabin_class", "").strip().upper()
+        if "BUSINESS" in cabin_param:
+            class_key = "BUSINESS"
+        elif "FIRST" in cabin_param:
+            class_key = "FIRST"
+        elif "ECONOMY" in cabin_param:
+            class_key = "ECONOMY"
+        else:
+            class_key = None
+
+        waitlist_mode = request.query_params.get("waitlist_mode", request.query_params.get("waitlistMode", "")).strip()
+        if waitlist_mode in ["available_only", "waitlisted_only"]:
+            from django.db.models import Exists, OuterRef
+            has_any_seats = Exists(Seat.objects.filter(flight_instance=OuterRef('pk')))
+            
+            if class_key:
+                has_avail_class_seats = Exists(
+                    Seat.objects.filter(flight_instance=OuterRef('pk'), seat_class=class_key, status="AVAILABLE")
+                )
+                fare_gt_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key, available_seats__gt=0)
+                )
+                fare_lte_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key, available_seats__lte=0)
+                )
+                has_fare = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key)
+                )
+
+                if waitlist_mode == "available_only":
+                    avail_q = has_avail_class_seats | (~has_any_seats & fare_gt_zero)
+                    qs = qs.filter(has_fare & avail_q)
+                elif waitlist_mode == "waitlisted_only":
+                    waitlist_q = (has_any_seats & ~has_avail_class_seats) | (~has_any_seats & fare_lte_zero)
+                    qs = qs.filter(has_fare & waitlist_q)
+            else:
+                has_any_avail_seats = Exists(
+                    Seat.objects.filter(flight_instance=OuterRef('pk'), status="AVAILABLE")
+                )
+                any_fare_gt_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), available_seats__gt=0)
+                )
+                any_fare_lte_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), available_seats__lte=0)
+                )
+
+                if waitlist_mode == "available_only":
+                    qs = qs.filter(has_any_avail_seats | (~has_any_seats & any_fare_gt_zero))
+                elif waitlist_mode == "waitlisted_only":
+                    qs = qs.filter((has_any_seats & ~has_any_avail_seats) | (~has_any_seats & any_fare_lte_zero))
+
         qs = qs.distinct()
+
+        # Ordering / Sorting
+        ordering = request.query_params.get("ordering", request.query_params.get("sort_by", "")).strip()
+        if ordering == "base_fare" or ordering == "price":
+            from django.db.models import Min
+            qs = qs.annotate(min_fare=Min("fares__price")).order_by("min_fare")
+        elif ordering == "-base_fare" or ordering == "-price":
+            from django.db.models import Min
+            qs = qs.annotate(min_fare=Min("fares__price")).order_by("-min_fare")
+        elif ordering == "departure_time":
+            qs = qs.order_by("scheduled_departure")
+        elif ordering == "-departure_time":
+            qs = qs.order_by("-scheduled_departure")
+        elif ordering == "duration":
+            from django.db.models import F, ExpressionWrapper, DurationField
+            qs = qs.annotate(
+                calc_duration=ExpressionWrapper(
+                    F("scheduled_arrival") - F("scheduled_departure"),
+                    output_field=DurationField()
+                )
+            ).order_by("calc_duration")
+        elif ordering == "-duration":
+            from django.db.models import F, ExpressionWrapper, DurationField
+            qs = qs.annotate(
+                calc_duration=ExpressionWrapper(
+                    F("scheduled_arrival") - F("scheduled_departure"),
+                    output_field=DurationField()
+                )
+            ).order_by("-calc_duration")
+        else:
+            qs = qs.order_by("scheduled_departure")
 
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         from .serializers import FrontendFlightInstanceSerializer
         serializer = FrontendFlightInstanceSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
-
 
 
 class FlightDetailView(APIView):
@@ -173,12 +285,6 @@ class FlightDetailView(APIView):
         return Response(serializer.data)
 
 
-
-
-
-
-
-
 # ─── New entity ViewSets ────────────────────────────────────────────────────────
 
 class CountryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -190,12 +296,16 @@ class CountryViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ["id", "name", "iso_code"]
 
 
-
 class AirportViewSet(AdminModelViewSet):
     queryset = Airport.objects.select_related("country").all()
     serializer_class = AirportSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["iata_code", "airport_name", "city"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -222,8 +332,7 @@ class AirportViewSet(AdminModelViewSet):
             )
         return qs.order_by("city")
 
-    @action(detail=False, methods=["post"], url_path="import-openflights",
-            permission_classes=[IsAdminOrSuperuser])
+    @action(detail=False, methods=["post"], url_path="import-openflights")
     def import_openflights(self, request):
         """
         POST /api/v2/airports/import-openflights/
@@ -462,7 +571,6 @@ class FlightInstanceViewSet(AdminModelViewSet):
             "detail": f"Updated pricing for {updated_count} seats.",
             "updated_count": updated_count,
         })
-
 
 
 class SeatViewSet(AdminModelViewSet):

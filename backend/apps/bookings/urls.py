@@ -16,6 +16,6 @@ urlpatterns = [
     path('passengers/', PassengerViewSet.as_view({'get': 'list'}), name='passenger-list'),
     path('passengers/<int:pk>/', PassengerViewSet.as_view({'get': 'retrieve'}), name='passenger-detail'),
     path('', include(router.urls)),
-    # Admin-only routes: /api/admin/bookings/
+    # Admin-only routes: /api/bookings/admin/bookings/
     path('admin/', include(admin_router.urls)),
 ]

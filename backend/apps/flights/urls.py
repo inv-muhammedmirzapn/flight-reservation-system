@@ -10,6 +10,7 @@ from .views import (
     SeatPriceTemplateViewSet,
 )
 from .views_calendar import FlightFaresCalendarView, FlightFareBoundsView
+from .views_meals import FlightMealsView
 
 app_name = "apps/flights"
 
@@ -31,9 +32,9 @@ router.register(r"v2/seat-price-templates", SeatPriceTemplateViewSet, basename="
 urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────
     path("", FlightListCreateView.as_view(), name="flight-list-create"),
-
     path("calendar/", FlightFaresCalendarView.as_view(), name="flight-calendar"),
     path("bounds/", FlightFareBoundsView.as_view(), name="flight-bounds"),
+    path("<int:instance_id>/meals/", FlightMealsView.as_view(), name="flight-meals"),
     path("<int:id>/", FlightDetailView.as_view(), name="flight-detail"),
 
 

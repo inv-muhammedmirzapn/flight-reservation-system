@@ -8,7 +8,7 @@ from .models import (
 )
 
 
-# ─── Legacy serializer (unchanged) ─────────────────────────────────────────────
+# ─── Legacy serializer ─────────────────────────────────────────────
 
 class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     """Maps a FlightInstance to the legacy Flight JSON structure expected by the frontend."""
@@ -33,6 +33,7 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     handbag_weight_kg = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2)
     fares = serializers.SerializerMethodField()
     airline_logo = serializers.SerializerMethodField()
+    flight_instance_id = serializers.IntegerField(source='id')
 
     class Meta:
         model = FlightInstance
@@ -44,7 +45,7 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "base_fare", "total_seats", "available_seats",
             "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
-            "fares",
+            "fares", "flight_instance_id",
         ]
 
     def get_airline_logo(self, obj):
@@ -94,25 +95,45 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
 
     def get_available_seats(self, obj):
         from .models import SeatStatus
-        return obj.seats.filter(status=SeatStatus.AVAILABLE).count()
+        if obj.seats.exists():
+            return obj.seats.filter(status=SeatStatus.AVAILABLE).count()
+        return sum(f.available_seats for f in obj.fares.all())
 
     def get_stops(self, obj):
+        from datetime import timedelta
         legs = obj.flight.legs.order_by('leg_order')
         if legs.count() <= 1:
             return []
         stops = []
-        for leg in legs[:legs.count()-1]:
-            stops.append(leg.arrival_airport.city)
+        curr_time = obj.scheduled_departure
+        for leg in legs:
+            if leg.leg_order > 1:
+                arr_transit = curr_time
+                dep_transit = curr_time + timedelta(minutes=leg.layover_duration_minutes)
+                stops.append({
+                    "airport": leg.departure_airport.iata_code,
+                    "airport_name": leg.departure_airport.airport_name,
+                    "city": leg.departure_airport.city,
+                    "arrival_time": arr_transit.isoformat(),
+                    "departure_time": dep_transit.isoformat(),
+                    "layover_minutes": leg.layover_duration_minutes,
+                })
+                curr_time = dep_transit
+            curr_time += timedelta(minutes=leg.flight_duration_minutes)
         return stops
 
     def get_fares(self, obj):
         from .models import SeatStatus
+        has_seats = obj.seats.exists()
         fares = {}
         for fare in obj.fares.all():
-            real_available = obj.seats.filter(
-                seat_class=fare.cabin_class,
-                status=SeatStatus.AVAILABLE
-            ).count()
+            if has_seats:
+                real_available = obj.seats.filter(
+                    seat_class=fare.cabin_class,
+                    status=SeatStatus.AVAILABLE
+                ).count()
+            else:
+                real_available = fare.available_seats
             fares[fare.cabin_class] = {
                 'price': float(fare.price),
                 'currency': fare.currency,
