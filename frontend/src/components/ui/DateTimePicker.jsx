@@ -65,11 +65,6 @@ function TimeInput({ timeVal, onTimeChange, selectId }) {
         onChange={e => {
           const val = e.target.value.replace(/\D/g, '').slice(0, 2);
           setHRaw(val);
-          // auto-advance after 2 digits
-          if (val.length === 2) {
-            commit(val, mRaw || '00');
-            minRef.current?.focus();
-          }
         }}
         onKeyDown={e => {
           const h = parseInt(hRaw, 10) || 0;
@@ -108,7 +103,6 @@ function TimeInput({ timeVal, onTimeChange, selectId }) {
         onChange={e => {
           const val = e.target.value.replace(/\D/g, '').slice(0, 2);
           setMRaw(val);
-          if (val.length === 2) commit(hRaw || '00', val);
         }}
         onKeyDown={e => {
           const m = parseInt(mRaw, 10) || 0;
@@ -126,7 +120,7 @@ function TimeInput({ timeVal, onTimeChange, selectId }) {
           }
         }}
       />
-      <span style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', marginLeft: 2, letterSpacing: '0.04em' }}>24h</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#9e9488', marginLeft: 2, letterSpacing: '0.04em' }}>0–23h</span>
     </div>
   );
 }

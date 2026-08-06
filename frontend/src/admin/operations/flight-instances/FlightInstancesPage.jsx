@@ -245,7 +245,7 @@ export default function FlightInstancesPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (e, followUpTarget = null) => {
+  const handleSubmit = async (e, followUpTarget = null, inFlow = false) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!validateForm()) return; // inline errors already shown via localErrors
 
@@ -266,7 +266,7 @@ export default function FlightInstancesPage() {
       closeForm();
       const targetId = res?.id || editId;
       if (followUpTarget && targetId) {
-        navigate(`/admin/operations/${followUpTarget}?instance=${targetId}`);
+        navigate(`/admin/operations/${followUpTarget}?instance=${targetId}${inFlow ? '&inFlow=1' : ''}`);
       } else {
         load(activeSearch, page);
       }
@@ -400,13 +400,13 @@ export default function FlightInstancesPage() {
                         <td className="text-right whitespace-nowrap">
                           <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                             <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
                                 <Banknote size={13} /> Fares
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
                                 <Armchair size={13} /> Seats
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
                                 <Utensils size={13} /> Meals
                               </Link>
                             </div>
@@ -457,13 +457,13 @@ export default function FlightInstancesPage() {
             </div>
 
             {routeParam && (
-              <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+              <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow">
+                  <div className="w-9 h-9 rounded-xl bg-[#705d00] text-white flex items-center justify-center font-black text-xs shadow">
                     1/4
                   </div>
                   <div>
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#705d00]">
                       Instance Setup Flow • Step 1 (Flight Instance)
                     </div>
                     <div className="text-sm font-bold text-slate-800">
@@ -475,7 +475,7 @@ export default function FlightInstancesPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => navigate(`/admin/operations/fares?route=${routeParam}`)}
+                    onClick={() => navigate(`/admin/operations/fares?route=${routeParam}&inFlow=1`)}
                     className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
                   >
                     Skip / Next: Fares <ChevronRight size={14} />
@@ -560,7 +560,7 @@ export default function FlightInstancesPage() {
                   <button
                     type="button"
                     disabled={actionLoading}
-                    onClick={(e) => handleSubmit(e, 'fares')}
+                    onClick={(e) => handleSubmit(e, 'fares', true)}
                     className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
                   >
                     Save & Next <ChevronRight size={14} />

@@ -61,6 +61,16 @@ export default function AdminCrudPage({
     setShowForm(true);
   };
 
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    const inFlow = searchParams.get('inFlow') === '1';
+    if (inFlow && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      openCreate();
+    }
+  }, [searchParams]);
+
+
   const openEdit = (item) => {
     setEditId(item.id);
     const f = {};
