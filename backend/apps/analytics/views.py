@@ -1,9 +1,9 @@
 from datetime import date as date_type
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from apps.flights.permissions import IsAdminOrSuperuser
 
 from .serializers import (
     SummaryStatsSerializer,
@@ -97,7 +97,7 @@ class AnalyticsSummaryView(APIView):
     Returns high-level booking analytics summary:
     total revenue, total bookings, confirmed/cancelled counts, and cancellation rate.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Booking Analytics Summary",
@@ -121,7 +121,7 @@ class MonthlyRevenueView(APIView):
     """
     Returns monthly revenue for the last 12 months (confirmed bookings only).
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Monthly Revenue",
@@ -157,7 +157,7 @@ class PopularRoutesView(APIView):
     """
     Returns the most popular flight routes by confirmed booking count.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Popular Routes",
@@ -193,7 +193,7 @@ class FlightOccupancyView(APIView):
     """
     Returns per-flight occupancy rates for the most-booked flights.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Flight Occupancy",
@@ -232,7 +232,7 @@ class PeakBookingHoursView(APIView):
     """
     Returns booking volume grouped by hour-of-day (0–23, based on created_at UTC).
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Peak Booking Hours",
@@ -256,7 +256,7 @@ class AirlinePerformanceView(APIView):
     Returns per-airline performance breakdown: revenue, bookings, cancellation rate,
     and average seat occupancy for the top N airlines.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Airline Performance",
@@ -323,7 +323,7 @@ class AircraftUtilizationView(APIView):
     Returns per-aircraft utilization stats: total flights, average occupancy,
     and cabin-class fill rates for the top N most-flown aircraft.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrSuperuser]
 
     @extend_schema(
         summary="Aircraft Utilization",
