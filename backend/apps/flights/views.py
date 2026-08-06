@@ -96,32 +96,6 @@ class FlightPagination(PageNumberPagination):
     page_query_param = "page"
 
 
-class FlightStatsView(APIView):
-    """
-    GET /api/flights/stats/
-    Returns aggregate flight instance counts by status.
-    """
-    permission_classes = [AllowAny]
-
-    @extend_schema(responses={200: inline_serializer("FlightStatsResponse", {
-        "total": rf_serializers.IntegerField(),
-        "scheduled": rf_serializers.IntegerField(),
-        "delayed": rf_serializers.IntegerField(),
-        "cancelled": rf_serializers.IntegerField(),
-        "boarding": rf_serializers.IntegerField(),
-        "departed": rf_serializers.IntegerField(),
-        "arrived": rf_serializers.IntegerField(),
-    })})
-    def get(self, request, *args, **kwargs) -> Response:
-        rows = FlightInstance.objects.values("status").annotate(count=Count("id"))
-        stats = {"total": FlightInstance.objects.count(), "scheduled": 0, "delayed": 0,
-                 "cancelled": 0, "boarding": 0, "departed": 0, "arrived": 0}
-        for row in rows:
-            key = row["status"].lower()
-            if key in stats:
-                stats[key] = row["count"]
-        return Response(stats, status=status.HTTP_200_OK)
-
 
 class FlightListCreateView(APIView):
     def get_permissions(self):
@@ -248,7 +222,8 @@ class AirportViewSet(AdminModelViewSet):
             )
         return qs.order_by("city")
 
-    @action(detail=False, methods=["post"], url_path="import-openflights")
+    @action(detail=False, methods=["post"], url_path="import-openflights",
+            permission_classes=[IsAdminOrSuperuser])
     def import_openflights(self, request):
         """
         POST /api/v2/airports/import-openflights/

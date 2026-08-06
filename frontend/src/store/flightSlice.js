@@ -22,23 +22,6 @@ export const fetchFlights = createAsyncThunk(
 );
 
 
-// fetchFlightStats — global per-status counts, independent of pagination
-export const fetchFlightStats = createAsyncThunk(
-  'flights/fetchFlightStats',
-  async (_, { rejectWithValue }) => {
-    try {
-      return await flightsAPI.stats();
-    } catch (error) {
-      let message = 'Failed to fetch flight stats';
-      try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
-      } catch (_) {}
-      return rejectWithValue(message);
-    }
-  }
-);
-
 export const fetchFlightDetail = createAsyncThunk(
   'flights/fetchFlightDetail',
   async (id, { rejectWithValue }) => {
@@ -131,18 +114,8 @@ const initialState = {
   currentPage: 1,    // which page we are on
   totalPages: 1,     // derived from count / page_size
   filters: {},       // active filter params for the admin listing
-  stats: {           // global per-status counts — fetched independently, stable across pages
-    total: 0,
-    scheduled: 0,
-    delayed: 0,
-    cancelled: 0,
-    boarding: 0,
-    departed: 0,
-    arrived: 0,
-  },
   detail: null,
   loading: false,
-  statsLoading: false,
   detailLoading: false,
   actionLoading: false,
   error: null,
@@ -194,18 +167,7 @@ const flightSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Fetch Stats
-      .addCase(fetchFlightStats.pending, (state) => {
-        state.statsLoading = true;
-      })
-      .addCase(fetchFlightStats.fulfilled, (state, action) => {
-        state.statsLoading = false;
-        state.stats = action.payload;
-      })
-      .addCase(fetchFlightStats.rejected, (state) => {
-        state.statsLoading = false;
-      })
-      // Fetch Detail
+
       .addCase(fetchFlightDetail.pending, (state) => {
         state.detailLoading = true;
         state.error = null;

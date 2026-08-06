@@ -50,7 +50,5 @@ export const flightsAPI = {
     });
   },
 
-  stats: async () => {
-    return fetchWithAuth('/flights/stats/');
-  },
+
 };

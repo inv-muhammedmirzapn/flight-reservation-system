@@ -68,11 +68,22 @@ TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
+# Development: allow all origins. In production, set CORS_ALLOWED_ORIGINS instead.
 CORS_ALLOW_ALL_ORIGINS = True
+# Production (uncomment and populate):
+# CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOWED_ORIGINS = [
+#     "https://your-frontend-domain.com",
+# ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # Fallback: any view that omits permission_classes requires authentication.
+    # Individual views override this with AllowAny or IsAdminOrSuperuser as needed.
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'apps.flights.pagination.StandardPagination',
     'PAGE_SIZE': 10,
@@ -87,7 +98,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '10000/day',
+        'anon': '500/day',    # Tightened from 10,000 — public read-only is fine, abuse is not
         'user': '100000/day',
         'login': '60/minute',
     }

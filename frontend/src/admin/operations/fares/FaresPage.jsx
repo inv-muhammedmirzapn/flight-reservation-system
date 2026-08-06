@@ -86,8 +86,9 @@ export default function FaresPage() {
   };
 
   const fromPage = searchParams.get('fromPage');
+  const inFlow = searchParams.get('inFlow') === '1';
 
-  const flowBanner = instanceParam ? (
+  const flowBanner = instanceParam && inFlow ? (
     <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-[#705d00] text-white flex items-center justify-center font-black text-xs shadow">
@@ -106,15 +107,15 @@ export default function FaresPage() {
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
-          onClick={() => navigate(`/admin/operations/seat-map?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`)}
-          className="px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+          onClick={() => navigate(`/admin/operations/seat-map?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}`)}
+          className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
         >
           <Armchair size={14} /> Skip / Next: Seats <ChevronRight size={14} />
         </button>
         <button
           type="button"
-          onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`)}
-          className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all border-none"
+          onClick={() => navigate(`/admin/operations/meals?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}`)}
+          className="px-3 py-2 rounded-xl bg-white hover:bg-amber-50 text-[#705d00] font-bold text-xs flex items-center gap-1 cursor-pointer transition-all border border-[#705d00]/40"
         >
           <Utensils size={14} /> Skip to Meals <ChevronRight size={14} />
         </button>
@@ -147,7 +148,7 @@ export default function FaresPage() {
         validateForm={validateForm}
         thunks={modifiedThunks}
         banner={flowBanner}
-        saveAndNextUrl={instanceParam ? `/admin/operations/seat-map?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
+        saveAndNextUrl={instanceParam && inFlow ? `/admin/operations/seat-map?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
       />
     </>
   );

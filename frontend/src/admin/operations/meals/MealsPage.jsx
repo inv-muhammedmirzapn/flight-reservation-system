@@ -30,6 +30,7 @@ export default function MealsPage() {
 
   const [searchParams] = useSearchParams();
   const instanceParam = searchParams.get('instance') || '';
+  const inFlow = searchParams.get('inFlow') === '1';
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -79,6 +80,15 @@ export default function MealsPage() {
     setShowForm(true);
   };
   const closeForm = () => { setShowForm(false); setEditId(null); };
+
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (inFlow && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      openCreate();
+    }
+  }, [inFlow]);
+
 
   const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_ITEM }] }));
   const removeItem = (i) => setForm((f) => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }));
@@ -231,14 +241,14 @@ export default function MealsPage() {
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
             </div>
 
-            {instanceParam && (
-              <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            {instanceParam && inFlow && (
+              <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-xs shadow">
+                  <div className="w-9 h-9 rounded-xl bg-[#705d00] text-white flex items-center justify-center font-black text-xs shadow">
                     4/4
                   </div>
                   <div>
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#705d00]">
                       Instance Setup Flow • Step 4 (Flight Meals)
                     </div>
                     <div className="text-sm font-bold text-slate-800">
@@ -250,7 +260,7 @@ export default function MealsPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/admin/operations/flight-instances')}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                  className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
                 >
                   <CheckCircle2 size={14} /> Finish Instance Setup ✓
                 </button>

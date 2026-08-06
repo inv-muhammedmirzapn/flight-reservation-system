@@ -65,6 +65,7 @@ export default function SeatMapPage() {
   const { items: seats, loading: seatsLoading, actionLoading } = useSelector(s => s.seat);
   const [searchParams] = useSearchParams();
   const instanceParam = searchParams.get('instance') || '';
+  const inFlow = searchParams.get('inFlow') === '1';
 
   const [selInstance, setSelInstance] = useState(instanceParam);
   const [showMap, setShowMap] = useState(!!instanceParam);
@@ -264,15 +265,15 @@ export default function SeatMapPage() {
             )}
             <h1 className="smp-title">Seat Pricing & Selection</h1>
           </div>
-          {instanceParam && (
+          {instanceParam && inFlow && (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   const fromPage = searchParams.get('fromPage');
-                  navigate(`/admin/operations/meals?instance=${instanceParam}${fromPage ? `&fromPage=${fromPage}` : ''}`);
+                  navigate(`/admin/operations/meals?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}`);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                className="px-3.5 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
               >
                 <Utensils size={14} /> Skip / Next: Flight Meals <ChevronRight size={14} />
               </button>
