@@ -78,20 +78,24 @@ export default function FlightsPage() {
         });
 
         // 1. Waitlist Mode Filter Fallback
-        const normCabin = (cabinClassParam || "Economy").toUpperCase().replace(/\s+/g, "_");
+        let normCabin = "ECONOMY";
+        const upperCabin = (cabinClassParam || "Economy").toUpperCase();
+        if (upperCabin.includes("BUSINESS")) normCabin = "BUSINESS";
+        else if (upperCabin.includes("FIRST")) normCabin = "FIRST";
+
         if (filters.waitlistMode === "available_only") {
           results = results.filter((f) => {
-            if (f.fares && f.fares[normCabin]) {
+            if (f.fares && f.fares[normCabin] !== undefined) {
               return Number(f.fares[normCabin].available_seats) > 0;
             }
             return Number(f.available_seats) > 0;
           });
         } else if (filters.waitlistMode === "waitlisted_only") {
           results = results.filter((f) => {
-            if (f.fares && f.fares[normCabin]) {
-              return Number(f.fares[normCabin].available_seats) === 0;
+            if (f.fares && f.fares[normCabin] !== undefined) {
+              return Number(f.fares[normCabin].available_seats) <= 0;
             }
-            return Number(f.available_seats) === 0;
+            return Number(f.available_seats) <= 0;
           });
         }
 

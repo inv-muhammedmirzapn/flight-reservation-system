@@ -207,16 +207,45 @@ class FlightListCreateView(APIView):
             class_key = None
 
         waitlist_mode = request.query_params.get("waitlist_mode", request.query_params.get("waitlistMode", "")).strip()
-        if waitlist_mode == "available_only":
+        if waitlist_mode in ["available_only", "waitlisted_only"]:
+            from django.db.models import Exists, OuterRef
+            has_any_seats = Exists(Seat.objects.filter(flight_instance=OuterRef('pk')))
+            
             if class_key:
-                qs = qs.filter(Q(seats__seat_class=class_key, seats__status="AVAILABLE") | Q(fares__cabin_class=class_key, fares__available_seats__gt=0))
+                has_avail_class_seats = Exists(
+                    Seat.objects.filter(flight_instance=OuterRef('pk'), seat_class=class_key, status="AVAILABLE")
+                )
+                fare_gt_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key, available_seats__gt=0)
+                )
+                fare_lte_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key, available_seats__lte=0)
+                )
+                has_fare = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key)
+                )
+
+                if waitlist_mode == "available_only":
+                    avail_q = has_avail_class_seats | (~has_any_seats & fare_gt_zero)
+                    qs = qs.filter(has_fare & avail_q)
+                elif waitlist_mode == "waitlisted_only":
+                    waitlist_q = (has_any_seats & ~has_avail_class_seats) | (~has_any_seats & fare_lte_zero)
+                    qs = qs.filter(has_fare & waitlist_q)
             else:
-                qs = qs.filter(Q(seats__status="AVAILABLE") | Q(fares__available_seats__gt=0))
-        elif waitlist_mode == "waitlisted_only":
-            if class_key:
-                qs = qs.filter(Q(fares__cabin_class=class_key, fares__available_seats__lte=0))
-            else:
-                qs = qs.filter(Q(fares__available_seats__lte=0))
+                has_any_avail_seats = Exists(
+                    Seat.objects.filter(flight_instance=OuterRef('pk'), status="AVAILABLE")
+                )
+                any_fare_gt_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), available_seats__gt=0)
+                )
+                any_fare_lte_zero = Exists(
+                    Fare.objects.filter(flight_instance=OuterRef('pk'), available_seats__lte=0)
+                )
+
+                if waitlist_mode == "available_only":
+                    qs = qs.filter(has_any_avail_seats | (~has_any_seats & any_fare_gt_zero))
+                elif waitlist_mode == "waitlisted_only":
+                    qs = qs.filter((has_any_seats & ~has_any_avail_seats) | (~has_any_seats & any_fare_lte_zero))
 
         qs = qs.distinct()
 

@@ -86,7 +86,7 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
+    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center px-4 py-12 mt-12 bg-slate-50/60">
       {/* Sky-themed Soft Ambient Aesthetic Blobs */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
       <div className="absolute bottom-10 -right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl pointer-events-none" />
