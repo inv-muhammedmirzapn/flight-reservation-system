@@ -8,7 +8,7 @@ from .models import (
 )
 
 
-# ─── Legacy serializer (unchanged) ─────────────────────────────────────────────
+# ─── Legacy serializer ─────────────────────────────────────────────
 
 class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     """Maps a FlightInstance to the legacy Flight JSON structure expected by the frontend."""
@@ -32,12 +32,13 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     baggage_number_allowed = serializers.IntegerField(source='flight.baggage_number_allowed_per_person')
     handbag_weight_kg = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2)
     fares = serializers.SerializerMethodField()
+    airline_logo = serializers.SerializerMethodField()
     flight_instance_id = serializers.IntegerField(source='id')
 
     class Meta:
         model = FlightInstance
         fields = [
-            "id", "flight_number", "airline", "aircraft",
+            "id", "flight_number", "airline", "airline_logo", "aircraft",
             "source_airport", "source_airport_name", "source_terminals",
             "destination_airport", "destination_airport_name", "destination_terminals",
             "departure_time", "arrival_time",
@@ -46,6 +47,14 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
         ]
+
+    def get_airline_logo(self, obj):
+        if obj.flight and obj.flight.airline and obj.flight.airline.logo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.flight.airline.logo.url)
+            return obj.flight.airline.logo.url
+        return None
 
     def _get_first_leg(self, obj):
         return obj.flight.legs.order_by('leg_order').first()
@@ -196,9 +205,19 @@ class AirportSerializer(serializers.ModelSerializer):
 
 
 class AirlineSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Airline
-        fields = ["id", "iata_airline_code", "airline_name"]
+        fields = ["id", "iata_airline_code", "airline_name", "logo", "logo_url"]
+
+    def get_logo_url(self, obj):
+        if obj.logo:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.logo.url)
+            return obj.logo.url
+        return None
 
     def validate_iata_airline_code(self, value):
         v = value.strip().upper()
@@ -238,7 +257,8 @@ class AircraftSerializer(serializers.ModelSerializer):
             "id", "registration",
             "airline", "airline_name",
             "aircraft_model", "model_display",
-            "economy_capacity", "business_capacity", "first_class_capacity"
+            "economy_capacity", "business_capacity", "first_class_capacity",
+            "economy_layout", "business_layout", "first_class_layout"
         ]
 
     def get_model_display(self, obj):
@@ -249,6 +269,27 @@ class AircraftSerializer(serializers.ModelSerializer):
         import re
         if not re.match(r'^[A-Z0-9\-]+$', v):
             raise serializers.ValidationError("Registration must be alphanumeric with hyphens.")
+        return v
+
+    def validate_economy_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 3-3")
+        return v
+
+    def validate_business_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
+        return v
+
+    def validate_first_class_layout(self, value):
+        import re
+        v = value.strip()
+        if not re.match(r'^\d+(-\d+)*$', v):
+            raise serializers.ValidationError("Layout must be numbers separated by hyphens, e.g. 2-2")
         return v
 
 
@@ -351,6 +392,15 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
     aircraft_registration = serializers.CharField(
         source="aircraft.registration", read_only=True
     )
+    aircraft_economy_layout = serializers.CharField(
+        source="aircraft.economy_layout", read_only=True
+    )
+    aircraft_business_layout = serializers.CharField(
+        source="aircraft.business_layout", read_only=True
+    )
+    aircraft_first_class_layout = serializers.CharField(
+        source="aircraft.first_class_layout", read_only=True
+    )
     route = serializers.SerializerMethodField()
 
     total_capacity = serializers.SerializerMethodField()
@@ -360,6 +410,7 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "flight", "flight_no", "flight_number", "date",
             "aircraft", "aircraft_registration", "total_capacity", "route",
+            "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
             "status", "delay_minutes",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival",

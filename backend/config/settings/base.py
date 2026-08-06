@@ -99,6 +99,15 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for the Flight Management System',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+        'config.swagger_hooks.categorize_tags_hook',
+    ],
+    'SWAGGER_UI_SETTINGS': {
+        'tagsSorter': 'alpha',
+        'operationsSorter': 'alpha',
+        'docExpansion': 'none',
+    },
 }
 
 AUTHENTICATION_BACKENDS = [

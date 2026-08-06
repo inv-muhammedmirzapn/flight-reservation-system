@@ -23,6 +23,10 @@ class StandardizedJSONRenderer(JSONRenderer):
                 return super().render(data, accepted_media_type, renderer_context)
                 
             status_code = response.status_code if response else 200
+
+            # 204 No Content must have NO body — return empty bytes immediately
+            if status_code == 204:
+                return b''
             
             # If data is already in the standardized envelope (from exception handler or manually built), don't double wrap
             if isinstance(data, dict) and 'status' in data and data['status'] in ['success', 'error']:
