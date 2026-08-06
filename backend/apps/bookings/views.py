@@ -10,6 +10,7 @@ from rest_framework import serializers as rf_serializers
 from .models import Booking, Passenger
 from .serializers import BookingSerializer, PassengerSerializer
 from .services import cancel_booking, create_booking
+from apps.flights.permissions import IsAdminOrSuperuser
 
 logger = logging.getLogger(__name__)
 
@@ -121,3 +122,72 @@ class PassengerViewSet(viewsets.ReadOnlyModelViewSet):
         if search:
             qs = qs.filter(name__icontains=search)
         return qs.order_by('-id')
+
+
+class AdminBookingViewSet(mixins.ListModelMixin,
+                          mixins.RetrieveModelMixin,
+                          viewsets.GenericViewSet):
+    """
+    Admin-only ViewSet for managing all bookings across all users.
+    Provides:
+      - GET  /api/admin/bookings/          — list all bookings with optional filters
+      - GET  /api/admin/bookings/<pk>/     — retrieve any booking
+      - POST /api/admin/bookings/<pk>/force-cancel/ — cancel any booking regardless of owner
+    """
+    serializer_class = BookingSerializer
+    permission_classes = [IsAdminOrSuperuser]
+
+    def get_queryset(self):
+        qs = Booking.objects.select_related('flight', 'user').order_by('-created_at')
+
+        # Optional filters
+        pnr = self.request.query_params.get('pnr')
+        if pnr:
+            qs = qs.filter(id__icontains=pnr)
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+
+        flight_id = self.request.query_params.get('flight_id')
+        if flight_id:
+            qs = qs.filter(flight_id=flight_id)
+
+        return qs
+
+    @extend_schema(
+        summary="Force-cancel any booking (admin)",
+        description="Allows admins to cancel any booking regardless of ownership. Triggers waitlist allocation.",
+        request=None,
+        responses={200: inline_serializer('AdminForceCancelResponse', {
+            'detail': rf_serializers.CharField(),
+            'status': rf_serializers.CharField(),
+        })},
+        tags=["Admin — Bookings"],
+    )
+    @action(detail=True, methods=['post'], url_path='force-cancel',
+            permission_classes=[IsAdminOrSuperuser])
+    def force_cancel(self, request, pk=None):
+        """
+        POST /api/admin/bookings/<pk>/force-cancel/
+        Cancel a booking as an admin, bypassing ownership checks.
+        """
+        try:
+            # Pass the booking's own user so service-layer ownership logic passes
+            booking = Booking.objects.get(pk=pk)
+            booking = cancel_booking(booking_id=pk, user=booking.user)
+            return Response(
+                {
+                    "detail": "Booking force-cancelled by admin. Waitlist allocation triggered (if applicable).",
+                    "status": booking.status,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Booking.DoesNotExist:
+            return Response({'detail': 'Booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except DjangoValidationError as e:
+            raise ValidationError({'detail': str(e)})

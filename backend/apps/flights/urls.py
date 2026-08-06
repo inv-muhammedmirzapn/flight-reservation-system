@@ -2,7 +2,6 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     FlightListCreateView, FlightDetailView,
-    FlightStatsView,
     CountryViewSet, AirportViewSet, AirlineViewSet,
     AircraftModelViewSet, AircraftViewSet,
     FlightRouteViewSet, FlightInstanceViewSet,
@@ -33,7 +32,6 @@ router.register(r"v2/seat-price-templates", SeatPriceTemplateViewSet, basename="
 urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────
     path("", FlightListCreateView.as_view(), name="flight-list-create"),
-    path("stats/", FlightStatsView.as_view(), name="flight-stats"),
     path("calendar/", FlightFaresCalendarView.as_view(), name="flight-calendar"),
     path("bounds/", FlightFareBoundsView.as_view(), name="flight-bounds"),
     path("<int:instance_id>/meals/", FlightMealsView.as_view(), name="flight-meals"),

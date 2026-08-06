@@ -49,12 +49,12 @@ from .services import (
 logger = logging.getLogger(__name__)
 
 class AdminModelViewSet(viewsets.ModelViewSet):
-    """Base viewset: list/retrieve public, write actions admin-only."""
+    """Base viewset: list/retrieve require authentication, write actions admin-only."""
     pagination_class = StandardPagination
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):
-            return [AllowAny()]
+            return [IsAuthenticated()]
         return [IsAdminOrSuperuser()]
 
     def perform_create(self, serializer):
@@ -95,32 +95,6 @@ class FlightPagination(PageNumberPagination):
     max_page_size = 2000
     page_query_param = "page"
 
-
-class FlightStatsView(APIView):
-    """
-    GET /api/flights/stats/
-    Returns aggregate flight instance counts by status.
-    """
-    permission_classes = [AllowAny]
-
-    @extend_schema(responses={200: inline_serializer("FlightStatsResponse", {
-        "total": rf_serializers.IntegerField(),
-        "scheduled": rf_serializers.IntegerField(),
-        "delayed": rf_serializers.IntegerField(),
-        "cancelled": rf_serializers.IntegerField(),
-        "boarding": rf_serializers.IntegerField(),
-        "departed": rf_serializers.IntegerField(),
-        "arrived": rf_serializers.IntegerField(),
-    })})
-    def get(self, request, *args, **kwargs) -> Response:
-        rows = FlightInstance.objects.values("status").annotate(count=Count("id"))
-        stats = {"total": FlightInstance.objects.count(), "scheduled": 0, "delayed": 0,
-                 "cancelled": 0, "boarding": 0, "departed": 0, "arrived": 0}
-        for row in rows:
-            key = row["status"].lower()
-            if key in stats:
-                stats[key] = row["count"]
-        return Response(stats, status=status.HTTP_200_OK)
 
 
 class FlightListCreateView(APIView):
@@ -327,6 +301,11 @@ class AirportViewSet(AdminModelViewSet):
     serializer_class = AirportSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["iata_code", "airport_name", "city"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         qs = super().get_queryset()
