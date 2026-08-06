@@ -15,7 +15,7 @@ urlpatterns = [
     path("<uuid:pk>/cancel/", WaitlistCancelView.as_view(), name="waitlist-cancel"),
     path("<uuid:pk>/promote/", WaitlistPromoteView.as_view(), name="waitlist-promote"),
     path(
-        "flight/<uuid:flight_id>/",
+        "flight/<int:flight_id>/",
         WaitlistFlightCountView.as_view(),
         name="waitlist-flight-count",
     ),

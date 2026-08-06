@@ -4,6 +4,7 @@ import io
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.db import IntegrityError
+from django.db.models.deletion import ProtectedError, RestrictedError
 from django.db.models import Count, Q
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.views import APIView
@@ -75,8 +76,17 @@ class AdminModelViewSet(viewsets.ModelViewSet):
                 raise DRFValidationError(exc.message_dict)
             raise DRFValidationError(exc.messages)
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except (IntegrityError, ProtectedError, RestrictedError) as exc:
+            return Response(
+                {"detail": "Cannot delete this item because it is referenced by existing related records (such as flights, aircraft, or food items)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-# ─── Legacy Flight views (UNCHANGED) ───────────────────────────────────────────
+
+# ─── Legacy Flight views ────────────────────────────────────────────────────────
 
 class FlightPagination(PageNumberPagination):
     """Return 10 flights per page. Clients pass ?page=N."""
@@ -287,7 +297,6 @@ class FlightListCreateView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-
 class FlightDetailView(APIView):
     def get_permissions(self):
         if self.request.method == "GET":
@@ -302,12 +311,6 @@ class FlightDetailView(APIView):
         return Response(serializer.data)
 
 
-
-
-
-
-
-
 # ─── New entity ViewSets ────────────────────────────────────────────────────────
 
 class CountryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -317,7 +320,6 @@ class CountryViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "iso_code"]
     ordering_fields = ["id", "name", "iso_code"]
-
 
 
 class AirportViewSet(AdminModelViewSet):
@@ -472,6 +474,14 @@ class FlightRouteViewSet(AdminModelViewSet):
             qs = qs.filter(airline_id=airline_id)
         return qs
 
+    def destroy(self, request, *args, **kwargs):
+        """Fast delete: bulk-wipe all seats under every instance before cascade."""
+        route = self.get_object()
+        # Drop all seats in one SQL DELETE — avoids thousands of per-row Python calls
+        Seat.objects.filter(flight_instance__flight=route).delete()
+        route.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class FlightInstanceViewSet(AdminModelViewSet):
     queryset = FlightInstance.objects.select_related("flight", "aircraft").all()
@@ -491,7 +501,41 @@ class FlightInstanceViewSet(AdminModelViewSet):
         date_to = self.request.query_params.get("date_to")
         if date_to:
             qs = qs.filter(date__lte=date_to)
+
+        status = self.request.query_params.get("status")
+        if status:
+            qs = qs.filter(status__iexact=status)
+
+        date = self.request.query_params.get("date")
+        if date:
+            qs = qs.filter(date=date)
+
+        arrival_date = self.request.query_params.get("arrival_date")
+        if arrival_date:
+            qs = qs.filter(scheduled_arrival__date=arrival_date)
+
+        source = self.request.query_params.get("source")
+        if source:
+            qs = qs.filter(flight__legs__departure_airport__iata_code__iexact=source, flight__legs__leg_order=1)
+
+        destination = self.request.query_params.get("destination")
+        if destination:
+            from django.db.models import Max, F
+            route_ids = FlightLeg.objects.values('flight').annotate(max_order=Max('leg_order')).filter(
+                arrival_airport__iata_code__iexact=destination,
+                leg_order=F('max_order')
+            ).values_list('flight_id', flat=True)
+            qs = qs.filter(flight_id__in=route_ids)
+
         return qs
+
+    def destroy(self, request, *args, **kwargs):
+        """Fast delete: bulk-wipe all seats before deleting the instance."""
+        instance = self.get_object()
+        # Drop all seats in one SQL DELETE — avoids per-row Python sync callbacks
+        Seat.objects.filter(flight_instance=instance).delete()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""
@@ -548,7 +592,6 @@ class FlightInstanceViewSet(AdminModelViewSet):
             "detail": f"Updated pricing for {updated_count} seats.",
             "updated_count": updated_count,
         })
-
 
 
 class SeatViewSet(AdminModelViewSet):

@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('bookings', '0006_legacy_flight_to_flightinstance'),
-        ('flights', '0010_flightmeal_price'),
+        ('flights', '0016_flightmeal_price'),
     ]
 
     operations = [

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('flights', '0009_legacy_flight_to_flightinstance'),
+        ('flights', '0015_alter_aircraft_aircraft_model_alter_aircraft_airline_and_more'),
     ]
 
     operations = [

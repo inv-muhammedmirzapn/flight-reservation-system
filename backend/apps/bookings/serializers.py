@@ -70,6 +70,9 @@ class BookingSerializer(serializers.ModelSerializer):
     """Full booking representation including nested flight instance summary."""
     flight_detail = FlightInstanceSummarySerializer(source='flight', read_only=True)
     passengers = PassengerSerializer(many=True, read_only=True)
+    user = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_full_name = serializers.SerializerMethodField()
 
     # Accept an integer FlightInstance PK
     flight_id_input = serializers.IntegerField(write_only=True, source='flight')
@@ -79,12 +82,18 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'flight_id_input', 'flight_detail',
             'cabin_class', 'status', 'seat_count', 'total_price',
-            'created_at', 'passengers',
+            'created_at', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
         read_only_fields = [
             'id', 'status', 'seat_count', 'total_price',
-            'created_at', 'flight_detail', 'passengers',
+            'created_at', 'flight_detail', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
+
+    def get_user_full_name(self, obj):
+        if obj.user:
+            full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
+            return full_name if full_name else obj.user.username
+        return '—'
 
     def validate_flight(self, value):
         try:
