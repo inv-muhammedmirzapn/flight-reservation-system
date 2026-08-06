@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '@/services/auth-service/authService';
+import { extractErrorMessage } from '@/services/apiClient';
 
 const decodeToken = (token) => {
   if (!token) return null;
@@ -10,6 +11,19 @@ const decodeToken = (token) => {
   } catch (e) {
     console.error("Token decoding error", e);
     return null;
+  }
+};
+
+const parseError = (error, defaultMessage = 'Operation failed') => {
+  if (!error || !error.message) return defaultMessage;
+  if (error.message === 'null') return 'An unexpected error occurred. Please check backend connection.';
+  try {
+    const parsed = typeof error.message === 'string' && (error.message.startsWith('{') || error.message.startsWith('['))
+      ? JSON.parse(error.message)
+      : error.message;
+    return extractErrorMessage(parsed);
+  } catch (_) {
+    return error.message || defaultMessage;
   }
 };
 
@@ -31,16 +45,7 @@ export const fetchProfile = createAsyncThunk(
       const profile = await authAPI.getProfile();
       return profile;
     } catch (error) {
-      let message = 'Could not load user profile';
-      try {
-        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
-          ? JSON.parse(error.message)
-          : null;
-        message = errObj?.detail || errObj?.message || error.message || message;
-      } catch (_) {
-        message = error.message || message;
-      }
-      return rejectWithValue(message);
+      return rejectWithValue(parseError(error, 'Could not load user profile'));
     }
   }
 );
@@ -52,7 +57,8 @@ export const loginUser = createAsyncThunk(
       const rawData = await authAPI.login(credentials);
       const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
       
-      const isAdmin = data.role === 'ADMIN';
+      const decoded = data.access ? decodeToken(data.access) : null;
+      const isAdmin = decoded?.is_superuser || data.role === 'ADMIN';
       
       if (requireAdmin && !isAdmin) {
         return rejectWithValue('Access Denied: Administrator privileges required.');
@@ -72,16 +78,7 @@ export const loginUser = createAsyncThunk(
       };
       return { token: data.access, profile };
     } catch (error) {
-      let message = 'Login failed';
-      try {
-        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
-          ? JSON.parse(error.message)
-          : null;
-        message = errObj?.detail || errObj?.message || errObj?.non_field_errors?.[0] || error.message || message;
-      } catch (_) {
-        message = error.message || message;
-      }
-      return rejectWithValue(message);
+      return rejectWithValue(parseError(error, 'Login failed'));
     }
   }
 );
@@ -93,7 +90,8 @@ export const googleLoginUser = createAsyncThunk(
       const rawData = await authAPI.googleLogin(token);
       const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
       
-      const isAdmin = data.role === 'ADMIN';
+      const decoded = data.access ? decodeToken(data.access) : null;
+      const isAdmin = decoded?.is_superuser || data.role === 'ADMIN';
       if (requireCustomer && isAdmin) {
         return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
       }
@@ -109,16 +107,7 @@ export const googleLoginUser = createAsyncThunk(
       };
       return { token: data.access, profile };
     } catch (error) {
-      let message = 'Google Login failed';
-      try {
-        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
-          ? JSON.parse(error.message)
-          : null;
-        message = errObj?.detail || errObj?.message || errObj?.error || error.message || message;
-      } catch (_) {
-        message = error.message || message;
-      }
-      return rejectWithValue(message);
+      return rejectWithValue(parseError(error, 'Google Login failed'));
     }
   }
 );
@@ -130,24 +119,7 @@ export const registerUser = createAsyncThunk(
       const data = await authAPI.register(userData);
       return data;
     } catch (error) {
-      let message = 'Registration failed';
-      try {
-        if (typeof error.message === 'string' && error.message.startsWith('{')) {
-          const errObj = JSON.parse(error.message);
-          if (errObj.message) {
-            message = errObj.message;
-          } else if (typeof errObj === 'object') {
-            const firstKey = Object.keys(errObj)[0];
-            const val = errObj[firstKey];
-            message = Array.isArray(val) ? `${firstKey}: ${val[0]}` : (errObj.detail || message);
-          }
-        } else {
-          message = error.message || message;
-        }
-      } catch (_) {
-        message = error.message || message;
-      }
-      return rejectWithValue(message);
+      return rejectWithValue(parseError(error, 'Registration failed'));
     }
   }
 );
