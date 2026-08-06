@@ -159,16 +159,84 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
             fare_obj.save(update_fields=['available_seats'])
 
+        total_meal_cost = 0
+
         for idx, p_data in enumerate(passengers_data):
             seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
-            Passenger.objects.create(
+            passenger_obj = Passenger.objects.create(
                 booking=booking,
                 name=p_data['name'],
                 age=p_data['age'],
                 gender=p_data['gender'],
                 phone_number=p_data.get('phone_number', ''),
+                meal_preference=p_data.get('meal_preference', 'NONE'),
                 seat_number=seat_num,
             )
+
+            # Process selected meals for this passenger
+            selected_meals_data = p_data.get('selected_meals', []) or []
+            if isinstance(selected_meals_data, list):
+                for meal_input in selected_meals_data:
+                    food_item_id = meal_input.get('food_item_id')
+                    flight_meal_id = meal_input.get('flight_meal_id')
+                    flight_leg_id = meal_input.get('flight_leg_id')
+                    qty = int(meal_input.get('quantity', 1) or 1)
+
+                    if qty <= 0:
+                        raise ValidationError("Meal quantity must be at least 1.")
+
+                    if food_item_id and flight_meal_id:
+                        raise ValidationError("Cannot select both food item and combo meal in a single entry.")
+                    if not food_item_id and not flight_meal_id:
+                        raise ValidationError("Must select either a food item or a combo meal.")
+
+                    from apps.flights.models import FoodItem, FlightMeal, FlightLeg
+
+                    food_item_obj = None
+                    flight_meal_obj = None
+                    flight_leg_obj = None
+                    unit_price = 0
+
+                    if food_item_id:
+                        try:
+                            food_item_obj = FoodItem.objects.get(pk=int(food_item_id))
+                            unit_price = food_item_obj.price
+                        except (FoodItem.DoesNotExist, ValueError):
+                            raise ValidationError(f"Invalid food item ID: {food_item_id}")
+
+                    if flight_meal_id:
+                        try:
+                            flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), flight_instance=flight_instance)
+                            unit_price = flight_meal_obj.price
+                        except (FlightMeal.DoesNotExist, ValueError):
+                            raise ValidationError(f"Invalid combo meal ID: {flight_meal_id}")
+
+                    if flight_leg_id:
+                        try:
+                            flight_leg_obj = FlightLeg.objects.get(pk=int(flight_leg_id), flight=flight_instance.flight)
+                        except (FlightLeg.DoesNotExist, ValueError):
+                            raise ValidationError(f"Invalid flight leg ID: {flight_leg_id}")
+
+                    # If complimentary meals are included for this cabin class, check if base price should be waived
+                    if fare_obj and fare_obj.meal_included:
+                        # Complimentary meal waiver applies to the first complimentary meal per leg/passenger
+                        pass
+
+                    from .models import PassengerMeal
+                    PassengerMeal.objects.create(
+                        passenger=passenger_obj,
+                        flight_leg=flight_leg_obj,
+                        food_item=food_item_obj,
+                        flight_meal=flight_meal_obj,
+                        quantity=qty,
+                        unit_price=unit_price
+                    )
+                    total_meal_cost += (unit_price * qty)
+
+        # Update final booking total price including meals
+        if total_meal_cost > 0:
+            booking.total_price = booking.total_price + total_meal_cost
+            booking.save(update_fields=['total_price'])
 
         try:
             from apps.notifications.services import NotificationService

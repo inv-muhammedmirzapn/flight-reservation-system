@@ -1,4 +1,3 @@
-
 from datetime import date as date_type
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
