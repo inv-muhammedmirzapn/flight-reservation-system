@@ -54,7 +54,7 @@ class AdminModelViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):
-            return [AllowAny()]
+            return [IsAuthenticated()]
         return [IsAdminOrSuperuser()]
 
     def perform_create(self, serializer):
