@@ -1,0 +1,59 @@
+--- backend/apps/waitlist/views.py
++++ backend/apps/waitlist/views.py
+@@ -10,6 +10,7 @@
+ from django.shortcuts import get_object_or_404
+ 
+ from apps.flights.models import Flight
++from apps.bookings.models import Booking, BookingStatus
+ from .models import WaitlistEntry, WaitlistStatus
+ from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
+ from .serializers import WaitlistEntrySerializer
+@@ -263,6 +264,48 @@
+         )
+ 
+ 
++class WaitlistPromoteView(APIView):
++    """
++    POST /api/waitlist/<uuid:pk>/promote/
++    Manually promotes a pending waitlist entry to a confirmed booking.
++    Permission: IsAdminOrSuperuser.
++    """
++
++    permission_classes = [IsAuthenticated, IsAdminOrSuperuser]
++
++    def get_object(self, pk):
++        try:
++            return WaitlistEntry.objects.get(pk=pk)
++        except (WaitlistEntry.DoesNotExist, ValueError):
++            raise Http404
++
++    def post(self, request, pk, *args, **kwargs):
++        entry = self.get_object(pk)
++
++        if entry.status != WaitlistStatus.PENDING:
++            return Response(
++                {"error": "Only pending waitlist entries can be promoted."},
++                status=status.HTTP_400_BAD_REQUEST,
++            )
++
++        flight = entry.flight
++
++        # Create the booking manually
++        booking = Booking.objects.create(
++            user=entry.user,
++            flight=flight,
++            seat_count=entry.seat_count,
++            total_price=entry.price,
++            status=BookingStatus.CONFIRMED,
++        )
++
++        entry.status = WaitlistStatus.CONFIRMED
++        entry.booking = booking
++        entry.save()
++
++        return Response({"message": "Waitlist entry successfully promoted to confirmed booking."}, status=status.HTTP_200_OK)
++
++
+ class WaitlistFlightCountView(APIView):
+     """
+     GET /api/waitlist/flight/<uuid:flight_id>/

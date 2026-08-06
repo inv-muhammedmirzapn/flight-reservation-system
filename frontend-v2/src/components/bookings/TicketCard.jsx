@@ -54,10 +54,13 @@ export default function TicketCard({ item, isPastView = false }) {
   const shortId = item.id ? String(item.id).slice(0, 8).toUpperCase() : "523A6FE6";
   const headerTime = formatHeaderTimestamp(item.created_at);
 
-  const dep = formatDateTime(flight.departure_time);
-  const arr = formatDateTime(flight.arrival_time);
+  const depTime = flight.departure_time || flight.scheduled_departure;
+  const arrTime = flight.arrival_time || flight.scheduled_arrival;
 
-  const durationStr = calculateDuration(flight.departure_time, flight.arrival_time);
+  const dep = formatDateTime(depTime);
+  const arr = formatDateTime(arrTime);
+
+  const durationStr = calculateDuration(depTime, arrTime);
 
   const stops = flight.stops;
   const stopCount = Array.isArray(stops) ? stops.length : typeof stops === "number" ? stops : 0;

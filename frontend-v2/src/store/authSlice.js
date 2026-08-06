@@ -13,6 +13,17 @@ const decodeToken = (token) => {
   }
 };
 
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch }) => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      await authAPI.logout(refreshToken);
+    }
+    dispatch(logout());
+  }
+);
+
 export const fetchProfile = createAsyncThunk(
   'auth/fetchProfile',
   async (_, { rejectWithValue }) => {
@@ -22,9 +33,13 @@ export const fetchProfile = createAsyncThunk(
     } catch (error) {
       let message = 'Could not load user profile';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
-      } catch (_) {}
+        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
+          ? JSON.parse(error.message)
+          : null;
+        message = errObj?.detail || errObj?.message || error.message || message;
+      } catch (_) {
+        message = error.message || message;
+      }
       return rejectWithValue(message);
     }
   }
@@ -34,7 +49,8 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ credentials, requireAdmin, requireCustomer }, { dispatch, rejectWithValue }) => {
     try {
-      const data = await authAPI.login(credentials);
+      const rawData = await authAPI.login(credentials);
+      const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
       
       const isAdmin = data.role === 'ADMIN';
       
@@ -45,8 +61,8 @@ export const loginUser = createAsyncThunk(
         return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
       }
 
-      localStorage.setItem('access_token', data.access);
-      localStorage.setItem('refresh_token', data.refresh);
+      if (data.access) localStorage.setItem('access_token', data.access);
+      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
       
       const profile = {
         id: data.id,
@@ -58,9 +74,13 @@ export const loginUser = createAsyncThunk(
     } catch (error) {
       let message = 'Login failed';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || errObj.non_field_errors?.[0] || message;
-      } catch (_) {}
+        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
+          ? JSON.parse(error.message)
+          : null;
+        message = errObj?.detail || errObj?.message || errObj?.non_field_errors?.[0] || error.message || message;
+      } catch (_) {
+        message = error.message || message;
+      }
       return rejectWithValue(message);
     }
   }
@@ -70,15 +90,16 @@ export const googleLoginUser = createAsyncThunk(
   'auth/googleLoginUser',
   async ({ token, requireCustomer }, { dispatch, rejectWithValue }) => {
     try {
-      const data = await authAPI.googleLogin(token);
+      const rawData = await authAPI.googleLogin(token);
+      const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
       
       const isAdmin = data.role === 'ADMIN';
       if (requireCustomer && isAdmin) {
         return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
       }
 
-      localStorage.setItem('access_token', data.access);
-      localStorage.setItem('refresh_token', data.refresh);
+      if (data.access) localStorage.setItem('access_token', data.access);
+      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
       
       const profile = {
         id: data.id,
@@ -90,9 +111,13 @@ export const googleLoginUser = createAsyncThunk(
     } catch (error) {
       let message = 'Google Login failed';
       try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || errObj.error || message;
-      } catch (_) {}
+        const errObj = typeof error.message === 'string' && error.message.startsWith('{')
+          ? JSON.parse(error.message)
+          : null;
+        message = errObj?.detail || errObj?.message || errObj?.error || error.message || message;
+      } catch (_) {
+        message = error.message || message;
+      }
       return rejectWithValue(message);
     }
   }
@@ -107,13 +132,21 @@ export const registerUser = createAsyncThunk(
     } catch (error) {
       let message = 'Registration failed';
       try {
-        const errObj = JSON.parse(error.message);
-        if (typeof errObj === 'object') {
-          const firstKey = Object.keys(errObj)[0];
-          const val = errObj[firstKey];
-          message = Array.isArray(val) ? `${firstKey}: ${val[0]}` : (errObj.detail || message);
+        if (typeof error.message === 'string' && error.message.startsWith('{')) {
+          const errObj = JSON.parse(error.message);
+          if (errObj.message) {
+            message = errObj.message;
+          } else if (typeof errObj === 'object') {
+            const firstKey = Object.keys(errObj)[0];
+            const val = errObj[firstKey];
+            message = Array.isArray(val) ? `${firstKey}: ${val[0]}` : (errObj.detail || message);
+          }
+        } else {
+          message = error.message || message;
         }
-      } catch (_) {}
+      } catch (_) {
+        message = error.message || message;
+      }
       return rejectWithValue(message);
     }
   }

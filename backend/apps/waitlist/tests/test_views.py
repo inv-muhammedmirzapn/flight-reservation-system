@@ -67,11 +67,11 @@ class WaitlistTests(TestCase):
     def test_join_waitlist_when_seats_available(self):
         # Flight has 10 available seats. Attempting to join waitlist should fail.
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "Waitlist tickets cannot be booked on the flight as there are enough available seats",
         )
 
@@ -81,7 +81,7 @@ class WaitlistTests(TestCase):
         self.flight.save()
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}, {"name": "B", "age": 22, "gender": "F"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}, {"name": "Bob", "age": 22, "gender": "F"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -107,11 +107,11 @@ class WaitlistTests(TestCase):
         )
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "You are already on the waitlist for this flight",
         )
 
@@ -122,7 +122,7 @@ class WaitlistTests(TestCase):
         url = reverse("waitlist-join")
 
         # Exceeds max seats of 9
-        passengers_10 = [{"name": "A", "age": 20, "gender": "M"}] * 10
+        passengers_10 = [{"name": "Alice", "age": 20, "gender": "M"}] * 10
         response = self.client_a.post(url, {"flight": str(self.flight.id), "passengers": passengers_10}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -140,11 +140,11 @@ class WaitlistTests(TestCase):
         self.flight.save()
 
         url = reverse("waitlist-join")
-        data = {"flight": str(self.flight.id), "passengers": [{"name": "A", "age": 20, "gender": "M"}]}
+        data = {"flight": str(self.flight.id), "passengers": [{"name": "Alice", "age": 20, "gender": "M"}]}
         response = self.client_a.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["error"],
+            response.data["message"],
             "Cannot join the waitlist for a flight that has already departed.",
         )
 
@@ -282,7 +282,7 @@ class WaitlistTests(TestCase):
         # Original price = 200.00. Processing fee 5% = 10.00. Refund = 190.00.
         self.assertEqual(float(response.data["refund_amount"]), 190.00)
         self.assertEqual(float(response.data["processing_fee"]), 10.00)
-        self.assertEqual(response.data["message"], "Waitlist entry cancelled. A 95% refund of $190.00 has been processed (after a 5% processing fee of $10.00).")
+        self.assertEqual(response.data["message"], "Waitlist entry cancelled. A 95% refund of ₹190.00 has been processed (after a 5% processing fee of ₹10.00).")
 
         entry.refresh_from_db()
         self.assertEqual(entry.status, WaitlistStatus.CANCELLED)
@@ -290,7 +290,7 @@ class WaitlistTests(TestCase):
         # Cancel again should fail
         response = self.client_a.post(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["error"], "Only pending waitlist entries can be cancelled.")
+        self.assertEqual(response.data["message"], "Only pending waitlist entries can be cancelled.")
 
     def test_public_waitlist_flight_count(self):
         self.flight.available_seats = 0

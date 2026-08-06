@@ -9,7 +9,7 @@ class EmailOrUsernameModelBackend(ModelBackend):
         if username is None:
             username = kwargs.get(User.USERNAME_FIELD)
         # Check for either username or email match
-        user = User.objects.filter(Q(username=username) | Q(email__iexact=username)).first()
+        user = User.objects.filter(Q(username=username) | Q(email__exact=username)).first()
         if not user:
             return None
 

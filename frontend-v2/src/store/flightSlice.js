@@ -9,7 +9,7 @@ export const fetchFlights = createAsyncThunk(
       const page   = typeof arg === 'object' ? (arg.page   ?? 1)  : arg;
       const params = typeof arg === 'object' ? (arg.params ?? {}) : {};
       const data = await flightsAPI.list(page, params);
-      return data; // { count, next, previous, results }
+      return data; // { count, next, previous, results } or unwrapped array/obj
     } catch (error) {
       let message = 'Failed to fetch flights';
       try {
@@ -21,6 +21,37 @@ export const fetchFlights = createAsyncThunk(
   }
 );
 
+export const fetchFlightBounds = createAsyncThunk(
+  'flights/fetchFlightBounds',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      return await flightsAPI.getBounds(params);
+    } catch (error) {
+      let message = 'Failed to fetch flight bounds';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchFlightCalendar = createAsyncThunk(
+  'flights/fetchFlightCalendar',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      return await flightsAPI.getCalendar(params);
+    } catch (error) {
+      let message = 'Failed to fetch flight calendar';
+      try {
+        const errObj = JSON.parse(error.message);
+        message = errObj.detail || message;
+      } catch (_) {}
+      return rejectWithValue(message);
+    }
+  }
+);
 
 // fetchFlightStats — global per-status counts, independent of pagination
 export const fetchFlightStats = createAsyncThunk(
@@ -164,6 +195,13 @@ const initialState = {
   currentPage: 1,    // which page we are on
   totalPages: 1,     // derived from count / page_size
   filters: {},       // active filter params for the admin listing
+  bounds: {          // dynamic bounds for search sliders
+    min_price: 0,
+    max_price: 500000,
+    airlines: [],
+    max_duration: 1440,
+  },
+  calendar: [],      // date matrix with prices
   stats: {           // global per-status counts — fetched independently, stable across pages
     total: 0,
     scheduled: 0,
@@ -175,6 +213,8 @@ const initialState = {
   },
   detail: null,
   loading: false,
+  boundsLoading: false,
+  calendarLoading: false,
   statsLoading: false,
   detailLoading: false,
   actionLoading: false,
@@ -218,14 +258,49 @@ const flightSlice = createSlice({
       })
       .addCase(fetchFlights.fulfilled, (state, action) => {
         state.loading = false;
-        const { count, results } = action.payload;
-        state.list = results;
-        state.count = count;
-        state.totalPages = Math.ceil(count / PAGE_SIZE);
+        if (action.payload && typeof action.payload === 'object') {
+          const results = action.payload.results ?? (Array.isArray(action.payload) ? action.payload : []);
+          const count = action.payload.count ?? results.length;
+          state.list = results;
+          state.count = count;
+          state.totalPages = Math.ceil(count / PAGE_SIZE) || 1;
+        } else {
+          state.list = [];
+          state.count = 0;
+          state.totalPages = 1;
+        }
       })
       .addCase(fetchFlights.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Fetch Bounds
+      .addCase(fetchFlightBounds.pending, (state) => {
+        state.boundsLoading = true;
+      })
+      .addCase(fetchFlightBounds.fulfilled, (state, action) => {
+        state.boundsLoading = false;
+        if (action.payload) {
+          state.bounds = action.payload;
+        }
+      })
+      .addCase(fetchFlightBounds.rejected, (state) => {
+        state.boundsLoading = false;
+      })
+      // Fetch Calendar
+      .addCase(fetchFlightCalendar.pending, (state) => {
+        state.calendarLoading = true;
+      })
+      .addCase(fetchFlightCalendar.fulfilled, (state, action) => {
+        state.calendarLoading = false;
+        if (Array.isArray(action.payload)) {
+          state.calendar = action.payload;
+        } else if (action.payload?.results && Array.isArray(action.payload.results)) {
+          state.calendar = action.payload.results;
+        }
+      })
+      .addCase(fetchFlightCalendar.rejected, (state) => {
+        state.calendarLoading = false;
       })
       // Fetch Stats
       .addCase(fetchFlightStats.pending, (state) => {
@@ -329,7 +404,6 @@ const flightSlice = createSlice({
       .addCase(deleteFlight.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.list = state.list.filter(f => f.id !== action.payload);
-        // Adjust count; caller re-fetches if page becomes empty
         state.count = Math.max(0, state.count - 1);
         state.totalPages = Math.ceil(state.count / PAGE_SIZE);
       })

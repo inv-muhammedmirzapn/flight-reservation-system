@@ -64,8 +64,9 @@ class BookingViewSetTests(TestCase):
         url = reverse('bookings:booking-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], str(self.booking.id))
+        results = response.data['results'] if isinstance(response.data, dict) and 'results' in response.data else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], str(self.booking.id))
 
     def test_list_returns_latest_booking_first(self):
         """Bookings should be returned in descending order of creation."""
@@ -98,11 +99,12 @@ class BookingViewSetTests(TestCase):
         url = reverse('bookings:booking-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        results = response.data['results'] if isinstance(response.data, dict) and 'results' in response.data else response.data
+        self.assertEqual(len(results), 2)
         
         # Newest should be first
-        self.assertEqual(response.data[0]['id'], str(booking_new.id))
-        self.assertEqual(response.data[1]['id'], str(self.booking.id))
+        self.assertEqual(results[0]['id'], str(booking_new.id))
+        self.assertEqual(results[1]['id'], str(self.booking.id))
 
     def test_retrieve_own_booking(self):
         """A user can retrieve the detail of their own booking."""

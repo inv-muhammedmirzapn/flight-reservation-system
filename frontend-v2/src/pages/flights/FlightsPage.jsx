@@ -13,6 +13,7 @@ export default function FlightsPage() {
   const from = searchParams.get("from") || "DEL";
   const to = searchParams.get("to") || "HAM";
   const depDate = searchParams.get("depDate") || new Date().toISOString().split("T")[0];
+  const cabinClassParam = searchParams.get("cabinClass") || "Economy";
 
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,14 +56,15 @@ export default function FlightsPage() {
           source: from,
           destination: to,
           date: depDate,
+          cabin_class: cabinClassParam,
           page_size: 20
         };
 
         if (filters.ordering) queryParams.ordering = filters.ordering;
-        if (filters.stops !== "") queryParams.stops = filters.stops;
-        if (filters.maxFare && filters.maxFare < 100000) {
-          queryParams.max_fare = filters.maxFare;
-        }
+        if (filters.stops !== undefined && filters.stops !== "") queryParams.stops = filters.stops;
+        if (filters.maxFare && filters.maxFare < 100000) queryParams.max_fare = filters.maxFare;
+        if (filters.airlines && filters.airlines.length > 0) queryParams.airlines = filters.airlines.join(",");
+        if (filters.waitlistMode && filters.waitlistMode !== "all") queryParams.waitlist_mode = filters.waitlistMode;
 
         const response = await flightsAPI.list(1, queryParams);
         let results = response.results || response || [];
@@ -75,21 +77,59 @@ export default function FlightsPage() {
           return true;
         });
 
-        // 1. Waitlist Mode Filter (All / Hide Waitlisted / Waitlist Only)
+        // 1. Waitlist Mode Filter Fallback
+        let normCabin = "ECONOMY";
+        const upperCabin = (cabinClassParam || "Economy").toUpperCase();
+        if (upperCabin.includes("BUSINESS")) normCabin = "BUSINESS";
+        else if (upperCabin.includes("FIRST")) normCabin = "FIRST";
+
         if (filters.waitlistMode === "available_only") {
-          results = results.filter((f) => Number(f.available_seats) > 0);
+          results = results.filter((f) => {
+            if (f.fares && f.fares[normCabin] !== undefined) {
+              return Number(f.fares[normCabin].available_seats) > 0;
+            }
+            return Number(f.available_seats) > 0;
+          });
         } else if (filters.waitlistMode === "waitlisted_only") {
-          results = results.filter((f) => Number(f.available_seats) === 0);
+          results = results.filter((f) => {
+            if (f.fares && f.fares[normCabin] !== undefined) {
+              return Number(f.fares[normCabin].available_seats) <= 0;
+            }
+            return Number(f.available_seats) <= 0;
+          });
         }
 
-        // 2. Client-side Max Fare Filter
+        // 2. Max Fare Filter Fallback
         if (filters.maxFare && filters.maxFare < 100000) {
           results = results.filter((f) => Number(f.base_fare) <= filters.maxFare);
         }
 
-        // 3. Client-side Airline Filter
+        // 3. Airline Filter Fallback
         if (filters.airlines && filters.airlines.length > 0) {
           results = results.filter((f) => filters.airlines.includes(f.airline));
+        }
+
+        // 4. Stops Filter Fallback
+        if (filters.stops !== undefined && filters.stops !== "") {
+          const expectedStops = Number(filters.stops);
+          results = results.filter((f) => {
+            const stopCount = Array.isArray(f.stops) ? f.stops.length : (typeof f.stops === "number" ? f.stops : 0);
+            if (expectedStops >= 2) return stopCount >= 2;
+            return stopCount === expectedStops;
+          });
+        }
+
+        // 5. Ordering Fallback
+        if (filters.ordering === "base_fare") {
+          results.sort((a, b) => Number(a.base_fare || 0) - Number(b.base_fare || 0));
+        } else if (filters.ordering === "departure_time") {
+          results.sort((a, b) => new Date(a.departure_time || 0) - new Date(b.departure_time || 0));
+        } else if (filters.ordering === "duration") {
+          results.sort((a, b) => {
+            const durA = (new Date(a.arrival_time) - new Date(a.departure_time));
+            const durB = (new Date(b.arrival_time) - new Date(b.departure_time));
+            return durA - durB;
+          });
         }
 
         if (isMounted) {
@@ -111,11 +151,11 @@ export default function FlightsPage() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, depDate, filters]);
+  }, [from, to, depDate, cabinClassParam, filters]);
 
   const handleViewDetails = (flight) => {
     if (flight && flight.id) {
-      navigate(`/flights/${flight.id}`);
+      navigate(`/flights/${flight.id}?cabinClass=${encodeURIComponent(cabinClassParam)}`);
     }
   };
 
@@ -143,20 +183,20 @@ export default function FlightsPage() {
       />
 
       {/* Top Search Header Component */}
-      <div className="mb-6">
+      <div className="mb-10">
         <FlightSearchHeader />
       </div>
 
       {/* Interactive Date Strip Carousel */}
       <div className="mb-6">
-        <DateStripCarousel selectedDepDate={depDate} />
+        <DateStripCarousel selectedDepDate={depDate} filters={filters} />
       </div>
 
       {/* Main Flights Section */}
-      <div className="mt-6">
+      <div className="mt-10">
         {/* Section Title & Status Indicator */}
-        <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="text-sm font-medium text-slate-900 ml-2">
+        <div className="flex items-center justify-between mb-6 px-1">
+          <h2 className="text-xs font-medium text-slate-900 ml-2">
             {isFilteredResult
               && `Found ${flights.length} flights from ${from} to ${to}`}
           </h2>
@@ -183,11 +223,12 @@ export default function FlightsPage() {
 
         {/* Flight Cards List */}
         {!loading && !error && flights.length > 0 && (
-          <div className="space-y-2">
+          <div className="flex flex-col">
             {flights.map((flight) => (
               <FlightCard
                 key={flight.id}
                 flight={flight}
+                selectedCabinClass={cabinClassParam}
                 onViewDetails={handleViewDetails}
               />
             ))}

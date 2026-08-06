@@ -175,7 +175,15 @@ export default function FlightSearchHeader({ onSearchChange }) {
   const depFormatted = formatHeaderDate(depDate);
   const arrFormatted = formatHeaderDate(arrDate);
 
-  const cabinOptions = ["Economy", "Premium Economy", "Business", "First Class"];
+  const cabinOptions = [
+    { label: "Economy", icon: "chair" },
+    { label: "Business", icon: "airline_seat_recline_extra" },
+    { label: "First Class", icon: "workspace_premium" }
+  ];
+
+  const currentCabinObj = cabinOptions.find(
+    (c) => c.label.toLowerCase() === (cabinClass || "").toLowerCase()
+  ) || cabinOptions[0];
 
   return (
     <div className="w-full mx-auto">
@@ -368,8 +376,11 @@ export default function FlightSearchHeader({ onSearchChange }) {
             Cabin Class
           </span>
           <div className="mt-1">
-            <div className="text-lg font-medium text-slate-900 truncate">
-              {cabinClass}
+            <div className="text-lg font-medium text-slate-900 truncate flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-base font-semibold text-slate-700 select-none">
+                {currentCabinObj.icon}
+              </span>
+              <span>{cabinClass}</span>
             </div>
             <div className="text-[10px] text-slate-500 font-normal truncate">
               &nbsp;
@@ -378,21 +389,24 @@ export default function FlightSearchHeader({ onSearchChange }) {
 
           {/* Cabin Class Dropdown */}
           {isCabinOpen && (
-            <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 shadow-xl rounded-lg overflow-hidden z-50 py-1 animate-fade-in">
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 shadow-xl rounded-lg overflow-hidden z-50 py-1 animate-fade-in">
               {cabinOptions.map((option) => (
                 <div
-                  key={option}
-                  className={`px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                    cabinClass === option
+                  key={option.label}
+                  className={`px-3 py-2 text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 ${
+                    cabinClass === option.label
                       ? "bg-amber-100 text-amber-900"
                       : "text-slate-700 hover:bg-slate-100"
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleSelectCabin(option);
+                    handleSelectCabin(option.label);
                   }}
                 >
-                  {option}
+                  <span className="material-symbols-outlined text-base font-semibold select-none">
+                    {option.icon}
+                  </span>
+                  <span>{option.label}</span>
                 </div>
               ))}
             </div>

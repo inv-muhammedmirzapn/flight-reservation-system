@@ -1,6 +1,4 @@
-"""
-Views for M7 Booking Analytics Dashboard — admin-only aggregation APIs.
-"""
+
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response

@@ -82,6 +82,18 @@ body {
     @apply bg-white rounded-2xl px-4 py-6 shadow-sm border border-slate-100/60 transition-all duration-200;
   }
 
+  .cabin-option-card {
+    @apply p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col items-start gap-1;
+  }
+
+  .cabin-option-card-selected {
+    @apply bg-slate-950 text-white border-slate-950 shadow-md;
+  }
+
+  .cabin-option-card-default {
+    @apply bg-white text-slate-800 border-slate-200/80 hover:bg-slate-100/80 shadow;
+  }
+
   .field-error {
     @apply text-[10px] font-medium text-rose-500;
   }

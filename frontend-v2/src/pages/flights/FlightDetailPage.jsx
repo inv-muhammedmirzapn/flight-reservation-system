@@ -1,29 +1,34 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
-import { bookingAPI } from "@/services/booking-service/bookingService";
-import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
-import PassengerListSection from "@/components/flights/PassengerListSection";
+import CabinClassSelector from "@/components/flights/CabinClassSelector";
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
 import toast from "react-hot-toast";
 
 export default function FlightDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
+
+  const initialCabinParam = searchParams.get("cabinClass");
+  const initialCabinKey = initialCabinParam
+    ? initialCabinParam.toUpperCase().includes("BUSINESS")
+      ? "BUSINESS"
+      : initialCabinParam.toUpperCase().includes("FIRST")
+      ? "FIRST"
+      : "ECONOMY"
+    : "ECONOMY";
 
   const [flight, setFlight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Passengers state & Validation errors
-  const [passengers, setPassengers] = useState([
-    { id: 1, name: "", age: "", gender: "Male" }
-  ]);
-  const [passengerErrors, setPassengerErrors] = useState({});
+  const [selectedCabin, setSelectedCabin] = useState(initialCabinKey);
+  const [passengerCount, setPassengerCount] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,87 +60,19 @@ export default function FlightDetailPage() {
     };
   }, [id]);
 
-  const validatePassengers = () => {
-    const errorsMap = {};
-    let isValid = true;
-
-    passengers.forEach((p, index) => {
-      const pErr = {};
-
-      // Name validation: max 40 chars, only alphabets
-      if (!p.name || !p.name.trim()) {
-        pErr.name = "Full name is required";
-        isValid = false;
-      } else if (p.name.length > 40) {
-        pErr.name = "Name cannot exceed 40 characters";
-        isValid = false;
-      } else if (!/^[A-Za-z\s]+$/.test(p.name)) {
-        pErr.name = "Only alphabets allowed";
-        isValid = false;
-      }
-
-      // Age validation: only digits, 1-120 max
-      if (!p.age) {
-        pErr.age = "Age is required";
-        isValid = false;
-      } else {
-        const ageNum = Number(p.age);
-        if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-          pErr.age = "Age must be between 1 and 120";
-          isValid = false;
-        }
-      }
-
-      if (Object.keys(pErr).length > 0) {
-        errorsMap[index] = pErr;
-      }
-    });
-
-    setPassengerErrors(errorsMap);
-    return isValid;
-  };
-
-  const handlePassengersChange = (updated) => {
-    setPassengers(updated);
-    // Clear errors when user modifies input
-    if (Object.keys(passengerErrors).length > 0) {
-      setPassengerErrors({});
-    }
-  };
-
-  const handleBookingAction = async () => {
-    if (!flight) return;
-
+  const handleProceedToCheckout = () => {
     if (!isAuthenticated) {
-      navigate("/login");
+      toast.error("Please login to proceed with flight booking.");
+      navigate("/login", { state: { from: `/flights/${id}` } });
       return;
     }
 
-    if (!validatePassengers()) {
-      toast.error("Please fix passenger form errors before proceeding.");
-      return;
-    }
-
-    const isWaitlisted = Number(flight.available_seats) === 0;
-
-    try {
-      if (isWaitlisted) {
-        const res = await waitlistAPI.join(flight.id, passengers);
-        toast.success(`Request submitted to join Waitlist for flight ${flight.flight_number}!`);
-        navigate(`/booking-confirmation/waitlist/${res.id}`, {
-          state: { waitlist: res, flight, passengers }
-        });
-      } else {
-        const res = await bookingAPI.create(flight.id, passengers);
-        toast.success("Booking confirmed successfully!");
-        navigate(`/booking-confirmation/${res.id}`, {
-          state: { booking: res, flight, passengers }
-        });
-      }
-    } catch (err) {
-      console.error("Booking error:", err);
-      toast.error(err?.message || "Booking failed. Please try again.");
-    }
+    navigate(`/flights/${id}/checkout`, {
+      state: {
+        selectedCabin,
+        seatCount: passengerCount,
+      },
+    });
   };
 
   if (loading) {
@@ -175,34 +112,44 @@ export default function FlightDetailPage() {
 
   return (
     <div className="flex-1 min-h-screen mt-12 pt-12 pb-8 px-4 md:px-6 max-w-6xl mx-auto w-full">
-      {/* Top Header Navigation */}
-      <div className="flex items-center justify-between mb-6 ml-4">
-        <h1 className="text-xl font-bold text-slate-950">
-          Confirm Booking
+      {/* Top Navigation */}
+      <div className="mb-6 ml-4">
+        <button
+          type="button"
+          onClick={() => navigate("/flights", { state: { showPastBookings: location.state?.showPastBookings } })}
+          className="text-xs font-semibold text-slate-600 hover:text-slate-950 cursor-pointer transition-colors flex items-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Back to Flights List
+        </button>
+        <h1 className="text-xl font-bold text-slate-950 mt-3">
+          Flight Details & Selection
         </h1>
       </div>
 
       {/* Main 2-Column Responsive Layout */}
       <div className="flex flex-col lg:flex-row gap-6 items-start relative">
-        {/* Left Panel (Scrollable) */}
+        {/* Left Panel */}
         <div className="flex-1 w-full space-y-6">
           {/* Flight Itinerary Card */}
-          <FlightItineraryCard flight={flight} />
+          <FlightItineraryCard flight={flight} selectedCabinClass={selectedCabin} />
 
-          {/* Add Passengers Section */}
-          <PassengerListSection
-            passengers={passengers}
-            onChangePassengers={handlePassengersChange}
-            errors={passengerErrors}
+          {/* Cabin Class Selection */}
+          <CabinClassSelector
+            flight={flight}
+            selectedCabin={selectedCabin}
+            onSelectCabin={setSelectedCabin}
           />
         </div>
 
-        {/* Right Panel (Sticky / Fixed Fare Details) */}
-        <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-24 flex-shrink-0">
+        {/* Right Panel (Sticky Fare Details & Proceed Action) */}
+        <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-24 flex-shrink-0 space-y-4">
           <FareDetailsCard
             flight={flight}
-            passengerCount={passengers.length}
-            onBookingAction={handleBookingAction}
+            selectedCabin={selectedCabin}
+            passengerCount={1}
+            onBookingAction={handleProceedToCheckout}
+            actionButtonText="Book Seats"
           />
         </div>
       </div>
