@@ -1,1 +1,0 @@
-# TODO: Implement urls.py for fare_prediction module\n

@@ -1,1 +1,0 @@
-# TODO: Implement serializers.py for comparison module\n
