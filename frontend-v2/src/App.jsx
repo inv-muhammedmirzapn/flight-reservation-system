@@ -21,8 +21,7 @@ import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
 import UserProfilePage from "@/pages/profile/UserProfilePage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
 
-import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
+import PasswordRecoveryPage from "@/pages/auth/PasswordRecoveryPage";
 
 // ── Admin auth ───────────────────────────────────────────────────────────────
 import AdminLoginPage from "@/pages/auth/AdminLoginPage";
@@ -163,18 +162,12 @@ function AppContent() {
               path="/forgot-password"
               element={
                 <ProtectedRoute guestOnly>
-                  <ForgotPasswordPage />
+                  <PasswordRecoveryPage />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/reset-password"
-              element={
-                <ProtectedRoute guestOnly>
-                  <ResetPasswordPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* /reset-password kept for backward compat — redirects to combined page */}
+            <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
 
             {/* ── Admin Login ────────────────────────────────────────────── */}
             <Route

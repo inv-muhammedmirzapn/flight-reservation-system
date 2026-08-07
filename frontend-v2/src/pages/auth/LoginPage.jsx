@@ -21,7 +21,11 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.auth);
 
-  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
   const [touched, setTouched] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -34,173 +38,201 @@ export default function LoginPage() {
   };
 
   const handleBlur = (e) => {
-    setTouched((prev) => ({ ...prev, [e.target.name]: true }));
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
+  // Keystroke validation
   const getFieldError = (name) => {
     if (!touched[name] && !formData[name]) return "";
-    if (name === "username" && !formData.username.trim()) return "Username or email is required";
-    if (name === "password" && !formData.password) return "Password is required";
+    if (name === "username" && !formData.username.trim()) {
+      return "Username or Email is required";
+    }
+    if (name === "password" && !formData.password) {
+      return "Password is required";
+    }
     return "";
   };
 
   const usernameError = getFieldError("username");
   const passwordError = getFieldError("password");
-  const isValid = formData.username.trim() && formData.password && !usernameError && !passwordError;
+
+  const isValid = formData.username.trim() !== "" && formData.password !== "" && !usernameError && !passwordError;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setTouched({ username: true, password: true });
+
     if (!isValid) {
-      (!formData.username.trim() ? usernameRef : passwordRef).current?.focus();
+      if (!formData.username.trim()) {
+        usernameRef.current?.focus();
+      } else if (!formData.password) {
+        passwordRef.current?.focus();
+      }
       return;
     }
-    const res = await dispatch(loginUser({ credentials: formData, requireCustomer: true }));
-    if (loginUser.fulfilled.match(res)) {
-      toast.success("Welcome back!");
-      navigate("/");
-    } else {
-      toast.error(res.payload || "Invalid username or password");
+
+    try {
+      const resultAction = await dispatch(
+        loginUser({ credentials: { username: formData.username, password: formData.password } })
+      );
+
+      if (loginUser.fulfilled.match(resultAction)) {
+        toast.success("Welcome back!");
+        navigate("/");
+      } else {
+        const errorMsg = resultAction.payload || "Invalid username or password";
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred. Please try again.");
     }
   };
 
+  // Google login
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      const res = await dispatch(googleLoginUser({ token: tokenResponse.access_token, requireCustomer: true }));
-      if (googleLoginUser.fulfilled.match(res)) {
-        const p = res.payload?.profile;
-        toast.success(`Welcome back, ${p?.first_name || p?.username || "there"}!`);
-        navigate("/");
-      } else {
-        toast.error(res.payload || "Google login failed");
+      try {
+        const res = await dispatch(googleLoginUser({ token: tokenResponse.access_token }));
+        if (googleLoginUser.fulfilled.match(res)) {
+          const p = res.payload?.profile;
+          toast.success(`Welcome back, ${p?.first_name || p?.username || "there"}!`);
+          navigate("/");
+        } else {
+          toast.error(res.payload || "Google login failed");
+        }
+      } catch (err) {
+        toast.error("An unexpected error occurred. Please try again.");
       }
     },
     onError: () => toast.error("Google login failed"),
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-[88px] pb-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 animate-fade-in">
+    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
 
-        {/* Heading */}
-        <div className="text-center mb-7">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
-          <p className="text-sm text-slate-500 mt-1">Sign in to your account</p>
-        </div>
+      {/* Sky-themed Soft Ambient Aesthetic Blobs */}
+      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-10 -right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-10 right-1/4 w-72 h-72 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="relative z-10 text-center mb-4">
+        <h2 className="text-xl font-bold text-slate-800">Sign in to your Account</h2>
+      </div>
+
+      {/* Container Card */}
+      <div className="relative z-10 w-full max-w-sm rounded-3xl p-8 sm:px-10 animate-fade-in plain-card">
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Username */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="username" className="text-[11px] font-bold tracking-wider text-slate-600 uppercase ml-1">
+          {/* Username/Email Input */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
               Username or Email
             </label>
             <input
               ref={usernameRef}
-              id="username"
               type="text"
               name="username"
               value={formData.username}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="Enter your username or email"
-              autoComplete="username"
-              className={`w-full bg-slate-50 border focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-400/20 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all outline-none ${
-                usernameError ? "border-rose-300 bg-rose-50/30" : "border-slate-200/80"
-              }`}
+              placeholder="Enter username or email"
+              className="input-field"
             />
             {usernameError && (
-              <p className="text-[11px] text-rose-500 font-medium ml-1 animate-fade-in">{usernameError}</p>
+              <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                <p className="field-error ml-2">{usernameError}</p>
+              </div>
             )}
           </div>
 
-          {/* Password */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-[11px] font-bold tracking-wider text-slate-600 uppercase ml-1">
-              Password
-            </label>
+          {/* Password Input */}
+          <div>
+            <div className="flex items-center justify-between mb-2 mr-1 ml-2">
+              <label className="block text-xs font-semibold text-slate-600">
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative flex items-center">
               <input
                 ref={passwordRef}
-                id="password"
                 type={showPassword ? "text" : "password"}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                className={`w-full bg-slate-50 border focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-400/20 rounded-2xl px-4 py-3 pr-11 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all outline-none ${
-                  passwordError ? "border-rose-300 bg-rose-50/30" : "border-slate-200/80"
-                }`}
+                placeholder="Enter password"
+                className="input-field"
               />
               <button
                 type="button"
-                tabIndex={-1}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none flex items-center justify-center p-1"
+                className="absolute right-3.5 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer select-none"
               >
-                <span className="material-symbols-outlined text-lg">
+                <span className="material-symbols-outlined text-sm">
                   {showPassword ? "visibility_off" : "visibility"}
                 </span>
               </button>
             </div>
             {passwordError && (
-              <p className="text-[11px] text-rose-500 font-medium ml-1 animate-fade-in">{passwordError}</p>
+              <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                <p className="field-error ml-2">{passwordError}</p>
+              </div>
             )}
           </div>
 
-          {/* Submit */}
-          <div className="flex justify-end -mt-1 mb-1">
-            <Link
-              to="/forgot-password"
-              className="text-xs font-semibold text-amber-700 hover:underline"
+          {/* Submit Button */}
+          <div className="flex justify-center pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary px-5 py-2 rounded-xl text-sm"
             >
-              Forgot password?
-            </Link>
+              {loading ? (
+                "Signing in..."
+              ) : (
+                "Sign In"
+              )}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-500 disabled:opacity-70 disabled:cursor-not-allowed text-slate-900 font-bold text-sm transition-all duration-200 shadow-md shadow-amber-400/20 active:scale-[0.98] mt-1 cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 rounded-full animate-spin border-2 border-black/10 border-t-black" />
-                <span>Signing in…</span>
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </button>
         </form>
 
         {/* Divider */}
         <div className="flex items-center gap-3 mt-5 mb-4">
-          <span className="flex-1 h-px bg-slate-100" />
+          <span className="flex-1 h-px bg-slate-200" />
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">or</span>
-          <span className="flex-1 h-px bg-slate-100" />
+          <span className="flex-1 h-px bg-slate-200" />
         </div>
 
-        {/* Google button */}
+        {/* Google Sign-In Button */}
         <button
           type="button"
           onClick={() => googleLogin()}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200/80 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+          className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl border border-slate-200/80 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
         >
           <GoogleIcon />
           Continue with Google
         </button>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-500 mt-6">
-          Don't have an account?{" "}
-          <Link to="/register" className="text-amber-700 font-semibold hover:underline">
-            Sign up free
-          </Link>
-        </p>
+        {/* Footer Link */}
+        <div className="mt-8 text-center pt-5 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-500">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-slate-900 font-bold hover:underline transition-all">
+              Sign Up
+            </Link>
+          </p>
+        </div>
 
       </div>
     </div>
