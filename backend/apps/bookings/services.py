@@ -83,6 +83,18 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
         if gender not in ['M', 'F', 'O']:
             raise ValidationError("Gender must be 'M', 'F', or 'O'.")
 
+        extra_kg = p.get('extra_baggage_kg', 0) or 0
+        try:
+            from decimal import Decimal
+            extra_kg_dec = Decimal(str(extra_kg))
+            if extra_kg_dec < 0:
+                raise ValidationError("Extra baggage weight cannot be negative.")
+            max_allowed = flight_instance.flight.max_extra_baggage_kg_per_person
+            if extra_kg_dec > max_allowed:
+                raise ValidationError(f"Extra baggage cannot exceed {max_allowed} kg per passenger.")
+        except (ValueError, TypeError):
+            raise ValidationError("Extra baggage weight must be a valid number.")
+
     # ── Atomic write: re-check with lock, then create ─────────────────────────
     with transaction.atomic():
         # Lock the flight instance row to prevent race conditions
@@ -159,10 +171,25 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
             fare_obj.save(update_fields=['available_seats'])
 
-        total_meal_cost = 0
+        from decimal import Decimal
+        from apps.flights.services_currency import CurrencyService
+        route = flight_instance.flight
+        booking_curr = fare_obj.currency if fare_obj else "INR"
+        baggage_unit_rate = CurrencyService.convert_amount(
+            route.extra_baggage_price_per_kg,
+            route.extra_baggage_currency,
+            booking_curr
+        )
+
+        total_meal_cost = Decimal("0.00")
+        total_extra_baggage_cost = Decimal("0.00")
 
         for idx, p_data in enumerate(passengers_data):
             seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
+            p_extra_kg = Decimal(str(p_data.get('extra_baggage_kg', 0) or 0))
+            p_extra_cost = p_extra_kg * baggage_unit_rate
+            total_extra_baggage_cost += p_extra_cost
+
             passenger_obj = Passenger.objects.create(
                 booking=booking,
                 name=p_data['name'],
@@ -171,6 +198,8 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 phone_number=p_data.get('phone_number', ''),
                 meal_preference=p_data.get('meal_preference', 'NONE'),
                 seat_number=seat_num,
+                extra_baggage_kg=p_extra_kg,
+                extra_baggage_cost=p_extra_cost,
             )
 
             complimentary_waived = False
@@ -265,9 +294,10 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                         )
                         total_meal_cost += (unit_price * qty)
 
-        # Update final booking total price including meals
-        if total_meal_cost > 0:
-            booking.total_price = booking.total_price + total_meal_cost
+        # Update final booking total price including meals and extra baggage
+        additions = total_meal_cost + total_extra_baggage_cost
+        if additions > 0:
+            booking.total_price = booking.total_price + additions
             booking.save(update_fields=['total_price'])
 
         try:
