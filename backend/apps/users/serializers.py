@@ -23,6 +23,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('username', 'password', 'email', 'first_name', 'last_name')
 
     def validate_email(self, value):
+        if value:
+            email_clean = value.strip().lower()
+            if User.objects.filter(email__iexact=email_clean).exists():
+                raise serializers.ValidationError("A user with this email address already exists.")
+            return email_clean
         return value
 
     def validate_password(self, value):
@@ -157,11 +162,17 @@ class ChangePasswordSerializer(serializers.Serializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
+    def validate_email(self, value):
+        return value.strip().lower() if value else value
+
 
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True, write_only=True)
     otp = serializers.CharField(required=True, write_only=True, max_length=6, min_length=6)
     new_password = serializers.CharField(required=True, write_only=True)
+
+    def validate_email(self, value):
+        return value.strip().lower() if value else value
 
     def validate_new_password(self, value):
         try:

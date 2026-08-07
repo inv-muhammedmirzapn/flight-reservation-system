@@ -1,7 +1,6 @@
 import logging
 import secrets
 import re
-import threading
 
 import requests as http_requests
 from django.conf import settings
@@ -22,7 +21,7 @@ class GoogleAuthError(Exception):
     """Raised when Google token verification fails."""
 def google_login(token: str) -> dict:
     """
-    Verify a Google OAuth access token (or a dummy dev token) and return a
+    Verify a Google OAuth access token and return a
     dict with JWT tokens + basic user info.
 
     Raises:
@@ -38,11 +37,11 @@ def google_login(token: str) -> dict:
             raise GoogleAuthError("Invalid token")
         idinfo = response.json()
 
-        email = idinfo["email"]
+        email = idinfo["email"].strip().lower() if idinfo.get("email") else ""
         first_name = idinfo.get("given_name", "")
         last_name = idinfo.get("family_name", "")
 
-        user = User.objects.filter(email=email).first()
+        user = User.objects.filter(email__iexact=email).first()
         if not user:
             user = User.objects.create(
                 username=email,
@@ -89,12 +88,14 @@ def _generate_otp() -> str:
 def send_password_reset_otp(email: str) -> None:
     """
     Generate a 6-digit OTP for password reset, cache it (5 min TTL),
-    and dispatch an e-mail to *email* asynchronously.
+    and dispatch an e-mail to *email*.
 
     Does nothing silently if the e-mail doesn't belong to any user
     (caller should always return 200 to avoid e-mail enumeration).
     """
-    user = User.objects.filter(email=email).first()
+    if email:
+        email = email.strip().lower()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return
 
@@ -115,6 +116,8 @@ def reset_password(email: str, otp: str, new_password: str) -> bool:
 
     Returns True on success, False if the OTP is invalid/expired.
     """
+    if email:
+        email = email.strip().lower()
     cache_key = f"pwd_reset_otp_{email}"
     attempts_key = f"{cache_key}_attempts"
     cached_hashed_otp = cache.get(cache_key)
@@ -129,7 +132,7 @@ def reset_password(email: str, otp: str, new_password: str) -> bool:
         cache.set(attempts_key, attempts + 1, timeout=300)
         return False
 
-    user = User.objects.filter(email=email).first()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return False
 
@@ -166,7 +169,7 @@ def change_password(user: User, old_password: str, new_password: str) -> bool:
 def send_email_change_otp(user: User, new_email: str) -> None:
     """
     Generate a 6-digit OTP for e-mail change, cache it (5 min TTL),
-    and dispatch an e-mail to *new_email* asynchronously.
+    and dispatch an e-mail to *new_email*.
     """
     from apps.notifications.services import NotificationService
     if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
@@ -200,6 +203,9 @@ def verify_email_change_otp(user: User, new_email: str, otp: str) -> bool:
 
     if not cached_hashed_otp or not check_password(otp, cached_hashed_otp):
         cache.set(attempts_key, attempts + 1, timeout=300)
+        return False
+
+    if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
         return False
 
     user.email = new_email

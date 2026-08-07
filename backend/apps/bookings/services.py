@@ -64,11 +64,6 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 f"Only {available_count} seats available on this flight."
             )
 
-    if Booking.objects.filter(
-        user=user, flight=flight_instance, status=BookingStatus.CONFIRMED
-    ).exists():
-        raise ValidationError("You already have a confirmed booking for this flight.")
-
     # Validate passenger data
     for p in passengers_data:
         name = str(p.get('name', '') or '').strip()
@@ -95,8 +90,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             flight_instance = FlightInstance.objects.select_for_update(nowait=False).get(
                 pk=flight_instance.pk
             )
-        except (FlightInstance.DoesNotExist, DatabaseError):
-            flight_instance = FlightInstance.objects.get(pk=flight_instance.pk)
+        except FlightInstance.DoesNotExist:
+            raise ValidationError("Flight not found.")
+        except DatabaseError:
+            try:
+                flight_instance = FlightInstance.objects.get(pk=flight_instance.pk)
+            except FlightInstance.DoesNotExist:
+                raise ValidationError("Flight not found.")
 
         # Lock available seats and get per-class price
         fare_obj = None
@@ -173,7 +173,7 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 seat_number=seat_num,
             )
 
-            # Process selected meals for this passenger
+            complimentary_waived = False
             selected_meals_data = p_data.get('selected_meals', []) or []
             if isinstance(selected_meals_data, list):
                 for meal_input in selected_meals_data:
@@ -195,19 +195,22 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     food_item_obj = None
                     flight_meal_obj = None
                     flight_leg_obj = None
-                    unit_price = 0
+                    base_price = 0
 
                     if food_item_id:
                         try:
-                            food_item_obj = FoodItem.objects.get(pk=int(food_item_id))
-                            unit_price = food_item_obj.price
+                            food_item_obj = FoodItem.objects.get(
+                                pk=int(food_item_id),
+                                airline=flight_instance.flight.airline
+                            )
+                            base_price = food_item_obj.price
                         except (FoodItem.DoesNotExist, ValueError):
-                            raise ValidationError(f"Invalid food item ID: {food_item_id}")
+                            raise ValidationError(f"Invalid food item ID: {food_item_id} for this flight's airline.")
 
                     if flight_meal_id:
                         try:
                             flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), flight_instance=flight_instance)
-                            unit_price = flight_meal_obj.price
+                            base_price = flight_meal_obj.price
                         except (FlightMeal.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid combo meal ID: {flight_meal_id}")
 
@@ -217,21 +220,50 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                         except (FlightLeg.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid flight leg ID: {flight_leg_id}")
 
-                    # If complimentary meals are included for this cabin class, check if base price should be waived
-                    if fare_obj and fare_obj.meal_included:
-                        # Complimentary meal waiver applies to the first complimentary meal per leg/passenger
-                        pass
-
                     from .models import PassengerMeal
-                    PassengerMeal.objects.create(
-                        passenger=passenger_obj,
-                        flight_leg=flight_leg_obj,
-                        food_item=food_item_obj,
-                        flight_meal=flight_meal_obj,
-                        quantity=qty,
-                        unit_price=unit_price
-                    )
-                    total_meal_cost += (unit_price * qty)
+                    unit_price = base_price
+
+                    if fare_obj and fare_obj.meal_included and not complimentary_waived:
+                        if qty == 1:
+                            unit_price = 0
+                            complimentary_waived = True
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=1,
+                                unit_price=0
+                            )
+                        else:
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=1,
+                                unit_price=0
+                            )
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=qty - 1,
+                                unit_price=base_price
+                            )
+                            total_meal_cost += (base_price * (qty - 1))
+                            complimentary_waived = True
+                    else:
+                        PassengerMeal.objects.create(
+                            passenger=passenger_obj,
+                            flight_leg=flight_leg_obj,
+                            food_item=food_item_obj,
+                            flight_meal=flight_meal_obj,
+                            quantity=qty,
+                            unit_price=unit_price
+                        )
+                        total_meal_cost += (unit_price * qty)
 
         # Update final booking total price including meals
         if total_meal_cost > 0:
