@@ -21,6 +21,7 @@ export default function BookingCheckoutPage() {
   const initialSeatCount = location.state?.seatCount || 1;
 
   const [flight, setFlight] = useState(null);
+  const [mealsData, setMealsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,8 +48,15 @@ export default function BookingCheckoutPage() {
     async function loadCheckoutData() {
       try {
         setLoading(true);
-        const flightData = await flightsAPI.retrieve(id);
+        const [flightData, mealsResp] = await Promise.all([
+          flightsAPI.retrieve(id),
+          flightsAPI.getMeals(id, { cabin_class: selectedCabin }).catch((err) => {
+            console.warn("Could not load meals data from backend API:", err);
+            return null;
+          }),
+        ]);
         setFlight(flightData);
+        setMealsData(mealsResp);
       } catch (err) {
         console.error("Failed to load flight details:", err);
         toast.error("Flight not found or unavailable.");
@@ -57,7 +65,7 @@ export default function BookingCheckoutPage() {
       }
     }
     loadCheckoutData();
-  }, [id]);
+  }, [id, selectedCabin]);
 
   if (loading) {
     return (
@@ -85,12 +93,17 @@ export default function BookingCheckoutPage() {
     );
   }
 
-  // Active fare for cabin
+  // Active fare for cabin & meals backend data
   const normCabin = (selectedCabin || "ECONOMY").toUpperCase();
   const fareObj = flight.fares?.[normCabin] || flight.fares?.["ECONOMY"] || null;
-  const isMealIncluded = Boolean(fareObj?.meal_included);
+  const isMealIncluded = Boolean(mealsData?.meal_included ?? fareObj?.meal_included);
+  const foodItems = mealsData?.food_items || [];
+  const flightMeals = mealsData?.flight_meals || [];
+  const targetCurrency = mealsData?.target_currency || fareObj?.currency || "INR";
   const availableSeats = fareObj?.available_seats ?? flight.available_seats ?? 0;
   const isWaitlisted = Number(availableSeats) === 0;
+
+  const hasMealsOrAddons = isMealIncluded || foodItems.length > 0 || flightMeals.length > 0;
 
   // Calculate total meal cost from paid add-ons
   const calculateMealTotal = () => {
@@ -107,11 +120,11 @@ export default function BookingCheckoutPage() {
 
   const mealTotal = calculateMealTotal();
 
-  // Dynamically define stepper steps based on complimentary meals availability
+  // Dynamically define stepper steps
   const steps = [
     { id: "passengers", title: "Passengers", subtitle: "Passenger Details" },
-    ...(isMealIncluded
-      ? [{ id: "free_meal", title: "Meal", subtitle: "Veg / Non-Veg Choice" }]
+    ...(hasMealsOrAddons
+      ? [{ id: "free_meal", title: "Meals & Menu", subtitle: "In-Flight Selection" }]
       : []),
     { id: "review", title: "Payment", subtitle: "Confirm Booking" },
   ];
@@ -119,33 +132,56 @@ export default function BookingCheckoutPage() {
   const currentStepObj = steps[currentStepIndex] || steps[0];
   const currentStepNumber = currentStepIndex + 1;
 
-  // Helper to adjust passengers list when seat count changes
-  const handlePassengerCountChange = (count) => {
-    if (count < 1) return;
-    if (count > passengers.length) {
-      const added = Array.from({ length: count - passengers.length }, () => ({
-        name: "",
-        age: "",
-        gender: "M",
-        phone_number: "",
-      }));
-      setPassengers([...passengers, ...added]);
-    } else {
-      setPassengers(passengers.slice(0, count));
-    }
-  };
-
-  const handlePassengerInput = (idx, field, val) => {
-    const updated = [...passengers];
-    updated[idx] = { ...updated[idx], [field]: val };
-    setPassengers(updated);
-  };
-
   const handleComplimentaryPrefChange = (paxIdx, prefKey) => {
     setComplimentaryPrefMap((prev) => ({
       ...prev,
       [paxIdx]: prefKey,
     }));
+    setSelectedMealsMap((prev) => ({
+      ...prev,
+      [paxIdx]: [],
+    }));
+  };
+
+  const handleMealSelection = (paxIdx, selectedItem) => {
+    if (!selectedItem || selectedItem.key === "NONE") {
+      setComplimentaryPrefMap((prev) => ({ ...prev, [paxIdx]: "NONE" }));
+      setSelectedMealsMap((prev) => ({ ...prev, [paxIdx]: [] }));
+      return;
+    }
+
+    const itemPrice = isMealIncluded ? 0 : Number(selectedItem.display_price || selectedItem.price || 0);
+
+    if (selectedItem.food_item_id) {
+      const pref = selectedItem.is_veg ? "VEG" : "NON_VEG";
+      setComplimentaryPrefMap((prev) => ({ ...prev, [paxIdx]: pref }));
+      setSelectedMealsMap((prev) => ({
+        ...prev,
+        [paxIdx]: [
+          {
+            food_item_id: selectedItem.food_item_id,
+            name: selectedItem.name,
+            price: itemPrice,
+            display_currency: selectedItem.display_currency || targetCurrency,
+            quantity: 1,
+          },
+        ],
+      }));
+    } else if (selectedItem.flight_meal_id) {
+      setComplimentaryPrefMap((prev) => ({ ...prev, [paxIdx]: "NON_VEG" }));
+      setSelectedMealsMap((prev) => ({
+        ...prev,
+        [paxIdx]: [
+          {
+            flight_meal_id: selectedItem.flight_meal_id,
+            name: selectedItem.name,
+            price: itemPrice,
+            display_currency: selectedItem.display_currency || targetCurrency,
+            quantity: 1,
+          },
+        ],
+      }));
+    }
   };
 
   // Step Validation & Navigation
@@ -280,12 +316,18 @@ export default function BookingCheckoutPage() {
             />
           )}
 
-          {/* STEP: Complimentary Meal Choice */}
-          {currentStepObj.id === "free_meal" && isMealIncluded && (
+          {/* STEP: Meal / Food Selection */}
+          {currentStepObj.id === "free_meal" && (
             <ComplimentaryMealCard
               passengers={passengers}
               selectedCabin={selectedCabin}
+              foodItems={foodItems}
+              flightMeals={flightMeals}
+              isMealIncluded={isMealIncluded}
+              targetCurrency={targetCurrency}
               preferencesMap={complimentaryPrefMap}
+              selectedMealsMap={selectedMealsMap}
+              onMealSelect={handleMealSelection}
               onPreferenceChange={handleComplimentaryPrefChange}
             />
           )}

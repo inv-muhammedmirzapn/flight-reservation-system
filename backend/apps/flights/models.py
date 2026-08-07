@@ -142,6 +142,13 @@ class FlightRoute(models.Model):
     handbag_weight_allowed_per_person = models.DecimalField(
         max_digits=6, decimal_places=2, default=7
     )
+    max_extra_baggage_kg_per_person = models.DecimalField(
+        max_digits=6, decimal_places=2, default=20.00
+    )
+    extra_baggage_price_per_kg = models.DecimalField(
+        max_digits=8, decimal_places=2, default=500.00
+    )
+    extra_baggage_currency = models.CharField(max_length=3, default="INR")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -153,6 +160,10 @@ class FlightRoute(models.Model):
             raise ValidationError({"baggage_weight_allowed_per_person": "Baggage weight cannot be negative."})
         if self.handbag_weight_allowed_per_person is not None and self.handbag_weight_allowed_per_person < 0:
             raise ValidationError({"handbag_weight_allowed_per_person": "Handbag weight cannot be negative."})
+        if self.max_extra_baggage_kg_per_person is not None and self.max_extra_baggage_kg_per_person < 0:
+            raise ValidationError({"max_extra_baggage_kg_per_person": "Max extra baggage weight cannot be negative."})
+        if self.extra_baggage_price_per_kg is not None and self.extra_baggage_price_per_kg < 0:
+            raise ValidationError({"extra_baggage_price_per_kg": "Extra baggage price per kg cannot be negative."})
 
     def save(self, *args, **kwargs):
         self.full_clean()

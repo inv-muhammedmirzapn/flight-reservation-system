@@ -124,6 +124,11 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
 
     def get_fares(self, obj):
         from .models import SeatStatus
+        from .services_currency import CurrencyService
+        request = self.context.get('request')
+        user = request.user if request else None
+        target_currency = CurrencyService.get_user_currency(user)
+
         has_seats = obj.seats.exists()
         fares = {}
         for fare in obj.fares.all():
@@ -134,9 +139,14 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
                 ).count()
             else:
                 real_available = fare.available_seats
+
+            display_price = CurrencyService.convert_amount(fare.price, fare.currency, target_currency)
+
             fares[fare.cabin_class] = {
                 'price': float(fare.price),
                 'currency': fare.currency,
+                'display_price': float(display_price),
+                'display_currency': target_currency,
                 'available_seats': real_available,
                 'fare_code': fare.fare_code,
                 'refund_type': fare.refund_type,
