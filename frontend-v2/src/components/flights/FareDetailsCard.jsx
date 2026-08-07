@@ -112,10 +112,10 @@ export default function FareDetailsCard({
       <button
         type="button"
         onClick={handleClick}
-        className="w-full mt-6 py-3 px-4 text-xs font-bold rounded-xl cursor-pointer transition-all duration-200 active:scale-95 btn-primary flex items-center justify-center gap-2"
+        className="w-full mt-6 py-3 px-4 text-sm font-bold rounded-xl cursor-pointer transition-all duration-200 active:scale-95 btn-primary flex items-center justify-center gap-2"
       >
         <span>{buttonText}</span>
-        <span className="material-symbols-outlined text-xs">arrow_forward</span>
+        <span className="material-symbols-outlined text-base">arrow_forward</span>
       </button>
     </div>
   );
