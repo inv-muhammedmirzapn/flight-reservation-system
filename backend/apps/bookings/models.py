@@ -18,7 +18,7 @@ class Booking(models.Model):
     )
     flight = models.ForeignKey(
         FlightInstance,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="bookings"
     )
     status = models.CharField(

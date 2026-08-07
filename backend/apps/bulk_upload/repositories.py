@@ -37,11 +37,13 @@ from .validators import (
 
 # ── Type-coercion helpers ──────────────────────────────────────────────────────
 
-def _dec(val, default=0) -> Decimal:
+def _dec(val, default=0):
+    if val in (None, "", "None"):
+        return Decimal(default) if default is not None else None
     try:
-        return Decimal(str(val)) if val not in (None, "", "None") else Decimal(default)
-    except (InvalidOperation, Exception):
-        return Decimal(default)
+        return Decimal(str(val))
+    except Exception:
+        return Decimal(default) if default is not None else None
 
 
 def _int(val, default=0) -> int:
