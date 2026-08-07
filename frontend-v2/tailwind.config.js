@@ -97,12 +97,12 @@ export default {
       },
 
       animation: {
-        "fade-in":      "fade-in 0.6s ease-out forwards",
+        "fade-in":      "fade-in 0.22s ease-out forwards",
         shimmer:        "shimmer 1.4s infinite",
         "spin-slow":    "spin 0.75s linear infinite",
         "spin-slow-sm": "spin 0.7s linear infinite",
-        "fade-in-fast": "fadeIn 0.15s ease",
-        "slide-up":     "slideUp 0.2s ease",
+        "fade-in-fast": "fadeIn 0.08s ease",
+        "slide-up":     "slideUp 0.11s ease",
       },
     },
   },

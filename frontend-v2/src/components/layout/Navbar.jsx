@@ -4,6 +4,8 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "@/store/authSlice";
 import { fetchNotifications } from "@/store/notificationsSlice";
+import toast from "react-hot-toast";
+import LogoutConfirmModal from "@/components/common/LogoutConfirmModal";
 
 // ── Admin navigation data ────────────────────────────────────────────────────
 const ADMIN_NAVIGATION = {
@@ -54,6 +56,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [openGroup, setOpenGroup] = useState(null);
   const profileMenuRef = useRef(null);
   const groupRefs = useRef({});
@@ -90,10 +93,26 @@ export default function Navbar() {
     i18n.changeLanguage(newLang);
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const closeProfileMenu = () => {
     setIsProfileMenuOpen(false);
-    navigate("/login");
+  };
+
+  const handleLogout = () => {
+    const targetPath = isAdmin ? "/admin/login" : "/login";
+    setShowLogoutModal(false);
+    closeProfileMenu();
+    navigate(targetPath);
+    dispatch(logout());
+    if (isAdmin) {
+      toast.success("Signed out successfully.", { position: "top-right" });
+    } else {
+      toast.success("You've been signed out.");
+    }
+  };
+
+  const openLogoutModal = () => {
+    closeProfileMenu();
+    setShowLogoutModal(true);
   };
 
   const getInitials = () => {
@@ -114,7 +133,8 @@ export default function Navbar() {
   const isAdminGroupActive = (group) => group.links.some((l) => location.pathname.startsWith(l.href));
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/20 backdrop-blur-md border-b border-white/10 shadow-sm transition-all duration-300 w-[90%] max-w-7xl rounded-b-3xl mx-auto">
+    <>
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/20 backdrop-blur-md border-b border-white/10 shadow-sm transition-all duration-300 w-[90%] max-w-7xl rounded-b-3xl mx-auto">
       <div className="max-w-7xl w-full mx-auto px-8 h-[68px] flex items-center justify-between">
 
         {/* Left: Logo */}
@@ -186,7 +206,7 @@ export default function Navbar() {
 
                     {/* Dropdown panel */}
                     {isOpen && (
-                      <div className="absolute top-[calc(100%+10px)] left-0 min-w-[200px] bg-white/97 backdrop-blur-xl border border-slate-200/60 shadow-xl rounded-2xl py-2 z-50 animate-fade-in">
+                      <div className="absolute top-[calc(100%+10px)] left-0 min-w-[200px] bg-white backdrop-blur-xl border border-slate-200/60 shadow-2xl rounded-2xl py-2 z-[9999] animate-fade-in">
                         {group.links.map((link) => {
                           const active = location.pathname === link.href;
                           return (
@@ -288,7 +308,7 @@ export default function Navbar() {
               {/* User Avatar Circle Badge */}
               <button
                 type="button"
-                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setConfirmLogout(false); }}
                 className="w-10 h-10 rounded-full bg-[#ffd600] text-black font-bold text-sm flex items-center justify-center shadow-[0_0_16px_rgba(255,214,0,0.85)] active:scale-95 transition-all cursor-pointer select-none"
               >
                 {getInitials()}
@@ -296,7 +316,7 @@ export default function Navbar() {
 
               {/* Dropdown Menu */}
               {isProfileMenuOpen && (
-                <div className="absolute right-0 top-[72px] w-52 bg-white backdrop-blur-xl border border-slate-200/60 shadow-xl rounded-2xl p-2.5 animate-fade-in z-50">
+                <div className="absolute right-0 top-[72px] w-52 bg-white backdrop-blur-xl border border-slate-200/60 shadow-2xl rounded-2xl p-2.5 animate-fade-in z-[9999]">
                   <div className="px-3.5 py-2 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-800 truncate">
                       {profile?.username || decodedToken?.username || (isAdmin ? "Admin" : "Passenger")}
@@ -325,13 +345,13 @@ export default function Navbar() {
                     </div>
                   )}
 
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left"
-                  >
-                    <span className="material-symbols-outlined text-sm">logout</span>
-                    Sign Out
-                  </button>
+                    <button
+                      onClick={openLogoutModal}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left"
+                    >
+                      <span className="material-symbols-outlined text-sm">logout</span>
+                      Sign Out
+                    </button>
                 </div>
               )}
 
@@ -349,5 +369,15 @@ export default function Navbar() {
 
       </div>
     </nav>
+
+    {/* ── Logout Confirmation Modal ────────────────────────────────────────── */}
+    {showLogoutModal && (
+      <LogoutConfirmModal
+        isAdmin={isAdmin}
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogoutModal(false)}
+      />
+    )}
+  </>
   );
 }

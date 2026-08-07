@@ -62,7 +62,10 @@ export default function LoginPage() {
 
     try {
       const resultAction = await dispatch(
-        loginUser({ credentials: { username: formData.username, password: formData.password } })
+        loginUser({
+          credentials: { username: formData.username, password: formData.password },
+          requireCustomer: true,
+        })
       );
 
       if (loginUser.fulfilled.match(resultAction)) {

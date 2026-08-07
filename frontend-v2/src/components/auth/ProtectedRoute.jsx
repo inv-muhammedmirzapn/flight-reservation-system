@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children, adminOnly = false, guestOnly 
 
   // Unauthenticated user trying to access protected pages
   if (!isAuthenticated && !guestOnly) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={adminOnly ? "/admin/login" : "/login"} state={{ from: location }} replace />;
   }
 
   // Non-admin trying to access admin-only pages

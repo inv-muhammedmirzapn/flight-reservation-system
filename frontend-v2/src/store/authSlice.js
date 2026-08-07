@@ -64,7 +64,7 @@ export const loginUser = createAsyncThunk(
         return rejectWithValue('Access Denied: Administrator privileges required.');
       }
       if (requireCustomer && isAdmin) {
-        return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
+        return rejectWithValue('Invalid username or password');
       }
 
       if (data.access) localStorage.setItem('access_token', data.access);
@@ -93,7 +93,7 @@ export const googleLoginUser = createAsyncThunk(
       const decoded = data.access ? decodeToken(data.access) : null;
       const isAdmin = decoded?.is_superuser || data.role === 'ADMIN';
       if (requireCustomer && isAdmin) {
-        return rejectWithValue('Admins cannot log in here. Please use the Admin Portal.');
+        return rejectWithValue('Invalid username or password');
       }
 
       if (data.access) localStorage.setItem('access_token', data.access);
