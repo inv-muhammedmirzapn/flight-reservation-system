@@ -5,6 +5,7 @@ import { updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
 import CustomSelect from "@/components/ui/CustomSelect";
 import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
+import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
 import countriesData from "../../../resources/countries.json";
 
 export default function UserProfilePage() {
@@ -17,6 +18,7 @@ export default function UserProfilePage() {
   const [saving, setSaving] = useState(false);
   const [isDobModalOpen, setIsDobModalOpen] = useState(false);
   const [dobError, setDobError] = useState("");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -242,6 +244,8 @@ export default function UserProfilePage() {
     );
   }
 
+  const hasUsablePassword = profile?.has_usable_password !== false;
+
   return (
     <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
       {/* Sky-themed Soft Ambient Aesthetic Blobs */}
@@ -258,14 +262,24 @@ export default function UserProfilePage() {
         {/* Top-Right Edit / Action Buttons */}
         <div className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2">
           {!isEditing ? (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              <span>Edit</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">key</span>
+                <span className="hidden sm:inline">{hasUsablePassword ? "Update Password" : "Set Password"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">edit</span>
+                <span>Edit</span>
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -545,6 +559,12 @@ export default function UserProfilePage() {
           }
           setIsDobModalOpen(false);
         }}
+      />
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        hasUsablePassword={hasUsablePassword}
       />
     </div>
   );

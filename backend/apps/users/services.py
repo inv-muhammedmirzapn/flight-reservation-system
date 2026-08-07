@@ -147,11 +147,13 @@ def reset_password(email: str, otp: str, new_password: str) -> bool:
 def change_password(user: User, old_password: str, new_password: str) -> bool:
     """
     Verify *old_password* and update to *new_password*.
+    If user does not have a usable password, skip old_password check.
 
     Returns True on success, False if old_password is wrong.
     """
-    if not user.check_password(old_password):
-        return False
+    if user.has_usable_password():
+        if not user.check_password(old_password):
+            return False
     user.set_password(new_password)
     user.save()
     return True
