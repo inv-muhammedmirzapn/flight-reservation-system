@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '@/store/authSlice';
@@ -9,29 +9,56 @@ export default function AdminLoginPage() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ username: '', password: '' });
-  const [localError, setLocalError] = useState('');
+  const [touched, setTouched] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setLocalError('');
   };
+
+  const handleBlur = (e) => {
+    setTouched((prev) => ({ ...prev, [e.target.name]: true }));
+  };
+
+  // Keystroke validation
+  const getFieldError = (name) => {
+    if (!touched[name] && !formData[name]) return "";
+    if (name === "username" && !formData.username.trim()) {
+      return "Username is required";
+    }
+    if (name === "password" && !formData.password) {
+      return "Password is required";
+    }
+    return "";
+  };
+
+  const usernameError = getFieldError("username");
+  const passwordError = getFieldError("password");
+
+  const isValid = formData.username.trim() !== "" && formData.password !== "" && !usernameError && !passwordError;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.username.trim() || !formData.password.trim()) {
-      const msg = 'Please enter both username and password.';
-      setLocalError(msg);
-      toast.error(msg);
+    setTouched({ username: true, password: true });
+
+    if (!isValid) {
+      if (!formData.username.trim()) {
+        usernameRef.current?.focus();
+      } else if (!formData.password) {
+        passwordRef.current?.focus();
+      }
       return;
     }
 
     const result = await dispatch(loginUser({ credentials: formData, requireAdmin: true }));
 
-    if (result.meta.requestStatus === 'fulfilled') {
+    if (loginUser.fulfilled.match(result)) {
       toast.success('Welcome back, Admin. Access granted.');
       navigate('/admin/overview');
     } else {
@@ -40,100 +67,105 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50/40 via-slate-50 to-yellow-100/20 px-4 py-12 sm:px-6 lg:px-8 overflow-y-auto">
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/50">
-        
-        {/* Brand logo & workspace title above the login form */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <img src="/updated%20logo.png" alt="Passenger Logo" className="h-11 mb-3 object-contain" />
+    <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {t("admin.auth.loginTitle", "Admin Login")}
-          </h1>
-        </div>
+      {/* Sky-themed Soft Ambient Aesthetic Blobs */}
+      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-10 -right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-10 right-1/4 w-72 h-72 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
 
-        {(localError || error) && (
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold bg-rose-50 border border-rose-100 text-rose-700 mb-5 animate-fade-in">
-            <span className="material-symbols-outlined text-sm">error</span>
-            <span>{localError || error}</span>
-          </div>
-        )}
+      {/* Header */}
+      <div className="relative z-10 text-center mb-4">
+        <h2 className="text-xl font-bold text-slate-800">{t("admin.auth.loginTitle", "Admin Login")}</h2>
+      </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          
-          {/* Username Field */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="username" className="text-[11px] font-bold tracking-wider text-slate-600 uppercase ml-1">
+      {/* Container Card */}
+      <div className="relative z-10 w-full max-w-sm rounded-3xl p-8 sm:px-10 animate-fade-in plain-card">
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Username Input */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
               {t("admin.auth.usernameLabel", "Admin Username")}
             </label>
-            <div className="relative flex items-center">
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                value={formData.username}
-                onChange={handleChange}
-                placeholder={t("admin.auth.usernamePlaceholder", "Enter admin username")}
-                autoComplete="username"
-                className="w-full bg-slate-50 border border-slate-200/80 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-400/20 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all outline-none"
-              />
-            </div>
+            <input
+              ref={usernameRef}
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder={t("admin.auth.usernamePlaceholder", "Enter admin username")}
+              className="input-field"
+            />
+            {usernameError && (
+              <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                <p className="field-error ml-2">{usernameError}</p>
+              </div>
+            )}
           </div>
 
-          {/* Password Field */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-[11px] font-bold tracking-wider text-slate-600 uppercase ml-1">
+          {/* Password Input */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-2 ml-2">
               {t("admin.auth.passwordLabel", "Password")}
             </label>
             <div className="relative flex items-center">
               <input
-                id="password"
-                name="password"
+                ref={passwordRef}
                 type={showPassword ? "text" : "password"}
-                required
+                name="password"
                 value={formData.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder={t("admin.auth.passwordPlaceholder", "Enter password")}
-                autoComplete="current-password"
-                className="w-full bg-slate-50 border border-slate-200/80 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-400/20 rounded-2xl px-4 py-3 text-sm font-medium text-slate-800 placeholder-slate-400 transition-all outline-none pr-11"
+                className="input-field pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-                className="absolute right-3.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none flex items-center justify-center p-1"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3.5 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer select-none"
               >
-                <span className="material-symbols-outlined text-lg">
+                <span className="material-symbols-outlined text-sm">
                   {showPassword ? "visibility_off" : "visibility"}
                 </span>
               </button>
             </div>
+            {passwordError && (
+              <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                <p className="field-error ml-2">{passwordError}</p>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}
-          <button
-            disabled={loading}
-            className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-500 disabled:opacity-70 disabled:cursor-not-allowed text-slate-900 font-bold text-sm transition-all duration-200 shadow-md shadow-amber-400/20 active:scale-[0.98] mt-3 cursor-pointer"
-            type="submit"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 rounded-full animate-spin border-2 border-black/10 border-t-black" />
-                <span>{t("admin.auth.authenticating", "Authenticating...")}</span>
-              </>
-            ) : (
-              t("admin.auth.accessWorkspace", "Access Workspace")
-            )}
-          </button>
+          <div className="flex justify-center pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary px-5 py-2 rounded-xl text-sm"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin inline-block align-text-bottom mr-2" />
+                  {t("admin.auth.authenticating", "Authenticating...")}
+                </>
+              ) : (
+                t("admin.auth.accessWorkspace", "Access Workspace")
+              )}
+            </button>
+          </div>
         </form>
 
-        <div className="text-center text-[11px] text-slate-400 mt-8 tracking-wide font-medium">
-          {t("footer.copyright", { year: 2026 }).replace("All rights reserved.", "Internal Operations")}
+        <div className="mt-8 text-center pt-5 border-t border-slate-100">
+          <div className="text-center text-[11px] text-slate-400 tracking-wide font-medium">
+            {t("footer.copyright", { year: 2026 }).replace("All rights reserved.", "Internal Operations")}
+          </div>
         </div>
+
       </div>
     </div>
   );
 }
-
