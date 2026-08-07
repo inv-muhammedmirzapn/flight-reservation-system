@@ -135,7 +135,7 @@ export default function DatePickerModal({
   const todayStr = toDateString(new Date());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
       
       {/* Backdrop click closer */}
       <div className="absolute inset-0" onClick={onClose} />

@@ -68,7 +68,7 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
     <>
       {/* Backdrop Overlay */}
       <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 transition-opacity duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-[110] transition-opacity duration-300 ease-in-out ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -76,7 +76,7 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
 
       {/* Sliding Drawer Panel from Left */}
       <div
-        className={`fixed top-0 left-0 h-full w-80 sm:w-96 max-w-[85vw] plain-card rounded-r-3xl overflow-hidden shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out transform ${
+        className={`fixed top-0 left-0 h-full w-80 sm:w-96 max-w-[85vw] plain-card rounded-r-3xl overflow-hidden shadow-2xl z-[110] flex flex-col transition-transform duration-300 ease-out transform ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
