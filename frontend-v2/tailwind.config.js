@@ -26,6 +26,7 @@ export default {
         // ── Admin panel tokens ──────────────────────────────────────────
         "admin-accent":       "#ffd700",
         "admin-accent-dark":  "#705d00",
+        "admin-accent-darker": "#5a4b00",
         "admin-bg":           "#f5f3ee",
         "admin-surface":      "rgba(255,255,255,0.80)",
         "admin-border":       "rgba(0,0,0,0.07)",

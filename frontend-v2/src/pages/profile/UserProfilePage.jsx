@@ -342,9 +342,8 @@ export default function UserProfilePage() {
                   readOnly={!isEditing}
                   value={isEditing ? formData.first_name : (profile?.first_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
               <div>
@@ -357,9 +356,8 @@ export default function UserProfilePage() {
                   readOnly={!isEditing}
                   value={isEditing ? formData.last_name : (profile?.last_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
             </div>
@@ -398,9 +396,8 @@ export default function UserProfilePage() {
                     <button
                       type="button"
                       onClick={() => setIsDobModalOpen(true)}
-                      className={`input-field flex items-center justify-between text-left cursor-pointer w-full border ${
-                        (dobError || getDobError(formData.date_of_birth)) ? "border-rose-400 focus:border-rose-500" : "border-slate-200"
-                      }`}
+                      className={`input-field flex items-center justify-between text-left cursor-pointer w-full border ${(dobError || getDobError(formData.date_of_birth)) ? "border-rose-400 focus:border-rose-500" : "border-slate-200"
+                        }`}
                     >
                       <span className={formData.date_of_birth ? "text-slate-800 font-semibold text-sm" : "text-slate-400 text-sm"}>
                         {formData.date_of_birth ? formatDate(formData.date_of_birth) : "Select DOB"}
@@ -442,9 +439,8 @@ export default function UserProfilePage() {
                 readOnly={!isEditing}
                 value={isEditing ? formData.city : (profile?.city || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "focus:border-slate-400"
-                }`}
+                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  }`}
               />
             </div>
             <div>
@@ -457,9 +453,8 @@ export default function UserProfilePage() {
                 readOnly={!isEditing}
                 value={isEditing ? formData.state : (profile?.state || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "focus:border-slate-400"
-                }`}
+                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  }`}
               />
             </div>
             <div>
@@ -516,9 +511,8 @@ export default function UserProfilePage() {
                     }))
                   }
                   placeholder="Enter phone number"
-                  className={`input-field flex-1 font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field flex-1 font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
             </div>

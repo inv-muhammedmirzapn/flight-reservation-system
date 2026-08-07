@@ -25,16 +25,25 @@ const validateForm = (form) => {
 
 const THUNKS = { fetchList: fetchAircraftModels, fetchDetail: fetchAircraftModelDetail, add: addAircraftModel, update: updateAircraftModel, remove: removeAircraftModel };
 
+const CONFIG = {
+  title: 'Aircraft Models',
+  entityName: 'aircraftModel',
+  columns: COLUMNS,
+  fields: FIELDS,
+  emptyForm: EMPTY_FORM,
+  validateForm,
+  thunks: THUNKS,
+  getDeleteDetails: (item) => {
+    if (!item) return null;
+    const details = {};
+    if (item.manufacturer || item.model_name) {
+      if (item.manufacturer) details['MANUFACTURER'] = item.manufacturer;
+      if (item.model_name) details['MODEL NAME'] = item.model_name;
+    }
+    return details;
+  }
+};
+
 export default function AircraftModelsPage() {
-  return (
-    <AdminCrudPage
-      title="Aircraft Models"
-      entityName="aircraftModel"
-      columns={COLUMNS}
-      fields={FIELDS}
-      emptyForm={EMPTY_FORM}
-      validateForm={validateForm}
-      thunks={THUNKS}
-    />
-  );
+  return <AdminCrudPage config={CONFIG} />;
 }

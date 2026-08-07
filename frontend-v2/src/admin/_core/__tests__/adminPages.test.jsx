@@ -123,12 +123,14 @@ describe('AdminCrudPage', () => {
     render(
       <Wrapper store={store}>
         <AdminCrudPage
-          title="Countries"
-          entityName="country"
-          columns={COLUMNS}
-          fields={FIELDS}
-          emptyForm={EMPTY_FORM}
-          thunks={fakeThunks}
+          config={{
+            title: 'Countries',
+            entityName: 'country',
+            columns: COLUMNS,
+            fields: FIELDS,
+            emptyForm: EMPTY_FORM,
+            thunks: fakeThunks,
+          }}
         />
       </Wrapper>
     );
@@ -140,12 +142,14 @@ describe('AdminCrudPage', () => {
     render(
       <Wrapper store={store}>
         <AdminCrudPage
-          title="Countries"
-          entityName="country"
-          columns={COLUMNS}
-          fields={FIELDS}
-          emptyForm={EMPTY_FORM}
-          thunks={fakeThunks}
+          config={{
+            title: 'Countries',
+            entityName: 'country',
+            columns: COLUMNS,
+            fields: FIELDS,
+            emptyForm: EMPTY_FORM,
+            thunks: fakeThunks,
+          }}
         />
       </Wrapper>
     );
@@ -157,12 +161,14 @@ describe('AdminCrudPage', () => {
     render(
       <Wrapper store={store}>
         <AdminCrudPage
-          title="Countries"
-          entityName="country"
-          columns={COLUMNS}
-          fields={FIELDS}
-          emptyForm={EMPTY_FORM}
-          thunks={fakeThunks}
+          config={{
+            title: 'Countries',
+            entityName: 'country',
+            columns: COLUMNS,
+            fields: FIELDS,
+            emptyForm: EMPTY_FORM,
+            thunks: fakeThunks,
+          }}
         />
       </Wrapper>
     );
@@ -177,12 +183,14 @@ describe('AdminCrudPage', () => {
     render(
       <Wrapper store={store}>
         <AdminCrudPage
-          title="Countries"
-          entityName="country"
-          columns={COLUMNS}
-          fields={FIELDS}
-          emptyForm={EMPTY_FORM}
-          thunks={fakeThunks}
+          config={{
+            title: 'Countries',
+            entityName: 'country',
+            columns: COLUMNS,
+            fields: FIELDS,
+            emptyForm: EMPTY_FORM,
+            thunks: fakeThunks,
+          }}
         />
       </Wrapper>
     );

@@ -8,6 +8,7 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import toast from 'react-hot-toast';
 import { Download, RefreshCw, X } from 'lucide-react';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 const COLUMNS = [
   { key: 'iata_code', label: 'IATA Code' },
@@ -76,7 +77,7 @@ export default function AirportsPage() {
       // reload lists
       dispatch(fetchAirports({ page: 1, page_size: 10 }));
     } catch (err) {
-      toast.error(err || 'Failed to import airports.');
+      toast.error(getErrorMessage(err, 'Failed to import airports.'));
     } finally {
       setImporting(false);
     }
@@ -92,16 +93,31 @@ export default function AirportsPage() {
     </button>
   );
 
+  const CONFIG = {
+    title: 'Airports',
+    entityName: 'airport',
+    columns: COLUMNS,
+    fields: FIELDS,
+    emptyForm: EMPTY_FORM,
+    validateForm,
+    thunks: THUNKS,
+    getDeleteDetails: (item) => {
+      if (!item) return null;
+      const details = {};
+      if (item.iata_code) {
+        details['AIRPORT NAME'] = item.airport_name || item.name;
+        details['IATA CODE'] = item.iata_code;
+        if (item.city) details['CITY'] = item.city;
+        if (item.country_name) details['COUNTRY'] = item.country_name;
+      }
+      return details;
+    }
+  };
+
   return (
     <>
       <AdminCrudPage
-        title="Airports"
-        entityName="airport"
-        columns={COLUMNS}
-        fields={FIELDS}
-        emptyForm={EMPTY_FORM}
-        validateForm={validateForm}
-        thunks={THUNKS}
+        config={CONFIG}
         pageActions={pageActions}
       />
 

@@ -3,17 +3,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { authAPI } from "@/services/auth-service/authService";
 import { extractErrorMessage } from "@/services/apiClient";
 import toast from "react-hot-toast";
-
-// ---------------------------------------------------------------------------
-// Password rules (same as RegisterPage)
-// ---------------------------------------------------------------------------
-const PASSWORD_RULES = [
-  { id: "length",    label: "At least 8 characters",              test: (p) => p.length >= 8 },
-  { id: "uppercase", label: "At least 1 uppercase letter (A-Z)",  test: (p) => /[A-Z]/.test(p) },
-  { id: "lowercase", label: "At least 1 lowercase letter (a-z)",  test: (p) => /[a-z]/.test(p) },
-  { id: "digit",     label: "At least 1 digit (0-9)",             test: (p) => /[0-9]/.test(p) },
-  { id: "special",   label: "At least 1 special character (!@#$%...)", test: (p) => /[!@#$%^&*()\\.,'":{}|<>]/.test(p) },
-];
+import { PASSWORD_RULES } from "@/utils/validators";
 
 const RESEND_COOLDOWN = 60; // seconds
 
@@ -45,9 +35,9 @@ function PageShell({ title, children }) {
 // Step 1 — Request OTP
 // ---------------------------------------------------------------------------
 function RequestStep({ onSuccess }) {
-  const [email, setEmail]       = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,17 +113,17 @@ function RequestStep({ onSuccess }) {
 function ResetStep({ email, onBack }) {
   const navigate = useNavigate();
 
-  const [otp, setOtp]                         = useState("");
-  const [password, setPassword]               = useState("");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword]       = useState(false);
-  const [showConfirm, setShowConfirm]         = useState(false);
-  const [loading, setLoading]                 = useState(false);
-  const [resending, setResending]             = useState(false);
-  const [cooldown, setCooldown]               = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-  const [error, setError]                     = useState("");
-  const [touched, setTouched]                 = useState({ password: false, confirm: false });
+  const [error, setError] = useState("");
+  const [touched, setTouched] = useState({ password: false, confirm: false });
 
   // Countdown timer
   useEffect(() => {
@@ -294,9 +284,8 @@ function ResetStep({ email, onBack }) {
               {passwordRules.map((rule) => (
                 <div
                   key={rule.id}
-                  className={`flex items-center gap-2 transition-colors duration-200 ${
-                    rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
-                  }`}
+                  className={`flex items-center gap-2 transition-colors duration-200 ${rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
+                    }`}
                 >
                   <span className={`material-symbols-outlined text-sm transition-all ${rule.met ? "text-emerald-500" : "text-slate-300"}`}>
                     {rule.met ? "check_circle" : "radio_button_unchecked"}

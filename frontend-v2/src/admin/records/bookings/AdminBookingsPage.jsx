@@ -4,6 +4,7 @@ import { Search, AlertCircle, X, Eye, Plane, User as UserIcon, CreditCard, Calen
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import '@/admin/_core/styles/admin.css';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 const STATUS_COLORS = {
   CONFIRMED: '#22c55e',
@@ -36,7 +37,7 @@ export default function AdminBookingsPage() {
       setBookings(data.results || data);
       setCount(data.count || (data.results ? data.results.length : data.length));
     } catch (err) {
-      setError(String(err.message));
+      setError(getErrorMessage(err, 'Failed to load bookings.'));
     } finally {
       setLoading(false);
     }

@@ -28,17 +28,17 @@ function TailwindDropdown({ value, onChange, options, placeholder, disabled, cla
   return (
     <div className="relative w-full" ref={ref}>
       <div
-        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-[#705d00] bg-white ring-2 ring-[#705d00]/10' : ''}`}
+        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-admin-accent-dark bg-white ring-2 ring-admin-accent-dark/10' : ''}`}
         onClick={() => !disabled && setOpen(!open)}
       >
         <span className="truncate">{display}</span>
-        <ChevronDown size={14} className={`text-[#5e5e5e] shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-admin-muted shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </div>
 
       {open && (
         <div className="absolute top-[calc(100%+6px)] left-0 w-full bg-white/95 backdrop-blur-xl border border-black/10 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-50 max-h-60 overflow-y-auto py-1.5">
           <div
-            className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${!value ? 'bg-[#ffd700]/20 text-[#705d00] font-bold' : 'text-[#1a1c1d] hover:bg-black/5 font-medium'}`}
+            className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${!value ? 'bg-admin-accent/20 text-admin-accent-dark font-bold' : 'text-admin-ink hover:bg-black/5 font-medium'}`}
             onClick={() => { onChange(''); setOpen(false); }}
           >
             {placeholder}
@@ -46,7 +46,7 @@ function TailwindDropdown({ value, onChange, options, placeholder, disabled, cla
           {options.map(opt => (
             <div
               key={opt.value}
-              className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${String(value) === String(opt.value) ? 'bg-[#ffd700]/20 text-[#705d00] font-bold' : 'text-[#1a1c1d] hover:bg-black/5 font-medium'}`}
+              className={`px-3 py-2 text-[13px] cursor-pointer transition-colors ${String(value) === String(opt.value) ? 'bg-admin-accent/20 text-admin-accent-dark font-bold' : 'text-admin-ink hover:bg-black/5 font-medium'}`}
               onClick={() => { onChange(opt.value); setOpen(false); }}
             >
               {opt.label}
@@ -121,11 +121,11 @@ function TailwindDatePicker({ value, onChange, min, max, disabled, className, pl
   return (
     <div className="relative w-full" ref={ref}>
       <div
-        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-[#705d00] bg-white ring-2 ring-[#705d00]/10' : ''}`}
+        className={`${className} flex items-center justify-between cursor-pointer ${open ? 'border-admin-accent-dark bg-white ring-2 ring-admin-accent-dark/10' : ''}`}
         onClick={() => !disabled && setOpen(!open)}
       >
         <span className="truncate">{displayValue}</span>
-        <Calendar size={14} className="text-[#5e5e5e] shrink-0" />
+        <Calendar size={14} className="text-admin-muted shrink-0" />
       </div>
 
       {open && (
@@ -136,9 +136,9 @@ function TailwindDatePicker({ value, onChange, min, max, disabled, className, pl
               onClick={(e) => { e.stopPropagation(); setViewDate(new Date(year, month - 1, 1)); }}
               className="p-1 hover:bg-black/5 rounded-md transition-colors cursor-pointer"
             >
-              <ChevronLeft size={16} className="text-[#1a1c1d]" />
+              <ChevronLeft size={16} className="text-admin-ink" />
             </button>
-            <div className="text-sm font-bold text-[#1a1c1d]">
+            <div className="text-sm font-bold text-admin-ink">
               {new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })}
             </div>
             <button 
@@ -146,13 +146,13 @@ function TailwindDatePicker({ value, onChange, min, max, disabled, className, pl
               onClick={(e) => { e.stopPropagation(); setViewDate(new Date(year, month + 1, 1)); }}
               className="p-1 hover:bg-black/5 rounded-md transition-colors cursor-pointer"
             >
-              <ChevronRight size={16} className="text-[#1a1c1d]" />
+              <ChevronRight size={16} className="text-admin-ink" />
             </button>
           </div>
           
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-              <div key={d} className="text-[10px] font-bold text-[#5e5e5e] uppercase">{d}</div>
+              <div key={d} className="text-[10px] font-bold text-admin-muted uppercase">{d}</div>
             ))}
           </div>
           
@@ -171,8 +171,8 @@ function TailwindDatePicker({ value, onChange, min, max, disabled, className, pl
                   className={`
                     h-7 w-full rounded-md flex items-center justify-center text-[13px] font-medium transition-colors
                     ${disabledDay ? 'text-black/20 cursor-not-allowed' : 'cursor-pointer'}
-                    ${selected ? 'bg-[#ffd700] text-[#705d00] font-bold shadow-sm' : ''}
-                    ${!disabledDay && !selected ? 'text-[#1a1c1d] hover:bg-black/5' : ''}
+                    ${selected ? 'bg-admin-accent text-admin-accent-dark font-bold shadow-sm' : ''}
+                    ${!disabledDay && !selected ? 'text-admin-ink hover:bg-black/5' : ''}
                   `}
                 >
                   {day}
@@ -186,7 +186,7 @@ function TailwindDatePicker({ value, onChange, min, max, disabled, className, pl
               <button 
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onChange(''); setOpen(false); }}
-                className="text-xs font-bold text-[#b91c1c] hover:bg-[#b91c1c]/10 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+                className="text-xs font-bold text-status-red hover:bg-status-red/10 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
               >
                 Clear Filter
               </button>
@@ -317,7 +317,7 @@ export default function AnalyticsFilterBar({ onFilterChange, disabled = false })
         <button
           onClick={reset}
           disabled={disabled}
-          className="inline-flex font-bold py-2 px-3.5 rounded-admin-sm border border-black/[0.08] cursor-pointer bg-black/[0.06] text-[#1a1c1d] font-ui text-sm transition-colors duration-150 hover:bg-black/10 flex items-center gap-1.5 self-end"
+          className="inline-flex font-bold py-2 px-3.5 rounded-admin-sm border border-black/[0.08] cursor-pointer bg-black/[0.06] text-admin-ink font-ui text-sm transition-colors duration-150 hover:bg-black/10 flex items-center gap-1.5 self-end"
         >
           <RotateCcw size={12} /> Reset
         </button>

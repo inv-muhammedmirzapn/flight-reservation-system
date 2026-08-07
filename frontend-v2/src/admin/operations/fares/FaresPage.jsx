@@ -136,17 +136,31 @@ export default function FaresPage() {
     </div>
   ) : null;
 
+  const CONFIG = {
+    title: 'Fares',
+    breadcrumb,
+    entityName: 'fare',
+    columns: COLUMNS,
+    fields: FIELDS,
+    emptyForm: initialForm,
+    validateForm,
+    thunks: modifiedThunks,
+    getDeleteDetails: (item) => {
+      if (!item) return null;
+      const details = {};
+      if (item.fare_code) {
+        details['FARE CODE'] = item.fare_code;
+        if (item.cabin_class) details['CABIN CLASS'] = item.cabin_class;
+        if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
+      }
+      return details;
+    }
+  };
+
   return (
     <>
       <AdminCrudPage
-        title="Fares"
-        breadcrumb={breadcrumb}
-        entityName="fare"
-        columns={COLUMNS}
-        fields={FIELDS}
-        emptyForm={initialForm}
-        validateForm={validateForm}
-        thunks={modifiedThunks}
+        config={CONFIG}
         banner={flowBanner}
         saveAndNextUrl={instanceParam && inFlow ? `/admin/operations/seat-map?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
       />

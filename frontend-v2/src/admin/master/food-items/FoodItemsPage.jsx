@@ -65,16 +65,24 @@ export default function FoodItemsPage() {
     { name: 'image', label: 'Image (optional)', type: 'file', fullWidth: true },
   ];
 
-  return (
-    <AdminCrudPage
-      title="Food Items"
-      entityName="foodItem"
-      columns={COLUMNS}
-      fields={FIELDS}
-      emptyForm={EMPTY_FORM}
-      validateForm={validateForm}
-      onBeforeSubmit={onBeforeSubmit}
-      thunks={THUNKS}
-    />
-  );
+  const CONFIG = {
+    title: 'Food Items',
+    entityName: 'foodItem',
+    columns: COLUMNS,
+    fields: FIELDS,
+    emptyForm: EMPTY_FORM,
+    validateForm,
+    onBeforeSubmit,
+    thunks: THUNKS,
+    getDeleteDetails: (item) => {
+      if (!item) return null;
+      const details = {};
+      if (item.name || item.item_name) details['ITEM NAME'] = item.name || item.item_name;
+      if (item.airline_name) details['AIRLINE'] = item.airline_name;
+      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
+      return details;
+    }
+  };
+
+  return <AdminCrudPage config={CONFIG} />;
 }
