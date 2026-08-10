@@ -61,6 +61,10 @@ export const flightsAPI = {
     return fetchWithAuth(`/flights/${instanceId}/meals/${query}`);
   },
 
+  getSeats: async (instanceId) => {
+    return fetchWithAuth(`/flights/v2/seats/?flight_instance=${instanceId}`);
+  },
+
   // Admin V2 CRUD Operations
   create: async (flightData) => {
     return fetchWithAuth('/flights/v2/', {

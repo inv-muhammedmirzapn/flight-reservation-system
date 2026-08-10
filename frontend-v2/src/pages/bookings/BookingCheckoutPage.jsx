@@ -7,6 +7,7 @@ import FlightItinerarySummaryCard from "@/components/flights/FlightItinerarySumm
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
 import CheckoutStepper from "@/components/bookings/CheckoutStepper";
 import BookingReviewCard from "@/components/bookings/BookingReviewCard";
+import SeatSelectionCard from "@/components/bookings/SeatSelectionCard";
 import ComplimentaryMealCard from "@/components/meals/ComplimentaryMealCard";
 import PassengerListSection from "@/components/flights/PassengerListSection";
 import toast from "react-hot-toast";
@@ -42,6 +43,9 @@ export default function BookingCheckoutPage() {
 
   // Paid add-on meals mapping state: { [paxIdx]: [{ food_item_id, flight_meal_id, flight_leg_id, quantity, price, name }] }
   const [selectedMealsMap, setSelectedMealsMap] = useState({});
+
+  // Selected seats array
+  const [selectedSeats, setSelectedSeats] = useState([]);
 
   useEffect(() => {
     async function loadCheckoutData() {
@@ -106,10 +110,14 @@ export default function BookingCheckoutPage() {
   };
 
   const mealTotal = calculateMealTotal();
+  const seatTotal = selectedSeats.reduce((sum, seat) => sum + Number(seat.seat_fee || 0), 0);
 
   // Dynamically define stepper steps based on complimentary meals availability
   const steps = [
     { id: "passengers", title: "Passengers", subtitle: "Passenger Details" },
+    ...(!isWaitlisted
+      ? [{ id: "seat_selection", title: "Seats", subtitle: "Choose your seat" }]
+      : []),
     ...(isMealIncluded
       ? [{ id: "free_meal", title: "Meal", subtitle: "Veg / Non-Veg Choice" }]
       : []),
@@ -163,6 +171,12 @@ export default function BookingCheckoutPage() {
         }
       }
     }
+    if (currentStepObj.id === "seat_selection") {
+      if (selectedSeats.length > 0 && selectedSeats.length !== passengers.length) {
+        toast.error(`Please select exactly ${passengers.length} seats, or leave it empty for auto-assignment.`);
+        return false;
+      }
+    }
     return true;
   };
 
@@ -200,6 +214,7 @@ export default function BookingCheckoutPage() {
           gender: genderCode,
           phone_number: p.phone_number?.trim() || "",
           meal_preference: mealPref,
+          seat_number: selectedSeats[idx]?.seat_number || "",
           selected_meals: paidMeals.map((m) => ({
             food_item_id: m.food_item_id || null,
             flight_meal_id: m.flight_meal_id || null,
@@ -280,6 +295,17 @@ export default function BookingCheckoutPage() {
             />
           )}
 
+          {/* STEP: Seat Selection */}
+          {currentStepObj.id === "seat_selection" && !isWaitlisted && (
+            <SeatSelectionCard
+              flight={flight}
+              cabinClass={normCabin}
+              passengers={passengers}
+              selectedSeats={selectedSeats}
+              onSeatSelect={setSelectedSeats}
+            />
+          )}
+
           {/* STEP: Complimentary Meal Choice */}
           {currentStepObj.id === "free_meal" && isMealIncluded && (
             <ComplimentaryMealCard
@@ -345,6 +371,7 @@ export default function BookingCheckoutPage() {
             selectedCabin={selectedCabin}
             passengerCount={passengers.length}
             mealTotal={mealTotal}
+            seatTotal={seatTotal}
             onBookingAction={currentStepIndex < steps.length - 1 ? handleNext : handleConfirmBooking}
             actionButtonText={currentStepIndex < steps.length - 1 ? "Continue" : (isWaitlisted ? "Join Waitlist" : "Confirm Ticket & Pay")}
           />

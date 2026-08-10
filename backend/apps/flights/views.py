@@ -578,6 +578,7 @@ class SeatViewSet(AdminModelViewSet):
     serializer_class = SeatSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["seat_number", "seat_class", "status"]
+    pagination_class = None
 
     def get_queryset(self):
         qs = super().get_queryset()
