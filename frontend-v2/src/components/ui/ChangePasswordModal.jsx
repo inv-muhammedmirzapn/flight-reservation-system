@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { profileAPI } from "@/services/profile-service/profileService";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { handleApiError } from "@/utils/errorUtils";
 import { PASSWORD_RULES } from "@/utils/validators";
 
 export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword = true }) {
@@ -112,16 +113,7 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
       resetForm();
       setTimeout(onClose, 800);
     } catch (err) {
-      let errorMessage = "Failed to change password.";
-      try {
-        const errorData = JSON.parse(err.message);
-        if (errorData.old_password) errorMessage = errorData.old_password[0];
-        else if (errorData.new_password) errorMessage = errorData.new_password[0];
-        else if (errorData.detail) errorMessage = errorData.detail;
-      } catch {
-        errorMessage = err.message || errorMessage;
-      }
-      toast.error(errorMessage);
+      handleApiError(err, { fallback: 'Failed to change password.' });
     }
     setPwdSaving(false);
   };

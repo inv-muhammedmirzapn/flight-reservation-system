@@ -7,6 +7,7 @@ import {
   markAllNotificationsRead,
 } from "@/store/notificationsSlice";
 import toast from "react-hot-toast";
+import { parseApiError } from "@/utils/errorUtils";
 
 export default function NotificationsPage() {
   const dispatch = useDispatch();
@@ -27,7 +28,7 @@ export default function NotificationsPage() {
     try {
       await dispatch(markNotificationRead(id)).unwrap();
     } catch (err) {
-      toast.error(typeof err === "string" ? err : "Failed to mark as read");
+      toast.error(parseApiError(err, "Failed to mark as read"));
     }
   };
 
@@ -37,7 +38,7 @@ export default function NotificationsPage() {
       await dispatch(markAllNotificationsRead()).unwrap();
       toast.success("All notifications marked as read");
     } catch (err) {
-      toast.error(typeof err === "string" ? err : "Failed to mark all as read");
+      toast.error(parseApiError(err, "Failed to mark all as read"));
     }
   };
 

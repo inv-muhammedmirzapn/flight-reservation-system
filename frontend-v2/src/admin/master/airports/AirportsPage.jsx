@@ -8,7 +8,7 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import toast from 'react-hot-toast';
 import { Download, RefreshCw, X } from 'lucide-react';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 const COLUMNS = [
   { key: 'iata_code', label: 'IATA Code' },
@@ -77,7 +77,7 @@ export default function AirportsPage() {
       // reload lists
       dispatch(fetchAirports({ page: 1, page_size: 10 }));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to import airports.'));
+      toast.error(parseApiError(err, 'Failed to import airports.'));
     } finally {
       setImporting(false);
     }

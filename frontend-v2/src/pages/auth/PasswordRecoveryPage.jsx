@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { authAPI } from "@/services/auth-service/authService";
-import { extractErrorMessage } from "@/services/apiClient";
+import { handleApiError } from "@/utils/errorUtils";
 import toast from "react-hot-toast";
 import { PASSWORD_RULES } from "@/utils/validators";
 
@@ -52,10 +52,8 @@ function RequestStep({ onSuccess }) {
       toast.success(res?.detail || "OTP sent! Check your inbox.");
       onSuccess(email.trim());
     } catch (err) {
-      let msg = "Failed to send OTP. Please try again.";
-      try { msg = extractErrorMessage(JSON.parse(err.message)); } catch { msg = err.message || msg; }
+      const msg = handleApiError(err, { fallback: 'Failed to send OTP. Please try again.' });
       setError(msg);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -158,9 +156,7 @@ function ResetStep({ email, onBack }) {
       setOtp("");
       setCooldown(RESEND_COOLDOWN);
     } catch (err) {
-      let msg = "Failed to resend OTP.";
-      try { msg = extractErrorMessage(JSON.parse(err.message)); } catch { msg = err.message || msg; }
-      toast.error(msg);
+      handleApiError(err, { fallback: 'Failed to resend OTP.' });
     } finally {
       setResending(false);
     }
@@ -181,10 +177,8 @@ function ResetStep({ email, onBack }) {
       toast.success(res?.detail || "Password reset successfully!");
       navigate("/login");
     } catch (err) {
-      let msg = "An error occurred. Please try again.";
-      try { msg = extractErrorMessage(JSON.parse(err.message)); } catch { msg = err.message || msg; }
+      const msg = handleApiError(err, { fallback: 'An error occurred. Please try again.' });
       setError(msg);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }

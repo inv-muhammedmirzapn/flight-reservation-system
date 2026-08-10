@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import { Edit2, Eye, Plane, RefreshCw, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { parseApiError } from '@/utils/errorUtils';
 import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
 
@@ -245,7 +246,7 @@ export default function FlightOverviewPage() {
             setEditTarget(null);
             fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
         } catch (err) {
-            toast.error(err?.detail || 'Failed to update flight status');
+            toast.error(parseApiError(err, 'Failed to update flight status'));
         }
     };
 

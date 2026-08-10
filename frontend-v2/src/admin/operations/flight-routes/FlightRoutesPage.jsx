@@ -24,7 +24,7 @@ import {
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 const ACCENT = '#705d00';
 const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
@@ -183,7 +183,7 @@ export default function FlightRoutesPage() {
         load(search, page);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save.'));
+      toast.error(parseApiError(err, 'Failed to save.'));
     }
   };
 

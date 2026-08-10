@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, generateSeats, bulkPriceSeats } from '@/admin/_core/store/adminSlices';
 import { Zap, ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { parseApiError } from '@/utils/errorUtils';
 
 const ATTRS = [
   { id: 'window', label: 'Window' },
@@ -85,7 +86,7 @@ export default function SeatMapPage() {
     dispatch(fetchSeats({ flight_instance: id, page_size: 2000 }))
       .unwrap()
       .then(() => setShowMap(true))
-      .catch(err => toast.error(`Failed to load seats: ${err?.message || err || 'Check if the backend is running'}`));
+      .catch(err => toast.error(parseApiError(err, 'Failed to load seats. Check if the backend is running.')));
   };
 
   useEffect(() => {

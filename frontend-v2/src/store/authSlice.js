@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '@/services/auth-service/authService';
-import { extractErrorMessage } from '@/services/apiClient';
+import { parseApiError } from '@/utils/errorUtils';
 
 const decodeToken = (token) => {
   if (!token) return null;
@@ -14,18 +14,6 @@ const decodeToken = (token) => {
   }
 };
 
-const parseError = (error, defaultMessage = 'Operation failed') => {
-  if (!error || !error.message) return defaultMessage;
-  if (error.message === 'null') return 'An unexpected error occurred. Please check backend connection.';
-  try {
-    const parsed = typeof error.message === 'string' && (error.message.startsWith('{') || error.message.startsWith('['))
-      ? JSON.parse(error.message)
-      : error.message;
-    return extractErrorMessage(parsed);
-  } catch (_) {
-    return error.message || defaultMessage;
-  }
-};
 
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
@@ -45,7 +33,7 @@ export const fetchProfile = createAsyncThunk(
       const profile = await authAPI.getProfile();
       return profile;
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Could not load user profile'));
+      return rejectWithValue(parseApiError(error, 'Could not load user profile'));
     }
   }
 );
@@ -78,7 +66,7 @@ export const loginUser = createAsyncThunk(
       };
       return { token: data.access, profile };
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Login failed'));
+      return rejectWithValue(parseApiError(error, 'Login failed'));
     }
   }
 );
@@ -107,7 +95,7 @@ export const googleLoginUser = createAsyncThunk(
       };
       return { token: data.access, profile };
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Google Login failed'));
+      return rejectWithValue(parseApiError(error, 'Google Login failed'));
     }
   }
 );
@@ -119,7 +107,7 @@ export const registerUser = createAsyncThunk(
       const data = await authAPI.register(userData);
       return data;
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Registration failed'));
+      return rejectWithValue(parseApiError(error, 'Registration failed'));
     }
   }
 );
