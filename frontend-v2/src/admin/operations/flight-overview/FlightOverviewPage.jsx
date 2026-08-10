@@ -87,15 +87,14 @@ export default function FlightOverviewPage() {
         return p;
     }, []);
 
-    const fetchFiltered = (page = 1, params) => {
+    const fetchFiltered = useCallback((page = 1, params) => {
         dispatch(fetchFlightInstances({ page, page_size: PAGE_SIZE, ...params }));
-    };
+    }, [dispatch]);
 
-    // Initial load
     useEffect(() => {
-        fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+        fetchFiltered(1, buildParams('', '', '', '', '', '', 'scheduled_departure', 'desc'));
         dispatch(fetchAirports({ page_size: 500 }));
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [fetchFiltered, buildParams, dispatch]); // initial load only
 
     // Lock background page scroll when any modal is open
     const anyModalOpen = filterOpen || (!!editTarget && !confirmOpen) || confirmOpen;

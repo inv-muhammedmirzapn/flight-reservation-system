@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, Fragment } from 'react';
+import { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
@@ -81,13 +81,13 @@ export default function SeatMapPage() {
   const [dragCur, setDragCur] = useState(null);
   const [dragMode, setDragMode] = useState('add');
 
-  const load = id => {
+  const load = useCallback(id => {
     if (!id) return;
     dispatch(fetchSeats({ flight_instance: id, page_size: 2000 }))
       .unwrap()
       .then(() => setShowMap(true))
       .catch(err => toast.error(parseApiError(err, 'Failed to load seats. Check if the backend is running.')));
-  };
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchFlightInstances({ page_size: 500 }));
@@ -98,7 +98,7 @@ export default function SeatMapPage() {
       setSelInstance(instanceParam);
       load(instanceParam);
     }
-  }, [instanceParam]);
+  }, [instanceParam, load]);
 
   const handleInstanceChange = id => {
     setSelInstance(id); setSelectedIds(new Set()); setActiveFilters([]);
@@ -141,7 +141,7 @@ export default function SeatMapPage() {
       if (activeFilters.some(a => ea.includes(a))) sel.add(seat.id);
     });
     setSelectedIds(sel);
-  }, [classTab, seats]);
+  }, [classTab, seats, activeFilters]);
 
   const handleSeatClick = (e, seat) => {
     e.preventDefault(); e.stopPropagation();

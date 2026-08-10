@@ -2,7 +2,7 @@
  * MealsPage — Flight Meals with nested Flight Meal Items.
  * Food item dropdown is filtered by the instance's airline.
  */
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import {
   fetchFlightMeals, addFlightMeal, updateFlightMeal, removeFlightMeal,
-  fetchFlightInstances, fetchFoodItems, fetchAirlines,
+  fetchFlightInstances, fetchFoodItems,
   fetchFlightRoutes,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
@@ -42,16 +42,16 @@ export default function MealsPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const loadMeals = (p) => {
+  const loadMeals = useCallback((p) => {
     dispatch(fetchFlightMeals({ page: p, page_size: PAGE_SIZE, ...(instanceParam ? { flight_instance: instanceParam } : {}) }));
-  };
+  }, [dispatch, instanceParam]);
 
   useEffect(() => {
     loadMeals(page);
     dispatch(fetchFlightInstances({ page_size: 500 }));
     dispatch(fetchFoodItems({ page_size: 500 }));
     dispatch(fetchFlightRoutes({ page_size: 500 }));
-  }, [dispatch, instanceParam, page]);
+  }, [dispatch, loadMeals, page]);
 
   const instanceOptions = instances.map((i) => ({
     value: i.id,
@@ -68,7 +68,7 @@ export default function MealsPage() {
     : foodItems;
   const foodItemOptions = filteredFoodItems.map((fi) => ({ value: fi.id, label: fi.name }));
 
-  const openCreate = () => { setEditId(null); setForm({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] }); setLocalErrors({}); setShowForm(true); };
+  const openCreate = useCallback(() => { setEditId(null); setForm({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] }); setLocalErrors({}); setShowForm(true); }, [instanceParam]);
   const openEdit = (meal) => {
     setEditId(meal.id);
     setForm({
@@ -87,7 +87,7 @@ export default function MealsPage() {
       autoOpenedRef.current = true;
       openCreate();
     }
-  }, [inFlow]);
+  }, [inFlow, openCreate]);
 
 
   const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_ITEM }] }));

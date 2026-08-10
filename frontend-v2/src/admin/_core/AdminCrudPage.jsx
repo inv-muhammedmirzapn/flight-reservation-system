@@ -1,7 +1,7 @@
 /**
  * AdminCrudPage — shared list + form page for all new entity CRUD screens.
  */
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
@@ -17,6 +17,8 @@ import { parseApiError } from '@/utils/errorUtils';
 
 
 import PageLoader from '@/admin/_core/components/PageLoader';
+
+const PAGE_SIZE = 10;
 
 export default function AdminCrudPage({
   config,
@@ -50,21 +52,22 @@ export default function AdminCrudPage({
   const [form, setForm] = useState(emptyForm);
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  const loadList = (searchVal, pg) => {
+  const loadList = useCallback((searchVal, pg) => {
     dispatch(thunks.fetchList({ search: searchVal, page: pg, page_size: PAGE_SIZE }));
-  };
+  }, [dispatch, thunks]);
 
-  useEffect(() => { loadList(search, page); }, []);
+  useEffect(() => { loadList(activeSearch, page); }, [loadList, activeSearch, page]);
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setEditId(null);
     setForm(emptyForm);
     setLocalErrors({});
     setShowForm(true);
-  };
+  }, [emptyForm]);
 
   const autoOpenedRef = useRef(false);
   useEffect(() => {
@@ -73,7 +76,7 @@ export default function AdminCrudPage({
       autoOpenedRef.current = true;
       openCreate();
     }
-  }, [searchParams]);
+  }, [searchParams, openCreate]);
 
 
   const openEdit = (item) => {
@@ -153,17 +156,14 @@ export default function AdminCrudPage({
     errorMessage: `Failed to delete ${singular.toLowerCase()}.`
   });
 
-  const PAGE_SIZE = 10;
-
   const handleSearch = (e) => {
     e.preventDefault();
+    setActiveSearch(search);
     setPage(1);
-    loadList(search, 1);
   };
 
   const handlePage = (next) => {
     setPage(next);
-    loadList(search, next);
   };
 
   const handleSort = (key) => {
@@ -252,7 +252,7 @@ export default function AdminCrudPage({
                 <button
                   type="button"
                   className="clear-search-btn"
-                  onClick={() => { setSearch(''); setPage(1); loadList('', 1); }}
+                  onClick={() => { setSearch(''); setActiveSearch(''); setPage(1); }}
                   title="Clear search"
                 >
                   <X size={13} />

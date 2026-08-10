@@ -17,9 +17,13 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
 
   const cabinClass = searchParams.get("cabinClass") || "Economy";
 
+  const filtersJson = JSON.stringify(filters || null);
+
   // Fetch calendar prices for current route and applied filters
   useEffect(() => {
     let isMounted = true;
+    const currentFilters = JSON.parse(filtersJson);
+
     async function loadCalendarPrices() {
       try {
         const today = new Date();
@@ -36,11 +40,11 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           cabin_class: cabinClass
         };
 
-        if (filters) {
-          if (filters.stops !== undefined && filters.stops !== "") calendarParams.stops = filters.stops;
-          if (filters.airlines && filters.airlines.length > 0) calendarParams.airlines = filters.airlines.join(",");
-          if (filters.waitlistMode && filters.waitlistMode !== "all") calendarParams.waitlist_mode = filters.waitlistMode;
-          if (filters.maxFare && filters.maxFare < 100000) calendarParams.max_fare = filters.maxFare;
+        if (currentFilters) {
+          if (currentFilters.stops !== undefined && currentFilters.stops !== "") calendarParams.stops = currentFilters.stops;
+          if (currentFilters.airlines && currentFilters.airlines.length > 0) calendarParams.airlines = currentFilters.airlines.join(",");
+          if (currentFilters.waitlistMode && currentFilters.waitlistMode !== "all") calendarParams.waitlist_mode = currentFilters.waitlistMode;
+          if (currentFilters.maxFare && currentFilters.maxFare < 100000) calendarParams.max_fare = currentFilters.maxFare;
         }
 
         const res = await flightsAPI.getCalendar(calendarParams);
@@ -75,7 +79,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
       loadCalendarPrices();
     }
     return () => { isMounted = false; };
-  }, [from, to, cabinClass, JSON.stringify(filters)]);
+  }, [from, to, cabinClass, filtersJson]);
 
   useEffect(() => {
     const list = [];
