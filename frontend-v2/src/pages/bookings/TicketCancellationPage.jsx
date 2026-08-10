@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
+import { handleApiError, logError } from "@/utils/errorUtils";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
@@ -47,7 +48,7 @@ export default function TicketCancellationPage() {
           setDetailData(res);
         }
       } catch (err) {
-        console.error("Error fetching details for cancellation:", err);
+        logError('TicketCancellationPage/fetchDetail', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -82,9 +83,8 @@ export default function TicketCancellationPage() {
       }
       navigate("/my-bookings", { state: { showPastBookings: true } });
     } catch (err) {
-      console.error("Cancellation failed:", err);
-      const errMsg = err?.message || err?.detail || "Failed to cancel ticket. Please try again.";
-      toast.error(errMsg);
+      logError('TicketCancellationPage/cancel', err);
+      handleApiError(err, { fallback: 'Failed to cancel ticket. Please try again.' });
     } finally {
       setIsSubmitting(false);
       setShowConfirmModal(false);

@@ -6,7 +6,7 @@ import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import '@/admin/_core/styles/admin.css';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 export default function AdminPassengersPage() {
   const [passengers, setPassengers] = useState([]);
@@ -28,7 +28,7 @@ export default function AdminPassengersPage() {
       setPassengers(data.results || data || []);
       setCount(data.count || (data?.length ?? 0));
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to load passengers.'));
+      setError(parseApiError(err, 'Failed to load passengers.'));
     } finally {
       setLoading(false);
     }

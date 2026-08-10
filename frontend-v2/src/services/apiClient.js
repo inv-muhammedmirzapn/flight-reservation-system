@@ -1,3 +1,5 @@
+import { parseApiError } from '@/utils/errorUtils';
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const dispatchServerDown = async () => {
@@ -26,36 +28,8 @@ export const getResponseData = async (res) => {
   }
 };
 
-export const extractErrorMessage = (data) => {
-  if (typeof data === 'string') return data;
-  if (data && typeof data === 'object') {
-    // Handle standard envelope error: { status: "error", message: "...", errors: { field: ["msg"] } }
-    if (data.message) {
-      if (data.errors && typeof data.errors === 'object' && Object.keys(data.errors).length > 0) {
-        const errorDetails = Object.entries(data.errors).map(([field, msgs]) => {
-          const msgStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
-          return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgStr}`;
-        }).join(' · ');
-        return `${data.message}${errorDetails ? ' — ' + errorDetails : ''}`;
-      }
-      return data.message;
-    }
-    if (data.detail) return data.detail;
-    if (data.non_field_errors)
-      return Array.isArray(data.non_field_errors)
-        ? data.non_field_errors[0]
-        : data.non_field_errors;
-
-    // Map over keys for DRF field errors
-    const errors = Object.keys(data).map((key) => {
-      const fieldError = data[key];
-      const msg = Array.isArray(fieldError) ? fieldError.join(', ') : fieldError;
-      return `${key.charAt(0).toUpperCase() + key.slice(1)}: ${msg}`;
-    });
-    if (errors.length > 0) return errors.join(' · ');
-  }
-  return "An unexpected error occurred.";
-};
+// extractErrorMessage is intentionally not re-exported.
+// Use parseApiError from '@/utils/errorUtils' instead.
 
 // Helper to make authenticated requests
 export const fetchWithAuth = async (endpoint, options = {}) => {
@@ -113,7 +87,7 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
           headers,
         });
         const retryData = await getResponseData(retryResponse);
-        if (!retryResponse.ok) throw new Error(extractErrorMessage(retryData));
+        if (!retryResponse.ok) throw new Error(parseApiError(retryData));
         return retryData;
       }
     } catch (refreshErr) {
@@ -126,6 +100,6 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   }
 
   const data = await getResponseData(response);
-  if (!response.ok) throw new Error(extractErrorMessage(data));
+  if (!response.ok) throw new Error(parseApiError(data));
   return data;
 };

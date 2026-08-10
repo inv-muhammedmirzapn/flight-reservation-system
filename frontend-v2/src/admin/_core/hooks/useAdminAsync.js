@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import getErrorMessage from '../utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 export default function useAdminAsync(asyncFn) {
   const [data, setData] = useState(null);
@@ -29,7 +29,7 @@ export default function useAdminAsync(asyncFn) {
       return result;
     } catch (err) {
       if (isMounted.current) {
-        setError(getErrorMessage(err));
+        setError(parseApiError(err));
       }
       throw err;
     } finally {

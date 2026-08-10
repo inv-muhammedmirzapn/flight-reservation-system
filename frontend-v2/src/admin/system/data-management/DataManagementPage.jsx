@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { fetchWithAuth } from "@/services/apiClient";
 import '@/admin/_core/styles/admin.css';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 // ── Entity definitions ────────────────────────────────────────────────────────
 const ENTITIES = [
@@ -299,7 +299,7 @@ export default function BulkImportPage() {
       setReports(data.reports ?? [data]);
       setFile(null);
     } catch (err) {
-      setError(getErrorMessage(err, "An unexpected error occurred."));
+      setError(parseApiError(err, "An unexpected error occurred."));
     } finally {
       setLoading(false);
     }

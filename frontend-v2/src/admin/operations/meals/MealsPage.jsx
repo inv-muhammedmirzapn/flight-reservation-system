@@ -19,7 +19,7 @@ import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, Ar
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 const EMPTY_ITEM = { food_item: '', quantity: 1 };
 
@@ -117,7 +117,7 @@ export default function MealsPage() {
     toast.promise(promise, {
       loading: 'Saving meal…',
       success: () => { closeForm(); loadMeals(page); return 'Meal saved!'; },
-      error: (err) => getErrorMessage(err, 'Failed.'),
+      error: (err) => parseApiError(err, 'Failed.'),
     });
   };
 

@@ -12,6 +12,7 @@
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchWithAuth } from '@/services/apiClient';
+import { parseApiError } from '@/utils/errorUtils';
 
 export function createCrudSlice(entityName, apiBasePath) {
   const upper = entityName.charAt(0).toUpperCase() + entityName.slice(1);
@@ -207,15 +208,9 @@ export function createCrudSlice(entityName, apiBasePath) {
   };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
+// _parseError uses the centralized parseApiError utility.
 function _parseError(err, fallback) {
-  try {
-    const obj = JSON.parse(err.message);
-    return obj.detail || obj;
-  } catch (_) {
-    return err.message || fallback;
-  }
+  return parseApiError(err, fallback);
 }
 
 function _pending(builder, thunk, loadingKey) {

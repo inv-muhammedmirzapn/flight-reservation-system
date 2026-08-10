@@ -1,4 +1,4 @@
-import { API_BASE_URL, fetchWithAuth, getResponseData, extractErrorMessage } from '@/services/apiClient';
+import { API_BASE_URL, fetchWithAuth, getResponseData } from '@/services/apiClient';
 
 export const authAPI = {
   register: async (userData) => {

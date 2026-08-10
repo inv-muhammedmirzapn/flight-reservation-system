@@ -27,7 +27,7 @@ import {
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
@@ -279,7 +279,7 @@ export default function FlightInstancesPage() {
         }
         setLocalErrors(prev => ({ ...prev, ...errors }));
       }
-      toast.error(getErrorMessage(err, 'Failed to save.'));
+      toast.error(parseApiError(err, 'Failed to save.'));
     }
   };
 

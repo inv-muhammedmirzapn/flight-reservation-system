@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { profileAPI } from "@/services/profile-service/profileService";
 import { updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
+import { handleApiError, logError } from "@/utils/errorUtils";
 import CustomSelect from "@/components/ui/CustomSelect";
 import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
 import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
@@ -44,7 +45,7 @@ export default function UserProfilePage() {
           dispatch(updateProfileSuccess(res));
         }
       } catch (err) {
-        console.error("Error fetching user profile:", err);
+        logError('UserProfilePage/fetchProfile', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -228,8 +229,8 @@ export default function UserProfilePage() {
       setDobError("");
       setIsEditing(false);
     } catch (err) {
-      console.error("Error updating profile:", err);
-      toast.error(err?.message || "Failed to update profile. Please try again.");
+      logError('UserProfilePage/handleSave', err);
+      handleApiError(err, { fallback: 'Failed to update profile. Please try again.' });
     } finally {
       setSaving(false);
     }

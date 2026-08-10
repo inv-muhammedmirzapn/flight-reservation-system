@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import useDeleteAction from './hooks/useDeleteAction';
-import getErrorMessage from './utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 
 import PageLoader from '@/admin/_core/components/PageLoader';
@@ -132,7 +132,7 @@ export default function AdminCrudPage({
         navigate(saveAndNextUrl);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, `Failed to save ${title}.`));
+      toast.error(parseApiError(err, `Failed to save ${title}.`));
     }
   };
 

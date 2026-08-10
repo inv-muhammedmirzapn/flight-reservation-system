@@ -4,7 +4,7 @@ import {
   fetchFlightOccupancy, fetchPeakBookingHours,
   fetchAirlinePerformance, fetchAircraftUtilization,
 } from '@/services/analytics-service';
-import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
+import { parseApiError } from '@/utils/errorUtils';
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -38,7 +38,7 @@ export default function useAnalyticsData() {
       setSummary(s); setMonthly(m); setRoutes(r); setOccupancy(o); setPeakHours(p);
       setAirlinePerf(ap); setAircraftUtil(au);
     } catch (err) {
-      if (!isSilent) setError(getErrorMessage(err, 'Failed to load analytics data.'));
+      if (!isSilent) setError(parseApiError(err, 'Failed to load analytics data.'));
     } finally {
       if (!isSilent) setLoading(false);
     }

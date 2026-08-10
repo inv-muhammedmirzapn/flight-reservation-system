@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
+import { parseApiError } from '@/utils/errorUtils';
 
 /**
  * Custom hook to encapsulate boilerplate for delete operations in the admin panel.
@@ -26,7 +27,7 @@ export default function useDeleteAction({ thunk, onSuccess, successMessage = 'De
         onSuccess();
       }
     } catch (err) {
-      const msg = typeof err === 'string' ? err : (err?.detail || err?.message || err?.error || errorMessage);
+      const msg = parseApiError(err, errorMessage);
       toast.error(msg);
     } finally {
       setDeleteLoading(false);
