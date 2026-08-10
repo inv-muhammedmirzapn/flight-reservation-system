@@ -12,6 +12,7 @@ from apps.flights.models import (
     Seat, CabinClass, SeatPosition, SeatStatus,
     Fare, RefundType, FoodItem, FlightMeal, FlightMealItem,
 )
+from apps.flights.services import generate_seats_for_instance
 from apps.bookings.models import Booking, BookingStatus, Passenger
 from apps.waitlist.models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 from apps.notifications.models import Notification, NotificationType
@@ -466,23 +467,8 @@ class Command(BaseCommand):
                     }
                 )
 
-                # Seats
-                if inst.seats.count() == 0:
-                    seats_to_create = []
-                    for row in range(1, 26):
-                        for col_letter in ['A', 'B', 'C', 'D', 'E', 'F']:
-                            pos = SeatPosition.WINDOW if col_letter in ['A', 'F'] else (SeatPosition.AISLE if col_letter in ['C', 'D'] else SeatPosition.MIDDLE)
-                            status = SeatStatus.BOOKED if is_fully_booked else (SeatStatus.BOOKED if random.random() < 0.25 else SeatStatus.AVAILABLE)
-                            seats_to_create.append(Seat(
-                                flight_instance=inst,
-                                seat_number=f"E{row}{col_letter}",
-                                seat_class=CabinClass.ECONOMY,
-                                position=pos,
-                                status=status,
-                                seat_fee=Decimal("800.00") if pos == SeatPosition.WINDOW else Decimal("0.00"),
-                                currency="INR",
-                            ))
-                    Seat.objects.bulk_create(seats_to_create)
+                # Seats — use the shared service so all cabin classes are generated correctly
+                generate_seats_for_instance(inst)
 
                 # Meal
                 fm, _ = FlightMeal.objects.get_or_create(
@@ -524,6 +510,7 @@ class Command(BaseCommand):
                     }
                 )
                 flight_instances_created.append(inst)
+                generate_seats_for_instance(inst)
 
                 Fare.objects.get_or_create(
                     flight_instance=inst,
