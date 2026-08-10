@@ -533,6 +533,32 @@ class FlightInstanceViewSet(AdminModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    def perform_update(self, serializer):
+        """Fire delay/status notifications when a flight instance is updated."""
+        old_instance = self.get_object()
+        old_status = old_instance.status
+        old_delay = old_instance.delay_minutes
+
+        instance = serializer.save()
+
+        new_status = instance.status
+        new_delay = instance.delay_minutes
+
+        try:
+            from apps.notifications.services import NotificationService
+            from datetime import timedelta
+
+            if new_status == 'DELAYED' and (
+                old_status != 'DELAYED' or old_delay != new_delay
+            ):
+                # Compute the new estimated departure for the notification
+                delayed_dep = instance.scheduled_departure + timedelta(minutes=new_delay)
+                NotificationService.send_flight_delay(instance, delayed_dep)
+            elif old_status != new_status:
+                NotificationService.send_flight_status_notification(instance, old_status, new_status)
+        except Exception:
+            logger.exception("Failed to send flight status notification after update")
+
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""
         instance = serializer.save()
