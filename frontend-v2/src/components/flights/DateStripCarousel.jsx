@@ -183,7 +183,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           const hasPrice = priceVal != null && !isNaN(priceVal) && Number(priceVal) > 0;
           const numPrice = Number(priceVal);
 
-          let priceColorClass = "text-slate-700 font-semibold";
+          let priceColorClass;
           if (isSelected) {
             if (referencePrice && numPrice < referencePrice) priceColorClass = "text-emerald-950 font-black";
             else if (referencePrice && numPrice > referencePrice) priceColorClass = "text-rose-950 font-black";

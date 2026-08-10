@@ -5,7 +5,6 @@ import { fetchAirlines } from '@/admin/_core/store/adminSlices';
 import {
   fetchFoodItems, fetchFoodItemDetail, addFoodItem, updateFoodItem, removeFoodItem,
 } from '@/admin/_core/store/adminSlices';
-import { API_BASE_URL } from '@/services/apiClient';
 
 const COLUMNS = [
   {

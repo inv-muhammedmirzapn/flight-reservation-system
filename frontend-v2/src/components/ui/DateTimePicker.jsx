@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useId, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Clock } from 'lucide-react';
 
 /* ─────────────────────────────────────────────
@@ -143,7 +143,7 @@ export default function DateTimePicker({
   ];
 
   const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  const TIME_PRESETS = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
+  // const TIME_PRESETS = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
 
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);

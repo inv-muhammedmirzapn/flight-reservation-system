@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
-import { Calendar, Plane, LayoutGrid, Route, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Plane, LayoutGrid, SlidersHorizontal, RotateCcw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
  * AnalyticsFilterBar

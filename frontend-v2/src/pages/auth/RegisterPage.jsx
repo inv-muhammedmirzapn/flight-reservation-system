@@ -116,11 +116,12 @@ export default function RegisterPage() {
         if (!/^[a-zA-Z]+$/.test(formData.last_name)) return "Only alphabets are allowed";
         break;
 
-      case "date_of_birth":
+      case "date_of_birth": {
         if (!formData.date_of_birth) return "Date of birth is required";
         const age = calculateAge(formData.date_of_birth);
         if (age < 18) return "You must be at least 18 years old to register";
         break;
+      }
 
       case "username":
         if (!formData.username.trim()) return "Username is required";

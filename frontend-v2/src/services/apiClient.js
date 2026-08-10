@@ -47,7 +47,7 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
       ...options,
       headers,
     });
-  } catch (netErr) {
+  } catch (_netErr) {
     // Catch network connectivity failure / connection refused
     dispatchServerDown();
     throw new Error("Unable to connect to server. Please check backend connection.");

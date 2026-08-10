@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, Ticket, CheckCircle, XCircle, Percent, AlertCircle } from 'lucide-react';
 

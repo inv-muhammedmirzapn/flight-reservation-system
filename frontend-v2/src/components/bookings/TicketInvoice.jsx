@@ -1,4 +1,3 @@
-import React from "react";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
 
 export default function TicketInvoice({ detailData, isWaitlist = false, locationStateFlight = null, locationStatePassengers = null }) {

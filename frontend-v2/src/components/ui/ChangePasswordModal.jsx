@@ -56,6 +56,7 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
     }
 
     return e;
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
   }, [pwdData, touched, isPasswordStrong, hasUsablePassword]);
 
   const isFormValid =

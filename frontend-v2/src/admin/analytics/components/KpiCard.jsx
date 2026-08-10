@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function KpiCard({ icon, label, value, sub, accent, loading, tooltip }) {
   return (

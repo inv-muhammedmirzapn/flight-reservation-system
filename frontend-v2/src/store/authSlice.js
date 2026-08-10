@@ -40,7 +40,7 @@ export const fetchProfile = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
-  async ({ credentials, requireAdmin, requireCustomer }, { dispatch, rejectWithValue }) => {
+  async ({ credentials, requireAdmin, requireCustomer }, { rejectWithValue }) => {
     try {
       const rawData = await authAPI.login(credentials);
       const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
@@ -73,7 +73,7 @@ export const loginUser = createAsyncThunk(
 
 export const googleLoginUser = createAsyncThunk(
   'auth/googleLoginUser',
-  async ({ token, requireCustomer }, { dispatch, rejectWithValue }) => {
+  async ({ token, requireCustomer }, { rejectWithValue }) => {
     try {
       const rawData = await authAPI.googleLogin(token);
       const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);

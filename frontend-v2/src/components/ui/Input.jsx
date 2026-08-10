@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export function Input({ id, label, type = 'text', error, onFocus, onBlur, ...props }) {
   const [isFocused, setIsFocused] = useState(false);

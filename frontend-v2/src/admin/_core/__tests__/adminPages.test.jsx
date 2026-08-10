@@ -8,8 +8,7 @@
  *  - adminSlices exports the expected thunks
  *  - Navbar no longer contains "Flights (Legacy)" link
  */
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
@@ -215,7 +214,7 @@ vi.mock('react-router-dom', async () => {
 describe('Navbar — admin mode', () => {
   it('does NOT contain a "Flights (Legacy)" link', async () => {
     const { Navbar } = await import('@/components/layout/Navbar');
-    const store = makeStore();
+    // const store = makeStore();
     // Patch auth state to admin
     const adminStore = configureStore({
       reducer: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { bookingAPI } from "@/services/booking-service/bookingService";
@@ -25,7 +25,7 @@ export default function BookingCheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [selectedCabin, setSelectedCabin] = useState(initialCabin);
+  const [selectedCabin] = useState(initialCabin);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   // Passenger data state

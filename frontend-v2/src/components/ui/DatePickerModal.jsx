@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import CustomSelect from "./CustomSelect";
 
 export function getOrdinalSuffix(day) {
@@ -34,7 +33,7 @@ export default function DatePickerModal({
   onSelectDates,
   initialTab
 }) {
-  const { t } = useTranslation();
+  // removed useTranslation
 
   const [depDate, setDepDate] = useState(initialDepDate || "");
   const [arrDate, setArrDate] = useState(initialArrDate || "");

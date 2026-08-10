@@ -3,22 +3,21 @@
  * leg_order is auto-assigned by row position.
  * Cross-row layover validation: each leg's departure must be after prev leg's arrival.
  */
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
-import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
-  fetchFlightRoutes, fetchFlightRouteDetail, addFlightRoute, updateFlightRoute, removeFlightRoute,
+  fetchFlightRoutes, addFlightRoute, updateFlightRoute, removeFlightRoute,
   fetchAirlines, fetchAirports,
   flightRouteActions,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import {
-  Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronLeft, ChevronRight,
+  Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronRight,
   Search, PlusCircle, MinusCircle, MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -26,7 +25,7 @@ import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
 import { parseApiError } from '@/utils/errorUtils';
 
-const ACCENT = '#705d00';
+// const ACCENT = '#705d00';
 const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
 
 const EMPTY_FORM = {

@@ -31,7 +31,7 @@ export const fetchMyBookings = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -48,7 +48,7 @@ export const cancelBooking = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }

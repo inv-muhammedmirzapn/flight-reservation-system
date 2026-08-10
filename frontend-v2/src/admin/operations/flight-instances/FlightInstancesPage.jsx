@@ -8,20 +8,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ComboInput } from '@/components/ui/ComboInput';
 import DateTimePicker from '@/components/ui/DateTimePicker';
-import DatePicker from '@/components/ui/DatePicker';
 import {
-  fetchFlightInstances, fetchFlightInstanceDetail, addFlightInstance,
+  fetchFlightInstances, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
   fetchFlightRoutes, fetchAircraft, fetchAirports,
 } from '@/admin/_core/store/adminSlices';
-import { fetchWithAuth } from '@/services/apiClient';
 import { Pagination } from '@/components/ui/Pagination';
 import {
-  Plus, Pencil, Trash2, Save, X, AlertCircle, Search, ChevronLeft, ChevronRight,
+  Plus, Pencil, Trash2, Save, X, AlertCircle, Search, ChevronRight,
   Banknote, Armchair, Utensils
 } from 'lucide-react';
 import toast from 'react-hot-toast';

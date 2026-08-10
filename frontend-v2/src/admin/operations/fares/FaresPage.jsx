@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdminCrudPage from '@/admin/_core/AdminCrudPage';
 import { fetchFlightInstances, fetchFares, fetchFareDetail, addFare, updateFare, removeFare } from '@/admin/_core/store/adminSlices';
-import { ChevronRight, Armchair, Utensils, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Armchair, Utensils } from 'lucide-react';
 
 const CABIN_OPTIONS = [
   { value: 'ECONOMY', label: 'Economy' },

@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import bookingsReducer, {
   createBooking,
   fetchMyBookings,

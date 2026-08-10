@@ -308,7 +308,7 @@ export default function Navbar() {
               {/* User Avatar Circle Badge */}
               <button
                 type="button"
-                onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setConfirmLogout(false); }}
+                onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); }}
                 className="w-10 h-10 rounded-full bg-[#ffd600] text-black font-bold text-sm flex items-center justify-center shadow-[0_0_16px_rgba(255,214,0,0.85)] active:scale-95 transition-all cursor-pointer select-none"
               >
                 {getInitials()}

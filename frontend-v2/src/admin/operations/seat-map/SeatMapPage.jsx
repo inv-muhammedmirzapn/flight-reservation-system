@@ -5,7 +5,7 @@ import '@/admin/_core/styles/admin.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, generateSeats, bulkPriceSeats } from '@/admin/_core/store/adminSlices';
-import { Zap, ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parseApiError } from '@/utils/errorUtils';
 

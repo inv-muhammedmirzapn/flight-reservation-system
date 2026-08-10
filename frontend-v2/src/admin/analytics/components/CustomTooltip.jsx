@@ -1,4 +1,3 @@
-import React from 'react';
 import { INR } from '@/utils/formatters';
 
 export default function CustomTooltip({ active, payload, label, currency }) {

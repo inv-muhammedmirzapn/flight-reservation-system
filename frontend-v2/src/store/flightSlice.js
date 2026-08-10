@@ -15,7 +15,7 @@ export const fetchFlights = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -31,7 +31,7 @@ export const fetchFlightBounds = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -47,7 +47,7 @@ export const fetchFlightCalendar = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -64,7 +64,7 @@ export const fetchFlightStats = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -81,7 +81,7 @@ export const fetchFlightDetail = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }
@@ -183,7 +183,7 @@ export const deleteFlight = createAsyncThunk(
       try {
         const errObj = JSON.parse(error.message);
         message = errObj.detail || message;
-      } catch (_) {}
+      } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
   }

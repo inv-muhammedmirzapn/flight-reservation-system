@@ -165,7 +165,7 @@ export default function FlightSearchHeader({ onSearchChange }) {
         main: `${day} ${month}`,
         sub: weekday
       };
-    } catch (e) {
+    } catch (_err) {
       return { main: "-", sub: "" };
     }
   };

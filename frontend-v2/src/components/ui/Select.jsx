@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useId, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 

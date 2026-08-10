@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import DateTimePicker from '@/components/ui/DateTimePicker';
 import { Pagination } from '@/components/ui/Pagination';
-import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, Search, Inbox, AlertTriangle, ArrowLeft, Upload } from 'lucide-react';
+import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronRight, Search, Inbox, ArrowLeft, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -45,7 +45,7 @@ export default function AdminCrudPage({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const state = useSelector((s) => s[entityName]);
-  const { items, loading, actionLoading, error, validationErrors } = state || {};
+  const { items, loading, actionLoading, error: _error, validationErrors } = state || {};
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);

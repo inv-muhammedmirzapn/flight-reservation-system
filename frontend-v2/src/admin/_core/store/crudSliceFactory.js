@@ -15,7 +15,7 @@ import { fetchWithAuth } from '@/services/apiClient';
 import { parseApiError } from '@/utils/errorUtils';
 
 export function createCrudSlice(entityName, apiBasePath) {
-  const upper = entityName.charAt(0).toUpperCase() + entityName.slice(1);
+  // const upper = entityName.charAt(0).toUpperCase() + entityName.slice(1);
 
   // ─── Thunks ──────────────────────────────────────────────────────────────
 

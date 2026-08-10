@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
-import { Search, AlertCircle, X, Eye, Plane, User as UserIcon, CreditCard, Calendar, Ticket } from 'lucide-react';
+import { Search, AlertCircle, X, Eye, Plane, User as UserIcon, CreditCard, Ticket } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import '@/admin/_core/styles/admin.css';
@@ -112,6 +112,7 @@ export default function AdminBookingsPage() {
               </thead>
               <tbody>
                 {bookings.map((b) => {
+                  // eslint-disable-next-line unused-imports/no-unused-vars
                   const displayUser = b.user_full_name && b.user_full_name !== b.user
                     ? `${b.user_full_name} (@${b.user})`
                     : `@${b.user || b.user_id || 'guest'}`;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Gauge } from 'lucide-react';
 import ChartCard from './ChartCard';

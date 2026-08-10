@@ -1,0 +1,258 @@
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/AdminCrudPage.jsx
+  Rule: no-unused-vars
+    L11:54 - 'ChevronLeft' is defined but never used. Allowed unused vars must match /^_/u.
+    L11:96 - 'AlertTriangle' is defined but never used. Allowed unused vars must match /^_/u.
+    L48:42 - 'error' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/DeleteConfirmationModal.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/__tests__/adminPages.test.jsx
+  Rule: no-unused-vars
+    L11:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+    L12:37 - 'waitFor' is defined but never used. Allowed unused vars must match /^_/u.
+    L218:11 - 'store' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/store/crudSliceFactory.js
+  Rule: no-unused-vars
+    L18:9 - 'upper' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/AnalyticsDashboard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AircraftUtilizationChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AirlinePerformanceChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AnalyticsFilterBar.jsx
+  Rule: no-unused-vars
+    L1:31 - 'useCallback' is defined but never used. Allowed unused vars must match /^_/u.
+    L3:39 - 'Route' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/ChartCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/CustomTooltip.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/EmptyState.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/FlightOccupancyChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/KpiCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/MonthlyRevenueChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/PeakHoursChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/PopularRoutesChart.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/master/food-items/FoodItemsPage.jsx
+  Rule: no-unused-vars
+    L8:10 - 'API_BASE_URL' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/fares/FaresPage.jsx
+  Rule: no-unused-vars
+    L9:44 - 'CheckCircle2' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/fares/__tests__/FaresPage.test.jsx
+  Rule: no-unused-vars
+    L10:28 - 'banner' is defined but never used. Allowed unused args must match /^_/u.
+    L10:36 - 'saveAndNextUrl' is defined but never used. Allowed unused args must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-instances/FlightInstancesPage.jsx
+  Rule: no-unused-vars
+    L11:10 - 'Input' is defined but never used. Allowed unused vars must match /^_/u.
+    L15:8 - 'DatePicker' is defined but never used. Allowed unused vars must match /^_/u.
+    L17:25 - 'fetchFlightInstanceDetail' is defined but never used. Allowed unused vars must match /^_/u.
+    L21:10 - 'fetchWithAuth' is defined but never used. Allowed unused vars must match /^_/u.
+    L24:55 - 'ChevronLeft' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-overview/FlightOverviewPage.jsx
+  Rule: no-unused-vars
+    L1:44 - 'useRef' is defined but never used. Allowed unused vars must match /^_/u.
+    L3:10 - 'Link' is defined but never used. Allowed unused vars must match /^_/u.
+    L7:17 - 'Eye' is defined but never used. Allowed unused vars must match /^_/u.
+    L7:29 - 'RefreshCw' is defined but never used. Allowed unused vars must match /^_/u.
+    L14:10 - 'INR' is defined but never used. Allowed unused vars must match /^_/u.
+    L32:11 - 'navigate' is assigned a value but never used. Allowed unused vars must match /^_/u.
+    L177:11 - 'handleRemoveFilter' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-routes/FlightRoutesPage.jsx
+  Rule: no-unused-vars
+    L6:31 - 'useRef' is defined but never used. Allowed unused vars must match /^_/u.
+    L13:8 - 'DateTimePicker' is defined but never used. Allowed unused vars must match /^_/u.
+    L15:22 - 'fetchFlightRouteDetail' is defined but never used. Allowed unused vars must match /^_/u.
+    L21:47 - 'ChevronLeft' is defined but never used. Allowed unused vars must match /^_/u.
+    L29:7 - 'ACCENT' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/seat-map/SeatMapPage.jsx
+  Rule: no-unused-vars
+    L8:10 - 'Zap' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/records/bookings/AdminBookingsPage.jsx
+  Rule: no-unused-vars
+    L3:76 - 'Calendar' is defined but never used. Allowed unused vars must match /^_/u.
+    L115:25 - 'displayUser' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/auth/ProtectedRoute.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/BookingReviewCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/CheckoutStepper.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/TicketCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/TicketInvoice.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/CabinClassSelector.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/DateStripCarousel.jsx
+  Rule: no-useless-assignment
+    L186:15 - The value assigned to 'priceColorClass' is not used in subsequent statements.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FareDetailsCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightItineraryCard.jsx
+  Rule: react-hooks/rules-of-hooks
+    L68:26 - React Hook "React.useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightItinerarySummaryCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightSearchHeader.jsx
+  Rule: no-unused-vars
+    L168:14 - 'e' is defined but never used. Allowed unused caught errors must match /^(_|err|error)/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/PassengerListSection.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/layout/Navbar.jsx
+  Rule: no-undef
+    L311:76 - 'setConfirmLogout' is not defined.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/meals/ComplimentaryMealCard.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+    L5:3 - 'selectedCabin' is assigned a value but never used. Allowed unused args must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/ChangePasswordModal.jsx
+  Rule: react-hooks/preserve-manual-memoization
+    L59:25 - Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This dependency may be mutated later, which could cause the value to change unexpectedly.
+
+  57 |
+  58 |     return e;
+> 59 |   }, [pwdData, touched, isPasswordStrong, hasUsablePassword]);
+     |                         ^^^^^^^^^^^^^^^^ This dependency may be modified later
+  60 |
+  61 |   const isFormValid =
+  62 |     (hasUsablePassword ? !!pwdData.oldPassword : true) &&
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/DatePickerModal.jsx
+  Rule: no-unused-vars
+    L37:11 - 't' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/DateTimePicker.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+    L146:9 - 'TIME_PRESETS' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/Input.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/Select.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/auth/RegisterPage.jsx
+  Rule: no-case-declarations
+    L121:9 - Unexpected lexical declaration in case block.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/BookingCheckoutPage.jsx
+  Rule: no-unused-vars
+    L1:8 - 'React' is defined but never used. Allowed unused vars must match /^_/u.
+    L28:25 - 'setSelectedCabin' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/flights/FlightDetailPage.jsx
+  Rule: no-unused-vars
+    L31:26 - 'setPassengerCount' is assigned a value but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/services/apiClient.js
+  Rule: no-unused-vars
+    L50:12 - 'netErr' is defined but never used. Allowed unused caught errors must match /^(_|err|error)/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/__tests__/bookingSlice.test.js
+  Rule: no-unused-vars
+    L2:48 - 'afterEach' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/__tests__/notificationsSlice.test.js
+  Rule: no-unused-vars
+    L7:3 - 'clearNotificationState' is defined but never used. Allowed unused vars must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/authSlice.js
+  Rule: no-unused-vars
+    L43:60 - 'dispatch' is defined but never used. Allowed unused args must match /^_/u.
+    L76:40 - 'dispatch' is defined but never used. Allowed unused args must match /^_/u.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/bookingSlice.js
+  Rule: no-empty
+    L34:19 - Empty block statement.
+    L51:19 - Empty block statement.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/flightSlice.js
+  Rule: no-empty
+    L18:19 - Empty block statement.
+    L34:19 - Empty block statement.
+    L50:19 - Empty block statement.
+    L67:19 - Empty block statement.
+    L84:19 - Empty block statement.
+    L186:19 - Empty block statement.
+
+File: /home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/utils/validators.js
+  Rule: no-useless-escape
+    L6:100 - Unnecessary escape character: \[.
+    L6:117 - Unnecessary escape character: \/.

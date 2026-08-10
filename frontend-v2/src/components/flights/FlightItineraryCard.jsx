@@ -1,4 +1,3 @@
-import React from "react";
 import { getAirportInfo } from "@/utils/airportHelpers";
 
 export default function FlightItineraryCard({ flight, showBadge = true, isWaitlistedOverride, selectedCabinClass = "Economy" }) {
@@ -65,7 +64,7 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
   const arr = formatDateTime(arrTime);
 
   // Process transit stops array
-  const processedStops = React.useMemo(() => {
+  const processedStops = (() => {
     if (!Array.isArray(stops) || stops.length === 0) return [];
 
     return stops.map((stopItem, index) => {
@@ -127,7 +126,7 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         layoverMins,
       };
     });
-  }, [stops, depTime, arrTime]);
+  })();
 
   // Duration calculation
   const calculateDuration = (depIso, arrIso) => {

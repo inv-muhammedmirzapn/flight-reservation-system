@@ -1,4 +1,3 @@
-import React from 'react';
 import PageLoader from '@/admin/_core/components/PageLoader';
 
 export default function ChartCard({ title, children, loading, action }) {

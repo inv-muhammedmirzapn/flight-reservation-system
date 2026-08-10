@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails }) {
   if (!flight) return null;

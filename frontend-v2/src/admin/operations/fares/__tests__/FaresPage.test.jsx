@@ -7,7 +7,7 @@ import FaresPage from '../FaresPage';
 
 // Mock AdminCrudPage so we don't need to render its full complex tree
 vi.mock('@/admin/_core/AdminCrudPage', () => ({
-  default: ({ config = {}, banner, saveAndNextUrl }) => (
+  default: ({ config = {}, banner: _banner, saveAndNextUrl: _saveAndNextUrl }) => (
     <div data-testid="admin-crud-page">
       <div data-testid="title">{config.title}</div>
       <div data-testid="breadcrumb">

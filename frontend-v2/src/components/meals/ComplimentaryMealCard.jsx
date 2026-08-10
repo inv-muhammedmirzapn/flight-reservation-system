@@ -1,8 +1,7 @@
-import React from "react";
 
 export default function ComplimentaryMealCard({
   passengers = [],
-  selectedCabin = "Economy",
+  _selectedCabin = "Economy",
   foodItems = [],
   flightMeals = [],
   isMealIncluded = false,
