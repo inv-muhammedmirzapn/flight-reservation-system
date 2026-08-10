@@ -70,10 +70,10 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
     : "plain-card shadow-2xs hover:shadow-xs";
 
   return (
-    <div className={`w-full mx-auto rounded-3xl px-4 sm:px-5 py-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 transition-all mb-4 animate-fade-in ${cardClass}`}>
+    <div className={`w-full mx-auto rounded-3xl px-4 sm:px-5 flex flex-col md:grid md:grid-cols-10 items-center justify-between gap-3 md:gap-0 transition-all mb-4 animate-fade-in ${cardClass}`}>
 
       {/* 1. Airline & Flight Info */}
-      <div className="flex flex-col items-center md:items-start min-w-[150px] gap-0.5">
+      <div className="flex flex-col md:col-span-2 items-center md:items-start min-w-[150px] gap-0.5">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-slate-500">{flight_number}</span>
           {isDelayed && (
@@ -92,7 +92,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
       </div>
 
       {/* 2. Departure */}
-      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
+      <div className="flex-1 flex flex-col md:col-span-2 items-center md:items-start max-w-[20%]">
         {/* Date: show original if not delayed, else new date */}
         <span className="text-xs font-semibold text-slate-500 mb-1">
           {isDelayed && delayedDep ? delayedDep.dateStr : dep.dateStr}
@@ -108,7 +108,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
       </div>
 
       {/* 3. Arrival */}
-      <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
+      <div className="flex-1 flex flex-col md:col-span-2 items-center md:items-start max-w-[20%]">
         <span className="text-xs font-semibold text-slate-500 mb-1">
           {isDelayed && delayedArr ? delayedArr.dateStr : arr.dateStr}
         </span>
@@ -123,20 +123,20 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
       </div>
 
       {/* 4. Duration & Stops box */}
-      <div className="px-3 py-5 shadow-2xs flex flex-col items-center justify-center min-w-[10%] bg-[#f3f3f3]">
+      <div className="px-3 py-5 shadow-2xs flex flex-col items-center justify-center min-w-[10%] bg-[#f3f3f3] h-full">
         <span className="material-symbols-outlined text-slate-900 text-lg select-none font-semibold">schedule</span>
         <span className="text-xs font-bold text-slate-950 mt-1 tracking-wide">{durationStr}</span>
         <span className="text-[10px] font-semibold text-slate-500 mt-0.5">{stopsStr}</span>
       </div>
 
       {/* 5. Price & CTA */}
-      <div className="flex flex-col items-end gap-1 min-w-[25%]">
+      <div className="flex flex-col md:col-span-3 items-end gap-1 min-w-[25%] py-4">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{selectedCabinClass}</span>
         <span className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-wide">
           ₹{Math.round(displayPrice)}
         </span>
         {booking_cutoff_passed ? (
-          <span className="text-[10px] font-bold text-rose-600 border border-rose-200 bg-rose-50 px-2 py-0.5 rounded-full">
+          <span className="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1 rounded-lg">
             Booking Closed
           </span>
         ) : (
@@ -144,15 +144,6 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             type="button"
             onClick={() => onViewDetails && onViewDetails(flight)}
             className="px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-primary mt-0.5"
-          >
-            View Details
-          </button>
-        )}
-        {booking_cutoff_passed && (
-          <button
-            type="button"
-            onClick={() => onViewDetails && onViewDetails(flight)}
-            className="px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-secondary mt-0.5"
           >
             View Details
           </button>
