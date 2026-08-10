@@ -123,12 +123,13 @@ def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabi
 def _resolve_fare_and_availability(flight_instance: FlightInstance, cabin_class: str | None):
     """
     Return (available_seats, price_per_pax) for *cabin_class* on *flight_instance*.
-    Falls back to total available seat count and price=0 when no Fare row is found.
+    Prioritizes physical seat status as source of truth when seats exist for the instance.
     """
     seat_filter = {"status": SeatStatus.AVAILABLE}
     if cabin_class:
         seat_filter["seat_class"] = cabin_class
 
+    has_seats = flight_instance.seats.exists()
     available_seats = flight_instance.seats.filter(**seat_filter).count()
     price_per_pax = Decimal("0")
 
@@ -139,7 +140,8 @@ def _resolve_fare_and_availability(flight_instance: FlightInstance, cabin_class:
         flight_instance=flight_instance, cabin_class=cabin_class
     ).first()
     if fare_obj:
-        available_seats = fare_obj.available_seats
+        if not has_seats:
+            available_seats = fare_obj.available_seats
         price_per_pax = fare_obj.price
 
     return available_seats, price_per_pax
