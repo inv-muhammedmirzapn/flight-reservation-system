@@ -1,7 +1,10 @@
 import logging
+from datetime import timedelta
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+
+BOOKING_CUTOFF_HOURS = 3  # bookings close this many hours before scheduled departure
 
 from .models import Booking, BookingStatus, Passenger
 from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus
@@ -45,8 +48,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             f"Cannot book a flight that is already {flight_instance.status.lower()}."
         )
 
-    if flight_instance.scheduled_departure < timezone.now():
-        raise ValidationError("Cannot book a flight that has already departed.")
+    # Booking cutoff: 3 hours before ORIGINAL scheduled departure (delays never extend this)
+    cutoff_time = flight_instance.scheduled_departure - timedelta(hours=BOOKING_CUTOFF_HOURS)
+    if timezone.now() >= cutoff_time:
+        raise ValidationError(
+            "Bookings for this flight are closed. "
+            f"Online booking closes {BOOKING_CUTOFF_HOURS} hours before scheduled departure."
+        )
 
     # Seat availability check (use Seat table as source of truth)
     if cabin_class:
