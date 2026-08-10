@@ -1,7 +1,7 @@
 /**
  * AdminPassengersPage — list + detail, linked to booking.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
@@ -18,7 +18,7 @@ export default function AdminPassengersPage() {
   const [selected, setSelected] = useState(null);
   const PAGE_SIZE = 10;
 
-  const load = async (s, p) => {
+  const load = useCallback(async (s, p) => {
     setLoading(true);
     setError('');
     try {
@@ -32,9 +32,9 @@ export default function AdminPassengersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load('', 1); }, []);
+  useEffect(() => { load('', 1); }, [load]);
 
   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
 

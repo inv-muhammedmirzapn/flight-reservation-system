@@ -9,6 +9,37 @@ import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
 import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
 import countriesData from "../../../resources/countries.json";
 
+const formatGender = (genderStr) => {
+  if (!genderStr) return "Male";
+  const upper = genderStr.toUpperCase();
+  if (upper === "FEMALE") return "Female";
+  if (upper === "OTHER") return "Other";
+  return "Male";
+};
+
+const getDialCode = (countryName) => {
+  if (!countryName) return "+91";
+  const match = countriesData.find(
+    (c) => c.name.toLowerCase() === countryName.toLowerCase()
+  );
+  return match ? match.dial_code : "+91";
+};
+
+const extractLocalPhone = (fullPhoneStr, countryName) => {
+  if (!fullPhoneStr) return "";
+  const dialCode = getDialCode(countryName);
+  if (dialCode && fullPhoneStr.startsWith(dialCode)) {
+    return fullPhoneStr.substring(dialCode.length).trim();
+  }
+  if (fullPhoneStr.startsWith("+")) {
+    const spaceIdx = fullPhoneStr.indexOf(" ");
+    if (spaceIdx !== -1) {
+      return fullPhoneStr.substring(spaceIdx + 1).trim();
+    }
+  }
+  return fullPhoneStr;
+};
+
 export default function UserProfilePage() {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state?.auth) || {};
@@ -54,36 +85,7 @@ export default function UserProfilePage() {
     fetchProfile();
   }, [dispatch]);
 
-  const formatGender = (genderStr) => {
-    if (!genderStr) return "Male";
-    const upper = genderStr.toUpperCase();
-    if (upper === "FEMALE") return "Female";
-    if (upper === "OTHER") return "Other";
-    return "Male";
-  };
 
-  const getDialCode = (countryName) => {
-    if (!countryName) return "+91";
-    const match = countriesData.find(
-      (c) => c.name.toLowerCase() === countryName.toLowerCase()
-    );
-    return match ? match.dial_code : "+91";
-  };
-
-  const extractLocalPhone = (fullPhoneStr, countryName) => {
-    if (!fullPhoneStr) return "";
-    const dialCode = getDialCode(countryName);
-    if (dialCode && fullPhoneStr.startsWith(dialCode)) {
-      return fullPhoneStr.substring(dialCode.length).trim();
-    }
-    if (fullPhoneStr.startsWith("+")) {
-      const spaceIdx = fullPhoneStr.indexOf(" ");
-      if (spaceIdx !== -1) {
-        return fullPhoneStr.substring(spaceIdx + 1).trim();
-      }
-    }
-    return fullPhoneStr;
-  };
 
   useEffect(() => {
     if (profile) {

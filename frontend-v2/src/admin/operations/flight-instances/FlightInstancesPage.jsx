@@ -3,7 +3,7 @@
  * On selecting a flight_id, auto-suggests scheduled_departure/arrival from the route's first/last leg.
  * aircraft_id dropdown is filtered to aircraft owned by the flight's airline.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
@@ -75,7 +75,9 @@ export default function FlightInstancesPage() {
   const [page, setPage] = useState(initialPage);
   const PAGE_SIZE = 10;
 
-  const load = (s, p) => dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
+  const load = useCallback((s, p) => {
+    dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
+  }, [dispatch]);
 
   const pageStr = searchParams.get('page') || '1';
 
@@ -84,7 +86,7 @@ export default function FlightInstancesPage() {
     const resolvedPage = isNaN(p) ? 1 : p;
     setPage(resolvedPage);
     load(activeSearch, resolvedPage);
-  }, [pageStr, activeSearch]);
+  }, [pageStr, activeSearch, load]);
 
   useEffect(() => {
     dispatch(fetchFlightRoutes({ page_size: 500 }));

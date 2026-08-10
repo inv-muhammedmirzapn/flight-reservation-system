@@ -3,7 +3,7 @@
  * leg_order is auto-assigned by row position.
  * Cross-row layover validation: each leg's departure must be after prev leg's arrival.
  */
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
@@ -49,17 +49,20 @@ export default function FlightRoutesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const load = (s, p) => dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
+  const load = useCallback((s, p) => {
+    dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
+  }, [dispatch]);
 
   useEffect(() => {
-    load(search, page);
+    load(activeSearch, page);
     dispatch(fetchAirlines({}));
     dispatch(fetchAirports({ page_size: 500 }));
-  }, []);
+  }, [load, dispatch, activeSearch, page]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
   const airportOptions = airports.map((a) => ({ value: a.id, label: `${a.iata_code} – ${a.airport_name}` }));
@@ -180,7 +183,7 @@ export default function FlightRoutesPage() {
       if (goNext && routeId) {
         navigate(`/admin/operations/flight-instances?route=${routeId}&autoCreate=1`);
       } else {
-        load(search, page);
+        load(activeSearch, page);
       }
     } catch (err) {
       toast.error(parseApiError(err, 'Failed to save.'));
@@ -189,7 +192,7 @@ export default function FlightRoutesPage() {
 
   const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
     thunk: removeFlightRoute,
-    onSuccess: () => load(search, page),
+    onSuccess: () => load(activeSearch, page),
     successMessage: 'Flight route deleted successfully.',
     errorMessage: 'Failed to delete flight route.'
   });
@@ -217,7 +220,7 @@ export default function FlightRoutesPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
+        <form onSubmit={(e) => { e.preventDefault(); setActiveSearch(search); setPage(1); }} className="flex gap-2 mb-5">
           <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
@@ -294,7 +297,7 @@ export default function FlightRoutesPage() {
           totalPages={totalPages}
           totalCount={count || routes?.length || 0}
           pageSize={PAGE_SIZE}
-          onPageChange={(p) => { setPage(p); load(search, p); }}
+          onPageChange={(p) => { setPage(p); }}
           entityLabel="routes"
         />
       </div>

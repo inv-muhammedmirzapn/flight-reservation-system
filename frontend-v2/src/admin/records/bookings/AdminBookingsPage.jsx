@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle, X, Eye, Plane, User as UserIcon, CreditCard, Calendar, Ticket } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
@@ -26,7 +26,7 @@ export default function AdminBookingsPage() {
   const [selected, setSelected] = useState(null);
   const PAGE_SIZE = 10;
 
-  const load = async (s, st, p) => {
+  const load = useCallback(async (s, st, p) => {
     setLoading(true);
     setError('');
     try {
@@ -41,11 +41,11 @@ export default function AdminBookingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    load(search, statusFilter, page);
-  }, []);
+    load('', '', 1);
+  }, [load]);
 
   const handleSearch = (e) => {
     e.preventDefault();

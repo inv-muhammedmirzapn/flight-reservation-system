@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useId, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
@@ -51,7 +51,7 @@ export function Select({
   }, [normalizedOptions, searchQuery, isOpen]);
 
   // Compute position of dropdown below input bar
-  const updateDropdownPosition = () => {
+  const updateDropdownPosition = useCallback(() => {
     if (!inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
     const dropdownHeight = Math.min(240, filteredOptions.length * 38 + 10);
@@ -70,7 +70,7 @@ export function Select({
       width: rect.width,
       zIndex: 9999,
     });
-  };
+  }, [filteredOptions.length]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -100,7 +100,7 @@ export function Select({
       window.removeEventListener('scroll', updateDropdownPosition, true);
       window.removeEventListener('resize', updateDropdownPosition);
     };
-  }, [isOpen, filteredOptions.length]);
+  }, [isOpen, updateDropdownPosition]);
 
   const handleSelect = (val) => {
     if (disabled) return;

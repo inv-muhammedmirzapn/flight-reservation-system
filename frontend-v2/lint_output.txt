@@ -1,0 +1,772 @@
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/AdminCrudPage.jsx
+   11:54  error    'ChevronLeft' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+   11:96  error    'AlertTriangle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+   46:42  error    'error' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       no-unused-vars
+   57:73  error    Error: Cannot access variable before it is declared
+
+`PAGE_SIZE` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  55 |
+  56 |   const loadList = useCallback((searchVal, pg) => {
+> 57 |     dispatch(thunks.fetchList({ search: searchVal, page: pg, page_size: PAGE_SIZE }));
+     |                                                                         ^^^^^^^^^ `PAGE_SIZE` accessed before it is declared
+  58 |   }, [dispatch, thunks]);
+  59 |
+  60 |   useEffect(() => { loadList(search, page); }, [loadList]);
+
+  154 |   });
+  155 |
+> 156 |   const PAGE_SIZE = 10;
+      |   ^^^^^^^^^^^^^^^^^^^^^ `PAGE_SIZE` is declared here
+  157 |
+  158 |   const handleSearch = (e) => {
+  159 |     e.preventDefault();                                                                                                                                                                                                                                                                       react-hooks/immutability
+   60:48  warning  React Hook useEffect has missing dependencies: 'page' and 'search'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+   76:6   warning  React Hook useEffect has a missing dependency: 'openCreate'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  510:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  508 |     if (value instanceof File) {
+  509 |       const url = URL.createObjectURL(value);
+> 510 |       setPreview(url);
+      |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  511 |       return () => URL.revokeObjectURL(url);
+  512 |     } else if (typeof value === 'string' && value) {
+  513 |       setPreview(value);  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/DeleteConfirmationModal.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/__tests__/adminPages.test.jsx
+   11:8   error  'React' is defined but never used           no-unused-vars
+   12:37  error  'waitFor' is defined but never used         no-unused-vars
+   96:23  error  '_' is defined but never used               no-unused-vars
+  218:11  error  'store' is assigned a value but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/_core/store/crudSliceFactory.js
+  18:9  error  'upper' is assigned a value but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/AnalyticsDashboard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/__tests__/AnalyticsDashboard.test.jsx
+  36:1  error  'global' is not defined  no-undef
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AircraftUtilizationChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AirlinePerformanceChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/AnalyticsFilterBar.jsx
+   1:31  error  'useCallback' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                no-unused-vars
+   3:39  error  'Route' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+  68:16  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  66 |
+  67 |   useEffect(() => {
+> 68 |     if (value) setViewDate(new Date(value));
+     |                ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  69 |   }, [value]);
+  70 |
+  71 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/ChartCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/CustomTooltip.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/EmptyState.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/FlightOccupancyChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/KpiCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/MonthlyRevenueChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/PeakHoursChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/components/PopularRoutesChart.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/analytics/hooks/useAnalyticsData.js
+  48:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  46 |
+  47 |   useEffect(() => {
+> 48 |     load(false, filters);
+     |     ^^^^ Avoid calling setState() directly within an effect
+  49 |     intervalRef.current = setInterval(() => load(true, filters), REFRESH_INTERVAL_MS);
+  50 |     const onVisible = () => { if (document.visibilityState === 'visible') load(true, filters); };
+  51 |     document.addEventListener('visibilitychange', onVisible);  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/master/food-items/FoodItemsPage.jsx
+  8:10  error  'API_BASE_URL' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/fares/FaresPage.jsx
+  9:44  error  'CheckCircle2' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/fares/__tests__/FaresPage.test.jsx
+  10:28  error  'banner' is defined but never used          no-unused-vars
+  10:36  error  'saveAndNextUrl' is defined but never used  no-unused-vars
+  20:1   error  'describe' is not defined                   no-undef
+  23:3   error  'beforeEach' is not defined                 no-undef
+  31:3   error  'it' is not defined                         no-undef
+  42:5   error  'expect' is not defined                     no-undef
+  43:5   error  'expect' is not defined                     no-undef
+  46:3   error  'it' is not defined                         no-undef
+  58:5   error  'expect' is not defined                     no-undef
+  61:5   error  'expect' is not defined                     no-undef
+  62:5   error  'expect' is not defined                     no-undef
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-instances/FlightInstancesPage.jsx
+  11:10  error    'Input' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-unused-vars
+  15:8   error    'DatePicker' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+  17:25  error    'fetchFlightInstanceDetail' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       no-unused-vars
+  21:10  error    'fetchWithAuth' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+  24:55  error    'ChevronLeft' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+  85:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  83 |     const p = parseInt(pageStr, 10);
+  84 |     const resolvedPage = isNaN(p) ? 1 : p;
+> 85 |     setPage(resolvedPage);
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  86 |     load(activeSearch, resolvedPage);
+  87 |   }, [pageStr, activeSearch]);
+  88 |                                          react-hooks/set-state-in-effect
+  87:6   warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  97:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+   95 |   useEffect(() => {
+   96 |     if (routeParam && autoCreate && routes.length > 0) {
+>  97 |       setEditId(null);
+      |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+   98 |       setForm({ ...EMPTY_FORM, flight: routeParam });
+   99 |       setLocalErrors({});
+  100 |       setShowForm(true);  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-overview/FlightOverviewPage.jsx
+    1:44  error    'useRef' is defined but never used                                                                                                                                                                                                            no-unused-vars
+    3:10  error    'Link' is defined but never used                                                                                                                                                                                                              no-unused-vars
+    7:17  error    'Eye' is defined but never used                                                                                                                                                                                                               no-unused-vars
+    7:29  error    'RefreshCw' is defined but never used                                                                                                                                                                                                         no-unused-vars
+   14:10  error    'INR' is defined but never used                                                                                                                                                                                                               no-unused-vars
+   32:11  error    'navigate' is assigned a value but never used                                                                                                                                                                                                 no-unused-vars
+   97:8   warning  React Hook useEffect has missing dependencies: 'activeSearch', 'arrivalDateFilter', 'currentPage', 'dateFilter', 'destFilter', 'sortBy', 'sortOrder', 'sourceFilter', and 'statusFilter'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  177:11  error    'handleRemoveFilter' is assigned a value but never used                                                                                                                                                                                       no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/flight-routes/FlightRoutesPage.jsx
+   6:31  error    'useRef' is defined but never used                                                                                      no-unused-vars
+  13:8   error    'DateTimePicker' is defined but never used                                                                              no-unused-vars
+  15:22  error    'fetchFlightRouteDetail' is defined but never used                                                                      no-unused-vars
+  21:47  error    'ChevronLeft' is defined but never used                                                                                 no-unused-vars
+  29:7   error    'ACCENT' is assigned a value but never used                                                                             no-unused-vars
+  64:6   warning  React Hook useEffect has missing dependencies: 'page' and 'search'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/meals/__tests__/MealsPage.test.jsx
+   7:1  error  'describe' is not defined    no-undef
+  10:3  error  'beforeEach' is not defined  no-undef
+  21:3  error  'it' is not defined          no-undef
+  33:5  error  'expect' is not defined      no-undef
+  36:3  error  'it' is not defined          no-undef
+  48:5  error  'expect' is not defined      no-undef
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/operations/seat-map/SeatMapPage.jsx
+    8:10  error  'Zap' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+   98:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+   96 |   useEffect(() => {
+   97 |     if (instanceParam) {
+>  98 |       setSelInstance(instanceParam);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+   99 |       load(instanceParam);
+  100 |     }
+  101 |   }, [instanceParam, load]);                                       react-hooks/set-state-in-effect
+  143:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  141 |       if (activeFilters.some(a => ea.includes(a))) sel.add(seat.id);
+  142 |     });
+> 143 |     setSelectedIds(sel);
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  144 |   }, [classTab, seats, activeFilters]);
+  145 |
+  146 |   const handleSeatClick = (e, seat) => {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/records/bookings/AdminBookingsPage.jsx
+    3:76  error  'Calendar' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    no-unused-vars
+   47:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  45 |
+  46 |   useEffect(() => {
+> 47 |     load('', '', 1);
+     |     ^^^^ Avoid calling setState() directly within an effect
+  48 |   }, [load]);
+  49 |
+  50 |   const handleSearch = (e) => {  react-hooks/set-state-in-effect
+  115:25  error  'displayUser' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/records/passengers/AdminPassengersPage.jsx
+  37:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  35 |   }, []);
+  36 |
+> 37 |   useEffect(() => { load('', 1); }, [load]);
+     |                     ^^^^ Avoid calling setState() directly within an effect
+  38 |
+  39 |   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
+  40 |  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/admin/records/payments/AdminPaymentsPage.jsx
+  37:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  35 |   }, []);
+  36 |
+> 37 |   useEffect(() => { load('', 1); }, [load]);
+     |                     ^^^^ Avoid calling setState() directly within an effect
+  38 |
+  39 |   const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
+  40 |  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/auth/ProtectedRoute.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/BookingReviewCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/CheckoutStepper.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/TicketCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/bookings/TicketInvoice.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/CabinClassSelector.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/DateStripCarousel.jsx
+   78:6   warning  React Hook useEffect has a missing dependency: 'filters'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+   78:29  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  104:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  102 |       });
+  103 |     }
+> 104 |     setDates(list);
+      |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  105 |   }, []);
+  106 |
+  107 |   // Compute reference price (selected date's price or average of available prices)  react-hooks/set-state-in-effect
+  182:15  error    The value assigned to 'priceColorClass' is not used in subsequent statements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-useless-assignment
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FareDetailsCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightFilterDrawer.jsx
+  17:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  15 |   useEffect(() => {
+  16 |     if (isOpen) {
+> 17 |       setDraftFilters({
+     |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |         ordering: filters?.ordering || "base_fare",
+  19 |         stops: filters?.stops !== undefined ? filters.stops : "",
+  20 |         airlines: filters?.airlines || [],  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightItineraryCard.jsx
+  68:26  error  React Hook "React.useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightItinerarySummaryCard.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/FlightSearchHeader.jsx
+   95:38  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  93 |     const urlCabin = searchParams.get("cabinClass");
+  94 |
+> 95 |     if (urlFrom && urlFrom !== from) setFrom(urlFrom);
+     |                                      ^^^^^^^ Avoid calling setState() directly within an effect
+  96 |     if (urlTo && urlTo !== to) setTo(urlTo);
+  97 |     if (urlDep && urlDep !== depDate) setDepDate(urlDep);
+  98 |     if (urlArr !== arrDate) setArrDate(urlArr);  react-hooks/set-state-in-effect
+  100:6   warning  React Hook useEffect has missing dependencies: 'arrDate', 'cabinClass', 'depDate', 'from', and 'to'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+  168:14  error    'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/flights/PassengerListSection.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/layout/Navbar.jsx
+  311:76  error  'setConfirmLogout' is not defined  no-undef
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/meals/ComplimentaryMealCard.jsx
+  1:8  error  'React' is defined but never used                   no-unused-vars
+  5:3  error  'selectedCabin' is assigned a value but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/ChangePasswordModal.jsx
+  59:25  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This dependency may be mutated later, which could cause the value to change unexpectedly.
+
+  57 |
+  58 |     return e;
+> 59 |   }, [pwdData, touched, isPasswordStrong, hasUsablePassword]);
+     |                         ^^^^^^^^^^^^^^^^ This dependency may be modified later
+  60 |
+  61 |   const isFormValid =
+  62 |     (hasUsablePassword ? !!pwdData.oldPassword : true) &&  react-hooks/preserve-manual-memoization
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/ComboInput.jsx
+  16:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  14 |
+  15 |   // Keep inputVal in sync when parent changes value (e.g. edit form prefill)
+> 16 |   useEffect(() => { setInputVal(value ?? ''); }, [value]);
+     |                     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |
+  18 |   // Close on outside click
+  19 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/DatePickerModal.jsx
+   5:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-refresh/only-export-components
+  15:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-refresh/only-export-components
+  37:11  error  't' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             no-unused-vars
+  50:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  48 |   useEffect(() => {
+  49 |     if (isOpen) {
+> 50 |       setDepDate(initialDepDate || "");
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |       setArrDate(initialArrDate || "");
+  52 |       setActiveTab(initialTab || "dep");
+  53 |       setViewDate(initialDepDate ? new Date(initialDepDate) : new Date());  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/DateTimePicker.jsx
+    1:8  error  'React' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+   17:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  15 |   useEffect(() => {
+  16 |     const [h, m] = timeVal.split(':');
+> 17 |     setHRaw(h || '00');
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  18 |     setMRaw(m || '00');
+  19 |   }, [timeVal]);
+  20 |                                                                     react-hooks/set-state-in-effect
+  146:9  error  'TIME_PRESETS' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  185:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  183 |       const parsed = new Date(dateVal);
+  184 |       if (!isNaN(parsed.getTime())) {
+> 185 |         setViewYear(parsed.getFullYear());
+      |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  186 |         setViewMonth(parsed.getMonth());
+  187 |       }
+  188 |     }  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/Input.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/Select.jsx
+    1:8  error    'React' is defined but never used                                                                                          no-unused-vars
+  103:6  warning  React Hook useEffect has a missing dependency: 'updateDropdownPosition'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/components/ui/SingleDatePickerModal.jsx
+  18:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  16 |     if (isOpen) {
+  17 |       const parsed = initialDate ? new Date(initialDate) : new Date(2003, 0, 1);
+> 18 |       setSelectedDate(initialDate || "");
+     |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |       setViewDate(isNaN(parsed.getTime()) ? new Date(2003, 0, 1) : parsed);
+  20 |     }
+  21 |   }, [isOpen, initialDate]);  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/auth/LoginPage.jsx
+   87:14  error  'err' is defined but never used  no-unused-vars
+  104:16  error  'err' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/auth/RegisterPage.jsx
+  121:9   error  Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-case-declarations
+  258:14  error  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               no-unused-vars
+  321:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  319 |               </label>
+  320 |               <input
+> 321 |                 ref={inputRefs.last_name}
+      |                      ^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  322 |                 type="text"
+  323 |                 name="last_name"
+  324 |                 value={formData.last_name}                                                                                                     react-hooks/refs
+  356:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  354 |               </label>
+  355 |               <button
+> 356 |                 ref={inputRefs.date_of_birth}
+      |                      ^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  357 |                 type="button"
+  358 |                 onClick={() => setIsDobModalOpen(true)}
+  359 |                 className="input-field flex items-center justify-between text-left cursor-pointer w-full"    react-hooks/refs
+  381:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  379 |               </label>
+  380 |               <input
+> 381 |                 ref={inputRefs.username}
+      |                      ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  382 |                 type="text"
+  383 |                 name="username"
+  384 |                 value={formData.username}                                                                                                         react-hooks/refs
+  402:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  400 |               </label>
+  401 |               <input
+> 402 |                 ref={inputRefs.email}
+      |                      ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  403 |                 type="email"
+  404 |                 name="email"
+  405 |                 value={formData.email}                                                                                                                    react-hooks/refs
+  426:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  424 |             <div className="relative flex items-center">
+  425 |               <input
+> 426 |                 ref={inputRefs.password}
+      |                      ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  427 |                 type={showPassword ? "text" : "password"}
+  428 |                 name="password"
+  429 |                 value={formData.password}                                         react-hooks/refs
+  484:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  482 |             <div className="relative flex items-center">
+  483 |               <input
+> 484 |                 ref={inputRefs.confirm_password}
+      |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  485 |                 type={showConfirmPassword ? "text" : "password"}
+  486 |                 name="confirm_password"
+  487 |                 value={formData.confirm_password}  react-hooks/refs
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/BookingCheckoutPage.jsx
+    1:8   error  'React' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+   27:25  error  'setSelectedCabin' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+   33:11  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  31 |   const [passengers, setPassengers] = useState(
+  32 |     Array.from({ length: initialSeatCount }, (_, i) => ({
+> 33 |       id: Date.now() + i,
+     |           ^^^^^^^^^^ Cannot call impure function
+  34 |       name: "",
+  35 |       age: "",
+  36 |       gender: "Male",  react-hooks/purity
+   44:28  error  'setSelectedMealsMap' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+  123:9   error  'handlePassengerCountChange' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            no-unused-vars
+  138:9   error  'handlePassengerInput' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/BookingConfirmationPage.jsx
+  29:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  27 |
+  28 |     if (detailData) {
+> 29 |       setLoading(false);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  30 |       return;
+  31 |     }
+  32 |  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/MyBookingsPage.jsx
+  26:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  24 |
+  25 |     let isMounted = true;
+> 26 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |
+  28 |     async function fetchBookingsAndWaitlist() {
+  29 |       try {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/TicketCancellationPage.jsx
+  32:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  30 |
+  31 |     if (detailData) {
+> 32 |       setLoading(false);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  33 |       return;
+  34 |     }
+  35 |  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/bookings/TicketDetailPage.jsx
+  28:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  26 |
+  27 |     if (detailData) {
+> 28 |       setLoading(false);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  29 |       return;
+  30 |     }
+  31 |  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/flights/FlightDetailPage.jsx
+  31:26  error  'setPassengerCount' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  35:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  33 |   useEffect(() => {
+  34 |     let isMounted = true;
+> 35 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  36 |     setError(null);
+  37 |
+  38 |     async function fetchFlightDetail() {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/flights/FlightsPage.jsx
+  50:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  48 |   useEffect(() => {
+  49 |     let isMounted = true;
+> 50 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |     setError(null);
+  52 |
+  53 |     async function loadFlights() {  react-hooks/set-state-in-effect
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/notifications/NotificationsPage.jsx
+  70:14  error  '_' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/pages/profile/UserProfilePage.jsx
+   90:7  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  88 |   useEffect(() => {
+  89 |     if (profile) {
+> 90 |       setFormData({
+     |       ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  91 |         first_name: profile.first_name || "",
+  92 |         last_name: profile.last_name || "",
+  93 |         username: profile.username || "",  react-hooks/set-state-in-effect
+  103:6  warning  React Hook useEffect has a missing dependency: 'extractLocalPhone'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/services/apiClient.js
+  26:12  error  '_' is defined but never used                                   no-unused-vars
+  50:12  error  'netErr' is defined but never used                              no-unused-vars
+  53:5   error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+  98:7   error  There is no `cause` attached to the symptom error being thrown  preserve-caught-error
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/__tests__/bookingSlice.test.js
+  2:48  error  'afterEach' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/__tests__/notificationsSlice.test.js
+  7:3  error  'clearNotificationState' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/authSlice.js
+  43:60  error  'dispatch' is defined but never used  no-unused-vars
+  76:40  error  'dispatch' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/bookingSlice.js
+  16:16  error  '_' is defined but never used  no-unused-vars
+  34:16  error  '_' is defined but never used  no-unused-vars
+  34:19  error  Empty block statement          no-empty
+  51:16  error  '_' is defined but never used  no-unused-vars
+  51:19  error  Empty block statement          no-empty
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/flightSlice.js
+   18:16  error  '_' is defined but never used  no-unused-vars
+   18:19  error  Empty block statement          no-empty
+   34:16  error  '_' is defined but never used  no-unused-vars
+   34:19  error  Empty block statement          no-empty
+   50:16  error  '_' is defined but never used  no-unused-vars
+   50:19  error  Empty block statement          no-empty
+   67:16  error  '_' is defined but never used  no-unused-vars
+   67:19  error  Empty block statement          no-empty
+   84:16  error  '_' is defined but never used  no-unused-vars
+   84:19  error  Empty block statement          no-empty
+  100:16  error  '_' is defined but never used  no-unused-vars
+  117:16  error  '_' is defined but never used  no-unused-vars
+  134:16  error  '_' is defined but never used  no-unused-vars
+  151:16  error  '_' is defined but never used  no-unused-vars
+  168:16  error  '_' is defined but never used  no-unused-vars
+  186:16  error  '_' is defined but never used  no-unused-vars
+  186:19  error  Empty block statement          no-empty
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/notificationsSlice.js
+  9:12  error  '_' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/store/waitlistSlice.js
+  9:12  error  '_' is defined but never used  no-unused-vars
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/src/utils/validators.js
+  6:100  error  Unnecessary escape character: \[  no-useless-escape
+  6:117  error  Unnecessary escape character: \/  no-useless-escape
+
+/home/adersha/MAIN PROJECT/flight-reservation-system/frontend-v2/vite.config.js
+  12:25  error  '__dirname' is not defined  no-undef
+
+✖ 175 problems (165 errors, 10 warnings)
+
