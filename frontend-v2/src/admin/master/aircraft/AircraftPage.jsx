@@ -96,15 +96,25 @@ export default function AircraftPage() {
     { name: 'first_class_layout', label: 'First Class Layout', placeholder: 'e.g. 2-2' },
   ];
 
-  return (
-    <AdminCrudPage
-      title="Aircraft"
-      entityName="aircraft"
-      columns={COLUMNS}
-      fields={FIELDS}
-      emptyForm={EMPTY_FORM}
-      validateForm={validateForm}
-      thunks={THUNKS}
-    />
-  );
+  const CONFIG = {
+    title: 'Aircraft',
+    entityName: 'aircraft',
+    columns: COLUMNS,
+    fields: FIELDS,
+    emptyForm: EMPTY_FORM,
+    validateForm,
+    thunks: THUNKS,
+    getDeleteDetails: (item) => {
+      if (!item) return null;
+      const details = {};
+      if (item.registration) {
+        details['REGISTRATION'] = item.registration;
+        if (item.airline_name) details['AIRLINE'] = item.airline_name;
+        if (item.model_display || item.aircraft_model_name) details['MODEL'] = item.model_display || item.aircraft_model_name;
+      }
+      return details;
+    }
+  };
+
+  return <AdminCrudPage config={CONFIG} />;
 }

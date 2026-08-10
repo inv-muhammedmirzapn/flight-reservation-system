@@ -40,17 +40,27 @@ const onBeforeSubmit = (form) => {
 
 const THUNKS = { fetchList: fetchAirlines, fetchDetail: fetchAirlineDetail, add: addAirline, update: updateAirline, remove: removeAirline };
 
+const CONFIG = {
+  title: 'Airlines',
+  entityName: 'airline',
+  columns: COLUMNS,
+  fields: FIELDS,
+  emptyForm: EMPTY_FORM,
+  validateForm,
+  onBeforeSubmit,
+  thunks: THUNKS,
+  getDeleteDetails: (item) => {
+    if (!item) return null;
+    const details = {};
+    if (item.iata_airline_code) {
+      details['AIRLINE NAME'] = item.airline_name || item.name;
+      details['IATA CODE'] = item.iata_airline_code;
+      if (item.country_name || item.country) details['COUNTRY'] = item.country_name || item.country;
+    }
+    return details;
+  }
+};
+
 export default function AirlinesPage() {
-  return (
-    <AdminCrudPage
-      title="Airlines"
-      entityName="airline"
-      columns={COLUMNS}
-      fields={FIELDS}
-      emptyForm={EMPTY_FORM}
-      validateForm={validateForm}
-      onBeforeSubmit={onBeforeSubmit}
-      thunks={THUNKS}
-    />
-  );
+  return <AdminCrudPage config={CONFIG} />;
 }

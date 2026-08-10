@@ -17,6 +17,9 @@ import {
 import { Pagination } from '@/components/ui/Pagination';
 import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useDeleteAction from '../../_core/hooks/useDeleteAction';
+import { SpinnerLoader } from '@/components/ui/Loaders';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 const EMPTY_ITEM = { food_item: '', quantity: 1 };
 
@@ -37,9 +40,6 @@ export default function MealsPage() {
   const [form, setForm] = useState({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] });
   const [localErrors, setLocalErrors] = useState({});
   const [page, setPage] = useState(1);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const isDeletingRef = useRef(false);
   const PAGE_SIZE = 10;
 
   const loadMeals = (p) => {
@@ -117,27 +117,16 @@ export default function MealsPage() {
     toast.promise(promise, {
       loading: 'Saving meal…',
       success: () => { closeForm(); loadMeals(page); return 'Meal saved!'; },
-      error: (err) => err?.non_field_errors?.[0] || 'Failed.',
+      error: (err) => getErrorMessage(err, 'Failed.'),
     });
   };
 
-  const confirmDelete = async () => {
-    if (!deleteItem || isDeletingRef.current) return;
-    isDeletingRef.current = true;
-    setDeleteLoading(true);
-    try {
-      await dispatch(removeFlightMeal(deleteItem.id)).unwrap();
-      toast.success('Flight Meal deleted successfully.');
-      setDeleteItem(null);
-      loadMeals(page);
-    } catch (err) {
-      const errorMsg = typeof err === 'string' ? err : (err?.detail || err?.message || 'Failed to delete flight meal.');
-      toast.error(errorMsg);
-    } finally {
-      setDeleteLoading(false);
-      isDeletingRef.current = false;
-    }
-  };
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: removeFlightMeal,
+    onSuccess: () => loadMeals(page),
+    successMessage: 'Flight Meal deleted successfully.',
+    errorMessage: 'Failed to delete flight meal.'
+  });
 
   return (
     <div className="admin-page">
@@ -182,7 +171,7 @@ export default function MealsPage() {
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
+            <SpinnerLoader />
           ) : meals.length === 0 ? (
             <div className="admin-empty"><p>No meals yet.</p></div>
           ) : (

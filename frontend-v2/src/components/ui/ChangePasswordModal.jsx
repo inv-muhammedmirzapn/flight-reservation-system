@@ -2,50 +2,26 @@ import { useState, useMemo } from "react";
 import { profileAPI } from "@/services/profile-service/profileService";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { PASSWORD_RULES } from "@/utils/validators";
 
 export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword = true }) {
   const { t } = useTranslation();
 
   const [pwdData, setPwdData] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
-  const [touched, setTouched]  = useState({ oldPassword: false, newPassword: false, confirmPassword: false });
+  const [touched, setTouched] = useState({ oldPassword: false, newPassword: false, confirmPassword: false });
   const [pwdSaving, setPwdSaving] = useState(false);
 
-  const [showOldPwd,     setShowOldPwd]     = useState(false);
-  const [showNewPwd,     setShowNewPwd]     = useState(false);
+  const [showOldPwd, setShowOldPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   /* ── derived validation ── */
-  const PWD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+  const passwordRules = PASSWORD_RULES.map((rule) => ({
+    ...rule,
+    met: rule.test(pwdData.newPassword),
+  }));
 
-  const passwordRules = [
-    {
-      id: "length",
-      label: "At least 8 characters",
-      met: pwdData.newPassword.length >= 8,
-    },
-    {
-      id: "uppercase",
-      label: "At least 1 uppercase letter (A-Z)",
-      met: /[A-Z]/.test(pwdData.newPassword),
-    },
-    {
-      id: "lowercase",
-      label: "At least 1 lowercase letter (a-z)",
-      met: /[a-z]/.test(pwdData.newPassword),
-    },
-    {
-      id: "number",
-      label: "At least 1 digit (0-9)",
-      met: /[0-9]/.test(pwdData.newPassword),
-    },
-    {
-      id: "special",
-      label: "At least 1 special character (!@#$%...)",
-      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwdData.newPassword),
-    },
-  ];
-  
   if (hasUsablePassword) {
     passwordRules.push({
       id: "different",
@@ -130,7 +106,7 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
       if (hasUsablePassword) {
         payload.old_password = pwdData.oldPassword;
       }
-      
+
       await profileAPI.changePassword(payload);
       toast.success(hasUsablePassword ? "Password changed successfully! " : "Password set successfully! ");
       resetForm();
@@ -139,9 +115,9 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
       let errorMessage = "Failed to change password.";
       try {
         const errorData = JSON.parse(err.message);
-        if (errorData.old_password)  errorMessage = errorData.old_password[0];
+        if (errorData.old_password) errorMessage = errorData.old_password[0];
         else if (errorData.new_password) errorMessage = errorData.new_password[0];
-        else if (errorData.detail)   errorMessage = errorData.detail;
+        else if (errorData.detail) errorMessage = errorData.detail;
       } catch {
         errorMessage = err.message || errorMessage;
       }
@@ -156,7 +132,7 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in" onClick={handleClose}>
       <div className="relative w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl animate-scale-up" onClick={(e) => e.stopPropagation()}>
-        
+
         {/* Close Button */}
         <button
           onClick={handleClose}
@@ -245,14 +221,12 @@ export default function ChangePasswordModal({ isOpen, onClose, hasUsablePassword
                   {passwordRules.map((rule) => (
                     <div
                       key={rule.id}
-                      className={`flex items-center gap-2 transition-colors duration-200 ${
-                        rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
-                      }`}
+                      className={`flex items-center gap-2 transition-colors duration-200 ${rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
+                        }`}
                     >
                       <span
-                        className={`material-symbols-outlined text-sm font-bold transition-all ${
-                          rule.met ? "text-emerald-500 scale-110" : "text-slate-300"
-                        }`}
+                        className={`material-symbols-outlined text-sm font-bold transition-all ${rule.met ? "text-emerald-500 scale-110" : "text-slate-300"
+                          }`}
                       >
                         {rule.met ? "check_circle" : "radio_button_unchecked"}
                       </span>

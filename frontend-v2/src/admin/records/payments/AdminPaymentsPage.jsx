@@ -6,6 +6,7 @@ import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import '@/admin/_core/styles/admin.css';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -27,7 +28,7 @@ export default function AdminPaymentsPage() {
       setPayments(data.results || data || []);
       setCount(data.count || (data.results ? data.results.length : (data?.length ?? 0)));
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, 'Failed to load payments.'));
     } finally {
       setLoading(false);
     }

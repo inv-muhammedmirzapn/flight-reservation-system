@@ -22,6 +22,9 @@ import {
   Search, PlusCircle, MinusCircle, MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useDeleteAction from '../../_core/hooks/useDeleteAction';
+import { SpinnerLoader } from '@/components/ui/Loaders';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 const ACCENT = '#705d00';
 const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
@@ -48,8 +51,6 @@ export default function FlightRoutesPage() {
   const [search, setSearch] = useState('');
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const PAGE_SIZE = 10;
 
   const load = (s, p) => dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
@@ -182,30 +183,16 @@ export default function FlightRoutesPage() {
         load(search, page);
       }
     } catch (err) {
-      if (typeof err === 'string') toast.error(err);
-      else if (err?.flight_no?.[0]) toast.error(err.flight_no[0]);
-      else if (err?.non_field_errors?.[0]) toast.error(err.non_field_errors[0]);
-      else toast.error('Failed to save.');
+      toast.error(getErrorMessage(err, 'Failed to save.'));
     }
   };
 
-  const isDeletingRef = useRef(false);
-  const confirmDelete = async () => {
-    if (!deleteItem || isDeletingRef.current) return;
-    isDeletingRef.current = true;
-    setDeleteLoading(true);
-    try {
-      await dispatch(removeFlightRoute(deleteItem.id)).unwrap();
-      toast.success('Flight route deleted successfully.');
-      setDeleteItem(null);
-      load(search, page);
-    } catch (err) {
-      toast.error('Failed to delete flight route.');
-    } finally {
-      setDeleteLoading(false);
-      isDeletingRef.current = false;
-    }
-  };
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: removeFlightRoute,
+    onSuccess: () => load(search, page),
+    successMessage: 'Flight route deleted successfully.',
+    errorMessage: 'Failed to delete flight route.'
+  });
 
   const formatMins = (mins) => {
     if (!mins) return '0m';
@@ -247,7 +234,7 @@ export default function FlightRoutesPage() {
         {/* Table */}
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
+            <SpinnerLoader />
           ) : routes?.length === 0 ? (
             <div className="admin-empty">
               <div className="admin-empty-icon"><MapPin size={28} /></div>

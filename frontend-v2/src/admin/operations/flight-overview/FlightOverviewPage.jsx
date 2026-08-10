@@ -11,16 +11,9 @@ import { useTranslation } from 'react-i18next';
 
 import '@/admin/_core/styles/admin.css';
 import { INR } from '@/utils/formatters';
+import StatusBadge from '@/admin/_core/components/StatusBadge';
+import PageLoader from '@/admin/_core/components/PageLoader';
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-
-const STATUS_STYLE = {
-    SCHEDULED: { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
-    DELAYED: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-    CANCELLED: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
-    BOARDING: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
-    DEPARTED: { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
-    ARRIVED: { bg: '#f3e8ff', color: '#7c3aed', border: '#d8b4fe' },
-};
 
 const getStatusOptions = (t) => [
     { value: '', label: t("flights.allStatuses", { defaultValue: 'All Statuses' }) },
@@ -31,15 +24,6 @@ const getStatusOptions = (t) => [
     { value: 'DEPARTED', label: 'Departed' },
     { value: 'ARRIVED', label: 'Arrived' },
 ];
-
-function Badge({ status }) {
-    const s = STATUS_STYLE[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
-    return (
-        <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: 9999, padding: '3px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            {status}
-        </span>
-    );
-}
 
 export default function FlightOverviewPage() {
     const { t } = useTranslation();
@@ -373,10 +357,7 @@ export default function FlightOverviewPage() {
                 {/* Table */}
                 <div className="glass-card" style={{ borderRadius: 20, overflow: 'hidden' }}>
                     {loading ? (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                            <Plane size={48} color="#705d00" className="animate-bounce" />
-                            <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans',Inter,sans-serif" }}>{t("admin.fetching", { defaultValue: 'Fetching flights...' })}</div>
-                        </div>
+                        <PageLoader fullScreen={true} label={t("admin.fetching", { defaultValue: 'Fetching flights...' })} />
                     ) : flights.length === 0 ? (
                         <div style={{ padding: '64px 24px', textAlign: 'center' }}>
                             <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
@@ -409,7 +390,7 @@ export default function FlightOverviewPage() {
                                                 <div>Gate: {f.boarding_gate || '-'}</div>
                                                 <div>Term: {f.departure_terminal || '-'} / {f.arrival_terminal || '-'}</div>
                                             </td>
-                                            <td style={{ padding: '16px' }}><Badge status={f.status} /></td>
+                                            <td style={{ padding: '16px' }}><StatusBadge status={f.status} /></td>
                                             <td style={{ padding: '16px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>

@@ -12,24 +12,33 @@ import { AlertCircle, Plus, Pencil, Trash2, Save, X, ChevronLeft, ChevronRight, 
 import toast from 'react-hot-toast';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import useDeleteAction from './hooks/useDeleteAction';
+import getErrorMessage from './utils/getErrorMessage';
+
+
+import PageLoader from '@/admin/_core/components/PageLoader';
 
 export default function AdminCrudPage({
-  title,
-  subtitle,
-  breadcrumb, // Array of { label, href }
-  entityName,
-  columns,
-  fields,
-  emptyForm,
-  validateForm,
-  onBeforeSubmit,
-  thunks,
+  config,
   extraActions,
   filterBar,
   pageActions,
   banner,
   saveAndNextUrl,
 }) {
+  const {
+    title,
+    subtitle,
+    breadcrumb, // Array of { label, href }
+    entityName,
+    columns,
+    fields,
+    emptyForm,
+    validateForm,
+    onBeforeSubmit,
+    thunks,
+    getDeleteDetails,
+  } = config || {};
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,10 +52,6 @@ export default function AdminCrudPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const isDeletingRef = useRef(false);
-  const PAGE_SIZE = 10;
 
   const loadList = (searchVal, pg) => {
     dispatch(thunks.fetchList({ search: searchVal, page: pg, page_size: PAGE_SIZE }));
@@ -127,114 +132,11 @@ export default function AdminCrudPage({
         navigate(saveAndNextUrl);
       }
     } catch (err) {
-      if (err && typeof err === 'object' && !err.non_field_errors) {
-        toast.error('Validation failed. Please check form fields.');
-      } else {
-        toast.error(err?.non_field_errors?.[0] || `Failed to save ${title}.`);
-      }
+      toast.error(getErrorMessage(err, `Failed to save ${title}.`));
     }
   };
 
-  const getDeleteDetails = (item) => {
-    if (!item) return null;
-    const details = {};
-
-    // 1. Fares
-    if (entityName === 'fare' || item.fare_code) {
-      if (item.fare_code) details['FARE CODE'] = item.fare_code;
-      if (item.cabin_class) details['CABIN CLASS'] = item.cabin_class;
-      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
-      return details;
-    }
-
-    // 2. Flight Routes
-    if (entityName === 'flightRoute' || (item.flight_no && !item.date)) {
-      if (item.flight_no) details['FLIGHT NO'] = item.flight_no;
-      if (item.airline_name) details['AIRLINE'] = item.airline_name;
-      return details;
-    }
-
-    // 3. Flight Instances
-    if (entityName === 'flightInstance' || (item.flight_no && item.date)) {
-      if (item.flight_no) details['FLIGHT NO'] = item.flight_no;
-      if (item.date) details['DATE'] = item.date;
-      if (item.status) details['STATUS'] = item.status;
-      return details;
-    }
-
-    // 4. Seats
-    if (entityName === 'seat' || item.seat_number) {
-      if (item.seat_number) details['SEAT NUMBER'] = item.seat_number;
-      if (item.seat_class) details['CABIN CLASS'] = item.seat_class;
-      if (item.seat_fee !== undefined) details['SEAT FEE'] = `${item.currency || 'INR'} ${item.seat_fee}`;
-      return details;
-    }
-
-    // 5. Food Items
-    if (entityName === 'foodItem' || item.is_veg !== undefined || item.image_url) {
-      if (item.name || item.item_name) details['ITEM NAME'] = item.name || item.item_name;
-      if (item.airline_name) details['AIRLINE'] = item.airline_name;
-      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
-      return details;
-    }
-
-    // 6. Aircraft
-    if (item.registration) {
-      details['REGISTRATION'] = item.registration;
-      if (item.airline_name) details['AIRLINE'] = item.airline_name;
-      if (item.model_display || item.aircraft_model_name) details['MODEL'] = item.model_display || item.aircraft_model_name;
-      return details;
-    }
-    // 7. Airports
-    else if (item.iata_code) {
-      details['AIRPORT NAME'] = item.airport_name || item.name;
-      details['IATA CODE'] = item.iata_code;
-      if (item.city) details['CITY'] = item.city;
-      if (item.country_name) details['COUNTRY'] = item.country_name;
-      return details;
-    }
-    // 8. Airlines
-    else if (item.iata_airline_code) {
-      details['AIRLINE NAME'] = item.airline_name || item.name;
-      details['IATA CODE'] = item.iata_airline_code;
-      if (item.country_name || item.country) details['COUNTRY'] = item.country_name || item.country;
-      return details;
-    }
-    // 9. Aircraft Models
-    else if (item.manufacturer || item.model_name) {
-      if (item.manufacturer) details['MANUFACTURER'] = item.manufacturer;
-      if (item.model_name) details['MODEL NAME'] = item.model_name;
-      return details;
-    }
-    // 10. Countries
-    else if (item.name && (item.code || item.iso_code || item.country_code)) {
-      details['COUNTRY NAME'] = item.name;
-      details['COUNTRY CODE'] = item.code || item.iso_code || item.country_code;
-      return details;
-    }
-    // 11. General fallback for any other entity
-    else {
-      const nameVal = item.name || item.title || item.code || item.flight_no || item.id;
-      if (nameVal) details['NAME'] = String(nameVal);
-
-      for (const [k, v] of Object.entries(item)) {
-        if (
-          !['id', 'created_at', 'updated_at', 'deleted_at'].includes(k) &&
-          (typeof v === 'string' || typeof v === 'number') &&
-          String(v).trim().length > 0 &&
-          Object.keys(details).length < 4
-        ) {
-          const label = k.replace(/_/g, ' ').toUpperCase();
-          if (!details[label]) {
-            details[label] = String(v);
-          }
-        }
-      }
-    }
-
-    return details;
-  };
-
+  
   const getSingularTitle = (t) => {
     if (!t) return 'Item';
     if (t.endsWith('ies')) return t.slice(0, -3) + 'y';
@@ -243,24 +145,15 @@ export default function AdminCrudPage({
     return t;
   };
 
-  const confirmDelete = async () => {
-    if (!deleteItem || isDeletingRef.current) return;
-    isDeletingRef.current = true;
-    setDeleteLoading(true);
-    const singular = getSingularTitle(title);
-    try {
-      await dispatch(thunks.remove(deleteItem.id)).unwrap();
-      toast.success(`${singular} deleted successfully.`);
-      setDeleteItem(null);
-      loadList(search, page);
-    } catch (err) {
-      const errorMsg = typeof err === 'string' ? err : (err?.detail || err?.message || err?.error || `Failed to delete ${singular.toLowerCase()}.`);
-      toast.error(errorMsg);
-    } finally {
-      setDeleteLoading(false);
-      isDeletingRef.current = false;
-    }
-  };
+  const singular = getSingularTitle(title);
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: thunks.remove,
+    onSuccess: () => loadList(search, page),
+    successMessage: `${singular} deleted successfully.`,
+    errorMessage: `Failed to delete ${singular.toLowerCase()}.`
+  });
+
+  const PAGE_SIZE = 10;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -324,7 +217,7 @@ export default function AdminCrudPage({
                     navigate(-1);
                   }
                 }}
-                className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-[#555] cursor-pointer transition-colors duration-200 flex-shrink-0 hover:bg-black/10"
+                className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-admin-muted cursor-pointer transition-colors duration-200 flex-shrink-0 hover:bg-black/10"
               >
                 <ArrowLeft size={15} /> Back
               </button>
@@ -374,15 +267,7 @@ export default function AdminCrudPage({
         {/* Table Card */}
         <div className="admin-card admin-table-wrap">
           {loading && !items?.length ? (
-            <div className="p-4">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="skeleton-row">
-                  <div className="skeleton h-5 w-1/4" />
-                  <div className="skeleton h-5 w-[35%]" />
-                  <div className="skeleton h-5 w-[15%]" />
-                </div>
-              ))}
-            </div>
+            <PageLoader label={`Loading ${title}...`} />
           ) : items?.length === 0 ? (
             <div className="admin-empty">
               <div className="admin-empty-icon"><Inbox size={28} /></div>
@@ -483,11 +368,11 @@ export default function AdminCrudPage({
                   if (field.type === 'datetime') {
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
-                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
+                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-admin-muted block mb-1.5">
                           {field.label}
                         </label>
                         <DateTimePicker value={form[field.name] ?? ''} onChange={(e) => handleDateChange(field.name, e.target.value)} />
-                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
+                        {errorMsg && <p className="text-xs text-status-red mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
@@ -495,7 +380,7 @@ export default function AdminCrudPage({
                     return (
                       <div key={field.name} className={`flex items-center gap-2.5 pt-6 ${field.fullWidth ? 'admin-form-full' : ''}`}>
                         <input type="checkbox" id={field.name} name={field.name} checked={!!form[field.name]} onChange={handleChange} className="w-4 h-4 accent-admin-accent-dark" />
-                        <label htmlFor={field.name} className="text-[13px] font-semibold text-[#1a1c1d] cursor-pointer">{field.label}</label>
+                        <label htmlFor={field.name} className="text-[13px] font-semibold text-admin-ink cursor-pointer">{field.label}</label>
                       </div>
                     );
                   }
@@ -514,11 +399,11 @@ export default function AdminCrudPage({
                   if (field.type === 'textarea') {
                     return (
                       <div key={field.name} className="admin-form-full">
-                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5">
+                        <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-admin-muted block mb-1.5">
                           {field.label}
                         </label>
                         <textarea name={field.name} value={form[field.name] ?? ''} onChange={handleChange} rows={3} className="w-full px-3 py-[9px] rounded-admin-sm border border-black/15 text-[13px] resize-y outline-none" />
-                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
+                        {errorMsg && <p className="text-xs text-status-red mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
@@ -527,14 +412,14 @@ export default function AdminCrudPage({
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
                         <div className="flex justify-between items-center mb-1.5">
-                          <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
+                          <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-admin-muted">
                             {field.label}
                           </label>
                           <button type="button" onClick={() => setForm(f => ({ ...f, [field.name]: [...arr, ''] }))} className="text-[11px] font-bold text-admin-accent-dark bg-transparent border-none cursor-pointer flex items-center gap-1">
                             <Plus size={12} /> Add
                           </button>
                         </div>
-                        {arr.length === 0 && <p className="text-xs text-[#888] mt-1 mb-2">No items added.</p>}
+                        {arr.length === 0 && <p className="text-xs text-admin-muted mt-1 mb-2">No items added.</p>}
                         {arr.map((val, idx) => (
                           <div key={idx} className="flex gap-2 mb-2 items-center">
                             <div className="flex-1">
@@ -551,12 +436,12 @@ export default function AdminCrudPage({
                             <button type="button" onClick={() => {
                               const newArr = arr.filter((_, i) => i !== idx);
                               setForm(f => ({ ...f, [field.name]: newArr }));
-                            }} className="bg-transparent border-none text-[#dc2626] cursor-pointer p-1">
+                            }} className="bg-transparent border-none text-status-red cursor-pointer p-1">
                               <X size={14} />
                             </button>
                           </div>
                         ))}
-                        {errorMsg && <p className="text-xs text-[#dc2626] mt-1">{errorMsg}</p>}
+                        {errorMsg && <p className="text-xs text-status-red mt-1">{errorMsg}</p>}
                       </div>
                     );
                   }
@@ -583,7 +468,7 @@ export default function AdminCrudPage({
                     type="button"
                     disabled={actionLoading}
                     onClick={(e) => handleSubmit(e, true)}
-                    className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                    className="px-4 py-2 rounded-xl bg-admin-accent-dark hover:bg-admin-accent-darker text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
                   >
                     Save & Next <ChevronRight size={14} />
                   </button>
@@ -635,7 +520,7 @@ function FileUploadBox({ field, value, onChange, errorMsg, existingUrl }) {
 
   return (
     <div className="admin-form-full">
-      <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] block mb-1.5 text-center">
+      <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-admin-muted block mb-1.5 text-center">
         {field.label}
       </label>
 
@@ -679,7 +564,7 @@ function FileUploadBox({ field, value, onChange, errorMsg, existingUrl }) {
         )}
       </label>
 
-      {errorMsg && <p className="text-xs text-[#dc2626] mt-1 text-center">{errorMsg}</p>}
+      {errorMsg && <p className="text-xs text-status-red mt-1 text-center">{errorMsg}</p>}
     </div>
   );
 }

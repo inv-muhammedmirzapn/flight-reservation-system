@@ -25,6 +25,9 @@ import {
   Banknote, Armchair, Utensils
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useDeleteAction from '../../_core/hooks/useDeleteAction';
+import { SpinnerLoader } from '@/components/ui/Loaders';
+import getErrorMessage from '@/admin/_core/utils/getErrorMessage';
 
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
@@ -66,8 +69,6 @@ export default function FlightInstancesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const initialPage = isNaN(pageParam) ? 1 : pageParam;
@@ -271,41 +272,23 @@ export default function FlightInstancesPage() {
         load(activeSearch, page);
       }
     } catch (err) {
-      // DRF field errors come as { fieldName: ["msg", ...] | "msg" }
-      // Normalise every value to a plain string so input error props work
       if (err && typeof err === 'object') {
-        const normalised = {};
-        Object.entries(err).forEach(([key, val]) => {
-          if (Array.isArray(val)) normalised[key] = val[0];
-          else if (typeof val === 'string') normalised[key] = val;
-        });
-        setLocalErrors(prev => ({ ...prev, ...normalised }));
-        // Show non-field errors (cross-field / global) as a toast only
-        if (err.non_field_errors) {
-          toast.error(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
-        } else if (!Object.keys(normalised).length) {
-          toast.error('Failed to save. Please try again.');
+        const errors = {};
+        for (const [k, v] of Object.entries(err)) {
+          errors[k] = Array.isArray(v) ? v[0] : v;
         }
-      } else {
-        toast.error('Failed to save. Please try again.');
+        setLocalErrors(prev => ({ ...prev, ...errors }));
       }
+      toast.error(getErrorMessage(err, 'Failed to save.'));
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteItem) return;
-    setDeleteLoading(true);
-    try {
-      await dispatch(removeFlightInstance(deleteItem.id)).unwrap();
-      toast.success('Flight instance deleted successfully.');
-      setDeleteItem(null);
-      load(activeSearch, page);
-    } catch (err) {
-      toast.error('Failed to delete flight instance.');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: removeFlightInstance,
+    onSuccess: () => load(activeSearch, page),
+    successMessage: 'Flight instance deleted successfully.',
+    errorMessage: 'Failed to delete flight instance.'
+  });
 
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
@@ -373,7 +356,7 @@ export default function FlightInstancesPage() {
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
+            <SpinnerLoader />
           ) : instances?.length === 0 ? (
             <div className="admin-empty"><p>No instances. Create one above.</p></div>
           ) : (
