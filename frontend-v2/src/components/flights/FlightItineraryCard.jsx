@@ -19,8 +19,6 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
     delay_minutes = 0,
     delayed_departure_time,
     delayed_arrival_time,
-    booking_cutoff_passed = false,
-    booking_cutoff_time,
   } = flight;
 
   const isDelayed = status === "DELAYED" && delay_minutes > 0;
@@ -72,7 +70,6 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
   const arr = formatDateTime(arrTime);
   const delayedDep = isDelayed && delayed_departure_time ? formatDateTime(delayed_departure_time) : null;
   const delayedArr = isDelayed && delayed_arrival_time ? formatDateTime(delayed_arrival_time) : null;
-  const cutoffFmt = booking_cutoff_time ? formatDateTime(booking_cutoff_time) : null;
 
   // Process transit stops array
   const processedStops = (() => {
