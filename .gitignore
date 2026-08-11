@@ -45,3 +45,9 @@ prompt.md
 # Design assets
 stitch_designs/
 frontend/stitch_designs/
+
+# Linting and scratch scripts
+frontend-v2/eslint-report.json
+frontend-v2/fix.py
+frontend-v2/parse_lint.cjs
+frontend-v2/parsed_lint.txt
