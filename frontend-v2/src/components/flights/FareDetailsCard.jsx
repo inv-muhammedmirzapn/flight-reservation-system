@@ -94,9 +94,8 @@ export default function FareDetailsCard({
           <div className="flex items-center justify-between mt-2">
             <span className="flex items-center gap-1 text-blue-800 font-semibold">
               <span className="material-symbols-outlined text-sm">airline_seat_recline_normal</span>
-              Premium Seats
-            </span>
-            <span className="text-blue-900 font-bold">
+Seat Fare            </span>
+            <span className="text-blue-900 font-bold"> 
               ₹ {seatTotal.toLocaleString("en-IN")}
             </span>
           </div>

@@ -1,17 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
 import { fetchFlightInstances, updateFlightInstance, fetchAirports } from '@/admin/_core/store/adminSlices';
 import { Select } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
-import { Edit2, Eye, Plane, RefreshCw, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
+import { Edit2, Plane, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parseApiError } from '@/utils/errorUtils';
 import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
 
 import '@/admin/_core/styles/admin.css';
-import { INR } from '@/utils/formatters';
 import StatusBadge from '@/admin/_core/components/StatusBadge';
 import PageLoader from '@/admin/_core/components/PageLoader';
 const fmtDT = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -29,7 +27,7 @@ const getStatusOptions = (t) => [
 export default function FlightOverviewPage() {
     const { t } = useTranslation();
     const dispatch = useDispatch();
-    const navigate = useNavigate();
+  // const navigate = useNavigate();
 
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
@@ -174,6 +172,7 @@ export default function FlightOverviewPage() {
         setFilterOpen(false);
     };
 
+    // eslint-disable-next-line unused-imports/no-unused-vars
     const handleRemoveFilter = (filterKey) => {
         let nextSearch = activeSearch;
         let nextStatus = statusFilter;
@@ -422,32 +421,6 @@ export default function FlightOverviewPage() {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                                {/* Sorting Section */}
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                        <Select
-                                            options={[
-                                                { value: 'scheduled_departure', label: 'Departure Time' },
-                                                { value: 'scheduled_arrival', label: 'Arrival Time' },
-                                                { value: 'flight__flight_number', label: 'Flight Number' },
-                                                { value: 'status', label: 'Status' }
-                                            ]}
-                                            value={draftSortBy}
-                                            onChange={(e) => setDraftSortBy(e.target.value)}
-                                        />
-                                        <Select
-                                            options={[
-                                                { value: 'asc', label: 'Ascending' },
-                                                { value: 'desc', label: 'Descending' }
-                                            ]}
-                                            value={draftSortOrder}
-                                            onChange={(e) => setDraftSortOrder(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-
                                 {/* Routing Section */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                     <div style={{ position: 'relative' }}>
