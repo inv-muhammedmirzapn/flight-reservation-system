@@ -23,6 +23,10 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     destination_terminals = serializers.SerializerMethodField()
     departure_time = serializers.DateTimeField(source='scheduled_departure')
     arrival_time = serializers.DateTimeField(source='scheduled_arrival')
+    
+    aircraft_economy_layout = serializers.CharField(source='aircraft.economy_layout', read_only=True)
+    aircraft_business_layout = serializers.CharField(source='aircraft.business_layout', read_only=True)
+    aircraft_first_class_layout = serializers.CharField(source='aircraft.first_class_layout', read_only=True)
     base_fare = serializers.SerializerMethodField()
     total_seats = serializers.SerializerMethodField()
     available_seats = serializers.SerializerMethodField()
@@ -35,6 +39,11 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     airline_logo = serializers.SerializerMethodField()
     flight_instance_id = serializers.IntegerField(source='id')
 
+    booking_cutoff_time = serializers.SerializerMethodField()
+    booking_cutoff_passed = serializers.SerializerMethodField()
+    delayed_departure_time = serializers.SerializerMethodField()
+    delayed_arrival_time = serializers.SerializerMethodField()
+
     class Meta:
         model = FlightInstance
         fields = [
@@ -46,6 +55,9 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
+            "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
+            "booking_cutoff_time", "booking_cutoff_passed",
+            "delayed_departure_time", "delayed_arrival_time",
         ]
 
     def get_airline_logo(self, obj):
@@ -99,31 +111,77 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             return obj.seats.filter(status=SeatStatus.AVAILABLE).count()
         return sum(f.available_seats for f in obj.fares.all())
 
+    def get_booking_cutoff_time(self, obj):
+        """ISO timestamp of the booking cutoff (3h before scheduled departure)."""
+        from datetime import timedelta
+        if obj.scheduled_departure:
+            return (obj.scheduled_departure - timedelta(hours=3)).isoformat()
+        return None
+
+    def get_booking_cutoff_passed(self, obj):
+        """True when the 3-hour booking window has closed (based on ORIGINAL departure)."""
+        from datetime import timedelta
+        from django.utils import timezone
+        if obj.scheduled_departure:
+            cutoff = obj.scheduled_departure - timedelta(hours=3)
+            return timezone.now() >= cutoff
+        return False
+
+    def get_delayed_departure_time(self, obj):
+        """ISO timestamp of the new expected departure if the flight is delayed."""
+        from datetime import timedelta
+        if obj.status == 'DELAYED' and obj.delay_minutes and obj.delay_minutes > 0 and obj.scheduled_departure:
+            return (obj.scheduled_departure + timedelta(minutes=obj.delay_minutes)).isoformat()
+        return None
+
+    def get_delayed_arrival_time(self, obj):
+        """ISO timestamp of the new expected arrival — shifts by the same delay_minutes."""
+        from datetime import timedelta
+        if obj.status == 'DELAYED' and obj.delay_minutes and obj.delay_minutes > 0 and obj.scheduled_arrival:
+            return (obj.scheduled_arrival + timedelta(minutes=obj.delay_minutes)).isoformat()
+        return None
+
     def get_stops(self, obj):
         from datetime import timedelta
         legs = obj.flight.legs.order_by('leg_order')
         if legs.count() <= 1:
             return []
         stops = []
-        curr_time = obj.scheduled_departure
+        # For delayed flights, shift the entire stop schedule by the same delay_minutes
+        is_delayed = obj.status == 'DELAYED' and obj.delay_minutes and obj.delay_minutes > 0
+        delay = timedelta(minutes=obj.delay_minutes) if is_delayed else timedelta(0)
+        curr_time = obj.scheduled_departure + delay
+        # Also track original (undelayed) times for strikethrough display
+        orig_curr_time = obj.scheduled_departure
         for leg in legs:
             if leg.leg_order > 1:
                 arr_transit = curr_time
                 dep_transit = curr_time + timedelta(minutes=leg.layover_duration_minutes)
+                orig_arr_transit = orig_curr_time
+                orig_dep_transit = orig_curr_time + timedelta(minutes=leg.layover_duration_minutes)
                 stops.append({
                     "airport": leg.departure_airport.iata_code,
                     "airport_name": leg.departure_airport.airport_name,
                     "city": leg.departure_airport.city,
                     "arrival_time": arr_transit.isoformat(),
                     "departure_time": dep_transit.isoformat(),
+                    "original_arrival_time": orig_arr_transit.isoformat() if is_delayed else None,
+                    "original_departure_time": orig_dep_transit.isoformat() if is_delayed else None,
                     "layover_minutes": leg.layover_duration_minutes,
                 })
                 curr_time = dep_transit
+                orig_curr_time = orig_dep_transit
             curr_time += timedelta(minutes=leg.flight_duration_minutes)
+            orig_curr_time += timedelta(minutes=leg.flight_duration_minutes)
         return stops
 
     def get_fares(self, obj):
         from .models import SeatStatus
+        from .services_currency import CurrencyService
+        request = self.context.get('request')
+        user = request.user if request else None
+        target_currency = CurrencyService.get_user_currency(user)
+
         has_seats = obj.seats.exists()
         fares = {}
         for fare in obj.fares.all():
@@ -134,9 +192,14 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
                 ).count()
             else:
                 real_available = fare.available_seats
+
+            display_price = CurrencyService.convert_amount(fare.price, fare.currency, target_currency)
+
             fares[fare.cabin_class] = {
                 'price': float(fare.price),
                 'currency': fare.currency,
+                'display_price': float(display_price),
+                'display_currency': target_currency,
                 'available_seats': real_available,
                 'fare_code': fare.fare_code,
                 'refund_type': fare.refund_type,

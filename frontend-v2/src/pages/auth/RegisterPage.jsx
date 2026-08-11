@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import CustomSelect from "@/components/ui/CustomSelect";
 import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
 import { formatDisplayDate } from "@/components/ui/DatePickerModal";
+import { PASSWORD_RULES } from "@/utils/validators";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -60,33 +61,10 @@ export default function RegisterPage() {
   };
 
   // Password Live Strength Criteria Checks
-  const passwordRules = [
-    {
-      id: "length",
-      label: "At least 8 characters",
-      met: formData.password.length >= 8,
-    },
-    {
-      id: "uppercase",
-      label: "At least 1 uppercase letter (A-Z)",
-      met: /[A-Z]/.test(formData.password),
-    },
-    {
-      id: "lowercase",
-      label: "At least 1 lowercase letter (a-z)",
-      met: /[a-z]/.test(formData.password),
-    },
-    {
-      id: "number",
-      label: "At least 1 digit (0-9)",
-      met: /[0-9]/.test(formData.password),
-    },
-    {
-      id: "special",
-      label: "At least 1 special character (!@#$%...)",
-      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password),
-    },
-  ];
+  const passwordRules = PASSWORD_RULES.map(rule => ({
+    ...rule,
+    met: rule.test(formData.password)
+  }));
 
   const isPasswordStrong = passwordRules.every((rule) => rule.met);
 
@@ -138,11 +116,12 @@ export default function RegisterPage() {
         if (!/^[a-zA-Z]+$/.test(formData.last_name)) return "Only alphabets are allowed";
         break;
 
-      case "date_of_birth":
+      case "date_of_birth": {
         if (!formData.date_of_birth) return "Date of birth is required";
         const age = calculateAge(formData.date_of_birth);
         if (age < 18) return "You must be at least 18 years old to register";
         break;
+      }
 
       case "username":
         if (!formData.username.trim()) return "Username is required";
@@ -284,7 +263,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-16 bg-slate-50/60">
-      
+
       {/* Sky-themed Soft Ambient Aesthetic Blobs */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-sky-200/50 rounded-full blur-3xl pointer-events-none animate-pulse" />
       <div className="absolute bottom-10 -right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl pointer-events-none" />
@@ -297,7 +276,7 @@ export default function RegisterPage() {
 
       {/* Container Card */}
       <div className="relative z-10 w-full max-w-lg rounded-3xl p-8 sm:px-10 animate-fade-in plain-card">
-        
+
         {/* Back to Sign In Header */}
         <div className="mb-4">
           <Link
@@ -311,7 +290,7 @@ export default function RegisterPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          
+
           {/* First & Last Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -473,14 +452,12 @@ export default function RegisterPage() {
                   {passwordRules.map((rule) => (
                     <div
                       key={rule.id}
-                      className={`flex items-center gap-2 transition-colors duration-200 ${
-                        rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
-                      }`}
+                      className={`flex items-center gap-2 transition-colors duration-200 ${rule.met ? "text-emerald-600 font-semibold" : "text-slate-400 font-medium"
+                        }`}
                     >
                       <span
-                        className={`material-symbols-outlined text-sm font-bold transition-all ${
-                          rule.met ? "text-emerald-500 scale-110" : "text-slate-300"
-                        }`}
+                        className={`material-symbols-outlined text-sm font-bold transition-all ${rule.met ? "text-emerald-500 scale-110" : "text-slate-300"
+                          }`}
                       >
                         {rule.met ? "check_circle" : "radio_button_unchecked"}
                       </span>

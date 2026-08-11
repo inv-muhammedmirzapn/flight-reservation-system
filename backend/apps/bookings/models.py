@@ -18,7 +18,7 @@ class Booking(models.Model):
     )
     flight = models.ForeignKey(
         FlightInstance,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="bookings"
     )
     status = models.CharField(
@@ -64,6 +64,12 @@ class Passenger(models.Model):
         help_text="Complimentary in-flight meal preference"
     )
     seat_number = models.CharField(max_length=10, null=True, blank=True, help_text="Allocated seat number (e.g. 12A)")
+    extra_baggage_kg = models.DecimalField(
+        max_digits=6, decimal_places=2, default=0.00, help_text="Purchased extra baggage in kg"
+    )
+    extra_baggage_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00, help_text="Total cost for extra baggage in booking currency"
+    )
 
     def __str__(self):
         return f"{self.name} - {self.booking.flight.flight.flight_no}"

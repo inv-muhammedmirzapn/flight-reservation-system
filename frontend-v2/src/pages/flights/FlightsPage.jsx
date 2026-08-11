@@ -139,7 +139,7 @@ export default function FlightsPage() {
       } catch (err) {
         console.error("Error fetching database flights:", err);
         if (isMounted) {
-          setError("Failed to load flights from database.");
+          setError("Failed to load flights from database: " + (err.message || String(err)));
         }
       } finally {
         if (isMounted) setLoading(false);

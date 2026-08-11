@@ -1,9 +1,13 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Provider, useSelector } from "react-redux";
 import { store } from "@/store";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ServerDownPage from "@/components/common/ServerDownPage";
+
+// ── Passenger pages ──────────────────────────────────────────────────────────
 import LandingPage from "@/pages/landing/LandingPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
@@ -16,124 +20,63 @@ import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
 import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
 import UserProfilePage from "@/pages/profile/UserProfilePage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
-import ServerDownPage from "@/components/common/ServerDownPage";
+
+import PasswordRecoveryPage from "@/pages/auth/PasswordRecoveryPage";
+
+// ── Admin auth ───────────────────────────────────────────────────────────────
+import AdminLoginPage from "@/pages/auth/AdminLoginPage";
+
+// ── Admin pages (lazy-loaded) ────────────────────────────────────────────────
+const AnalyticsDashboard      = lazy(() => import("@/admin/analytics/AnalyticsDashboard"));
+// Master data
+const AirportsPage            = lazy(() => import("@/admin/master/airports/AirportsPage"));
+const AirlinesPage            = lazy(() => import("@/admin/master/airlines/AirlinesPage"));
+const AircraftModelsPage      = lazy(() => import("@/admin/master/aircraft/AircraftModelsPage"));
+const AircraftPage            = lazy(() => import("@/admin/master/aircraft/AircraftPage"));
+const FoodItemsPage           = lazy(() => import("@/admin/master/food-items/FoodItemsPage"));
+// Operations
+const FlightRoutesPage        = lazy(() => import("@/admin/operations/flight-routes/FlightRoutesPage"));
+const FlightInstancesPage     = lazy(() => import("@/admin/operations/flight-instances/FlightInstancesPage"));
+const FlightOverviewPage      = lazy(() => import("@/admin/operations/flight-overview/FlightOverviewPage"));
+const SeatMapPage             = lazy(() => import("@/admin/operations/seat-map/SeatMapPage"));
+const FaresPage               = lazy(() => import("@/admin/operations/fares/FaresPage"));
+const MealsPage               = lazy(() => import("@/admin/operations/meals/MealsPage"));
+// Records
+const AdminBookingsPage       = lazy(() => import("@/admin/records/bookings/AdminBookingsPage"));
+// System
+const DataManagementPage      = lazy(() => import("@/admin/system/data-management/DataManagementPage"));
+
+// Spinner shown while lazy admin chunks load
+const AdminLoadingFallback = () => (
+  <div className="flex-grow flex items-center justify-center min-h-[50vh]">
+    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#705d00]" />
+  </div>
+);
+
+// Helper: wraps element with adminOnly guard + Suspense
+const AdminRoute = ({ children }) => (
+  <ProtectedRoute adminOnly>
+    <Suspense fallback={<AdminLoadingFallback />}>{children}</Suspense>
+  </ProtectedRoute>
+);
 
 function AppContent() {
   const isServerDown = useSelector((state) => state?.system?.isServerDown);
+  const isAdmin = useSelector((state) => state?.auth?.isAdmin);
+  const location = useLocation();
+
+  const isAdminPanel = isAdmin || location.pathname.startsWith("/admin");
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-        {/* Global Header */}
-        <Navbar />
-
-        {/* Global Server Outage Overlay */}
-        {isServerDown && <ServerDownPage />}
-
-        {/* Main Routing Container */}
-        <main className="flex-1 flex flex-col">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/flights" element={<FlightsPage />} />
-            <Route path="/flights/:id" element={<FlightDetailPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-
-            {/* Protected Routes (Authentication Required) */}
-            <Route
-              path="/flights/:id/checkout"
-              element={
-                <ProtectedRoute>
-                  <BookingCheckoutPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <NotificationsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <UserProfilePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings"
-              element={
-                <ProtectedRoute>
-                  <MyBookingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/booking-confirmation/:id"
-              element={
-                <ProtectedRoute>
-                  <BookingConfirmationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/booking-confirmation/waitlist/:id"
-              element={
-                <ProtectedRoute>
-                  <BookingConfirmationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings/ticket/:id"
-              element={
-                <ProtectedRoute>
-                  <TicketDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings/ticket/waitlist/:id"
-              element={
-                <ProtectedRoute>
-                  <TicketDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings/cancel/:id"
-              element={
-                <ProtectedRoute>
-                  <TicketCancellationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings/cancel/waitlist/:id"
-              element={
-                <ProtectedRoute>
-                  <TicketCancellationPage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
-  );
-}
-
-export default function App() {
-  return (
-    <Provider store={store}>
+    <>
       <Toaster
-        position="top-center"
+        position={isAdminPanel ? "top-right" : "top-center"}
         reverseOrder={false}
+        containerStyle={{
+          top: isAdminPanel ? 96 : 16,
+          right: isAdminPanel ? 24 : 16,
+          transition: "all 0.25s ease",
+        }}
         toastOptions={{
           duration: 3500,
           style: {
@@ -185,7 +128,113 @@ export default function App() {
           },
         }}
       />
-      <AppContent />
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+        {/* Global Header */}
+        <Navbar />
+
+        {/* Global Server Outage Overlay */}
+        {isServerDown && <ServerDownPage />}
+
+        {/* Main Routing Container */}
+        <main className="flex-1 flex flex-col">
+          <Routes>
+            {/* ── Public Routes ──────────────────────────────────────────── */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/flights" element={<FlightsPage />} />
+            <Route path="/flights/:id" element={<FlightDetailPage />} />
+            <Route
+              path="/login"
+              element={
+                <ProtectedRoute guestOnly>
+                  <LoginPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <ProtectedRoute guestOnly>
+                  <RegisterPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <ProtectedRoute guestOnly>
+                  <PasswordRecoveryPage />
+                </ProtectedRoute>
+              }
+            />
+            {/* /reset-password kept for backward compat — redirects to combined page */}
+            <Route path="/reset-password" element={<Navigate to="/forgot-password" replace />} />
+
+            {/* ── Admin Login ────────────────────────────────────────────── */}
+            <Route
+              path="/admin/login"
+              element={
+                <ProtectedRoute guestOnly>
+                  <AdminLoginPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ── Protected Passenger Routes ─────────────────────────────── */}
+            <Route path="/flights/:id/checkout" element={<ProtectedRoute><BookingCheckoutPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+            <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+            <Route path="/booking-confirmation/:id" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
+            <Route path="/booking-confirmation/waitlist/:id" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/ticket/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/ticket/waitlist/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/cancel/:id" element={<ProtectedRoute><TicketCancellationPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/cancel/waitlist/:id" element={<ProtectedRoute><TicketCancellationPage /></ProtectedRoute>} />
+
+            {/* ── Admin Routes ───────────────────────────────────────────── */}
+            {/* Redirect /admin/flights → /admin/overview (legacy compat) */}
+            <Route path="/admin/flights" element={<Navigate to="/admin/overview" replace />} />
+
+            {/* Direct links */}
+            <Route path="/admin/overview" element={<AdminRoute><FlightOverviewPage /></AdminRoute>} />
+            <Route path="/admin/analytics" element={<AdminRoute><AnalyticsDashboard /></AdminRoute>} />
+
+            {/* Master data */}
+            <Route path="/admin/master/airports" element={<AdminRoute><AirportsPage /></AdminRoute>} />
+            <Route path="/admin/master/airlines" element={<AdminRoute><AirlinesPage /></AdminRoute>} />
+            <Route path="/admin/master/aircraft-models" element={<AdminRoute><AircraftModelsPage /></AdminRoute>} />
+            <Route path="/admin/master/aircraft" element={<AdminRoute><AircraftPage /></AdminRoute>} />
+            <Route path="/admin/master/food-items" element={<AdminRoute><FoodItemsPage /></AdminRoute>} />
+
+            {/* Operations */}
+            <Route path="/admin/operations/flight-routes" element={<AdminRoute><FlightRoutesPage /></AdminRoute>} />
+            <Route path="/admin/operations/flight-instances" element={<AdminRoute><FlightInstancesPage /></AdminRoute>} />
+            <Route path="/admin/operations/seat-map" element={<AdminRoute><SeatMapPage /></AdminRoute>} />
+            <Route path="/admin/operations/fares" element={<AdminRoute><FaresPage /></AdminRoute>} />
+            <Route path="/admin/operations/meals" element={<AdminRoute><MealsPage /></AdminRoute>} />
+
+            {/* Records */}
+            <Route path="/admin/records/bookings" element={<AdminRoute><AdminBookingsPage /></AdminRoute>} />
+
+            {/* System */}
+            <Route path="/admin/system/data-management" element={<AdminRoute><DataManagementPage /></AdminRoute>} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </>
+  );
+}
+
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </Provider>
   );
 }

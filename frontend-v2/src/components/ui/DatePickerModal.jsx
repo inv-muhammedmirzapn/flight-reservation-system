@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import CustomSelect from "./CustomSelect";
 
 export function getOrdinalSuffix(day) {
@@ -34,7 +33,7 @@ export default function DatePickerModal({
   onSelectDates,
   initialTab
 }) {
-  const { t } = useTranslation();
+  // removed useTranslation
 
   const [depDate, setDepDate] = useState(initialDepDate || "");
   const [arrDate, setArrDate] = useState(initialArrDate || "");
@@ -135,7 +134,7 @@ export default function DatePickerModal({
   const todayStr = toDateString(new Date());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
       
       {/* Backdrop click closer */}
       <div className="absolute inset-0" onClick={onClose} />

@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function CheckoutStepper({ currentStep, steps, onStepClick }) {
   const totalSteps = steps.length;

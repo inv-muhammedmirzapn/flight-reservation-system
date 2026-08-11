@@ -1,0 +1,9 @@
+export const GOLD = '#ffd700';
+export const GOLD_DARK = '#705d00';
+export const DARK = '#1a1c1d';
+export const GREEN = '#059669';
+export const RED = '#dc2626';
+export const BLUE = '#3b82f6';
+export const PURPLE = '#7c3aed';
+export const AMBER = '#d97706';
+export const MUTED = '#5e5e5e';

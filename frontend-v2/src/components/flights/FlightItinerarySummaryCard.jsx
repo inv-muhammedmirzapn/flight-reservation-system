@@ -1,4 +1,3 @@
-import React from "react";
 import { getAirportInfo } from "@/utils/airportHelpers";
 
 export default function FlightItinerarySummaryCard({ flight }) {

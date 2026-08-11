@@ -1,4 +1,3 @@
-import React from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -7,6 +6,7 @@ export default function FareDetailsCard({
   selectedCabin = "ECONOMY",
   passengerCount = 1,
   mealTotal = 0,
+  seatTotal = 0,
   onBookingAction,
   actionButtonText,
 }) {
@@ -30,9 +30,9 @@ export default function FareDetailsCard({
   const cabinLabel = getCabinLabel(selectedCabin);
 
   const totalBaseFare = unitFare * passengerCount;
-  const subTotalWithMeals = totalBaseFare + mealTotal;
-  const gstAmount = Math.round(subTotalWithMeals * 0.12);
-  const grandTotal = subTotalWithMeals + gstAmount;
+  const subTotalWithExtras = totalBaseFare + mealTotal + seatTotal;
+  const gstAmount = Math.round(subTotalWithExtras * 0.12);
+  const grandTotal = subTotalWithExtras + gstAmount;
 
   const handleClick = () => {
     if (!isAuthenticated) {
@@ -89,6 +89,17 @@ export default function FareDetailsCard({
           </div>
         )}
 
+        {seatTotal > 0 && (
+          <div className="flex items-center justify-between mt-2">
+            <span className="flex items-center gap-1 text-blue-800 font-semibold">
+              <span className="material-symbols-outlined text-sm">airline_seat_recline_normal</span>
+Seat Fare            </span>
+            <span className="text-blue-900 font-bold"> 
+              ₹ {seatTotal.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <span>GST (12%)</span>
           <span className="text-slate-950">
@@ -112,10 +123,10 @@ export default function FareDetailsCard({
       <button
         type="button"
         onClick={handleClick}
-        className="w-full mt-6 py-3 px-4 text-xs font-bold rounded-xl cursor-pointer transition-all duration-200 active:scale-95 btn-primary flex items-center justify-center gap-2"
+        className="w-full mt-6 py-3 px-4 text-sm font-bold rounded-xl cursor-pointer transition-all duration-200 active:scale-95 btn-primary flex items-center justify-center gap-2"
       >
         <span>{buttonText}</span>
-        <span className="material-symbols-outlined text-xs">arrow_forward</span>
+        <span className="material-symbols-outlined text-base">arrow_forward</span>
       </button>
     </div>
   );

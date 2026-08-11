@@ -117,7 +117,12 @@ class FlightListCreateView(APIView):
 
         destination = request.query_params.get("destination", "").strip().upper()
         if destination:
-            qs = qs.filter(flight__legs__arrival_airport__iata_code=destination)
+            from django.db.models import Max, F
+            route_ids = FlightLeg.objects.values('flight').annotate(max_order=Max('leg_order')).filter(
+                arrival_airport__iata_code__iexact=destination,
+                leg_order=F('max_order')
+            ).values_list('flight_id', flat=True)
+            qs = qs.filter(flight_id__in=route_ids)
 
         date = request.query_params.get("date", "").strip()
         if date:
@@ -455,11 +460,17 @@ class FlightRouteViewSet(AdminModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """Fast delete: bulk-wipe all seats under every instance before cascade."""
-        route = self.get_object()
-        # Drop all seats in one SQL DELETE — avoids thousands of per-row Python calls
-        Seat.objects.filter(flight_instance__flight=route).delete()
-        route.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            route = self.get_object()
+            # Drop all seats in one SQL DELETE — avoids thousands of per-row Python calls
+            Seat.objects.filter(flight_instance__flight=route).delete()
+            route.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except (IntegrityError, ProtectedError, RestrictedError) as exc:
+            return Response(
+                {"detail": "Cannot delete this flight route because it is referenced by existing related records (such as bookings or meals)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class FlightInstanceViewSet(AdminModelViewSet):
@@ -481,9 +492,9 @@ class FlightInstanceViewSet(AdminModelViewSet):
         if date_to:
             qs = qs.filter(date__lte=date_to)
 
-        status = self.request.query_params.get("status")
-        if status:
-            qs = qs.filter(status__iexact=status)
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status__iexact=status_filter)
 
         date = self.request.query_params.get("date")
         if date:
@@ -510,11 +521,43 @@ class FlightInstanceViewSet(AdminModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """Fast delete: bulk-wipe all seats before deleting the instance."""
-        instance = self.get_object()
-        # Drop all seats in one SQL DELETE — avoids per-row Python sync callbacks
-        Seat.objects.filter(flight_instance=instance).delete()
-        instance.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            instance = self.get_object()
+            # Drop all seats in one SQL DELETE — avoids per-row Python sync callbacks
+            Seat.objects.filter(flight_instance=instance).delete()
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except (IntegrityError, ProtectedError, RestrictedError) as exc:
+            return Response(
+                {"detail": "Cannot delete this flight instance because it is referenced by existing related records (such as bookings or meals)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def perform_update(self, serializer):
+        """Fire delay/status notifications when a flight instance is updated."""
+        old_instance = self.get_object()
+        old_status = old_instance.status
+        old_delay = old_instance.delay_minutes
+
+        instance = serializer.save()
+
+        new_status = instance.status
+        new_delay = instance.delay_minutes
+
+        try:
+            from apps.notifications.services import NotificationService
+            from datetime import timedelta
+
+            if new_status == 'DELAYED' and (
+                old_status != 'DELAYED' or old_delay != new_delay
+            ):
+                # Compute the new estimated departure for the notification
+                delayed_dep = instance.scheduled_departure + timedelta(minutes=new_delay)
+                NotificationService.send_flight_delay(instance, delayed_dep)
+            elif old_status != new_status:
+                NotificationService.send_flight_status_notification(instance, old_status, new_status)
+        except Exception:
+            logger.exception("Failed to send flight status notification after update")
 
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""
@@ -578,6 +621,7 @@ class SeatViewSet(AdminModelViewSet):
     serializer_class = SeatSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["seat_number", "seat_class", "status"]
+    pagination_class = None
 
     def get_queryset(self):
         qs = super().get_queryset()

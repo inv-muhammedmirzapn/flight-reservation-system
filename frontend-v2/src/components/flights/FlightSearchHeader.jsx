@@ -92,11 +92,11 @@ export default function FlightSearchHeader({ onSearchChange }) {
     const urlArr = searchParams.get("arrDate") || "";
     const urlCabin = searchParams.get("cabinClass");
 
-    if (urlFrom && urlFrom !== from) setFrom(urlFrom);
-    if (urlTo && urlTo !== to) setTo(urlTo);
-    if (urlDep && urlDep !== depDate) setDepDate(urlDep);
-    if (urlArr !== arrDate) setArrDate(urlArr);
-    if (urlCabin && urlCabin !== cabinClass) setCabinClass(urlCabin);
+    if (urlFrom) setFrom(prev => urlFrom !== prev ? urlFrom : prev);
+    if (urlTo) setTo(prev => urlTo !== prev ? urlTo : prev);
+    if (urlDep) setDepDate(prev => urlDep !== prev ? urlDep : prev);
+    setArrDate(prev => urlArr !== prev ? urlArr : prev);
+    if (urlCabin) setCabinClass(prev => urlCabin !== prev ? urlCabin : prev);
   }, [searchParams]);
 
   const findAirport = (codeOrQuery) => {
@@ -165,7 +165,7 @@ export default function FlightSearchHeader({ onSearchChange }) {
         main: `${day} ${month}`,
         sub: weekday
       };
-    } catch (e) {
+    } catch (_err) {
       return { main: "-", sub: "" };
     }
   };

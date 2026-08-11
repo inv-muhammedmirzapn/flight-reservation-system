@@ -1,7 +1,10 @@
 import logging
+from datetime import timedelta
 from django.db import transaction, DatabaseError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+
+BOOKING_CUTOFF_HOURS = 3  # bookings close this many hours before scheduled departure
 
 from .models import Booking, BookingStatus, Passenger
 from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus
@@ -45,8 +48,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             f"Cannot book a flight that is already {flight_instance.status.lower()}."
         )
 
-    if flight_instance.scheduled_departure < timezone.now():
-        raise ValidationError("Cannot book a flight that has already departed.")
+    # Booking cutoff: 3 hours before ORIGINAL scheduled departure (delays never extend this)
+    cutoff_time = flight_instance.scheduled_departure - timedelta(hours=BOOKING_CUTOFF_HOURS)
+    if timezone.now() >= cutoff_time:
+        raise ValidationError(
+            "Bookings for this flight are closed. "
+            f"Online booking closes {BOOKING_CUTOFF_HOURS} hours before scheduled departure."
+        )
 
     # Seat availability check (use Seat table as source of truth)
     if cabin_class:
@@ -63,11 +71,6 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             raise ValidationError(
                 f"Only {available_count} seats available on this flight."
             )
-
-    if Booking.objects.filter(
-        user=user, flight=flight_instance, status=BookingStatus.CONFIRMED
-    ).exists():
-        raise ValidationError("You already have a confirmed booking for this flight.")
 
     # Validate passenger data
     for p in passengers_data:
@@ -88,6 +91,18 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
         if gender not in ['M', 'F', 'O']:
             raise ValidationError("Gender must be 'M', 'F', or 'O'.")
 
+        extra_kg = p.get('extra_baggage_kg', 0) or 0
+        try:
+            from decimal import Decimal
+            extra_kg_dec = Decimal(str(extra_kg))
+            if extra_kg_dec < 0:
+                raise ValidationError("Extra baggage weight cannot be negative.")
+            max_allowed = flight_instance.flight.max_extra_baggage_kg_per_person
+            if extra_kg_dec > max_allowed:
+                raise ValidationError(f"Extra baggage cannot exceed {max_allowed} kg per passenger.")
+        except (ValueError, TypeError):
+            raise ValidationError("Extra baggage weight must be a valid number.")
+
     # ── Atomic write: re-check with lock, then create ─────────────────────────
     with transaction.atomic():
         # Lock the flight instance row to prevent race conditions
@@ -95,8 +110,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             flight_instance = FlightInstance.objects.select_for_update(nowait=False).get(
                 pk=flight_instance.pk
             )
-        except (FlightInstance.DoesNotExist, DatabaseError):
-            flight_instance = FlightInstance.objects.get(pk=flight_instance.pk)
+        except FlightInstance.DoesNotExist:
+            raise ValidationError("Flight not found.")
+        except DatabaseError:
+            try:
+                flight_instance = FlightInstance.objects.get(pk=flight_instance.pk)
+            except FlightInstance.DoesNotExist:
+                raise ValidationError("Flight not found.")
 
         # Lock available seats and get per-class price
         fare_obj = None
@@ -125,44 +145,87 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     f"Only {real_available} seats available on this flight."
                 )
 
+        assigned_seats = []
+        total_seat_fee = 0
+
+        # Extract requested seats from passenger data
+        requested_seat_numbers = [str(p.get('seat_number')).strip() for p in passengers_data if p.get('seat_number')]
+        
+        if len(requested_seat_numbers) == seat_count:
+            # All seats were explicitly requested
+            requested_seats_qs = flight_instance.seats.select_for_update().filter(
+                seat_number__in=requested_seat_numbers,
+                status=SeatStatus.AVAILABLE
+            )
+            if cabin_class:
+                requested_seats_qs = requested_seats_qs.filter(seat_class=cabin_class)
+                
+            if requested_seats_qs.count() != seat_count:
+                raise ValidationError("One or more selected seats are not available or invalid for this cabin class.")
+                
+            for seat_obj in requested_seats_qs:
+                seat_obj.status = SeatStatus.BOOKED
+                seat_obj.save(update_fields=['status'])
+                total_seat_fee += seat_obj.seat_fee
+            assigned_seats = requested_seat_numbers
+        else:
+            if len(requested_seat_numbers) > 0:
+                raise ValidationError("You must either select a seat for all passengers or none.")
+                
+            # Fallback: Auto-assign seats (FIFO)
+            seat_filter_kwargs = {"status": SeatStatus.AVAILABLE}
+            if cabin_class:
+                seat_filter_kwargs["seat_class"] = cabin_class
+
+            available_seat_qs = (
+                flight_instance.seats
+                .select_for_update()
+                .filter(**seat_filter_kwargs)
+                .order_by('seat_number')[:seat_count]
+            )
+            for seat_obj in available_seat_qs:
+                seat_obj.status = SeatStatus.BOOKED
+                seat_obj.save(update_fields=['status'])
+                assigned_seats.append(seat_obj.seat_number)
+                total_seat_fee += seat_obj.seat_fee
+
         booking_kwargs = {
             "user": user,
             "flight": flight_instance,
             "status": BookingStatus.CONFIRMED,
             "seat_count": seat_count,
-            "total_price": price_per_pax * seat_count,
+            "total_price": (price_per_pax * seat_count) + total_seat_fee,
         }
         if cabin_class:
             booking_kwargs["cabin_class"] = cabin_class
 
         booking = Booking.objects.create(**booking_kwargs)
 
-        # Auto-assign seats from the Seat table (FIFO order)
-        assigned_seats = []
-        seat_filter_kwargs = {"status": SeatStatus.AVAILABLE}
-        if cabin_class:
-            seat_filter_kwargs["seat_class"] = cabin_class
-
-        available_seat_qs = (
-            flight_instance.seats
-            .select_for_update()
-            .filter(**seat_filter_kwargs)
-            .order_by('seat_number')[:seat_count]
-        )
-        for seat_obj in available_seat_qs:
-            seat_obj.status = SeatStatus.BOOKED
-            seat_obj.save(update_fields=['status'])
-            assigned_seats.append(seat_obj.seat_number)
-
         # Keep Fare.available_seats in sync
         if fare_obj and assigned_seats:
             fare_obj.available_seats = max(0, fare_obj.available_seats - len(assigned_seats))
             fare_obj.save(update_fields=['available_seats'])
 
-        total_meal_cost = 0
+        from decimal import Decimal
+        from apps.flights.services_currency import CurrencyService
+        route = flight_instance.flight
+        booking_curr = fare_obj.currency if fare_obj else "INR"
+        baggage_unit_rate = CurrencyService.convert_amount(
+            route.extra_baggage_price_per_kg,
+            route.extra_baggage_currency,
+            booking_curr
+        )
+
+        total_meal_cost = Decimal("0.00")
+        total_extra_baggage_cost = Decimal("0.00")
 
         for idx, p_data in enumerate(passengers_data):
-            seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
+            seat_num = str(p_data.get('seat_number')).strip() if p_data.get('seat_number') else (assigned_seats[idx] if idx < len(assigned_seats) else None)
+            p_extra_kg = Decimal(str(p_data.get('extra_baggage_kg', 0) or 0))
+            p_extra_cost = p_extra_kg * baggage_unit_rate
+            total_extra_baggage_cost += p_extra_cost
+
+
             passenger_obj = Passenger.objects.create(
                 booking=booking,
                 name=p_data['name'],
@@ -171,9 +234,11 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 phone_number=p_data.get('phone_number', ''),
                 meal_preference=p_data.get('meal_preference', 'NONE'),
                 seat_number=seat_num,
+                extra_baggage_kg=p_extra_kg,
+                extra_baggage_cost=p_extra_cost,
             )
 
-            # Process selected meals for this passenger
+            complimentary_waived = False
             selected_meals_data = p_data.get('selected_meals', []) or []
             if isinstance(selected_meals_data, list):
                 for meal_input in selected_meals_data:
@@ -195,19 +260,22 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     food_item_obj = None
                     flight_meal_obj = None
                     flight_leg_obj = None
-                    unit_price = 0
+                    base_price = 0
 
                     if food_item_id:
                         try:
-                            food_item_obj = FoodItem.objects.get(pk=int(food_item_id))
-                            unit_price = food_item_obj.price
+                            food_item_obj = FoodItem.objects.get(
+                                pk=int(food_item_id),
+                                airline=flight_instance.flight.airline
+                            )
+                            base_price = food_item_obj.price
                         except (FoodItem.DoesNotExist, ValueError):
-                            raise ValidationError(f"Invalid food item ID: {food_item_id}")
+                            raise ValidationError(f"Invalid food item ID: {food_item_id} for this flight's airline.")
 
                     if flight_meal_id:
                         try:
                             flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), flight_instance=flight_instance)
-                            unit_price = flight_meal_obj.price
+                            base_price = flight_meal_obj.price
                         except (FlightMeal.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid combo meal ID: {flight_meal_id}")
 
@@ -217,26 +285,57 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                         except (FlightLeg.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid flight leg ID: {flight_leg_id}")
 
-                    # If complimentary meals are included for this cabin class, check if base price should be waived
-                    if fare_obj and fare_obj.meal_included:
-                        # Complimentary meal waiver applies to the first complimentary meal per leg/passenger
-                        pass
-
                     from .models import PassengerMeal
-                    PassengerMeal.objects.create(
-                        passenger=passenger_obj,
-                        flight_leg=flight_leg_obj,
-                        food_item=food_item_obj,
-                        flight_meal=flight_meal_obj,
-                        quantity=qty,
-                        unit_price=unit_price
-                    )
-                    total_meal_cost += (unit_price * qty)
+                    unit_price = base_price
 
-        # Update final booking total price including meals
-        if total_meal_cost > 0:
-            booking.total_price = booking.total_price + total_meal_cost
-            booking.save(update_fields=['total_price'])
+                    if fare_obj and fare_obj.meal_included and not complimentary_waived:
+                        if qty == 1:
+                            unit_price = 0
+                            complimentary_waived = True
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=1,
+                                unit_price=0
+                            )
+                        else:
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=1,
+                                unit_price=0
+                            )
+                            PassengerMeal.objects.create(
+                                passenger=passenger_obj,
+                                flight_leg=flight_leg_obj,
+                                food_item=food_item_obj,
+                                flight_meal=flight_meal_obj,
+                                quantity=qty - 1,
+                                unit_price=base_price
+                            )
+                            total_meal_cost += (base_price * (qty - 1))
+                            complimentary_waived = True
+                    else:
+                        PassengerMeal.objects.create(
+                            passenger=passenger_obj,
+                            flight_leg=flight_leg_obj,
+                            food_item=food_item_obj,
+                            flight_meal=flight_meal_obj,
+                            quantity=qty,
+                            unit_price=unit_price
+                        )
+                        total_meal_cost += (unit_price * qty)
+
+        # Update final booking total price including meals, extra baggage, and 12% GST
+        from decimal import ROUND_HALF_UP
+        sub_total = booking.total_price + total_meal_cost + total_extra_baggage_cost
+        gst_amount = (sub_total * Decimal("0.12")).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        booking.total_price = sub_total + gst_amount
+        booking.save(update_fields=['total_price'])
 
         try:
             from apps.notifications.services import NotificationService

@@ -3,9 +3,42 @@ import { useSelector, useDispatch } from "react-redux";
 import { profileAPI } from "@/services/profile-service/profileService";
 import { updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
+import { handleApiError, logError } from "@/utils/errorUtils";
 import CustomSelect from "@/components/ui/CustomSelect";
 import SingleDatePickerModal from "@/components/ui/SingleDatePickerModal";
+import ChangePasswordModal from "@/components/ui/ChangePasswordModal";
 import countriesData from "../../../resources/countries.json";
+
+const formatGender = (genderStr) => {
+  if (!genderStr) return "Male";
+  const upper = genderStr.toUpperCase();
+  if (upper === "FEMALE") return "Female";
+  if (upper === "OTHER") return "Other";
+  return "Male";
+};
+
+const getDialCode = (countryName) => {
+  if (!countryName) return "+91";
+  const match = countriesData.find(
+    (c) => c.name.toLowerCase() === countryName.toLowerCase()
+  );
+  return match ? match.dial_code : "+91";
+};
+
+const extractLocalPhone = (fullPhoneStr, countryName) => {
+  if (!fullPhoneStr) return "";
+  const dialCode = getDialCode(countryName);
+  if (dialCode && fullPhoneStr.startsWith(dialCode)) {
+    return fullPhoneStr.substring(dialCode.length).trim();
+  }
+  if (fullPhoneStr.startsWith("+")) {
+    const spaceIdx = fullPhoneStr.indexOf(" ");
+    if (spaceIdx !== -1) {
+      return fullPhoneStr.substring(spaceIdx + 1).trim();
+    }
+  }
+  return fullPhoneStr;
+};
 
 export default function UserProfilePage() {
   const dispatch = useDispatch();
@@ -17,6 +50,7 @@ export default function UserProfilePage() {
   const [saving, setSaving] = useState(false);
   const [isDobModalOpen, setIsDobModalOpen] = useState(false);
   const [dobError, setDobError] = useState("");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -42,7 +76,7 @@ export default function UserProfilePage() {
           dispatch(updateProfileSuccess(res));
         }
       } catch (err) {
-        console.error("Error fetching user profile:", err);
+        logError('UserProfilePage/fetchProfile', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -51,36 +85,7 @@ export default function UserProfilePage() {
     fetchProfile();
   }, [dispatch]);
 
-  const formatGender = (genderStr) => {
-    if (!genderStr) return "Male";
-    const upper = genderStr.toUpperCase();
-    if (upper === "FEMALE") return "Female";
-    if (upper === "OTHER") return "Other";
-    return "Male";
-  };
 
-  const getDialCode = (countryName) => {
-    if (!countryName) return "+91";
-    const match = countriesData.find(
-      (c) => c.name.toLowerCase() === countryName.toLowerCase()
-    );
-    return match ? match.dial_code : "+91";
-  };
-
-  const extractLocalPhone = (fullPhoneStr, countryName) => {
-    if (!fullPhoneStr) return "";
-    const dialCode = getDialCode(countryName);
-    if (dialCode && fullPhoneStr.startsWith(dialCode)) {
-      return fullPhoneStr.substring(dialCode.length).trim();
-    }
-    if (fullPhoneStr.startsWith("+")) {
-      const spaceIdx = fullPhoneStr.indexOf(" ");
-      if (spaceIdx !== -1) {
-        return fullPhoneStr.substring(spaceIdx + 1).trim();
-      }
-    }
-    return fullPhoneStr;
-  };
 
   useEffect(() => {
     if (profile) {
@@ -226,8 +231,8 @@ export default function UserProfilePage() {
       setDobError("");
       setIsEditing(false);
     } catch (err) {
-      console.error("Error updating profile:", err);
-      toast.error(err?.message || "Failed to update profile. Please try again.");
+      logError('UserProfilePage/handleSave', err);
+      handleApiError(err, { fallback: 'Failed to update profile. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -241,6 +246,8 @@ export default function UserProfilePage() {
       </div>
     );
   }
+
+  const hasUsablePassword = profile?.has_usable_password !== false;
 
   return (
     <div className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 py-12 mt-12 bg-slate-50/60">
@@ -258,14 +265,24 @@ export default function UserProfilePage() {
         {/* Top-Right Edit / Action Buttons */}
         <div className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2">
           {!isEditing ? (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              <span>Edit</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">key</span>
+                <span className="hidden sm:inline">{hasUsablePassword ? "Update Password" : "Set Password"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="h-8 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all duration-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">edit</span>
+                <span>Edit</span>
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -328,9 +345,8 @@ export default function UserProfilePage() {
                   readOnly={!isEditing}
                   value={isEditing ? formData.first_name : (profile?.first_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
               <div>
@@ -343,9 +359,8 @@ export default function UserProfilePage() {
                   readOnly={!isEditing}
                   value={isEditing ? formData.last_name : (profile?.last_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
             </div>
@@ -384,9 +399,8 @@ export default function UserProfilePage() {
                     <button
                       type="button"
                       onClick={() => setIsDobModalOpen(true)}
-                      className={`input-field flex items-center justify-between text-left cursor-pointer w-full border ${
-                        (dobError || getDobError(formData.date_of_birth)) ? "border-rose-400 focus:border-rose-500" : "border-slate-200"
-                      }`}
+                      className={`input-field flex items-center justify-between text-left cursor-pointer w-full border ${(dobError || getDobError(formData.date_of_birth)) ? "border-rose-400 focus:border-rose-500" : "border-slate-200"
+                        }`}
                     >
                       <span className={formData.date_of_birth ? "text-slate-800 font-semibold text-sm" : "text-slate-400 text-sm"}>
                         {formData.date_of_birth ? formatDate(formData.date_of_birth) : "Select DOB"}
@@ -428,9 +442,8 @@ export default function UserProfilePage() {
                 readOnly={!isEditing}
                 value={isEditing ? formData.city : (profile?.city || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "focus:border-slate-400"
-                }`}
+                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  }`}
               />
             </div>
             <div>
@@ -443,9 +456,8 @@ export default function UserProfilePage() {
                 readOnly={!isEditing}
                 value={isEditing ? formData.state : (profile?.state || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${
-                  !isEditing ? "cursor-default" : "focus:border-slate-400"
-                }`}
+                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  }`}
               />
             </div>
             <div>
@@ -502,9 +514,8 @@ export default function UserProfilePage() {
                     }))
                   }
                   placeholder="Enter phone number"
-                  className={`input-field flex-1 font-semibold text-slate-800 ${
-                    !isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                  className={`input-field flex-1 font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                    }`}
                 />
               </div>
             </div>
@@ -545,6 +556,12 @@ export default function UserProfilePage() {
           }
           setIsDobModalOpen(false);
         }}
+      />
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        hasUsablePassword={hasUsablePassword}
       />
     </div>
   );

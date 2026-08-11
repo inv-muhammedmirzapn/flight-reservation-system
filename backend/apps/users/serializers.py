@@ -23,6 +23,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('username', 'password', 'email', 'first_name', 'last_name')
 
     def validate_email(self, value):
+        if value:
+            email_clean = value.strip().lower()
+            if User.objects.filter(email__iexact=email_clean).exists():
+                raise serializers.ValidationError("A user with this email address already exists.")
+            return email_clean
         return value
 
     def validate_password(self, value):
@@ -51,6 +56,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
     first_name = serializers.CharField(source="user.first_name", required=True, allow_blank=False)
     last_name = serializers.CharField(source="user.last_name", required=True, allow_blank=False)
+    has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -67,10 +73,14 @@ class ProfileSerializer(serializers.ModelSerializer):
             "country",
             "state",
             "city",
+            "has_usable_password",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "role", "created_at", "updated_at"]
+        read_only_fields = ["id", "role", "has_usable_password", "created_at", "updated_at"]
+
+    def get_has_usable_password(self, obj):
+        return obj.user.has_usable_password()
 
     def validate(self, attrs):
         user_data = attrs.get("user", {})
@@ -103,6 +113,14 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['is_superuser'] = user.is_superuser
+        profile, _ = Profile.objects.get_or_create(user=user)
+        token['role'] = profile.role
+        return token
+
     def validate(self, attrs):
         data = super().validate(attrs)
         
@@ -110,6 +128,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['id'] = user.id
         data['username'] = user.username
         data['email'] = user.email
+        data['is_superuser'] = user.is_superuser
         
         profile, _ = Profile.objects.get_or_create(user=user)
         data['role'] = profile.role
@@ -117,7 +136,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
+    old_password = serializers.CharField(required=False, allow_blank=True)
     new_password = serializers.CharField(required=True)
 
     def validate_new_password(self, value):
@@ -128,18 +147,32 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        if attrs.get('old_password') == attrs.get('new_password'):
-            raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if user and user.has_usable_password():
+            old_password = attrs.get('old_password')
+            if not old_password:
+                raise serializers.ValidationError({"old_password": "This field is required."})
+            if old_password == attrs.get('new_password'):
+                raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
+        
         return attrs
 
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        return value.strip().lower() if value else value
 
 
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True, write_only=True)
     otp = serializers.CharField(required=True, write_only=True, max_length=6, min_length=6)
     new_password = serializers.CharField(required=True, write_only=True)
+
+    def validate_email(self, value):
+        return value.strip().lower() if value else value
 
     def validate_new_password(self, value):
         try:

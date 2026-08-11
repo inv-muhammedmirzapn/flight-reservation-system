@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
 def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabin_class=None):
     """
     Called when seats on a FlightInstance are freed (due to booking cancellation).
-    Scans the waitlist queue in FIFO order and allocates seats to pending entries
-    that can be fully accommodated.
+    Scans the waitlist queue in FIFO order (by created_at) and allocates seats to pending entries
+    that can be fully accommodated. If an entry cannot be satisfied (e.g. requires more seats
+    than currently available), it is skipped so smaller entries can be accommodated.
     """
     # Re-fetch with lock
     flight_instance = FlightInstance.objects.select_for_update().get(pk=flight_instance.pk)
@@ -34,6 +35,13 @@ def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabi
     for entry in pending_entries:
         fare_obj = None
         cabin = entry.cabin_class
+        if not cabin:
+            # Find a single cabin class that can accommodate the seat count
+            for candidate_cabin in [CabinClass.ECONOMY, CabinClass.BUSINESS, CabinClass.FIRST]:
+                avail = flight_instance.seats.filter(seat_class=candidate_cabin, status=SeatStatus.AVAILABLE).count()
+                if avail >= entry.seat_count:
+                    cabin = candidate_cabin
+                    break
 
         if cabin:
             fare_obj = Fare.objects.select_for_update().filter(
@@ -47,7 +55,7 @@ def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabi
         available_count = flight_instance.seats.filter(**seat_filter).count()
 
         if cabin and fare_obj:
-            has_seats = fare_obj.available_seats >= entry.seat_count
+            has_seats = fare_obj.available_seats >= entry.seat_count and available_count >= entry.seat_count
         else:
             has_seats = available_count >= entry.seat_count
 
@@ -115,12 +123,13 @@ def process_waitlist_allocations(flight_instance: FlightInstance, cancelled_cabi
 def _resolve_fare_and_availability(flight_instance: FlightInstance, cabin_class: str | None):
     """
     Return (available_seats, price_per_pax) for *cabin_class* on *flight_instance*.
-    Falls back to total available seat count and price=0 when no Fare row is found.
+    Prioritizes physical seat status as source of truth when seats exist for the instance.
     """
     seat_filter = {"status": SeatStatus.AVAILABLE}
     if cabin_class:
         seat_filter["seat_class"] = cabin_class
 
+    has_seats = flight_instance.seats.exists()
     available_seats = flight_instance.seats.filter(**seat_filter).count()
     price_per_pax = Decimal("0")
 
@@ -131,7 +140,8 @@ def _resolve_fare_and_availability(flight_instance: FlightInstance, cabin_class:
         flight_instance=flight_instance, cabin_class=cabin_class
     ).first()
     if fare_obj:
-        available_seats = fare_obj.available_seats
+        if not has_seats:
+            available_seats = fare_obj.available_seats
         price_per_pax = fare_obj.price
 
     return available_seats, price_per_pax
@@ -219,12 +229,6 @@ def join_waitlist(
             "Waitlist tickets cannot be booked on the flight as there are enough available seats"
         )
         raise WaitlistError(msg)
-
-    # --- no duplicate pending entry ---
-    if WaitlistEntry.objects.filter(
-        user=user, flight=flight_instance, status=WaitlistStatus.PENDING
-    ).exists():
-        raise WaitlistError("You are already on the waitlist for this flight")
 
     # --- create entry and passengers ---
     entry_kwargs = {

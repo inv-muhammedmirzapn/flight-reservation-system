@@ -4,7 +4,6 @@ import notificationsReducer, {
   fetchNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  clearNotificationState,
 } from '@/store/notificationsSlice';
 import * as notificationsService from '@/services/notifications-service/notificationsService';
 

@@ -28,7 +28,7 @@ export default function FlightDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCabin, setSelectedCabin] = useState(initialCabinKey);
-  const [passengerCount, setPassengerCount] = useState(1);
+  const [passengerCount] = useState(1);
 
   useEffect(() => {
     let isMounted = true;

@@ -187,7 +187,7 @@ class Command(BaseCommand):
                         "fare_code": f"ECO-{inst.id}",
                         "price": Decimal(str(int(base_fare))),
                         "currency": "INR",
-                        "available_seats": econ_seats,
+                        "available_seats": 0,
                         "refund_type": RefundType.PARTIAL,
                         "change_fee": Decimal("3500.00"),
                         "meal_included": True,
@@ -202,7 +202,7 @@ class Command(BaseCommand):
                         "fare_code": f"BIZ-{inst.id}",
                         "price": Decimal(str(int(base_fare * 2.8))),
                         "currency": "INR",
-                        "available_seats": biz_seats,
+                        "available_seats": 0,
                         "refund_type": RefundType.REFUNDABLE,
                         "change_fee": Decimal("0.00"),
                         "meal_included": True,
@@ -217,7 +217,7 @@ class Command(BaseCommand):
                         "fare_code": f"FST-{inst.id}",
                         "price": Decimal(str(int(base_fare * 5.2))),
                         "currency": "INR",
-                        "available_seats": fst_seats,
+                        "available_seats": 0,
                         "refund_type": RefundType.REFUNDABLE,
                         "change_fee": Decimal("0.00"),
                         "meal_included": True,
@@ -227,21 +227,18 @@ class Command(BaseCommand):
 
                 # Seats
                 if inst.seats.count() == 0:
-                    seats_to_create = []
-                    for row in range(1, 26):
-                        for col_letter in ['A', 'B', 'C', 'D', 'E', 'F']:
-                            pos = SeatPosition.WINDOW if col_letter in ['A', 'F'] else (SeatPosition.AISLE if col_letter in ['C', 'D'] else SeatPosition.MIDDLE)
-                            status = SeatStatus.BOOKED if is_full else (SeatStatus.BOOKED if random.random() < 0.3 else SeatStatus.AVAILABLE)
-                            seats_to_create.append(Seat(
-                                flight_instance=inst,
-                                seat_number=f"E{row}{col_letter}",
-                                seat_class=CabinClass.ECONOMY,
-                                position=pos,
-                                status=status,
-                                seat_fee=Decimal("800.00") if pos == SeatPosition.WINDOW else Decimal("0.00"),
-                                currency="INR",
-                            ))
-                    Seat.objects.bulk_create(seats_to_create)
+                    from apps.flights.services import generate_seats_for_instance
+                    generate_seats_for_instance(inst)
+                    
+                    if is_full:
+                        inst.seats.update(status=SeatStatus.BOOKED)
+                    else:
+                        seats_list = list(inst.seats.all())
+                        if seats_list:
+                            booked_count = int(len(seats_list) * random.uniform(0.15, 0.5))
+                            booked_seats = random.sample(seats_list, booked_count)
+                            seat_ids = [s.id for s in booked_seats]
+                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
 
         self.stdout.write(self.style.SUCCESS(
             f"Successfully seeded {count_created} flights from DEL to HAM starting from Aug 5th, 2026 ({zero_seat_count} flights fully booked with 0 seats)."

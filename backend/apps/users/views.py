@@ -160,12 +160,12 @@ class ChangePasswordAPIView(APIView):
         },
     )
     def post(self, request, *args, **kwargs):
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         ok = change_password(
             user=request.user,
-            old_password=serializer.validated_data["old_password"],
+            old_password=serializer.validated_data.get("old_password", ""),
             new_password=serializer.validated_data["new_password"],
         )
         if not ok:

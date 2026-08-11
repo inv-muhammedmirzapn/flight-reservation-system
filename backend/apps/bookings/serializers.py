@@ -58,7 +58,11 @@ class PassengerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Passenger
-        fields = ['id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number', 'meal_preference', 'seat_number', 'selected_meals']
+        fields = [
+            'id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number',
+            'meal_preference', 'seat_number', 'extra_baggage_kg', 'extra_baggage_cost',
+            'selected_meals'
+        ]
 
     def validate_age(self, value):
         if value < 0:
@@ -73,6 +77,7 @@ class BookingSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_full_name = serializers.SerializerMethodField()
+    base_fare = serializers.SerializerMethodField()
 
     # Accept an integer FlightInstance PK
     flight_id_input = serializers.IntegerField(write_only=True, source='flight')
@@ -81,13 +86,19 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             'id', 'flight_id_input', 'flight_detail',
-            'cabin_class', 'status', 'seat_count', 'total_price',
+            'cabin_class', 'status', 'seat_count', 'total_price', 'base_fare',
             'created_at', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
         read_only_fields = [
-            'id', 'status', 'seat_count', 'total_price',
+            'id', 'status', 'seat_count', 'total_price', 'base_fare',
             'created_at', 'flight_detail', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
+
+    def get_base_fare(self, obj):
+        fare = obj.flight.fares.filter(cabin_class=obj.cabin_class).first()
+        if fare:
+            return fare.price * obj.seat_count
+        return 0
 
     def get_user_full_name(self, obj):
         if obj.user:
