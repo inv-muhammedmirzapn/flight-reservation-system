@@ -1,18 +1,25 @@
 
 export default function CabinClassSelector({ flight, selectedCabin, onSelectCabin }) {
-  const cabins = [
+  const allCabins = [
     { key: "ECONOMY", label: "Economy", icon: "chair" },
     { key: "BUSINESS", label: "Business", icon: "airline_seat_recline_extra" },
     { key: "FIRST", label: "First Class", icon: "workspace_premium" }
   ];
+
+  // Only show cabins that actually exist for this flight
+  const availableCabins = allCabins.filter(
+    (cabin) => flight?.fares?.[cabin.key] || cabin.key === "ECONOMY"
+  );
+
+  const gridColsClass = availableCabins.length === 1 ? "grid-cols-1" : availableCabins.length === 2 ? "grid-cols-2" : "grid-cols-3";
 
   return (
     <div className="booking-container-card space-y-3 animate-fade-in">
       <h3 className="text-xl font-bold text-slate-950 mb-2">
         Select Cabin Class
       </h3>
-      <div className="grid grid-cols-3 gap-3">
-        {cabins.map((cabin) => {
+      <div className={`grid gap-3 ${gridColsClass}`}>
+        {availableCabins.map((cabin) => {
           const fareObj = flight?.fares?.[cabin.key];
           const isSelected = selectedCabin === cabin.key;
           const cabinPrice = fareObj ? fareObj.price : (cabin.key === "ECONOMY" ? flight?.base_fare : null);

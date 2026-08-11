@@ -6,6 +6,7 @@ export default function FareDetailsCard({
   selectedCabin = "ECONOMY",
   passengerCount = 1,
   mealTotal = 0,
+  seatTotal = 0,
   onBookingAction,
   actionButtonText,
 }) {
@@ -29,9 +30,9 @@ export default function FareDetailsCard({
   const cabinLabel = getCabinLabel(selectedCabin);
 
   const totalBaseFare = unitFare * passengerCount;
-  const subTotalWithMeals = totalBaseFare + mealTotal;
-  const gstAmount = Math.round(subTotalWithMeals * 0.12);
-  const grandTotal = subTotalWithMeals + gstAmount;
+  const subTotalWithExtras = totalBaseFare + mealTotal + seatTotal;
+  const gstAmount = Math.round(subTotalWithExtras * 0.12);
+  const grandTotal = subTotalWithExtras + gstAmount;
 
   const handleClick = () => {
     if (!isAuthenticated) {
@@ -84,6 +85,17 @@ export default function FareDetailsCard({
             </span>
             <span className="text-amber-900 font-bold">
               ₹ {mealTotal.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
+
+        {seatTotal > 0 && (
+          <div className="flex items-center justify-between mt-2">
+            <span className="flex items-center gap-1 text-blue-800 font-semibold">
+              <span className="material-symbols-outlined text-sm">airline_seat_recline_normal</span>
+Seat Fare            </span>
+            <span className="text-blue-900 font-bold"> 
+              ₹ {seatTotal.toLocaleString("en-IN")}
             </span>
           </div>
         )}

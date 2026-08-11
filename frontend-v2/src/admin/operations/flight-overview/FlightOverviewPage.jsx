@@ -421,32 +421,6 @@ export default function FlightOverviewPage() {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                                {/* Sorting Section */}
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                        <Select
-                                            options={[
-                                                { value: 'scheduled_departure', label: 'Departure Time' },
-                                                { value: 'scheduled_arrival', label: 'Arrival Time' },
-                                                { value: 'flight__flight_number', label: 'Flight Number' },
-                                                { value: 'status', label: 'Status' }
-                                            ]}
-                                            value={draftSortBy}
-                                            onChange={(e) => setDraftSortBy(e.target.value)}
-                                        />
-                                        <Select
-                                            options={[
-                                                { value: 'asc', label: 'Ascending' },
-                                                { value: 'desc', label: 'Descending' }
-                                            ]}
-                                            value={draftSortOrder}
-                                            onChange={(e) => setDraftSortOrder(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-
                                 {/* Routing Section */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                     <div style={{ position: 'relative' }}>

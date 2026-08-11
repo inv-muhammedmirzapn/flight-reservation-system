@@ -137,34 +137,61 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     f"Only {real_available} seats available on this flight."
                 )
 
+        assigned_seats = []
+        total_seat_fee = 0
+
+        # Extract requested seats from passenger data
+        requested_seat_numbers = [str(p.get('seat_number')).strip() for p in passengers_data if p.get('seat_number')]
+        
+        if len(requested_seat_numbers) == seat_count:
+            # All seats were explicitly requested
+            requested_seats_qs = flight_instance.seats.select_for_update().filter(
+                seat_number__in=requested_seat_numbers,
+                status=SeatStatus.AVAILABLE
+            )
+            if cabin_class:
+                requested_seats_qs = requested_seats_qs.filter(seat_class=cabin_class)
+                
+            if requested_seats_qs.count() != seat_count:
+                raise ValidationError("One or more selected seats are not available or invalid for this cabin class.")
+                
+            for seat_obj in requested_seats_qs:
+                seat_obj.status = SeatStatus.BOOKED
+                seat_obj.save(update_fields=['status'])
+                total_seat_fee += seat_obj.seat_fee
+            assigned_seats = requested_seat_numbers
+        else:
+            if len(requested_seat_numbers) > 0:
+                raise ValidationError("You must either select a seat for all passengers or none.")
+                
+            # Fallback: Auto-assign seats (FIFO)
+            seat_filter_kwargs = {"status": SeatStatus.AVAILABLE}
+            if cabin_class:
+                seat_filter_kwargs["seat_class"] = cabin_class
+
+            available_seat_qs = (
+                flight_instance.seats
+                .select_for_update()
+                .filter(**seat_filter_kwargs)
+                .order_by('seat_number')[:seat_count]
+            )
+            for seat_obj in available_seat_qs:
+                seat_obj.status = SeatStatus.BOOKED
+                seat_obj.save(update_fields=['status'])
+                assigned_seats.append(seat_obj.seat_number)
+                total_seat_fee += seat_obj.seat_fee
+
         booking_kwargs = {
             "user": user,
             "flight": flight_instance,
             "status": BookingStatus.CONFIRMED,
             "seat_count": seat_count,
-            "total_price": price_per_pax * seat_count,
+            "total_price": (price_per_pax * seat_count) + total_seat_fee,
         }
         if cabin_class:
             booking_kwargs["cabin_class"] = cabin_class
 
         booking = Booking.objects.create(**booking_kwargs)
-
-        # Auto-assign seats from the Seat table (FIFO order)
-        assigned_seats = []
-        seat_filter_kwargs = {"status": SeatStatus.AVAILABLE}
-        if cabin_class:
-            seat_filter_kwargs["seat_class"] = cabin_class
-
-        available_seat_qs = (
-            flight_instance.seats
-            .select_for_update()
-            .filter(**seat_filter_kwargs)
-            .order_by('seat_number')[:seat_count]
-        )
-        for seat_obj in available_seat_qs:
-            seat_obj.status = SeatStatus.BOOKED
-            seat_obj.save(update_fields=['status'])
-            assigned_seats.append(seat_obj.seat_number)
 
         # Keep Fare.available_seats in sync
         if fare_obj and assigned_seats:
@@ -185,10 +212,11 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
         total_extra_baggage_cost = Decimal("0.00")
 
         for idx, p_data in enumerate(passengers_data):
-            seat_num = assigned_seats[idx] if idx < len(assigned_seats) else None
+            seat_num = str(p_data.get('seat_number')).strip() if p_data.get('seat_number') else (assigned_seats[idx] if idx < len(assigned_seats) else None)
             p_extra_kg = Decimal(str(p_data.get('extra_baggage_kg', 0) or 0))
             p_extra_cost = p_extra_kg * baggage_unit_rate
             total_extra_baggage_cost += p_extra_cost
+
 
             passenger_obj = Passenger.objects.create(
                 booking=booking,

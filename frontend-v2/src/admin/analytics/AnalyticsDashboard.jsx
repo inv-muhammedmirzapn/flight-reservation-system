@@ -22,7 +22,7 @@ export default function AnalyticsDashboard() {
   } = useAnalyticsData();
 
   return (
-    <div className="min-h-screen font-ui pt-[88px] pb-[60px] bg-[linear-gradient(135deg,#f7f4ee_0%,#edeade_50%,#f0ede4_100%)]">
+    <div className="min-h-screen font-ui pt-[88px] pb-[60px]">
       <div className="w-[95%] max-w-[1800px] mx-auto px-6">
 
         {/* ── Header ── */}

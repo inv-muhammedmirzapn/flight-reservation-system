@@ -343,6 +343,17 @@ class Command(BaseCommand):
             ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA"),
             ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN"),
             ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO"),
+            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA"),
+            ("QF009", "QF", "SYD", "DXB", 14, 30, "VH-ZNA"),
+            ("JL041", "JL", "HND", "LHR", 14, 10, "JA873A"),
+            ("AF218", "AF", "CDG", "BOM", 8, 30, "F-HTYA"),
+            ("LH764", "LH", "FRA", "BOM", 8, 10, "D-ABPA"),
+            ("QR015", "QR", "DOH", "JFK", 14, 15, "A7-BBA"),
+            ("6E112", "6E", "DEL", "SIN", 5, 50, "VT-IZI"),
+            ("AA050", "AA", "JFK", "CDG", 7, 15, "N777AA"),
+            ("BA011", "BA", "LHR", "SIN", 12, 50, "G-ZBLB"),
+            ("TK720", "TK", "IST", "BOM", 6, 30, "TC-JNA"),
+            ("EK007", "EK", "DXB", "LHR", 7, 30, "A6-EEO"),
         ]
 
         other_routes_dict = {}
@@ -431,44 +442,58 @@ class Command(BaseCommand):
                         "fare_code": f"ECO-{inst.id}",
                         "price": Decimal(str(base_fare)),
                         "currency": "INR",
-                        "available_seats": econ_avail,
+                        "available_seats": 0, # Will be auto-calculated by seats
                         "refund_type": RefundType.PARTIAL,
                         "change_fee": Decimal("3500.00"),
                         "meal_included": True,
                         "baggage_allowance": Decimal("30.0"),
                     }
                 )
-                Fare.objects.update_or_create(
-                    flight_instance=inst,
-                    cabin_class=CabinClass.BUSINESS,
-                    defaults={
-                        "fare_code": f"BIZ-{inst.id}",
-                        "price": Decimal(str(int(base_fare * 2.6))),
-                        "currency": "INR",
-                        "available_seats": biz_avail,
-                        "refund_type": RefundType.REFUNDABLE,
-                        "change_fee": Decimal("0.00"),
-                        "meal_included": True,
-                        "baggage_allowance": Decimal("40.0"),
-                    }
-                )
-                Fare.objects.update_or_create(
-                    flight_instance=inst,
-                    cabin_class=CabinClass.FIRST,
-                    defaults={
-                        "fare_code": f"FST-{inst.id}",
-                        "price": Decimal(str(int(base_fare * 5.0))),
-                        "currency": "INR",
-                        "available_seats": fst_avail,
-                        "refund_type": RefundType.REFUNDABLE,
-                        "change_fee": Decimal("0.00"),
-                        "meal_included": True,
-                        "baggage_allowance": Decimal("50.0"),
-                    }
-                )
+                if ac.business_capacity > 0:
+                    Fare.objects.update_or_create(
+                        flight_instance=inst,
+                        cabin_class=CabinClass.BUSINESS,
+                        defaults={
+                            "fare_code": f"BIZ-{inst.id}",
+                            "price": Decimal(str(int(base_fare * 2.6))),
+                            "currency": "INR",
+                            "available_seats": 0,
+                            "refund_type": RefundType.REFUNDABLE,
+                            "change_fee": Decimal("0.00"),
+                            "meal_included": True,
+                            "baggage_allowance": Decimal("40.0"),
+                        }
+                    )
+                if ac.first_class_capacity > 0:
+                    Fare.objects.update_or_create(
+                        flight_instance=inst,
+                        cabin_class=CabinClass.FIRST,
+                        defaults={
+                            "fare_code": f"FST-{inst.id}",
+                            "price": Decimal(str(int(base_fare * 5.0))),
+                            "currency": "INR",
+                            "available_seats": 0,
+                            "refund_type": RefundType.REFUNDABLE,
+                            "change_fee": Decimal("0.00"),
+                            "meal_included": True,
+                            "baggage_allowance": Decimal("50.0"),
+                        }
+                    )
 
                 # Seats — use the shared service so all cabin classes are generated correctly
-                generate_seats_for_instance(inst)
+                if inst.seats.count() == 0:
+                    generate_seats_for_instance(inst)
+                    
+                    if is_fully_booked:
+                        inst.seats.update(status=SeatStatus.BOOKED)
+                    else:
+                        # Randomly book some seats (e.g. 20-50%)
+                        seats_list = list(inst.seats.all())
+                        if seats_list:
+                            booked_count = int(len(seats_list) * random.uniform(0.2, 0.6))
+                            booked_seats = random.sample(seats_list, booked_count)
+                            seat_ids = [s.id for s in booked_seats]
+                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
 
                 # Meal
                 fm, _ = FlightMeal.objects.get_or_create(
@@ -512,20 +537,70 @@ class Command(BaseCommand):
                 flight_instances_created.append(inst)
                 generate_seats_for_instance(inst)
 
+                # Generate random base fare depending on route length
+                base_fare = Decimal(str(hrs * 3500 + 4000))
+
                 Fare.objects.get_or_create(
                     flight_instance=inst,
                     cabin_class=CabinClass.ECONOMY,
                     defaults={
                         "fare_code": f"ECO-O-{inst.id}",
-                        "price": Decimal("28000.00"),
+                        "price": base_fare,
                         "currency": "INR",
-                        "available_seats": 100,
+                        "available_seats": 0,
                         "refund_type": RefundType.PARTIAL,
                         "change_fee": Decimal("2500.00"),
                         "meal_included": True,
                         "baggage_allowance": Decimal("25.0"),
                     }
                 )
+                ac = aircraft_dict[ac_reg]
+                if ac.business_capacity > 0:
+                    Fare.objects.get_or_create(
+                        flight_instance=inst,
+                        cabin_class=CabinClass.BUSINESS,
+                        defaults={
+                            "fare_code": f"BIZ-O-{inst.id}",
+                            "price": base_fare * Decimal("2.5"),
+                            "currency": "INR",
+                            "available_seats": 0,
+                            "refund_type": RefundType.REFUNDABLE,
+                            "change_fee": Decimal("0.00"),
+                            "meal_included": True,
+                            "baggage_allowance": Decimal("40.0"),
+                        }
+                    )
+                if ac.first_class_capacity > 0:
+                    Fare.objects.get_or_create(
+                        flight_instance=inst,
+                        cabin_class=CabinClass.FIRST,
+                        defaults={
+                            "fare_code": f"FST-O-{inst.id}",
+                            "price": base_fare * Decimal("4.5"),
+                            "currency": "INR",
+                            "available_seats": 0,
+                            "refund_type": RefundType.REFUNDABLE,
+                            "change_fee": Decimal("0.00"),
+                            "meal_included": True,
+                            "baggage_allowance": Decimal("50.0"),
+                        }
+                    )
+                
+                # Seats
+                if inst.seats.count() == 0:
+                    from apps.flights.services import generate_seats_for_instance
+                    generate_seats_for_instance(inst)
+                    
+                    is_fully_booked = (inst.id % 7 == 0)
+                    if is_fully_booked:
+                        inst.seats.update(status=SeatStatus.BOOKED)
+                    else:
+                        seats_list = list(inst.seats.all())
+                        if seats_list:
+                            booked_count = int(len(seats_list) * random.uniform(0.1, 0.7))
+                            booked_seats = random.sample(seats_list, booked_count)
+                            seat_ids = [s.id for s in booked_seats]
+                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
 
         # 12. Bookings & Passengers
         self.stdout.write("Seeding Bookings & Passengers...")

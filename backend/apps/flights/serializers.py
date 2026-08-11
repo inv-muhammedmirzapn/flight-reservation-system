@@ -23,6 +23,10 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     destination_terminals = serializers.SerializerMethodField()
     departure_time = serializers.DateTimeField(source='scheduled_departure')
     arrival_time = serializers.DateTimeField(source='scheduled_arrival')
+    
+    aircraft_economy_layout = serializers.CharField(source='aircraft.economy_layout', read_only=True)
+    aircraft_business_layout = serializers.CharField(source='aircraft.business_layout', read_only=True)
+    aircraft_first_class_layout = serializers.CharField(source='aircraft.first_class_layout', read_only=True)
     base_fare = serializers.SerializerMethodField()
     total_seats = serializers.SerializerMethodField()
     available_seats = serializers.SerializerMethodField()
@@ -46,6 +50,7 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
+            "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
         ]
 
     def get_airline_logo(self, obj):

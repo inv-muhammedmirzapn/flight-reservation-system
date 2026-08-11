@@ -86,7 +86,6 @@
   /* ── Global admin page wrapper ─────────────────────────────────────── */
   .admin-page {
     @apply min-h-screen font-ui pt-[88px] pb-[60px];
-    background: linear-gradient(135deg, #f7f4ee 0%, #edeade 50%, #f0ede4 100%);
   }
 
   .admin-page-wrap {
