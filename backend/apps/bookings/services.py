@@ -330,11 +330,12 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                         )
                         total_meal_cost += (unit_price * qty)
 
-        # Update final booking total price including meals and extra baggage
-        additions = total_meal_cost + total_extra_baggage_cost
-        if additions > 0:
-            booking.total_price = booking.total_price + additions
-            booking.save(update_fields=['total_price'])
+        # Update final booking total price including meals, extra baggage, and 12% GST
+        from decimal import ROUND_HALF_UP
+        sub_total = booking.total_price + total_meal_cost + total_extra_baggage_cost
+        gst_amount = (sub_total * Decimal("0.12")).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        booking.total_price = sub_total + gst_amount
+        booking.save(update_fields=['total_price'])
 
         try:
             from apps.notifications.services import NotificationService
