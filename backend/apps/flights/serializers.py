@@ -55,9 +55,12 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "status", "delay_minutes", "stops",
             "baggage_weight_kg", "baggage_number_allowed", "handbag_weight_kg",
             "fares", "flight_instance_id",
+<<<<<<< HEAD
             "aircraft_economy_layout", "aircraft_business_layout", "aircraft_first_class_layout",
+=======
             "booking_cutoff_time", "booking_cutoff_passed",
             "delayed_departure_time", "delayed_arrival_time",
+>>>>>>> 89104b0a07cd74ded568ed50d35744f0d5e2fdf8
         ]
 
     def get_airline_logo(self, obj):
