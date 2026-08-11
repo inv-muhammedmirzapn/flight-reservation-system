@@ -13,29 +13,37 @@ export default function SeatSelectionCard({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadSeats() {
       try {
         setLoading(true);
-        const res = await flightsAPI.getSeats(flight.id);
+        const res = await flightsAPI.getSeats(flight?.id);
+        if (!isMounted) return;
+        
         const rawSeats = Array.isArray(res) ? res : (res.results || []);
         const cabinSeats = rawSeats.filter(s => s.seat_class === cabinClass);
         setSeats(cabinSeats);
       } catch (err) {
-        toast.error("Failed to load seats.");
+        if (isMounted) toast.error("Failed to load seats.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
     if (flight?.id) {
       loadSeats();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [flight?.id, cabinClass]);
 
   const layoutCols = useMemo(() => {
     let layoutStr = "3-3";
-    if (cabinClass === 'ECONOMY') layoutStr = flight.aircraft_economy_layout || flight.aircraft?.economy_layout || "3-3";
-    else if (cabinClass === 'BUSINESS') layoutStr = flight.aircraft_business_layout || flight.aircraft?.business_layout || "2-2";
-    else if (cabinClass === 'FIRST') layoutStr = flight.aircraft_first_class_layout || flight.aircraft?.first_class_layout || "2-2";
+    if (cabinClass === 'ECONOMY') layoutStr = flight?.aircraft_economy_layout || flight?.aircraft?.economy_layout || "3-3";
+    else if (cabinClass === 'BUSINESS') layoutStr = flight?.aircraft_business_layout || flight?.aircraft?.business_layout || "2-2";
+    else if (cabinClass === 'FIRST') layoutStr = flight?.aircraft_first_class_layout || flight?.aircraft?.first_class_layout || "2-2";
     
     return layoutStr.split('-').map(Number);
   }, [flight, cabinClass]);
@@ -67,20 +75,47 @@ export default function SeatSelectionCard({
     if (isSelected) {
       onSeatSelect(selectedSeats.filter(s => s.id !== seat.id));
     } else {
+      if (maxSeats <= 0) return;
+      
       if (selectedSeats.length >= maxSeats) {
-        toast.error(`You can only select up to ${maxSeats} seat(s).`);
-        return;
+        // FIFO: Remove oldest seat(s) to make room for the new one
+        const numToRemove = selectedSeats.length - maxSeats + 1;
+        onSeatSelect([...selectedSeats.slice(numToRemove), seat]);
+      } else {
+        onSeatSelect([...selectedSeats, seat]);
       }
-      onSeatSelect([...selectedSeats, seat]);
     }
   };
+
+  const uniqueFees = useMemo(() => {
+    const fees = new Set();
+    seats.forEach(s => fees.add(Number(s.seat_fee || 0)));
+    return Array.from(fees).sort((a, b) => a - b);
+  }, [seats]);
+
+  const FEE_COLORS = [
+    'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300',
+    'bg-sky-50 border-sky-200 hover:bg-sky-100 hover:border-sky-300',
+    'bg-blue-100 border-blue-300 hover:bg-blue-200 hover:border-blue-400',
+    'bg-indigo-100 border-indigo-300 hover:bg-indigo-200 hover:border-indigo-400',
+    'bg-purple-100 border-purple-300 hover:bg-purple-200 hover:border-purple-400'
+  ];
 
   const getSeatColor = (seat) => {
     const isSelected = selectedSeats.some(s => s.id === seat.id);
     if (isSelected) return 'bg-yellow-400 text-yellow-950 border-yellow-500 shadow-sm';
     if (seat.status !== 'AVAILABLE') return 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed';
-    if (Number(seat.seat_fee) > 0) return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300 cursor-pointer';
-    return 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer';
+    
+    const feeIndex = uniqueFees.indexOf(Number(seat.seat_fee || 0));
+    const colorClass = FEE_COLORS[Math.min(feeIndex, FEE_COLORS.length - 1)] || FEE_COLORS[0];
+    return `${colorClass} cursor-pointer`;
+  };
+
+  const formatPosition = (seat) => {
+    if (seat.extra_legroom) return "Extra Legroom";
+    if (seat.exit_row) return "Exit Row";
+    const pos = seat.position || "Middle";
+    return pos.charAt(0).toUpperCase() + pos.slice(1).toLowerCase() + " Seat";
   };
 
   if (loading) {
@@ -103,18 +138,56 @@ export default function SeatSelectionCard({
         </div>
       </div>
 
-      <div className="flex flex-col xl:flex-row gap-6 xl:gap-8">
-        <div className="flex-1 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto">
           <div className="flex flex-col items-center gap-4 w-full max-w-sm sm:max-w-md md:max-w-lg">
             <div className="w-full text-center pb-4 border-b-2 border-slate-200 border-dashed mb-2">
               <span className="material-symbols-outlined text-slate-300 text-3xl">flight</span>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Front</p>
             </div>
 
+            {rowMap.length > 0 && (
+              <div className="flex gap-1 sm:gap-1.5 md:gap-2 items-center justify-center w-full mb-1">
+                <div className="w-4 sm:w-5 flex-shrink-0"></div> {/* Left spacer */}
+                {(() => {
+                  let seatIdx = 0;
+                  return layoutCols.map((colSize, groupIdx) => {
+                    const blockSeats = rowMap[0].seats.slice(seatIdx, seatIdx + colSize);
+                    seatIdx += colSize;
+                    return (
+                      <React.Fragment key={`header-group-${groupIdx}`}>
+                        <div className="flex gap-1 sm:gap-1.5 md:gap-2">
+                          {blockSeats.map(seat => (
+                            <div key={seat.id} className="w-7 sm:w-8 md:w-9 text-center">
+                              <span className="text-[11px] sm:text-xs font-bold text-slate-500">
+                                {seat.seat_number.slice(-1)}
+                              </span>
+                            </div>
+                          ))}
+                          {Array.from({ length: colSize - blockSeats.length }).map((_, i) => (
+                            <div key={`header-empty-${i}`} className="w-7 sm:w-8 md:w-9"></div>
+                          ))}
+                        </div>
+                        {groupIdx < layoutCols.length - 1 && (
+                          <div className="w-6 sm:w-8 md:w-10 flex-shrink-0"></div>
+                        )}
+                      </React.Fragment>
+                    );
+                  });
+                })()}
+                <div className="w-4 sm:w-5 flex-shrink-0"></div> {/* Right spacer */}
+              </div>
+            )}
+
             {rowMap.map((row) => {
               let seatIdx = 0;
               return (
-                <div key={row.rowId} className="flex gap-2 sm:gap-3 md:gap-5 items-center justify-center w-full">
+                <div key={row.rowId} className="flex gap-1 sm:gap-1.5 md:gap-2 items-center justify-center w-full mb-1">
+                  {/* Left Row Number */}
+                  <div className="w-4 sm:w-5 flex-shrink-0 flex items-center justify-end pr-1">
+                    <span className="text-[10px] sm:text-xs text-slate-500 font-bold">{row.rowId.replace(/\D/g, '')}</span>
+                  </div>
+
                   {layoutCols.map((colSize, groupIdx) => {
                     const blockSeats = row.seats.slice(seatIdx, seatIdx + colSize);
                     seatIdx += colSize;
@@ -128,46 +201,65 @@ export default function SeatSelectionCard({
                               type="button"
                               onClick={() => toggleSeat(seat)}
                               disabled={seat.status !== 'AVAILABLE'}
-                              className={`w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-t-xl rounded-b-md border transition-all duration-200 flex flex-col items-center justify-center group relative ${getSeatColor(seat)}`}
+                              className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md border transition-all duration-200 flex flex-col items-center justify-center group relative hover:z-50 ${getSeatColor(seat)}`}
                             >
-                              <span className="text-[10px] sm:text-xs font-bold leading-none">{seat.seat_number.slice(-1)}</span>
-                              {Number(seat.seat_fee) > 0 && seat.status === 'AVAILABLE' && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-blue-500 shadow-sm border-2 border-white"></span>
+                                {/* Hover Tooltip */}
+                                <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
+                                  {seat.status !== 'AVAILABLE' 
+                                    ? 'Seat already booked' 
+                                    : (
+                                      <>
+                                        <span>{seat.seat_number} ({formatPosition(seat)})</span>
+                                        <span className={Number(seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
+                                          {Number(seat.seat_fee) > 0 ? '+₹' + Number(seat.seat_fee).toLocaleString('en-IN') : 'Included'}
+                                        </span>
+                                      </>
+                                    )}
+                                  {/* Tooltip Caret */}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800"></div>
+                                </div>
+                              
+                              {seat.status !== 'AVAILABLE' && (
+                                <span className="material-symbols-outlined text-slate-300 text-base sm:text-lg absolute inset-0 m-auto flex items-center justify-center select-none pointer-events-none opacity-50">close</span>
                               )}
                             </button>
                           ))}
                           {Array.from({ length: colSize - blockSeats.length }).map((_, i) => (
-                            <div key={`empty-${i}`} className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11"></div>
+                            <div key={`empty-${i}`} className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9"></div>
                           ))}
                         </div>
                         {groupIdx < layoutCols.length - 1 && (
-                          <div className="w-4 sm:w-5 md:w-8 flex items-center justify-center">
-                            <span className="text-[10px] text-slate-400 font-semibold">{row.rowId.replace(/\D/g, '')}</span>
-                          </div>
+                          <div className="w-6 sm:w-8 md:w-10 flex-shrink-0"></div>
                         )}
                       </React.Fragment>
                     );
                   })}
+
+                  {/* Right Row Number */}
+                  <div className="w-4 sm:w-5 flex-shrink-0 flex items-center justify-start pl-1">
+                    <span className="text-[10px] sm:text-xs text-slate-500 font-bold">{row.rowId.replace(/\D/g, '')}</span>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="w-full xl:w-64 flex-shrink-0 space-y-6">
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Legend</h3>
+        <div className="w-full lg:w-56 xl:w-64 flex-shrink-0 space-y-6 lg:sticky lg:top-24">
+          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200">
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded border border-slate-200 bg-white"></div>
-                <span className="text-xs text-slate-600 font-medium">Available</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded border border-blue-200 bg-blue-50 relative">
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white"></span>
-                </div>
-                <span className="text-xs text-slate-600 font-medium">Premium (Fee applies)</span>
-              </div>
+              {uniqueFees.map((fee, idx) => {
+                 const colorClass = FEE_COLORS[Math.min(idx, FEE_COLORS.length - 1)];
+                 const legendBoxClass = colorClass.split(' hover:')[0];
+                 return (
+                   <div key={fee} className="flex items-center gap-3">
+                     <div className={`w-6 h-6 rounded border ${legendBoxClass}`}></div>
+                     <span className="text-xs text-slate-600 font-medium">
+                       {fee === 0 ? 'Standard Seat' : `₹${fee.toLocaleString('en-IN')}`}
+                     </span>
+                   </div>
+                 );
+              })}
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded border border-yellow-500 bg-yellow-400 shadow-sm shadow-yellow-200"></div>
                 <span className="text-xs text-slate-600 font-medium">Selected</span>

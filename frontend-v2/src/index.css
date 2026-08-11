@@ -15,7 +15,7 @@ body {
   font-family: Inter, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  background: linear-gradient(135deg, #eef2ff 0%, #fefce8 55%, #ecfdf5 100%);
+  background-color: #f8fafc;
   display: flex;
   flex-direction: column;
 }

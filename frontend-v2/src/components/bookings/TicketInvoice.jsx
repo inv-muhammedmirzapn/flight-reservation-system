@@ -16,8 +16,36 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
 
   const grandTotal = Number(detailData?.total_price || detailData?.price || 0);
   const seatCount = detailData?.seat_count || passengers.length || 1;
-  const basePriceCalc = grandTotal > 0 ? Math.round(grandTotal / 1.12) : 0;
-  const taxesCalc = grandTotal - basePriceCalc;
+  const subTotal = grandTotal > 0 ? Math.round(grandTotal / 1.12) : 0;
+  const taxesCalc = grandTotal - subTotal;
+
+  // Calculate meal total
+  let mealTotal = 0;
+  passengers.forEach(p => {
+    (p.selected_meals || p.meals || []).forEach(m => {
+       const qty = m.quantity || 1;
+       const price = Number(m.unit_price || m.food_item?.price || m.flight_meal?.price || 0);
+       mealTotal += (qty * price);
+    });
+  });
+
+  // Calculate base fare
+  let baseFareTotal = Number(detailData?.base_fare) || 0;
+  if (!baseFareTotal) {
+      const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
+      const baseFarePerPax = fareObj ? Number(fareObj.price) : Number(flight?.base_fare || 0);
+      baseFareTotal = baseFarePerPax * seatCount;
+  }
+
+  // Calculate seat total by taking what's left
+  let seatTotal = Math.max(0, subTotal - baseFareTotal - mealTotal);
+
+  // Safety fallback if fare data doesn't align
+  if (subTotal - baseFareTotal - mealTotal < -2) {
+      baseFareTotal = subTotal;
+      seatTotal = 0;
+      mealTotal = 0;
+  }
 
   const ticketStatus = (detailData?.status || "CONFIRMED").toUpperCase();
 
@@ -159,9 +187,30 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
         </h4>
         <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
           <span>Base Fare ({seatCount} seat{seatCount > 1 ? "s" : ""})</span>
-          <span className="font-bold text-slate-950">₹ {basePriceCalc.toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-950">₹ {baseFareTotal.toLocaleString("en-IN")}</span>
         </div>
-        <div className="flex items-center justify-between text-xs text-slate-600 font-medium pb-3">
+
+        {seatTotal > 0 && (
+          <div className="flex items-center justify-between text-xs text-blue-700 font-medium mt-2">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">airline_seat_recline_normal</span>
+              Seat Fare
+            </span>
+            <span className="font-bold text-blue-900">₹ {seatTotal.toLocaleString("en-IN")}</span>
+          </div>
+        )}
+
+        {mealTotal > 0 && (
+          <div className="flex items-center justify-between text-xs text-amber-700 font-medium mt-2">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">restaurant</span>
+              In-Flight Meals
+            </span>
+            <span className="font-bold text-amber-900">₹ {mealTotal.toLocaleString("en-IN")}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs text-slate-600 font-medium mt-2 pb-3">
           <span>Taxes & Service Charges (12%)</span>
           <span className="font-bold text-slate-950">₹ {taxesCalc.toLocaleString("en-IN")}</span>
         </div>
