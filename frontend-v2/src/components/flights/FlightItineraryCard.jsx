@@ -14,8 +14,16 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
     available_seats = 0,
     waitlist_count = 0,
     stops = [],
-    fares
+    fares,
+    status,
+    delay_minutes = 0,
+    delayed_departure_time,
+    delayed_arrival_time,
+    booking_cutoff_passed = false,
+    booking_cutoff_time,
   } = flight;
+
+  const isDelayed = status === "DELAYED" && delay_minutes > 0;
 
   // Determine active fare and availability for the selected cabin class
   const getFareForCabin = (cabin) => {
@@ -62,6 +70,9 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
 
   const dep = formatDateTime(depTime);
   const arr = formatDateTime(arrTime);
+  const delayedDep = isDelayed && delayed_departure_time ? formatDateTime(delayed_departure_time) : null;
+  const delayedArr = isDelayed && delayed_arrival_time ? formatDateTime(delayed_arrival_time) : null;
+  const cutoffFmt = booking_cutoff_time ? formatDateTime(booking_cutoff_time) : null;
 
   // Process transit stops array
   const processedStops = (() => {
@@ -73,6 +84,8 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
       let name = "";
       let stopDepIso = null;
       let stopArrIso = null;
+      let stopOrigDepIso = null;
+      let stopOrigArrIso = null;
       let layoverMins = 0;
 
       if (typeof stopItem === "string") {
@@ -87,6 +100,9 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         stopArrIso = stopItem.arrival_time;
         stopDepIso = stopItem.departure_time;
         layoverMins = stopItem.layover_minutes || 0;
+        // original times for strikethrough display when delayed
+        stopOrigArrIso = stopItem.original_arrival_time || null;
+        stopOrigDepIso = stopItem.original_departure_time || null;
 
         const info = getAirportInfo(code || city);
         if (info) {
@@ -115,6 +131,8 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
 
       const arrFmt = formatDateTime(stopArrIso);
       const depFmt = formatDateTime(stopDepIso);
+      const origArrFmt = stopOrigArrIso ? formatDateTime(stopOrigArrIso) : null;
+      const origDepFmt = stopOrigDepIso ? formatDateTime(stopOrigDepIso) : null;
 
       return {
         code: code.toUpperCase(),
@@ -123,6 +141,8 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         arrTimeStr: arrFmt.timeStr,
         depTimeStr: depFmt.timeStr,
         arrDateStr: arrFmt.dateStr,
+        origArrTimeStr: origArrFmt ? origArrFmt.timeStr : null,
+        origDepTimeStr: origDepFmt ? origDepFmt.timeStr : null,
         layoverMins,
       };
     });
@@ -145,21 +165,29 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
 
   return (
     <div className="booking-container-card animate-fade-in transition-all duration-300 relative">
+
+
       {/* Top Header Row: Route Title & Optional Seat/Waitlist Status Badge */}
       <div className="flex items-start justify-between gap-4 mb-2">
         <h2 className="text-xl font-bold text-slate-950">
           {sourceInfo.city} &rarr; {destInfo.city}
         </h2>
 
-        {/* Status Badge on Top Right */}
+        {/* Status Badge — Delayed overrides Available/Waitlist */}
         {showBadge && (
-          isWaitlisted ? (
+          isDelayed ? (
+            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+              <span>Delayed</span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base text-amber-700 select-none">schedule</span>
+                <span className="font-bold text-sm">+{delay_minutes}m</span>
+              </span>
+            </div>
+          ) : isWaitlisted ? (
             <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
               <span>Waitlist</span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">
-                  people
-                </span>
+                <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">people</span>
                 <span className="font-bold text-lg">{queueCount}</span>
               </span>
             </div>
@@ -167,9 +195,7 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
             <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
               <span>Available</span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">
-                  event_seat
-                </span>
+                <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">event_seat</span>
                 <span className="font-bold text-lg">{activeSeats}</span>
               </span>
             </div>
@@ -184,7 +210,14 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         <span>{stopsStr}</span>
         <span>&bull;</span>
         <span>{durationStr}</span>
+        {isDelayed && (
+          <span className="inline-flex items-center gap-1 text-amber-700 font-bold text-[11px] bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+            <span className="material-symbols-outlined text-xs select-none">warning</span>
+            Delayed
+          </span>
+        )}
       </div>
+
 
       {/* Airline Badge & Square Meal Badge */}
       <div className="flex items-center gap-3 mb-8">
@@ -217,8 +250,15 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         {/* Departure Timeline Box */}
         <div className="timeline-card flex justify-between relative z-10 transition-all duration-300">
           <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-            <span className="text-lg -mt-5 font-bold tracking-wide text-center text-slate-950 min-w-[60px]">
-              {dep.timeStr}
+            <span className="text-lg -mt-5 font-bold tracking-wide text-center min-w-[60px]">
+              {isDelayed && delayedDep ? (
+                <span className="flex flex-col items-center gap-0.5">
+                  <span className="text-sm font-semibold text-slate-400 line-through leading-none">{dep.timeStr}</span>
+                  <span className="text-lg font-bold text-amber-700 leading-none">{delayedDep.timeStr}</span>
+                </span>
+              ) : (
+                <span className="text-slate-950">{dep.timeStr}</span>
+              )}
             </span>
 
             {/* Yellow Circle Connector Node */}
@@ -251,11 +291,23 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
             <div className="flex items-center gap-4 sm:gap-6 min-w-0">
               {/* Arrival & Departure Times Stacked */}
               <div className="flex flex-col gap-1.5 items-center justify-center text-center min-w-[60px]">
-                <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
-                  <span>{stop.arrTimeStr}</span>
+                {/* Transit arrival */}
+                <div className="flex flex-col items-center leading-none">
+                  {stop.origArrTimeStr && (
+                    <span className="text-[10px] font-semibold text-slate-400 line-through">{stop.origArrTimeStr}</span>
+                  )}
+                  <span className={`text-xs font-bold ${stop.origArrTimeStr ? "text-amber-700" : "text-slate-700"}`}>
+                    {stop.arrTimeStr}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1 text-xs font-bold text-slate-950">
-                  <span>{stop.depTimeStr}</span>
+                {/* Transit departure */}
+                <div className="flex flex-col items-center leading-none">
+                  {stop.origDepTimeStr && (
+                    <span className="text-[10px] font-semibold text-slate-400 line-through">{stop.origDepTimeStr}</span>
+                  )}
+                  <span className={`text-xs font-bold ${stop.origDepTimeStr ? "text-amber-700" : "text-slate-950"}`}>
+                    {stop.depTimeStr}
+                  </span>
                 </div>
               </div>
 
@@ -293,8 +345,15 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
         {/* Arrival Timeline Box */}
         <div className="timeline-card flex justify-between relative z-10 transition-all duration-300">
           <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-            <span className="text-lg -mt-5 font-bold tracking-wide text-center text-slate-950 min-w-[60px]">
-              {arr.timeStr}
+            <span className="text-lg -mt-5 font-bold tracking-wide text-center min-w-[60px]">
+              {isDelayed && delayedArr ? (
+                <span className="flex flex-col items-center gap-0.5">
+                  <span className="text-sm font-semibold text-slate-400 line-through leading-none">{arr.timeStr}</span>
+                  <span className="text-lg font-bold text-amber-700 leading-none">{delayedArr.timeStr}</span>
+                </span>
+              ) : (
+                <span className="text-slate-950">{arr.timeStr}</span>
+              )}
             </span>
 
             {/* Yellow Circle Connector Node */}
@@ -311,7 +370,7 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
           </div>
 
           <span className="text-xs font-medium text-slate-950 whitespace-nowrap ml-2">
-            {arr.dateStr}
+            {isDelayed && delayedArr ? delayedArr.dateStr : arr.dateStr}
           </span>
         </div>
       </div>
