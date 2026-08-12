@@ -42,7 +42,7 @@ function EntityDropdown({ value, onChange }) {
         className={`w-full flex items-center justify-between py-[11px] px-4 rounded-admin-sm border cursor-pointer font-ui text-[13px] transition-all duration-150 ${
           open 
             ? 'border-admin-accent-dark bg-admin-accent-dark/[0.03] shadow-[0_0_0_3px_rgba(112,93,0,0.08)]' 
-            : 'border-black/10 bg-white/80'
+            : 'border-black/10 bg-white'
         } ${selected ? 'font-semibold text-admin-ink' : 'font-normal text-[#9ca3af]'}`}
       >
         <span className="flex items-center gap-2">
@@ -58,7 +58,7 @@ function EntityDropdown({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white/98 rounded-admin-md border border-black/[0.08] shadow-2xl max-h-[260px] overflow-y-auto backdrop-blur-md">
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white rounded-admin-md border border-black/[0.08] shadow-2xl max-h-[260px] overflow-y-auto">
           {/* Import All */}
           <button
             type="button"
@@ -124,7 +124,7 @@ function DropZone({ file, onFile, disabled, isZip }) {
         ref={inputRef}
         type="file"
         accept={isZip ? ".zip" : ".csv,.xls,.xlsx"}
-        style={{ display: "none" }}
+        className="hidden"
         onChange={(e) => { const f = e.target.files[0]; if (f) onFile(f); }}
         disabled={disabled}
       />
@@ -317,7 +317,7 @@ export default function BulkImportPage() {
           </div>
         </div>
 
-        <div className="admin-card p-7 max-w-[600px] mx-auto">
+        <div className="admin-card p-7 max-w-[600px] mx-auto overflow-visible">
 
           {/* Target table */}
           <div className="mb-5">
