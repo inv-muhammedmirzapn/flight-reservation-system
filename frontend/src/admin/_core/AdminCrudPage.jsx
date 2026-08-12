@@ -421,10 +421,10 @@ export default function AdminCrudPage({
                     ))}
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button className="btn-secondary" onClick={() => openEdit(item)} title="Edit" style={{ padding: '6px 8px' }}>
+                        <button className="btn-secondary px-2 py-1.5" onClick={() => openEdit(item)} title="Edit">
                           <Pencil size={14} />
                         </button>
-                        <button className="btn-danger" onClick={() => setDeleteItem(item)} title="Delete" style={{ padding: '6px 8px' }}>
+                        <button className="btn-danger px-2 py-1.5" onClick={() => setDeleteItem(item)} title="Delete">
                           <Trash2 size={14} />
                         </button>
                         {extraActions && extraActions(item)}

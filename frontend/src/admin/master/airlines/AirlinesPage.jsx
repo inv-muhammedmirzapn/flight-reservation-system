@@ -7,7 +7,7 @@ const COLUMNS = [
   {
     key: 'logo', label: 'Logo',
     render: (r) => r.logo_url ? (
-      <img src={r.logo_url} alt={r.airline_name} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'contain' }} />
+      <img src={r.logo_url} alt={r.airline_name} className="w-9 h-9 rounded-md object-contain" />
     ) : '—',
   },
   { key: 'iata_airline_code', label: 'IATA Code' },

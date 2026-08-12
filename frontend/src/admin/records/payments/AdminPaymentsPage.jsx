@@ -42,8 +42,8 @@ export default function AdminPaymentsPage() {
   return (
     <div className="admin-page">
       <div className="admin-container">
-        <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Payments</h1>
-        <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>View payment records linked to bookings.</p>
+        <h1 className="admin-page-title mb-2">Payments</h1>
+        <p className="admin-page-subtitle mb-6">View payment records linked to bookings.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
           <div className="admin-toolbar-search">
@@ -70,11 +70,11 @@ export default function AdminPaymentsPage() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} onClick={() => setSelected(selected?.id === p.id ? null : p)}>
-                    <td><code style={{ fontSize: 12 }}>{p.transaction_id || p.id}</code></td>
+                    <td><code className="text-xs">{p.transaction_id || p.id}</code></td>
                     <td>{p.gateway || '—'}</td>
                     <td>{p.currency} {p.amount}</td>
                     <td>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: (STATUS_COLORS[p.status] || '#888') + '20', color: STATUS_COLORS[p.status] || '#888' }}>
+                      <span className="text-[11px] font-bold px-2 py-[3px] rounded-full" style={{ background: (STATUS_COLORS[p.status] || '#888') + '20', color: STATUS_COLORS[p.status] || '#888' }}>
                         {p.status}
                       </span>
                     </td>
@@ -97,7 +97,7 @@ export default function AdminPaymentsPage() {
 
         {selected && (
           <div className="detail-card">
-            <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16, color: '#1a1c1d' }}>Payment Detail</h3>
+            <h3 className="text-base font-extrabold mb-4 text-[#1a1c1d]">Payment Detail</h3>
             <dl className="kv">
               {Object.entries(selected).map(([k, v]) => (
                 <><dt key={`dt-${k}`}>{k}</dt><dd key={`dd-${k}`}>{String(v)}</dd></>

@@ -303,10 +303,10 @@ export default function SeatMapPage() {
             <div className="smp-section">
               <span className="smp-section-label">Flight Instance</span>
               <div className="smp-instance-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Select id="seat-map-instance" options={[{ value: '', label: '— Select Flight Instance —' }, ...instanceOptions]} value={selInstance} onChange={e => handleInstanceChange(e.target.value)} style={{ margin: 0, height: '38px', padding: '0 32px 0 12px' }} />
+                <div className="flex-1 min-w-0">
+                  <Select id="seat-map-instance" options={[{ value: '', label: '— Select Flight Instance —' }, ...instanceOptions]} value={selInstance} onChange={e => handleInstanceChange(e.target.value)} />
                 </div>
-                <button className="btn-primary" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading} style={{ padding: '0 14px', height: '38px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button className="btn-primary px-[14px] h-[38px] whitespace-nowrap shrink-0 flex items-center justify-center" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading}>
                   {seatsLoading ? 'Loading…' : 'Search Seats'}
                 </button>
               </div>
@@ -319,9 +319,9 @@ export default function SeatMapPage() {
             </div>
 
             {showMap && seats.length > 0 && (
-              <div className="smp-section" style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <div className="smp-section bg-[#f8fafc] p-[12px_16px] rounded-xl border border-[#e2e8f0]">
                 {/* Filters Section B: Cabin Class */}
-                <div style={{ marginBottom: 10 }}>
+                <div className="mb-2.5">
                   <span className="smp-section-label">Cabin Class Scope</span>
                   <div className="smp-chip-group">
                     {CLASS_TABS.map(c => (
@@ -333,7 +333,7 @@ export default function SeatMapPage() {
                 {/* Filters Section C: Attributes */}
                 <div>
                   <span className="smp-section-label">Select By Attribute</span>
-                  <div className="smp-chip-group" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                  <div className="smp-chip-group border-b-0 pb-0">
                     {ATTRS.map(a => (
                       <button key={a.id} className={`smp-chip ${activeFilters.includes(a.id) ? 'on' : ''}`} onClick={() => handleFilterToggle(a.id)}>{a.label}</button>
                     ))}
@@ -344,14 +344,14 @@ export default function SeatMapPage() {
 
             {/* Legend */}
             {showMap && seats.length > 0 && (
-              <div className="smp-legend" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox fr" /> Free</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox pr" /> ₹1–460</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="smp-lbox sp" /> ₹461+</span>
+              <div className="smp-legend justify-start flex-wrap mt-2">
+                <span className="flex items-center gap-1.5"><span className="smp-lbox fr" /> Free</span>
+                <span className="flex items-center gap-1.5"><span className="smp-lbox pr" /> ₹1–460</span>
+                <span className="flex items-center gap-1.5"><span className="smp-lbox sp" /> ₹461+</span>
               </div>
             )}
             {showMap && seats.length > 0 && (
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, lineHeight: 1.4 }}>Drag to select • Shift+drag to deselect • Click to toggle</p>
+              <p className="text-[11px] text-[#94a3b8] mt-1.5 leading-[1.4]">Drag to select • Shift+drag to deselect • Click to toggle</p>
             )}
           </div>{/* end sidebar */}
 
@@ -359,16 +359,16 @@ export default function SeatMapPage() {
           <div className="smp-main">
             {selInstance && showMap && (
               seatsLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-                  <div style={{ width: 28, height: 28, border: '2.5px solid rgba(15,23,42,.12)', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+                <div className="flex justify-center p-12">
+                  <div className="w-7 h-7 border-[2.5px] border-black/[0.12] border-t-[#0f172a] rounded-full animate-spin" />
                 </div>
               ) : seats.length === 0 ? (
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>No Seats Found for this Flight</h3>
-                  <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, margin: '0 auto 20px', lineHeight: 1.5 }}>
+                <div className="bg-white border border-[#e2e8f0] rounded-xl py-12 px-6 text-center">
+                  <h3 className="text-lg font-bold text-[#1e293b] mb-1.5">No Seats Found for this Flight</h3>
+                  <p className="text-sm text-[#64748b] max-w-[420px] mx-auto mb-5 leading-[1.5]">
                     Seats have not been generated for this flight instance yet. Click below to automatically generate seats based on the aircraft layout.
                   </p>
-                  <button className="btn-primary" onClick={handleGenerate} disabled={actionLoading} style={{ padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <button className="btn-primary py-[10px] px-5 inline-flex items-center gap-2" onClick={handleGenerate} disabled={actionLoading}>
                     {actionLoading ? 'Generating…' : 'Get Seats'}
                   </button>
                 </div>
@@ -419,7 +419,7 @@ export default function SeatMapPage() {
                             const rowNum = rowKey.replace(/\D/g, '');
 
                             const renderSeat = seat => {
-                              if (!seat) return <div key={Math.random()} style={{ width: 28, height: 28 }} />;
+                              if (!seat) return <div key={Math.random()} className="w-7 h-7" />;
                               const avail = seat.status === 'AVAILABLE';
                               const fee = Number(seat.seat_fee);
                               const isSel = selectedIds.has(seat.id);
@@ -450,7 +450,7 @@ export default function SeatMapPage() {
                               </div>
                             );
                           })}
-                          <div style={{ height: 6 }} />
+                          <div className="h-1.5" />
                         </div>
                       );
                     })}
@@ -464,33 +464,19 @@ export default function SeatMapPage() {
         {/* Sticky bulk action bar */}
         {selectedIds.size > 0 && (
           <div className="smp-bar">
-            <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '5px 10px', borderRadius: 6, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>
+            <div className="bg-[#e0f2fe] text-[#0284c7] px-2.5 py-[5px] rounded-md font-bold text-xs whitespace-nowrap">
               {selectedIds.size} seats {selClassLabel && `— ${selClassLabel}`}
             </div>
-            <div style={{ width: 100 }}>
-              <Input id="bulk-price" type="text" inputMode="numeric" placeholder="Price ₹" value={bulkPrice} onChange={e => { const val = e.target.value; if (val === '' || /^\d*$/.test(val)) setBulkPrice(val); }} style={{ margin: 0, padding: '5px 8px', fontSize: 12 }} />
+            <div className="w-[100px]">
+              <Input id="bulk-price" type="text" inputMode="numeric" placeholder="Price ₹" value={bulkPrice} onChange={e => { const val = e.target.value; if (val === '' || /^\d*$/.test(val)) setBulkPrice(val); }} />
             </div>
-            <button className="btn-primary" onClick={handleBulkApply} disabled={actionLoading} style={{ padding: '6px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <button className="btn-primary px-4 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap shrink-0" onClick={handleBulkApply} disabled={actionLoading}>
               <DollarSign size={13} /> Apply Price
             </button>
-            <div style={{ width: '1px', height: '18px', background: '#e2e8f0', margin: '0 4px', flexShrink: 0 }} />
+            <div className="w-px h-[18px] bg-[#e2e8f0] mx-1 shrink-0" />
             <button
               onClick={() => { setSelectedIds(new Set()); setActiveFilters([]); }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '4px',
-                borderRadius: '50%',
-                transition: 'background 0.2s, color 0.2s',
-                flexShrink: 0
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+              className="bg-transparent border-none text-[#94a3b8] cursor-pointer flex items-center justify-center p-1 rounded-full transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] shrink-0"
               title="Clear selection"
             >
               <X size={15} />

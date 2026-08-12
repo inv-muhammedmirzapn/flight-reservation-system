@@ -144,10 +144,10 @@ export default function MealsPage() {
       <div className="admin-container">
 
         {instanceParam && (
-          <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
+          <div className="admin-breadcrumb mb-4">
             <span>
               <Link to={searchParams.get('fromPage') ? `/admin/operations/flight-instances?page=${searchParams.get('fromPage')}&highlightInstance=${instanceParam}` : "/admin/operations/flight-instances"}>Flight Instances</Link>
-              <span style={{ margin: '0 8px' }}>/</span>
+              <span className="mx-2">/</span>
             </span>
             <span>Meals (Instance #{instanceParam})</span>
           </div>
@@ -207,10 +207,10 @@ export default function MealsPage() {
                     </td>
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(meal)} style={{ padding: '6px 8px' }}>
+                        <button className="btn-secondary px-2 py-1.5" title="Edit" onClick={() => openEdit(meal)}>
                           <Pencil size={14} />
                         </button>
-                        <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(meal)} style={{ padding: '6px 8px' }}>
+                        <button className="btn-danger px-2 py-1.5" title="Delete" onClick={() => setDeleteItem(meal)}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -268,7 +268,7 @@ export default function MealsPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div className="grid grid-cols-2 gap-4 mb-5">
                 <Select id="meal-instance" label="Flight Instance" options={instanceOptions}
                   value={form.flight_instance}
                   onChange={(e) => setForm((f) => ({ ...f, flight_instance: e.target.value }))}
@@ -281,7 +281,7 @@ export default function MealsPage() {
               <div className="mb-5">
                 <div className="flex justify-between items-center mb-2.5">
                   <span className="text-xs font-bold uppercase tracking-[.06em] text-[#705d00]">Meal Items</span>
-                  <button type="button" className="btn-secondary" onClick={addItem} style={{ fontSize: 12, padding: '5px 10px' }}>
+                  <button type="button" className="btn-secondary text-[12px] px-[10px] py-[5px]" onClick={addItem}>
                     <PlusCircle size={13} /> Add Item
                   </button>
                 </div>

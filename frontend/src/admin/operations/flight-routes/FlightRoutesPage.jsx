@@ -287,10 +287,10 @@ export default function FlightRoutesPage() {
                     <td>{r.handbag_weight_allowed_per_person}</td>
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(r)} style={{ padding: '6px 8px' }}>
+                        <button className="btn-secondary px-2 py-1.5" title="Edit" onClick={() => openEdit(r)}>
                           <Pencil size={14} />
                         </button>
-                         <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
+                         <button className="btn-danger px-2 py-1.5" title="Delete" onClick={() => setDeleteItem(r)}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -325,7 +325,7 @@ export default function FlightRoutesPage() {
 
             {validationErrors && (
               <div className="admin-error">
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-1">
                   {typeof validationErrors === 'string' ? (
                     <span>{validationErrors}</span>
@@ -360,32 +360,19 @@ export default function FlightRoutesPage() {
                   <label htmlFor="flight_no" className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                     Flight Number
                   </label>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div className="flex items-center">
                     {form.airline ? (() => {
                       const selected = airlines.find((a) => String(a.id) === String(form.airline));
                       if (selected) {
                         return (
-                          <div style={{
-                            padding: '9px 14px',
-                            background: 'rgba(0, 0, 0, 0.04)',
-                            border: `1.5px solid ${
-                              (localErrors.flight_no || validationErrors?.flight_no)
-                                ? '#b91c1c'
-                                : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
-                            }`,
-                            borderRight: 'none',
-                            borderRadius: '10px 0 0 10px',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: '#5e5e5e',
-                            fontFamily: 'Inter, sans-serif',
-                            height: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            boxSizing: 'border-box',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0
-                          }}>
+                          <div className={`
+                            px-[14px] py-[9px] bg-black/[0.04] text-sm font-bold text-[#5e5e5e]
+                            flex items-center box-border whitespace-nowrap shrink-0 rounded-l-[10px]
+                            border-[1.5px] border-r-0 h-[40px]
+                            ${(localErrors.flight_no || validationErrors?.flight_no)
+                              ? 'border-[#b91c1c]'
+                              : (isFlightNoFocused ? 'border-[#888888]' : 'border-black/10')}
+                          `}>
                             {selected.iata_airline_code} -
                           </div>
                         );
@@ -403,35 +390,23 @@ export default function FlightRoutesPage() {
                       }}
                       onFocus={() => setIsFlightNoFocused(true)}
                       onBlur={() => setIsFlightNoFocused(false)}
-                      style={{
-                        flex: 1,
-                        background: form.airline
-                          ? (isFlightNoFocused ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)')
-                          : 'rgba(0,0,0,0.03)',
-                        border: `1.5px solid ${
-                          (localErrors.flight_no || validationErrors?.flight_no)
-                            ? '#b91c1c'
-                            : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
-                        }`,
-                        borderLeft: form.airline ? 'none' : undefined,
-                        borderRadius: form.airline ? '0 10px 10px 0' : '10px',
-                        padding: '9px 13px',
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: '#1a1c1d',
-                        fontFamily: 'Inter, sans-serif',
-                        outline: 'none',
-                        height: '40px',
-                        boxSizing: 'border-box',
-                        boxShadow: (localErrors.flight_no || validationErrors?.flight_no)
-                          ? (isFlightNoFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
-                          : (isFlightNoFocused ? '0 0 0 3px rgba(0,0,0,0.05)' : 'none'),
-                        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s'
-                      }}
+                      className={`
+                        flex-1 px-[13px] py-[9px] text-sm font-medium text-[#1a1c1d]
+                        outline-none h-[40px] box-border font-sans
+                        transition-all duration-200 border-[1.5px]
+                        ${form.airline 
+                          ? `border-l-0 rounded-r-[10px] ${isFlightNoFocused ? 'bg-white/90' : 'bg-white/65'}`
+                          : `rounded-[10px] bg-black/[0.03]`
+                        }
+                        ${(localErrors.flight_no || validationErrors?.flight_no)
+                          ? `border-[#b91c1c] ${isFlightNoFocused ? 'shadow-[0_0_0_3px_rgba(185,28,28,0.18)]' : 'shadow-[0_0_0_3px_rgba(185,28,28,0.1)]'}`
+                          : (isFlightNoFocused ? 'border-[#888888] shadow-[0_0_0_3px_rgba(0,0,0,0.05)]' : 'border-black/10 shadow-none')
+                        }
+                      `}
                     />
                   </div>
                   {(localErrors.flight_no || validationErrors?.flight_no) && (
-                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>
+                    <p className="text-xs text-[#b91c1c] mt-0.5 pl-0.5">
                       {localErrors.flight_no || (Array.isArray(validationErrors.flight_no) ? validationErrors.flight_no.join(', ') : validationErrors.flight_no)}
                     </p>
                   )}
@@ -453,7 +428,7 @@ export default function FlightRoutesPage() {
                   <h3 className="m-0 text-[13px] font-bold uppercase tracking-[.06em] text-[#705d00] flex items-center gap-1.5">
                     <MapPin size={14} /> Flight Legs
                   </h3>
-                  <button type="button" className="btn-secondary" onClick={addLeg} style={{ fontSize: 12, padding: '5px 10px' }}>
+                  <button type="button" className="btn-secondary text-[12px] px-[10px] py-[5px]" onClick={addLeg}>
                     <PlusCircle size={13} /> Add Leg
                   </button>
                 </div>
@@ -476,7 +451,7 @@ export default function FlightRoutesPage() {
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
                       <div className="leg-arrow-container select-none">
-                        <div style={{ height: 21 }} />
+                    <div className="h-[21px]" />
                         <div className="leg-arrow">→</div>
                       </div>
                       <Select id={`arr_apt_${i}`} label="Arrival Airport" options={airportOptions}
