@@ -7,16 +7,36 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
     """Lightweight FlightInstance info embedded in booking responses."""
     flight_number = serializers.CharField(source='flight.flight_no', read_only=True)
     airline = serializers.CharField(source='flight.airline.airline_name', read_only=True)
+    airline_logo = serializers.SerializerMethodField()
+    aircraft = serializers.SerializerMethodField()
     source_airport = serializers.SerializerMethodField()
     destination_airport = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
         fields = [
-            'id', 'flight_number', 'airline',
+            'id', 'flight_number', 'airline', 'airline_logo', 'aircraft',
             'source_airport', 'destination_airport',
             'scheduled_departure', 'scheduled_arrival', 'status',
         ]
+
+    def get_airline_logo(self, obj):
+        if obj.flight and obj.flight.airline and obj.flight.airline.logo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.flight.airline.logo.url)
+            return obj.flight.airline.logo.url
+        return None
+
+    def get_aircraft(self, obj):
+        if obj.aircraft and obj.aircraft.aircraft_model:
+            model = obj.aircraft.aircraft_model
+            manufacturer = model.manufacturer or ""
+            model_name = model.model_name or ""
+            if model_name.lower().startswith(manufacturer.lower()):
+                return model_name
+            return f"{manufacturer} {model_name}".strip()
+        return "Airbus A320"
 
     def get_source_airport(self, obj):
         first_leg = obj.flight.legs.order_by('leg_order').first()

@@ -63,7 +63,7 @@ export default function FlightDetailPage() {
   const handleProceedToCheckout = () => {
     if (!isAuthenticated) {
       toast.error("Please login to proceed with flight booking.");
-      navigate("/login", { state: { from: `/flights/${id}` } });
+      navigate("/login", { state: { from: location } });
       return;
     }
 

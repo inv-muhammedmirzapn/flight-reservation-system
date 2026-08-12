@@ -6,6 +6,7 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
   const {
     flight_number = "6E-2382",
     airline = "IndiGo",
+    airline_logo,
     aircraft = "Airbus A320",
     source_airport = "COK",
     destination_airport = "DEL",
@@ -160,15 +161,37 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
   const stopCount = Array.isArray(stops) ? stops.length : typeof stops === "number" ? stops : 0;
   const stopsStr = stopCount === 0 ? "Non-stop" : `${stopCount} Stop${stopCount > 1 ? "s" : ""}`;
 
+  const getLogoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const rawLogo =
+    airline_logo ||
+    flight.airline_logo ||
+    flight.airline_detail?.logo ||
+    (typeof flight.airline === "object" ? flight.airline?.logo : null);
+  const logoSrc = getLogoUrl(rawLogo);
+
   return (
     <div className="booking-container-card animate-fade-in transition-all duration-300 relative">
 
 
       {/* Top Header Row: Route Title & Optional Seat/Waitlist Status Badge */}
       <div className="flex items-start justify-between gap-4 mb-2">
-        <h2 className="text-xl font-bold text-slate-950">
-          {sourceInfo.city} &rarr; {destInfo.city}
-        </h2>
+        <div className="flex items-center gap-3">
+          {logoSrc && (
+            <img
+              src={logoSrc}
+              alt={airline}
+              className="h-8 object-contain shadow-2xs"
+            />
+          )}
+          <h2 className="text-xl font-bold text-slate-950">
+            {sourceInfo.city} &rarr; {destInfo.city}
+          </h2>
+        </div>
 
         {/* Status Badge — Delayed overrides Available/Waitlist */}
         {showBadge && (

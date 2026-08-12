@@ -116,7 +116,30 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
         <div className="flex flex-col gap-3">
           {passengers.length > 0 ? (
             passengers.map((p, idx) => {
-              const passengerMeals = p.meals || p.selected_meals || [];
+              const allMeals = p.meals || p.selected_meals || [];
+              const paidMeals = allMeals.filter(
+                (m) => Number(m.unit_price || m.price || 0) > 0 || (Boolean(m.food_item_name) && !m.flight_meal_name)
+              );
+              const compMealObj = allMeals.find(
+                (m) => Number(m.unit_price || m.price || 0) === 0 && Boolean(m.flight_meal_name || m.flight_meal_id || m.flight_meal)
+              );
+
+              const compMealName =
+                compMealObj?.flight_meal_name ||
+                compMealObj?.name ||
+                (p.meal_preference === "VEG"
+                  ? "Veg Meal Box"
+                  : p.meal_preference === "NON_VEG"
+                    ? "Non-Veg Meal Box"
+                    : null);
+
+              const genderLabel =
+                p.gender === "F" || p.gender === "FEMALE"
+                  ? "Female"
+                  : p.gender === "M" || p.gender === "MALE"
+                    ? "Male"
+                    : p.gender || "Passenger";
+
               return (
                 <div key={idx} className="timeline-card p-3.5 flex flex-col gap-2 font-medium">
                   <div className="flex items-center justify-between">
@@ -125,8 +148,12 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                         person
                       </span>
                       <div>
-                        <p className="font-bold text-slate-950 text-sm">{p.name || p.full_name || `Passenger ${idx + 1}`}</p>
-                        <p className="text-slate-500 text-[10px] mt-0.5">{p.gender === "F" ? "Female" : p.gender === "M" ? "Male" : p.gender || "Passenger"}, {p.age} yrs</p>
+                        <p className="font-bold text-slate-950 text-sm">
+                          {p.name || p.full_name || `Passenger ${idx + 1}`}
+                        </p>
+                        <p className="text-slate-500 text-[10px] mt-0.5">
+                          {genderLabel}{p.age ? `, ${p.age} yrs` : ""}
+                        </p>
                       </div>
                     </div>
 
@@ -137,35 +164,51 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                     )}
                   </div>
 
-                  {p.meal_preference && p.meal_preference !== "NONE" && (
-                    <div className="mt-1 pt-2 border-t border-slate-200/80 flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">restaurant_menu</span>
-                        Complimentary Meal:
-                      </span>
-                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-md">
-                        {p.meal_preference === "VEG" ? "Veg Meal Box" : "Non-Veg Gourmet Box"}
-                      </span>
-                    </div>
-                  )}
-
-                  {passengerMeals.length > 0 && (
-                    <div className="mt-1 pt-2 border-t border-slate-200/80 flex flex-col gap-1">
-                      <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">restaurant</span>
-                        Pre-ordered Meals:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5 mt-0.5">
-                        {passengerMeals.map((m, mIdx) => {
-                          const mealName = m.food_item?.name || m.flight_meal?.name || m.name || "In-Flight Meal";
-                          const qty = m.quantity || 1;
-                          return (
-                            <span key={mIdx} className="inline-flex items-center text-[10px] font-bold bg-amber-50 text-amber-950 border border-amber-200/70 px-2 py-0.5 rounded-md">
-                              {mealName} {qty > 1 ? `x${qty}` : ""}
+                  {/* Options Breakdown */}
+                  {(compMealName || paidMeals.length > 0) && (
+                    <div className="receipt-container">
+                      {compMealName && p.meal_preference !== "NONE" && (
+                        <div className="receipt-row receipt-row-muted">
+                          <div className="receipt-item-label">
+                            <span className="material-symbols-outlined text-xs text-emerald-600">
+                              restaurant
                             </span>
-                          );
-                        })}
-                      </div>
+                            <span>{compMealName}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                            Included
+                          </span>
+                        </div>
+                      )}
+
+                      {paidMeals.map((m, mIdx) => {
+                        const mealName =
+                          m.food_item_name ||
+                          m.name ||
+                          m.food_item?.name ||
+                          "Pre-ordered Item";
+                        const qty = m.quantity || 1;
+                        const itemPrice = Number(m.unit_price || m.price || 0);
+                        const subtotal = itemPrice * qty;
+
+                        return (
+                          <div key={mIdx} className="receipt-row receipt-row-muted">
+                            <div className="receipt-item-label">
+                              <span className="material-symbols-outlined text-xs text-amber-600">
+                                shopping_bag
+                              </span>
+                              <span>
+                                {mealName} {qty > 1 ? <span className="font-medium text-slate-950 ml-1">x{qty}</span> : ""}
+                              </span>
+                            </div>
+                            {itemPrice > 0 && (
+                              <div className="receipt-item-price">
+                                {m.display_currency || "INR"} {subtotal.toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

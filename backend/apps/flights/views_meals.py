@@ -51,18 +51,29 @@ class FlightMealsView(APIView):
         flight_meals_data = []
         for meal in flight_meals_qs:
             display_price = CurrencyService.convert_amount(meal.price, "INR", target_currency)
+            items_list = list(meal.items.all())
+            is_veg_combo = all(it.food_item.is_veg for it in items_list) if items_list else False
+            is_halal_combo = all(it.food_item.is_halal for it in items_list) if items_list else False
+            is_vegan_combo = all(it.food_item.is_vegan for it in items_list) if items_list else False
+
             flight_meals_data.append({
                 "id": meal.id,
                 "name": meal.name,
                 "price": str(meal.price),
                 "display_price": str(display_price),
                 "display_currency": target_currency,
+                "is_veg": is_veg_combo,
+                "is_halal": is_halal_combo,
+                "is_vegan": is_vegan_combo,
                 "items": [
                     {
                         "name": it.food_item.name,
                         "quantity": it.quantity,
+                        "is_veg": it.food_item.is_veg,
+                        "is_halal": it.food_item.is_halal,
+                        "is_vegan": it.food_item.is_vegan,
                     }
-                    for it in meal.items.all()
+                    for it in items_list
                 ],
             })
 

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, googleLoginUser } from "@/store/authSlice";
 import { useGoogleLogin } from "@react-oauth/google";
@@ -18,8 +18,11 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.auth);
+
+  const redirectUrl = location.state?.from || "/";
 
   const [formData, setFormData] = useState({
     username: "",
@@ -79,7 +82,7 @@ export default function LoginPage() {
 
       if (loginUser.fulfilled.match(resultAction)) {
         toast.success("Welcome back!");
-        navigate("/");
+        navigate(redirectUrl, { replace: true });
       } else {
         const errorMsg = resultAction.payload || "Invalid username or password";
         toast.error(errorMsg);
@@ -97,7 +100,7 @@ export default function LoginPage() {
         if (googleLoginUser.fulfilled.match(res)) {
           const p = res.payload?.profile;
           toast.success(`Welcome back, ${p?.first_name || p?.username || "there"}!`);
-          navigate("/");
+          navigate(redirectUrl, { replace: true });
         } else {
           toast.error(res.payload || "Google login failed");
         }
@@ -228,7 +231,7 @@ export default function LoginPage() {
         <div className="mt-8 text-center pt-5 border-t border-slate-100">
           <p className="text-xs font-semibold text-slate-500">
             Don't have an account?{" "}
-            <Link to="/register" className="text-slate-900 font-bold hover:underline transition-all">
+            <Link to="/register" state={{ from: redirectUrl }} className="text-slate-900 font-bold hover:underline transition-all">
               Sign Up
             </Link>
           </p>

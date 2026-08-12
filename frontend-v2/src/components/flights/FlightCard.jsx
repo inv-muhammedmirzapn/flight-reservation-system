@@ -5,6 +5,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
   const {
     flight_number = "SA-224",
     airline = "Skyline Airways",
+    airline_logo,
     source_airport = "DEL",
     destination_airport = "HAM",
     departure_time,
@@ -69,11 +70,19 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
     ? "bg-amber-50/80 border border-amber-200/80 shadow-2xs hover:shadow-xs"
     : "plain-card shadow-2xs hover:shadow-xs";
 
+  const getLogoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const logoSrc = getLogoUrl(airline_logo);
+
   return (
     <div className={`w-full mx-auto rounded-3xl px-4 sm:px-5 flex flex-col md:grid md:grid-cols-10 items-center justify-between gap-3 md:gap-0 transition-all mb-4 animate-fade-in ${cardClass}`}>
 
       {/* 1. Airline & Flight Info */}
-      <div className="flex flex-col md:col-span-2 items-center md:items-start min-w-[150px] gap-0.5">
+      <div className="flex flex-col md:col-span-2 items-center md:items-start min-w-[150px] gap-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-slate-500">{flight_number}</span>
           {isDelayed && (
@@ -85,7 +94,16 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">Waitlist</span>
           )}
         </div>
-        <span className="text-xs font-semibold text-slate-800">{airline}</span>
+        <div className="flex items-center gap-1.5">
+          {logoSrc && (
+            <img
+              src={logoSrc}
+              alt={airline}
+              className="h-4 object-contain"
+            />
+          )}
+          <span className="text-xs font-semibold text-slate-800">{airline}</span>
+        </div>
         <span className="text-xs font-bold text-slate-950">
           {source_airport} &rarr; {destination_airport}
         </span>

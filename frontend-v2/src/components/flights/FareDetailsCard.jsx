@@ -1,5 +1,5 @@
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function FareDetailsCard({
   flight,
@@ -11,6 +11,7 @@ export default function FareDetailsCard({
   actionButtonText,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
 
@@ -36,7 +37,7 @@ export default function FareDetailsCard({
 
   const handleClick = () => {
     if (!isAuthenticated) {
-      navigate("/login");
+      navigate("/login", { state: { from: location } });
     } else if (onBookingAction) {
       onBookingAction();
     }

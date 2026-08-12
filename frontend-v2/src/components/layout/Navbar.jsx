@@ -358,7 +358,7 @@ export default function Navbar() {
             </div>
           ) : (
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/login", { state: { from: location } })}
               className="btn-primary text-sm px-6 py-2.5 rounded-xl"
             >
               {t("navbar.loginOrRegister", "Login or Register")}

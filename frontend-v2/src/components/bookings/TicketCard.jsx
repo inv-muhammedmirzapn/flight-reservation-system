@@ -146,6 +146,21 @@ export default function TicketCard({ item, isPastView = false }) {
     }
   };
 
+  const getLogoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const rawLogo =
+    flight.airline_logo ||
+    item.airline_logo ||
+    (typeof flight.airline === "object" ? flight.airline?.logo : null);
+
+  const logoSrc = getLogoUrl(rawLogo);
+
+  const airlineName = typeof flight.airline === "object" ? flight.airline?.airline_name || flight.airline?.name : (flight.airline || "Skyline Airways");
+
   return (
     <div className="group animate-fade-in shadow-2xs hover:shadow-xs">
       {/* Top Black Header Bar */}
@@ -167,14 +182,23 @@ export default function TicketCard({ item, isPastView = false }) {
         {/* Main Card Content (Styled like FlightCard.jsx) */}
         <div className="px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
           {/* 1. Airline & Flight Info */}
-          <div className="flex flex-col items-center md:items-start min-w-[120px]">
+          <div className="flex flex-col items-center md:items-start min-w-[140px] gap-1">
             <span className="text-xs font-semibold text-slate-500 mb-0.5">
               {flight.flight_number || "SA-224"}
             </span>
-            <span className="text-xs font-semibold text-slate-800 truncate">
-              {flight.airline || "Skyline Airways"}
-            </span>
-            <span className="text-xs font-bold text-slate-950 mt-1.5">
+            <div className="flex items-center gap-1.5">
+              {logoSrc && (
+                <img
+                  src={logoSrc}
+                  alt={airlineName}
+                  className="h-4 object-contain"
+                />
+              )}
+              <span className="text-xs font-bold text-slate-900 truncate">
+                {airlineName}
+              </span>
+            </div>
+            <span className="text-xs font-bold text-slate-950 mt-1">
               {flight.source_airport} &rarr; {flight.destination_airport}
             </span>
           </div>

@@ -12,6 +12,24 @@ const dispatchServerDown = async () => {
   }
 };
 
+const dispatchLogout = async () => {
+  try {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    const { store } = await import('@/store');
+    const { logout } = await import('@/store/authSlice');
+    store.dispatch(logout());
+  } catch (err) {
+    console.error("Could not dispatch logout state:", err);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  }
+  if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
+    const isAdminPath = window.location.pathname.startsWith('/admin');
+    window.location.href = isAdminPath ? '/admin/login' : '/login';
+  }
+};
+
 export const getResponseData = async (res) => {
   if (res.status === 204) return null;
   const text = await res.text();
@@ -60,42 +78,51 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   }
 
   // If unauthorized, attempt token refresh (if a refresh token is present)
-  if (response.status === 401 && localStorage.getItem('refresh_token')) {
-    try {
-      const refreshResponse = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: localStorage.getItem('refresh_token') }),
-      });
-
-      if (refreshResponse.ok) {
-        const refreshRaw = await refreshResponse.json();
-        const refreshData = (refreshRaw && refreshRaw.status === 'success' && refreshRaw.data)
-          ? refreshRaw.data
-          : refreshRaw;
-
-        const newAccess = refreshData.access;
-        const newRefresh = refreshData.refresh || localStorage.getItem('refresh_token');
-
-        if (newAccess) localStorage.setItem('access_token', newAccess);
-        if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
-
-        // Retry the original request with the new token
-        headers['Authorization'] = `Bearer ${newAccess}`;
-        const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-          ...options,
-          headers,
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh: refreshToken }),
         });
-        const retryData = await getResponseData(retryResponse);
-        if (!retryResponse.ok) throw new Error(parseApiError(retryData));
-        return retryData;
+
+        if (refreshResponse.ok) {
+          const refreshRaw = await refreshResponse.json();
+          const refreshData = (refreshRaw && refreshRaw.status === 'success' && refreshRaw.data)
+            ? refreshRaw.data
+            : refreshRaw;
+
+          const newAccess = refreshData.access;
+          const newRefresh = refreshData.refresh || refreshToken;
+
+          if (newAccess) localStorage.setItem('access_token', newAccess);
+          if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
+
+          // Retry the original request with the new token
+          headers['Authorization'] = `Bearer ${newAccess}`;
+          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          const retryData = await getResponseData(retryResponse);
+          if (!retryResponse.ok) throw new Error(parseApiError(retryData));
+          return retryData;
+        } else {
+          // Refresh token endpoint failed (e.g. 401/400 - token invalid or expired)
+          console.error("Refresh token invalid or expired. Logging out user.");
+          await dispatchLogout();
+          throw new Error("Session expired. Please log in again.");
+        }
+      } catch (refreshErr) {
+        console.error("Token refresh failed. Logging out user.", refreshErr);
+        await dispatchLogout();
+        throw new Error("Session expired. Please log in again.");
       }
-    } catch (refreshErr) {
-      console.error("Token refresh failed. Logging out.", refreshErr);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      window.location.href = '/';
-      throw new Error("Session expired. Please log in again.");
+    } else {
+      // No refresh token available and request was unauthorized
+      await dispatchLogout();
     }
   }
 
