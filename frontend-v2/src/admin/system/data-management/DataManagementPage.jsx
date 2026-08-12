@@ -4,17 +4,28 @@ import '@/admin/_core/styles/admin.css';
 import { parseApiError } from '@/utils/errorUtils';
 
 // ── Entity definitions ────────────────────────────────────────────────────────
+// Operational / master data entities
 const ENTITIES = [
   { id: "airlines", label: "Airlines", cols: ["iata_airline_code", "airline_name"], example: ["AI", "Air India"] },
   { id: "airports", label: "Airports", cols: ["iata_code", "airport_name", "city", "country_iso", "timezone", "latitude", "longitude"], example: ["DEL", "Indira Gandhi Intl", "New Delhi", "IN", "Asia/Kolkata", "28.5665", "77.1031"] },
   { id: "aircraft_models", label: "Aircraft Models", cols: ["manufacturer", "model_name"], example: ["Boeing", "737-800"] },
-  { id: "aircraft", label: "Aircraft", cols: ["registration", "airline_code", "manufacturer", "model_name", "economy_capacity", "business_capacity", "first_class_capacity"], example: ["VT-ANL", "AI", "Boeing", "737-800", "160", "20", "8"] },
-  { id: "flight_routes", label: "Flight Routes", cols: ["flight_no", "airline_code", "baggage_weight_allowed_per_person", "handbag_weight_allowed_per_person"], example: ["AI202", "AI", "25", "7"] },
+  { id: "aircraft", label: "Aircraft", cols: ["registration", "airline_code", "manufacturer", "model_name", "economy_capacity", "business_capacity", "first_class_capacity", "economy_layout", "business_layout", "first_class_layout"], example: ["VT-ANL", "AI", "Boeing", "737-800", "160", "20", "8", "3-3", "2-2", "2-2"] },
+  { id: "flight_routes", label: "Flight Routes", cols: ["flight_no", "airline_code", "baggage_weight_allowed_per_person", "handbag_weight_allowed_per_person", "max_extra_baggage_kg_per_person", "extra_baggage_price_per_kg", "extra_baggage_currency"], example: ["AI202", "AI", "25", "7", "20", "500", "INR"] },
   { id: "flight_instances", label: "Flight Instances", cols: ["flight_no", "date", "aircraft_registration", "status", "scheduled_departure", "scheduled_arrival"], example: ["AI202", "2025-08-01", "VT-ANL", "SCHEDULED", "2025-08-01 06:00", "2025-08-01 09:00"] },
   { id: "flight_legs", label: "Flight Legs", cols: ["flight_no", "leg_order", "departure_airport", "arrival_airport", "scheduled_departure", "scheduled_arrival"], example: ["AI202", "1", "DEL", "BOM", "2025-08-01 06:00", "2025-08-01 09:00"] },
   { id: "food_items", label: "Food Items", cols: ["airline_code", "name", "price", "currency", "is_veg", "is_halal", "is_vegan"], example: ["AI", "Veg Biryani", "250", "INR", "true", "false", "false"] },
-  { id: "flight_meals", label: "Flight Meals", cols: ["flight_no", "date", "meal_name"], example: ["AI202", "2025-08-01", "Breakfast"] },
+  { id: "flight_meals", label: "Flight Meals", cols: ["flight_no", "date", "meal_name", "price"], example: ["AI202", "2025-08-01", "Breakfast", "0"] },
   { id: "fares", label: "Fares", cols: ["flight_no", "date", "fare_code", "cabin_class", "price", "currency", "available_seats", "refund_type", "change_fee", "meal_included"], example: ["AI202", "2025-08-01", "ECO-SAVE", "ECONOMY", "4500", "INR", "80", "NON_REFUNDABLE", "500", "false"] },
+];
+
+// User / account data entity (separate group)
+const USER_ENTITIES = [
+  {
+    id: "users",
+    label: "Users",
+    cols: ["email", "username", "first_name", "last_name", "password", "role", "phone_number", "date_of_birth", "gender", "country", "state", "city"],
+    example: ["john@example.com", "johndoe", "John", "Doe", "Secret123", "CUSTOMER", "+919876543210", "1990-01-15", "MALE", "India", "Kerala", "Kochi"],
+  },
 ];
 
 const ALL_MODE = "all";
@@ -28,9 +39,10 @@ function EntityDropdown({ value, onChange }) {
     if (ref.current && !ref.current.contains(e.relatedTarget)) setOpen(false);
   }, []);
 
+  const allEntities = [...ENTITIES, ...USER_ENTITIES];
   const selected = value === ALL_MODE
     ? { label: "Import All" }
-    : ENTITIES.find(e => e.id === value);
+    : allEntities.find(e => e.id === value);
 
   const select = (id) => { onChange(id); setOpen(false); };
 
@@ -58,7 +70,7 @@ function EntityDropdown({ value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white rounded-admin-md border border-black/[0.08] shadow-2xl max-h-[260px] overflow-y-auto">
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-white rounded-admin-md border border-black/[0.08] shadow-2xl max-h-[300px] overflow-y-auto">
           {/* Import All */}
           <button
             type="button"
@@ -75,9 +87,28 @@ function EntityDropdown({ value, onChange }) {
             {value === ALL_MODE && <span className="text-xs text-admin-accent-dark">✓</span>}
           </button>
 
-          <div className="py-1.5 px-4 pt-2.5 text-[10px] font-bold text-[#bbb] uppercase tracking-[0.07em]">Individual Tables</div>
+          {/* Operational / Master Data */}
+          <div className="py-1.5 px-4 pt-2.5 text-[10px] font-bold text-[#bbb] uppercase tracking-[0.07em]">Operational & Master Data</div>
 
           {ENTITIES.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              tabIndex={0}
+              onClick={() => select(e.id)}
+              className={`w-full flex items-center justify-between py-2 px-4 border-none bg-transparent cursor-pointer font-ui text-[13px] text-left transition-colors duration-100 hover:bg-black/[0.03] ${
+                value === e.id ? 'bg-admin-accent-dark/[0.06] font-bold text-admin-accent-dark' : 'font-normal text-[#374151]'
+              }`}
+            >
+              <span>{e.label}</span>
+              {value === e.id && <span className="text-xs text-admin-accent-dark">✓</span>}
+            </button>
+          ))}
+
+          {/* User Data */}
+          <div className="py-1.5 px-4 pt-2.5 text-[10px] font-bold text-[#bbb] uppercase tracking-[0.07em] border-t border-black/[0.05] mt-1">User Accounts</div>
+
+          {USER_ENTITIES.map((e) => (
             <button
               key={e.id}
               type="button"
@@ -199,7 +230,8 @@ function ReportModal({ reports, onClose }) {
         {multiMode && (
           <div className="flex flex-col gap-2 mb-4">
             {reports.map((r) => {
-              const ent = ENTITIES.find(e => e.id === r.entity);
+              const allEntities = [...ENTITIES, ...USER_ENTITIES];
+              const ent = allEntities.find(e => e.id === r.entity);
               return (
                 <div 
                   key={r.entity} 
@@ -225,7 +257,8 @@ function ReportModal({ reports, onClose }) {
           </div>
         ) : (
           reports.filter(r => r.errors?.length).map(r => {
-            const ent = ENTITIES.find(e => e.id === r.entity);
+            const allEntities = [...ENTITIES, ...USER_ENTITIES];
+            const ent = allEntities.find(e => e.id === r.entity);
             return (
               <div key={r.entity} className="mb-4">
                 <p className="m-0 mb-1.5 text-xs font-bold text-[#dc2626]">
@@ -283,7 +316,8 @@ export default function BulkImportPage() {
   const [reports, setReports] = useState(null);
   const [error, setError] = useState("");
 
-  const ent = ENTITIES.find(e => e.id === entity);
+  const allEntityDefs = [...ENTITIES, ...USER_ENTITIES];
+  const ent = allEntityDefs.find(e => e.id === entity);
   const isAll = entity === ALL_MODE;
   const canSubmit = entity && file && !loading;
 

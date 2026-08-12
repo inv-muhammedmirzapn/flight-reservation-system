@@ -347,13 +347,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 
 
 @transaction.atomic
-def cancel_booking(booking_id, user):
+def cancel_booking(booking_id, user=None, is_admin_cancel=False):
     """
-    Cancels a booking, frees the Seat rows and restores Fare.available_seats,
+    Cancel a booking (frees up seats and decreases fare available_seats).,
     then triggers waitlist auto-allocation.
     """
     try:
-        booking = Booking.objects.select_for_update().get(id=booking_id, user=user)
+        booking = Booking.objects.select_for_update().get(id=booking_id, user=user) if user else Booking.objects.select_for_update().get(id=booking_id)
     except Booking.DoesNotExist:
         raise ValidationError("Booking not found.")
 
@@ -365,7 +365,10 @@ def cancel_booking(booking_id, user):
 
     try:
         from apps.notifications.services import NotificationService
-        NotificationService.send_booking_cancellation(booking)
+        if is_admin_cancel:
+            NotificationService.send_admin_booking_cancellation(booking)
+        else:
+            NotificationService.send_booking_cancellation(booking)
     except Exception:
         logger.exception("Failed to send booking cancellation notification")
 

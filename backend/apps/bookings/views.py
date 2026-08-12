@@ -179,7 +179,7 @@ class AdminBookingViewSet(mixins.ListModelMixin,
         try:
             # Pass the booking's own user so service-layer ownership logic passes
             booking = Booking.objects.get(pk=pk)
-            booking = cancel_booking(booking_id=pk, user=booking.user)
+            booking = cancel_booking(booking_id=pk, user=booking.user, is_admin_cancel=True)
             return Response(
                 {
                     "detail": "Booking force-cancelled by admin. Waitlist allocation triggered (if applicable).",

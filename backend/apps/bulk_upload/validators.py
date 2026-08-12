@@ -127,3 +127,13 @@ def validate_fare_row(row: dict) -> dict:
     if cabin not in ("ECONOMY", "BUSINESS", "FIRST"):
         errors["cabin_class"] = "Must be ECONOMY, BUSINESS, or FIRST."
     return errors
+
+
+def validate_user_row(row: dict) -> dict:
+    errors = {}
+    email = strip(row.get("email") or row.get("Email"))
+    if not email:
+        errors["email"] = "Required."
+    elif "@" not in email:
+        errors["email"] = "Must be a valid email address."
+    return errors

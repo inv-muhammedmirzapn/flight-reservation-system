@@ -5,6 +5,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import '@/admin/_core/styles/admin.css';
 import { parseApiError } from '@/utils/errorUtils';
+import toast from 'react-hot-toast';
+import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 
 const STATUS_COLORS = {
   CONFIRMED: '#22c55e',
@@ -24,7 +26,25 @@ export default function AdminBookingsPage() {
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const PAGE_SIZE = 10;
+
+  const executeCancelBooking = async () => {
+    if (!selected) return;
+    setCancelling(true);
+    try {
+      await fetchWithAuth(`/bookings/admin/bookings/${selected.id}/force-cancel/`, { method: 'POST' });
+      toast.success("Booking force-cancelled successfully.");
+      setCancelModalOpen(false);
+      setSelected(null);
+      load(search, statusFilter, page);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to cancel booking.'));
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const load = useCallback(async (s, st, p) => {
     setLoading(true);
@@ -183,7 +203,7 @@ export default function AdminBookingsPage() {
             style={{
               position: 'fixed',
               inset: 0,
-              zIndex: 9999,
+              zIndex: 9990,
               background: 'rgba(0,0,0,0.45)',
               backdropFilter: 'blur(4px)',
               display: 'flex',
@@ -343,8 +363,18 @@ export default function AdminBookingsPage() {
                 )}
               </div>
 
-              {/* Close Button */}
-              <div style={{ marginTop: 24, textAlign: 'right' }}>
+              {/* Close & Actions Button */}
+              <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                {selected.status !== 'CANCELLED' && selected.status !== 'EXPIRED' && selected.status !== 'REFUNDED' && (
+                  <button
+                    onClick={() => setCancelModalOpen(true)}
+                    disabled={cancelling}
+                    className="btn-danger"
+                    style={{ padding: '8px 20px', borderRadius: 10 }}
+                  >
+                    {cancelling ? 'Cancelling...' : 'Force Cancel'}
+                  </button>
+                )}
                 <button
                   onClick={() => setSelected(null)}
                   className="btn-secondary"
@@ -356,6 +386,16 @@ export default function AdminBookingsPage() {
             </div>
           </div>
         )}
+
+        <DeleteConfirmationModal
+          isOpen={cancelModalOpen}
+          onClose={() => setCancelModalOpen(false)}
+          onConfirm={executeCancelBooking}
+          title="Force-Cancel Booking"
+          message={`Are you sure you want to force-cancel booking ${selected?.pnr || selected?.id?.slice(0, 8)}? This action cannot be undone.`}
+          confirmText="Force Cancel"
+          loading={cancelling}
+        />
       </div>
     </div>
   );

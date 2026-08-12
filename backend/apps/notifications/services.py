@@ -132,6 +132,27 @@ class NotificationService:
             NotificationType.BOOKING_CANCELLED)
         cls._send_email(user.email, subject, html)
 
+    @classmethod
+    def send_admin_booking_cancellation(cls, booking):
+        user = booking.user
+        name = user.first_name or user.email
+        fi = booking.flight  # FlightInstance
+        first_leg = fi.flight.legs.order_by('leg_order').first()
+        last_leg = fi.flight.legs.order_by('leg_order').last()
+        flight_number = fi.flight.flight_no
+        origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
+        destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        subject, html = tpl.admin_booking_cancellation(
+            user_name=name,
+            flight_number=flight_number,
+            origin=origin,
+            destination=destination,
+        )
+        cls._create_notification(user, subject,
+            f"Your booking for flight {flight_number} has been cancelled by the administration. A full refund has been initiated.",
+            NotificationType.BOOKING_CANCELLED)
+        cls._send_email(user.email, subject, html)
+
     # ── Waitlist ──────────────────────────────────────────────────────────────
 
     @classmethod

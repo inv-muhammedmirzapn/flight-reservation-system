@@ -13,6 +13,7 @@ from .repositories import ENTITY_IMPORTERS
 
 # Entities must be imported in dependency order so FK lookups succeed.
 IMPORT_ORDER = [
+    "users",
     "airlines",
     "airports",
     "aircraft_models",
@@ -43,6 +44,7 @@ _FILENAME_PATTERNS: list[tuple[str, str]] = [
     ("aircraft",       "aircraft"),
     ("airport",        "airports"),
     ("airline",        "airlines"),
+    ("user",           "users"),
 ]
 
 
