@@ -52,7 +52,7 @@ body {
 
   /* Form Inputs */
   .airport-input-field {
-    @apply w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-xl text-slate-800 placeholder-slate-300 transition-colors focus:placeholder-slate-400;
+    @apply w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-base md:text-xl text-slate-800 placeholder-slate-300 transition-colors focus:placeholder-slate-400;
   }
 
   .input-field {
