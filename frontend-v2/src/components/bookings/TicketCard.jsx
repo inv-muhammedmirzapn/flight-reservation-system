@@ -22,7 +22,7 @@ export default function TicketCard({ item, isPastView = false }) {
       return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
     
-    const month = d.toLocaleString("en-US", { month: "long" });
+    const month = d.toLocaleString("en-US", { month: "short" });
     const year = d.getFullYear();
     return `${hours}:${mins} on ${getOrdinal(day)} ${month}, ${year}`;
   };
@@ -31,7 +31,7 @@ export default function TicketCard({ item, isPastView = false }) {
     if (!isoString) return { dateStr: "-", timeStr: "--:--" };
     const d = new Date(isoString);
     const day = d.getDate();
-    const monthLong = d.toLocaleString("en-US", { month: "long" });
+    const monthLong = d.toLocaleString("en-US", { month: "short" });
     const hours = String(d.getHours()).padStart(2, "0");
     const minutes = String(d.getMinutes()).padStart(2, "0");
     return {
@@ -72,25 +72,24 @@ export default function TicketCard({ item, isPastView = false }) {
   const getFlightStatusBadge = () => {
     if (flightStatus === "DELAYED") {
       return (
-        <span className="bg-amber-400 text-amber-950 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+        <span className="bg-amber-400 text-amber-950 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
           Delayed
-          <span className="material-symbols-outlined text-sm">schedule</span>
+          <span className="material-symbols-outlined text-xs sm:text-sm select-none">schedule</span>
         </span>
       );
     }
     if (flightStatus === "CANCELLED") {
       return (
-        <span className="bg-rose-400 text-rose-950 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+        <span className="bg-rose-400 text-rose-950 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
           Cancelled
-          <span className="material-symbols-outlined text-sm">cancel</span>
+          <span className="material-symbols-outlined text-xs sm:text-sm select-none">cancel</span>
         </span>
       );
     }
-    // Default: On time / Scheduled
     return (
-      <span className="bg-[#7ce47a] text-slate-950 px-2 py-1 rounded-xl text-[10px] font-semibold flex items-center gap-1.5">
+      <span className="bg-[#7ce47a] text-slate-950 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-semibold flex items-center gap-1.5 shrink-0">
         On time
-        <span className="material-symbols-outlined text-sm">flight</span>
+        <span className="material-symbols-outlined text-xs sm:text-sm select-none">flight</span>
       </span>
     );
   };
@@ -100,36 +99,35 @@ export default function TicketCard({ item, isPastView = false }) {
   const getTicketStatusBadge = () => {
     if (ticketStatus === "EXPIRED") {
       return (
-        <span className="bg-slate-200 text-slate-700 border border-slate-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+        <span className="bg-slate-200 text-slate-700 border border-slate-300 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
           Expired
-          <span className="material-symbols-outlined text-sm">hourglass_disabled</span>
+          <span className="material-symbols-outlined text-xs sm:text-sm select-none">hourglass_disabled</span>
         </span>
       );
     }
 
     if (ticketStatus === "CANCELLED") {
       return (
-        <span className="bg-rose-100 text-rose-950 border border-rose-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+        <span className="bg-rose-100 text-rose-950 border border-rose-300 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
           Cancelled
-          <span className="material-symbols-outlined text-sm">cancel</span>
+          <span className="material-symbols-outlined text-xs sm:text-sm select-none">cancel</span>
         </span>
       );
     }
 
     if (isWaitlist) {
       return (
-        <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+        <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
           {item.queue_position ? `WL #${item.queue_position}` : "Waitlisted"}
-          <span className="material-symbols-outlined text-sm">hourglass_top</span>
+          <span className="material-symbols-outlined text-xs sm:text-sm select-none">hourglass_top</span>
         </span>
       );
     }
 
-    // Confirmed
     return (
-      <span className="bg-white text-slate-950 border border-slate-300/80 px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+      <span className="bg-white text-slate-950 border border-slate-300/80 px-2 py-0.5 sm:py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shrink-0">
         Confirmed
-        <span className="material-symbols-outlined text-sm">check_circle</span>
+        <span className="material-symbols-outlined text-xs sm:text-sm select-none">check_circle</span>
       </span>
     );
   };
@@ -158,103 +156,182 @@ export default function TicketCard({ item, isPastView = false }) {
     (typeof flight.airline === "object" ? flight.airline?.logo : null);
 
   const logoSrc = getLogoUrl(rawLogo);
-
   const airlineName = typeof flight.airline === "object" ? flight.airline?.airline_name || flight.airline?.name : (flight.airline || "Skyline Airways");
 
   return (
-    <div className="group animate-fade-in shadow-2xs hover:shadow-xs">
-      {/* Top Black Header Bar */}
-      <div className="rounded-t-3xl mx-auto bg-slate-950 text-white px-5 pt-2 pb-7 flex items-center justify-between text-[10px] font-semibold tracking-wide">
+    <div className="group animate-fade-in shadow-sm hover:shadow transition-all mb-4">
+      {/* Top Header Bar */}
+      <div className="rounded-t-2xl md:rounded-t-3xl mx-auto bg-slate-950 text-white px-4 sm:px-6 pt-2 pb-6 flex items-center justify-between text-[10px] sm:text-xs font-semibold tracking-wide">
         <span className="text-slate-200">
           {isWaitlist ? "Waitlist ID" : "Booking ID"} #{shortId}
         </span>
-        <span className="text-slate-300 font-medium">Booked at {headerTime}</span>
+        <span className="text-slate-300 font-medium truncate max-w-[200px] sm:max-w-none">
+          Booked at {headerTime}
+        </span>
       </div>
 
+      {/* Main Ticket Card Container */}
       <div
         onClick={handleCardClick}
-        className={`w-full rounded-3xl overflow-hidden transition-all duration-300 cursor-pointer -mt-5 ${
+        className={`w-full rounded-2xl md:rounded-3xl p-4 sm:p-5 transition-all duration-300 cursor-pointer -mt-4 border ${
           isWaitlist
-            ? "bg-amber-50 border border-amber-200/80 hover:border-amber-300/90"
-            : "plain-card border border-slate-200/70"
+            ? "bg-amber-50/80 border-amber-200/80 hover:border-amber-300"
+            : "plain-card border-slate-200/70"
         }`}
       >
-        {/* Main Card Content (Styled like FlightCard.jsx) */}
-        <div className="px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
+        {/* ── DESKTOP & TABLET LAYOUT (visible on md: grid) ────────────────────────── */}
+        <div className="hidden md:grid md:grid-cols-12 items-center gap-4">
+
           {/* 1. Airline & Flight Info */}
-          <div className="flex flex-col items-center md:items-start min-w-[140px] gap-1">
+          <div className="col-span-3 flex flex-col justify-center gap-1 min-w-0">
             <span className="text-xs font-semibold text-slate-500 mb-0.5">
               {flight.flight_number || "SA-224"}
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {logoSrc && (
                 <img
                   src={logoSrc}
                   alt={airlineName}
-                  className="h-4 object-contain"
+                  className="h-4 max-w-[80px] object-contain"
                 />
               )}
               <span className="text-xs font-bold text-slate-900 truncate">
                 {airlineName}
               </span>
             </div>
-            <span className="text-xs font-bold text-slate-950 mt-1">
+            <span className="text-xs font-extrabold text-slate-950">
               {flight.source_airport} &rarr; {flight.destination_airport}
             </span>
           </div>
 
           {/* 2. Departure Time & Date */}
-          <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
-            <span className="text-xs font-semibold text-slate-700 mb-1">
+          <div className="col-span-2 flex flex-col items-start">
+            <span className="text-xs font-semibold text-slate-500 mb-0.5">
               {dep.dateStr}
             </span>
-            <span className="text-2xl sm:text-4xl font-bold text-slate-950">
+            <span className="text-2xl lg:text-3xl font-bold text-slate-950">
               {dep.timeStr}
             </span>
           </div>
 
           {/* 3. Arrival Time & Date */}
-          <div className="flex-1 flex flex-col items-center md:items-start max-w-[20%]">
-            <span className="text-xs font-semibold text-slate-700 mb-1">
+          <div className="col-span-2 flex flex-col items-start">
+            <span className="text-xs font-semibold text-slate-500 mb-0.5">
               {arr.dateStr}
             </span>
-            <span className="text-2xl sm:text-4xl font-bold text-slate-950">
+            <span className="text-2xl lg:text-3xl font-bold text-slate-950">
               {arr.timeStr}
             </span>
           </div>
 
-          {/* 4. Center Box (Duration & Stops) */}
+          {/* 4. Duration & Stops */}
           <div
-            className={`px-4 py-3 sm:py-4 shadow-2xs flex flex-col items-center justify-center min-w-[12%] ${
-              isWaitlist ? "bg-amber-100/70" : "bg-[#f3f3f3]"
+            className={`col-span-2 flex flex-col items-center justify-center p-3 rounded-2xl text-center ${
+              isWaitlist ? "bg-amber-100/70" : "bg-black/5"
             }`}
           >
-            <span className="material-symbols-outlined text-slate-900 text-lg select-none font-semibold">
+            <span className="material-symbols-outlined text-slate-700 text-lg select-none">
               schedule
             </span>
-            <span className="text-xs font-bold text-slate-950 mt-1 tracking-wide">
+            <span className="text-xs font-bold text-slate-900 mt-0.5 tracking-wide">
               {durationStr}
             </span>
-            <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+            <span className="text-[10px] font-semibold text-slate-500">
               {stopsStr}
             </span>
           </div>
 
           {/* 5. Passenger Count & Double Status Badges */}
-          <div className="flex items-center justify-between md:justify-end gap-5 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-slate-200/80">
-            {/* Passenger count */}
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-              <span className="material-symbols-outlined text-base text-slate-700">person</span>
+          <div className="col-span-3 flex items-center justify-end gap-4">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 bg-black/5 px-2.5 py-1.5 rounded-xl">
+              <span className="material-symbols-outlined text-sm text-slate-700 select-none">person</span>
               <span>{passengerCount}</span>
             </div>
 
-            {/* Double Badges */}
             <div className="flex flex-col items-end gap-1.5">
               {getFlightStatusBadge()}
               {getTicketStatusBadge()}
             </div>
           </div>
+
         </div>
+
+
+        {/* ── MOBILE LAYOUT (visible on small screens, hidden on md:) ────────────── */}
+        <div className="flex md:hidden flex-col gap-3">
+
+          {/* Top Bar: Airline info & Passenger Count */}
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              {logoSrc && (
+                <img
+                  src={logoSrc}
+                  alt={airlineName}
+                  className="h-4 max-w-[60px] object-contain shrink-0"
+                />
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-slate-900 truncate">{airlineName}</span>
+                <span className="text-[10px] font-semibold text-slate-500">{flight.flight_number || "SA-224"}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg shrink-0">
+              <span className="material-symbols-outlined text-xs text-slate-700 select-none">person</span>
+              <span>{passengerCount}</span>
+            </div>
+          </div>
+
+          {/* Flight Schedule & Route Line */}
+          <div className="flex items-center justify-between gap-2 py-1">
+            {/* Departure */}
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] font-bold text-slate-400">{flight.source_airport}</span>
+              <span className="text-xl font-bold text-slate-900 leading-tight">
+                {dep.timeStr}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                {dep.dateStr}
+              </span>
+            </div>
+
+            {/* Center Graphic / Duration */}
+            <div className="flex-1 flex flex-col items-center px-2">
+              <span className="text-[10px] font-bold text-slate-600">{durationStr}</span>
+              <div className="w-full flex items-center gap-1 my-1">
+                <div className="h-[2px] flex-1 bg-slate-200" />
+                <span className="material-symbols-outlined text-slate-400 text-xs select-none rotate-90">flight</span>
+                <div className="h-[2px] flex-1 bg-slate-200" />
+              </div>
+              <span className="text-[9px] font-semibold text-slate-400">{stopsStr}</span>
+            </div>
+
+            {/* Arrival */}
+            <div className="flex flex-col text-right">
+              <span className="text-[10px] font-bold text-slate-400">{flight.destination_airport}</span>
+              <span className="text-xl font-bold text-slate-900 leading-tight">
+                {arr.timeStr}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                {arr.dateStr}
+              </span>
+            </div>
+          </div>
+
+          {/* Bottom Bar: Status Badges */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Status
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              {getFlightStatusBadge()}
+              {getTicketStatusBadge()}
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

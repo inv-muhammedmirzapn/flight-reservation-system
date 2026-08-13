@@ -257,7 +257,7 @@ export default function LandingPage() {
 
             {/* Date Display Bar */}
             <div
-              className="w-full max-w-lg glass-card shadow hover:shadow rounded-b-2xl sm:rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
+              className="w-[90%] md:w-full md:max-w-lg glass-card shadow hover:shadow rounded-b-2xl sm:rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
             >
               {/* Departure Display */}
               <div
@@ -271,7 +271,7 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined text-slate-400 select-none text-base sm:text-lg md:text-xl">flight_takeoff</span>
                   <div className="text-left">
                     <div className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">Departure</div>
-                    <div className="text-xs sm:text-sm font-bold text-slate-800 mt-0.5 sm:mt-1 select-none">
+                    <div className="text-[10px] sm:text-sm font-bold text-slate-800 mt-1.5 select-none">
                       {depDate ? formatDisplayDate(depDate) : "Select Date"}
                     </div>
                   </div>
@@ -291,7 +291,7 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined text-slate-400 select-none text-base sm:text-lg md:text-xl">flight_land</span>
                   <div className="text-left">
                     <div className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">Return</div>
-                    <div className="text-xs sm:text-sm font-bold text-slate-800 mt-0.5 sm:mt-1 select-none">
+                    <div className="text-[10px] sm:text-sm font-bold text-slate-800 mt-1.5 select-none">
                       {arrDate ? formatDisplayDate(arrDate) : "One way"}
                     </div>
                   </div>
