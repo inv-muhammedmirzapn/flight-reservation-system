@@ -11,7 +11,7 @@ const COLUMNS = [
   {
     key: 'image', label: 'Image',
     render: (r) => r.image_url ? (
-      <img src={r.image_url} alt={r.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+      <img src={r.image_url} alt={r.name} className="w-10 h-10 rounded-lg object-cover" />
     ) : '—',
   },
   { key: 'name', label: 'Name' },

@@ -58,8 +58,8 @@ export default function AdminBookingsPage() {
   return (
     <div className="admin-page">
       <div className="admin-container">
-        <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Bookings Management</h1>
-        <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>
+        <h1 className="admin-page-title mb-2">Bookings Management</h1>
+        <p className="admin-page-subtitle mb-6">
           Search by PNR or filter by booking status to view passenger details and itineraries.
         </p>
 
@@ -68,7 +68,7 @@ export default function AdminBookingsPage() {
             <Search size={14} className="search-icon" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by PNR..." />
           </div>
-          <div style={{ minWidth: 180 }}>
+          <div className="min-w-[180px]">
             <Select
               id="status-filter"
               options={STATUS_OPTIONS.map((s) => ({ value: s, label: s || 'All Statuses' }))}
@@ -106,7 +106,7 @@ export default function AdminBookingsPage() {
                   <th>Status</th>
                   <th>Total Paid</th>
                   <th>Booking Date</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
+                  <th className="text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,36 +121,32 @@ export default function AdminBookingsPage() {
                         <strong className="font-mono text-admin-primary">{b.pnr || b.id?.slice?.(0, 8)}</strong>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: '#1a1c1d' }}>{b.user_full_name || b.user || '—'}</div>
-                        <div style={{ fontSize: 11, color: '#666' }}>{b.user_email || `@${b.user}`}</div>
+                        <div className="font-semibold text-[#1a1c1d]">{b.user_full_name || b.user || '—'}</div>
+                        <div className="text-[11px] text-[#666]">{b.user_email || `@${b.user}`}</div>
                       </td>
                       <td>
                         <span
+                          className="text-[11px] font-bold px-[10px] py-[3px] rounded-full border"
                           style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '3px 10px',
-                            borderRadius: 20,
                             background: (STATUS_COLORS[b.status] || '#888') + '1b',
                             color: STATUS_COLORS[b.status] || '#888',
-                            border: `1px solid ${(STATUS_COLORS[b.status] || '#888')}35`,
+                            borderColor: (STATUS_COLORS[b.status] || '#888') + '35',
                           }}
                         >
                           {b.status || b.booking_status}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 700 }}>₹{b.total_price_paid ?? b.total_price ?? '0.00'}</td>
-                      <td style={{ color: '#555' }}>
+                      <td className="font-bold">₹{b.total_price_paid ?? b.total_price ?? '0.00'}</td>
+                      <td className="text-[#555]">
                         {b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="text-right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelected(b);
                           }}
-                          className="btn-secondary"
-                          style={{ padding: '5px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                          className="btn-secondary px-3 py-[5px] text-xs inline-flex items-center gap-1"
                         >
                           <Eye size={13} /> View
                         </button>
@@ -178,49 +174,26 @@ export default function AdminBookingsPage() {
         {/* Rich Booking Detail Modal */}
         {selected && (
           <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 9999,
-              background: 'rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(4px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 16,
-            }}
+            className="fixed inset-0 z-[9999] bg-black/45 backdrop-blur-[4px] flex items-center justify-center p-4"
             onClick={() => setSelected(null)}
           >
             <div
-              style={{
-                background: '#ffffff',
-                borderRadius: 20,
-                maxWidth: 680,
-                width: '100%',
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
-                padding: 24,
-                position: 'relative',
-              }}
+              className="bg-white rounded-[20px] max-w-[680px] w-full max-h-[90vh] overflow-y-auto shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-6 relative"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid #eee', paddingBottom: 16 }}>
+              <div className="flex justify-between items-center mb-5 border-b border-[#eee] pb-4">
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1c1d', margin: 0 }}>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-extrabold text-[#1a1c1d] m-0">
                       Booking Detail #{selected.pnr || selected.id?.slice(0, 8)}
                     </h2>
                     <span
+                      className="text-[11px] font-bold px-[10px] py-[3px] rounded-full border"
                       style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '3px 10px',
-                        borderRadius: 20,
                         background: (STATUS_COLORS[selected.status] || '#888') + '1b',
                         color: STATUS_COLORS[selected.status] || '#888',
-                        border: `1px solid ${(STATUS_COLORS[selected.status] || '#888')}35`,
+                        borderColor: (STATUS_COLORS[selected.status] || '#888') + '35',
                       }}
                     >
                       {selected.status}
@@ -229,53 +202,42 @@ export default function AdminBookingsPage() {
                 </div>
                 <button
                   onClick={() => setSelected(null)}
-                  style={{
-                    background: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 32,
-                    height: 32,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: '#555',
-                  }}
+                  className="bg-[#f3f4f6] border-none rounded-full w-8 h-8 flex items-center justify-center cursor-pointer text-[#555]"
                 >
                   <X size={16} />
                 </button>
               </div>
 
               {/* Customer & Booking Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div style={{ background: '#f9f9fb', padding: 14, borderRadius: 12, border: '1px solid #eee' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#705d00', marginBottom: 6 }}>
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <div className="bg-[#f9f9fb] p-[14px] rounded-xl border border-[#eee]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#705d00] mb-1.5">
                     <UserIcon size={14} /> Customer Information
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>
+                  <div className="text-sm font-bold text-[#111]">
                     {selected.user_full_name || selected.user || 'N/A'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                  <div className="text-xs text-[#555] mt-0.5">
                     Username: <strong>@{selected.user}</strong>
                   </div>
                   {selected.user_email && (
-                    <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                    <div className="text-xs text-[#555] mt-0.5">
                       Email: {selected.user_email}
                     </div>
                   )}
                 </div>
 
-                <div style={{ background: '#f9f9fb', padding: 14, borderRadius: 12, border: '1px solid #eee' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#705d00', marginBottom: 6 }}>
-                    <CreditCard size={14} /> Payment & Ticket Info
+                <div className="bg-[#f9f9fb] p-[14px] rounded-xl border border-[#eee]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#705d00] mb-1.5">
+                    <CreditCard size={14} /> Payment &amp; Ticket Info
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>
+                  <div className="text-sm font-bold text-[#111]">
                     Total Paid: ₹{selected.total_price ?? selected.total_price_paid ?? '0.00'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                  <div className="text-xs text-[#555] mt-0.5">
                     Class: <strong>{selected.cabin_class || 'ECONOMY'}</strong> | Seats: <strong>{selected.seat_count || 1}</strong>
                   </div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                  <div className="text-xs text-[#555] mt-0.5">
                     Booked On: {selected.created_at ? new Date(selected.created_at).toLocaleString() : '—'}
                   </div>
                 </div>
@@ -283,20 +245,20 @@ export default function AdminBookingsPage() {
 
               {/* Flight Itinerary */}
               {selected.flight_detail && (
-                <div style={{ background: '#faf9f6', padding: 16, borderRadius: 14, border: '1px solid #eab30830', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#705d00', marginBottom: 10 }}>
+                <div className="bg-[#faf9f6] p-4 rounded-[14px] border border-[#eab30830] mb-5">
+                  <div className="flex items-center gap-1.5 text-[13px] font-bold text-[#705d00] mb-2.5">
                     <Plane size={15} /> Flight Itinerary
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div className="flex justify-between items-center flex-wrap gap-3">
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1c1d' }}>
+                      <div className="text-base font-extrabold text-[#1a1c1d]">
                         {selected.flight_detail.airline} ({selected.flight_detail.flight_number})
                       </div>
-                      <div style={{ fontSize: 13, color: '#444', marginTop: 2 }}>
+                      <div className="text-[13px] text-[#444] mt-0.5">
                         Route: <strong>{selected.flight_detail.source_airport} → {selected.flight_detail.destination_airport}</strong>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right', fontSize: 12, color: '#555' }}>
+                    <div className="text-right text-xs text-[#555]">
                       <div>Departure: {selected.flight_detail.scheduled_departure ? new Date(selected.flight_detail.scheduled_departure).toLocaleString() : '—'}</div>
                       <div>Arrival: {selected.flight_detail.scheduled_arrival ? new Date(selected.flight_detail.scheduled_arrival).toLocaleString() : '—'}</div>
                     </div>
@@ -306,29 +268,29 @@ export default function AdminBookingsPage() {
 
               {/* Passengers Table */}
               <div>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1a1c1d', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h4 className="text-sm font-bold text-[#1a1c1d] mb-2.5 flex items-center gap-1.5">
                   <Ticket size={14} color="#705d00" /> Passenger Details ({selected.passengers?.length || 0})
                 </h4>
                 {selected.passengers && selected.passengers.length > 0 ? (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <table className="w-full border-collapse text-[13px]">
                     <thead>
-                      <tr style={{ background: '#f4f4f5', borderBottom: '1.5px solid #e4e4e7', textTransform: 'uppercase', fontSize: 11, color: '#666', textAlign: 'left' }}>
-                        <th style={{ padding: '8px 12px' }}>Name</th>
-                        <th style={{ padding: '8px 12px' }}>Age</th>
-                        <th style={{ padding: '8px 12px' }}>Gender</th>
-                        <th style={{ padding: '8px 12px' }}>Phone</th>
-                        <th style={{ padding: '8px 12px' }}>Seat</th>
+                      <tr className="bg-[#f4f4f5] border-b-[1.5px] border-[#e4e4e7] uppercase text-[11px] text-[#666] text-left">
+                        <th className="py-2 px-3">Name</th>
+                        <th className="py-2 px-3">Age</th>
+                        <th className="py-2 px-3">Gender</th>
+                        <th className="py-2 px-3">Phone</th>
+                        <th className="py-2 px-3">Seat</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selected.passengers.map((p, idx) => (
-                        <tr key={p.id || idx} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '8px 12px', fontWeight: 600 }}>{p.name || p.full_name}</td>
-                          <td style={{ padding: '8px 12px' }}>{p.age}</td>
-                          <td style={{ padding: '8px 12px' }}>{p.gender}</td>
-                          <td style={{ padding: '8px 12px' }}>{p.phone_number || '—'}</td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <span style={{ fontWeight: 700, background: '#fef08a', color: '#713f12', padding: '2px 8px', borderRadius: 6, fontSize: 11 }}>
+                        <tr key={p.id || idx} className="border-b border-[#eee]">
+                          <td className="py-2 px-3 font-semibold">{p.name || p.full_name}</td>
+                          <td className="py-2 px-3">{p.age}</td>
+                          <td className="py-2 px-3">{p.gender}</td>
+                          <td className="py-2 px-3">{p.phone_number || '—'}</td>
+                          <td className="py-2 px-3">
+                            <span className="font-bold bg-[#fef08a] text-[#713f12] px-2 py-0.5 rounded-md text-[11px]">
                               {p.seat_number || 'Auto-Assigned'}
                             </span>
                           </td>
@@ -337,16 +299,15 @@ export default function AdminBookingsPage() {
                     </tbody>
                   </table>
                 ) : (
-                  <p style={{ fontSize: 12, color: '#888', fontStyle: 'italic' }}>No detailed passenger record available.</p>
+                  <p className="text-xs text-[#888] italic">No detailed passenger record available.</p>
                 )}
               </div>
 
               {/* Close Button */}
-              <div style={{ marginTop: 24, textAlign: 'right' }}>
+              <div className="mt-6 text-right">
                 <button
                   onClick={() => setSelected(null)}
-                  className="btn-secondary"
-                  style={{ padding: '8px 20px', borderRadius: 10 }}
+                  className="btn-secondary px-5 py-2 rounded-[10px]"
                 >
                   Close
                 </button>

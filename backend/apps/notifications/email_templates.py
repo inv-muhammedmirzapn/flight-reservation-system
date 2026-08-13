@@ -239,6 +239,25 @@ def booking_cancellation(user_name: str, flight_number: str,
     return subject, html
 
 
+def admin_booking_cancellation(user_name: str, flight_number: str,
+                               origin: str, destination: str) -> tuple[str, str]:
+    subject = f"Booking Cancellation by Admin — Flight {flight_number}"
+    html = _wrap(
+        _heading("Booking Cancelled by Administrator",
+                 "Your reservation has been cancelled by our administration team.") +
+        _divider() +
+        _body_text(f"Dear <strong>{user_name}</strong>,<br><br>"
+                   "We regret to inform you that your booking has been cancelled by our administration side. "
+                   "We sincerely apologise for any inconvenience this may have caused.") +
+        _flight_info_table(flight_number, origin, destination) +
+        _body_text("A full refund of the amount paid for this booking has been initiated. "
+                   "The full amount will be processed within 5 to 7 business days to your original payment method.") +
+        _spacer(),
+        preview_text=f"Your booking for flight {flight_number} has been cancelled by our administration."
+    )
+    return subject, html
+
+
 def waitlist_confirmed(user_name: str, flight_number: str,
                        origin: str, destination: str,
                        seat_count: int) -> tuple[str, str]:

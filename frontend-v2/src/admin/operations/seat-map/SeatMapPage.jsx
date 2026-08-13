@@ -246,7 +246,7 @@ export default function SeatMapPage() {
         <div className="smp-breadcrumb">
           FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
         </div>
- 
+
         <div className="smp-header">
           <div className="smp-header-left">
             {instanceParam && (
@@ -390,7 +390,7 @@ export default function SeatMapPage() {
                           <div className="smp-class-hdr" style={{ background: `${CLASS_COLORS[cabinClass]}22`, color: CLASS_COLORS[cabinClass] }}>{CLASS_LABELS[cabinClass]}</div>
                           {rowKeys.map(rowKey => {
                             const rowSeats = rows[rowKey];
-                            
+
                             // Get layout string from flight instance or fallback
                             let layoutStr = '3-3';
                             if (selInstanceObj) {
@@ -472,7 +472,7 @@ export default function SeatMapPage() {
               <Input id="bulk-price" type="text" inputMode="numeric" placeholder="Price ₹" value={bulkPrice} onChange={e => { const val = e.target.value; if (val === '' || /^\d*$/.test(val)) setBulkPrice(val); }} style={{ margin: 0, padding: '5px 8px', fontSize: 12 }} />
             </div>
             <button className="btn-primary" onClick={handleBulkApply} disabled={actionLoading} style={{ padding: '6px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <DollarSign size={13} /> Apply Price
+              Apply Price
             </button>
             <div style={{ width: '1px', height: '18px', background: '#e2e8f0', margin: '0 4px', flexShrink: 0 }} />
             <button

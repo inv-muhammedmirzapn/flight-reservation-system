@@ -34,9 +34,12 @@ export const getResponseData = async (res) => {
 // Helper to make authenticated requests
 export const fetchWithAuth = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
+  const isFormData = options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    // Don't set Content-Type for FormData — the browser must set it with the
+    // correct multipart boundary automatically. For everything else default to JSON.
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };

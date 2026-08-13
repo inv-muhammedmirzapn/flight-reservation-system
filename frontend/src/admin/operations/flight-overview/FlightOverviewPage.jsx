@@ -35,7 +35,10 @@ const getStatusOptions = (t) => [
 function Badge({ status }) {
     const s = STATUS_STYLE[status] || { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
     return (
-        <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, borderRadius: 9999, padding: '3px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <span 
+            className="rounded-full py-[3px] px-2.5 text-[11px] font-bold tracking-[0.04em] uppercase"
+            style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+        >
             {status}
         </span>
     );
@@ -278,7 +281,7 @@ export default function FlightOverviewPage() {
                 </div>
 
                 {/* Main Control & Search Bar */}
-                <div className="glass-card" style={{ borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
+                <div className="glass-card rounded-2xl p-[14px_20px] mb-3 flex items-center justify-between gap-3 flex-wrap overflow-visible">
                     {/* Quick Search */}
                     <form
                         onSubmit={(e) => {
@@ -287,7 +290,7 @@ export default function FlightOverviewPage() {
                             setCurrentPage(1);
                             fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
                         }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 300px', maxWidth: 480 }}
+                        className="flex items-center gap-2 flex-[1_1_300px] max-w-[480px]"
                     >
                         <div className="admin-toolbar-search">
                             <Search size={14} className="search-icon" />
@@ -316,25 +319,22 @@ export default function FlightOverviewPage() {
                         </div>
                         <button
                             type="submit"
-                            className="btn-primary"
-                            style={{ padding: '7px 14px', fontSize: 13, flexShrink: 0 }}
+                            className="btn-primary px-[14px] py-[7px] text-[13px] shrink-0"
                         >
                             {t("admin.search", { defaultValue: 'Search' })}
                         </button>
                     </form>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="flex items-center gap-3">
                         {/* Filter & Sort Modal Button */}
                         <button
                             onClick={handleOpenFilters}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = 'rgba(112,93,0,0.2)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-white/70 border-[1.5px] border-black/[0.08] rounded-xl text-sm font-semibold text-[#1a1c1d] cursor-pointer transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:bg-white/90 hover:border-[#705d00]/20"
                         >
                             <SlidersHorizontal size={15} color="#705d00" />
                             <span>{t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}</span>
                             {hasActiveFilters && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
+                                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-[#705d00] text-white text-[10px] font-bold px-0.5">
                                     {
                                         (statusFilter ? 1 : 0) +
                                         (dateFilter ? 1 : 0) +
@@ -351,9 +351,7 @@ export default function FlightOverviewPage() {
                         {hasActiveFilters && (
                             <button
                                 onClick={handleClearFilters}
-                                style={{ padding: '10px 16px', background: 'rgba(220,38,38,0.08)', border: '1.5px solid rgba(220,38,38,0.15)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#dc2626', cursor: 'pointer', transition: 'background 0.2s' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
+                                className="px-4 py-2.5 bg-red-600/[0.08] border-[1.5px] border-red-600/[0.15] rounded-xl text-sm font-semibold text-red-600 cursor-pointer transition-colors duration-200 hover:bg-red-600/[0.12]"
                             >
                                 {t("admin.clearAll", { defaultValue: 'Clear All' })}
                             </button>
@@ -371,48 +369,48 @@ export default function FlightOverviewPage() {
                 )}
 
                 {/* Table */}
-                <div className="glass-card" style={{ borderRadius: 20, overflow: 'hidden' }}>
+                <div className="glass-card rounded-[20px] overflow-hidden">
                     {loading ? (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(248,250,252,0.9)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                        <div className="fixed inset-0 z-[9999] bg-[#f8fafc]/90 backdrop-blur-[10px] flex flex-col justify-center items-center">
                             <Plane size={48} color="#705d00" className="animate-bounce" />
-                            <div style={{ marginTop: 24, fontSize: 16, fontWeight: 600, color: '#1a1c1d', fontFamily: "'Plus Jakarta Sans',Inter,sans-serif" }}>{t("admin.fetching", { defaultValue: 'Fetching flights...' })}</div>
+                            <div className="mt-6 text-base font-semibold text-[#1a1c1d] font-ui">{t("admin.fetching", { defaultValue: 'Fetching flights...' })}</div>
                         </div>
                     ) : flights.length === 0 ? (
-                        <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-                            <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
-                            <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>
+                        <div className="py-16 px-6 text-center">
+                            <Plane size={44} color="#d0c6ab" className="mx-auto mb-4" />
+                            <p className="font-bold text-base text-[#5e5e5e]">
                                 {hasActiveFilters ? t("admin.noMatch", { defaultValue: 'No flights match your filters.' }) : t("admin.noFlights", { defaultValue: 'No flights registered yet.' })}
                             </p>
                         </div>
                     ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-left">
                                 <thead>
-                                    <tr style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                    <tr className="bg-white/50 border-b border-black/[0.06]">
                                         {[t("admin.table.flightNo", { defaultValue: 'Flight No.' }), t("admin.table.route", { defaultValue: 'Route' }), t("admin.table.times", { defaultValue: 'Times (Dep / Arr)' }), t("admin.table.gate", { defaultValue: 'Gate/Terminal' }), t("admin.table.status", { defaultValue: 'Status' }), t("admin.table.actions", { defaultValue: 'Actions' })].map(h => (
-                                            <th key={h} style={{ padding: '14px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', whiteSpace: 'nowrap' }}>{h}</th>
+                                            <th key={h} className="py-[14px] px-4 text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] whitespace-nowrap">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {flights.map(f => (
-                                        <tr key={f.id} className="admin-row" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '16px', fontWeight: 800, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>{f.flight_number}</td>
-                                            <td style={{ padding: '16px', fontWeight: 700, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>
-                                                {f.route?.source?.iata_code}<span style={{ color: '#705d00', margin: '0 4px' }}>→</span>{f.route?.destination?.iata_code}
+                                        <tr key={f.id} className="admin-row border-b border-black/[0.05] transition-colors duration-200">
+                                            <td className="p-4 font-extrabold text-sm text-[#1a1c1d] whitespace-nowrap">{f.flight_number}</td>
+                                            <td className="p-4 font-bold text-sm text-[#1a1c1d] whitespace-nowrap">
+                                                {f.route?.source?.iata_code}<span className="text-[#705d00] mx-1">→</span>{f.route?.destination?.iata_code}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: 12, color: '#5e5e5e', lineHeight: 1.7 }}>
+                                            <td className="p-4 text-xs text-[#5e5e5e] leading-[1.7]">
                                                 <div>Dep: {fmtDT(f.scheduled_departure)}</div>
                                                 <div>Arr: {fmtDT(f.scheduled_arrival)}</div>
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: 13, color: '#5e5e5e', whiteSpace: 'nowrap' }}>
+                                            <td className="p-4 text-[13px] text-[#5e5e5e] whitespace-nowrap">
                                                 <div>Gate: {f.boarding_gate || '-'}</div>
                                                 <div>Term: {f.departure_terminal || '-'} / {f.arrival_terminal || '-'}</div>
                                             </td>
-                                            <td style={{ padding: '16px' }}><Badge status={f.status} /></td>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
+                                            <td className="p-4"><Badge status={f.status} /></td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-1">
+                                                    <button className="act p-2 rounded-lg text-[#5e5e5e] bg-transparent border-none cursor-pointer flex items-center transition-colors duration-200 hover:bg-black/5" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status"><Edit2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -423,7 +421,7 @@ export default function FlightOverviewPage() {
                     )}
 
                     {!loading && flights.length > 0 && (
-                        <div style={{ padding: '0 20px 20px' }}>
+                        <div className="px-5 pb-5">
                             <Pagination currentPage={currentPage} totalPages={totalPages} totalCount={count} pageSize={PAGE_SIZE} onPageChange={handlePageChange} />
                         </div>
                     )}
@@ -440,11 +438,11 @@ export default function FlightOverviewPage() {
                                 <button className="btn-icon" onClick={() => setFilterOpen(false)}><X size={16} /></button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div className="flex flex-col gap-5">
                                 {/* Sorting Section */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 8 }}>{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <label className="block text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] mb-2">{t("admin.modals.sortBy", { defaultValue: 'Sort By' })}</label>
+                                    <div className="grid grid-cols-2 gap-3">
                                         <Select
                                             options={[
                                                 { value: 'scheduled_departure', label: 'Departure Time' },
@@ -468,13 +466,13 @@ export default function FlightOverviewPage() {
 
 
                                 {/* Routing Section */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.sourceAirport", { defaultValue: 'Source Airport (IATA)' })}</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <label className="block text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] mb-1.5">{t("admin.modals.sourceAirport", { defaultValue: 'Source Airport (IATA)' })}</label>
+                                        <div className="relative">
+                                            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9488] pointer-events-none" />
                                             <input
-                                                className="filter-input"
+                                                className="filter-input w-full p-[9px_12px_9px_34px] bg-white/65 border-[1.5px] border-black/10 rounded-[10px] text-sm text-[#1a1c1d] font-sans outline-none transition-all duration-200 box-border focus:border-[#705d00]/30 focus:shadow-[0_0_0_3px_rgba(112,93,0,0.08)]"
                                                 type="text"
                                                 placeholder="e.g. BOM"
                                                 maxLength={5}
@@ -482,11 +480,10 @@ export default function FlightOverviewPage() {
                                                 onChange={(e) => setDraftSource(e.target.value)}
                                                 onFocus={() => setSourceFocus(true)}
                                                 onBlur={() => setSourceFocus(false)}
-                                                style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         {sourceFocus && getAirportSuggestions(draftSource).length > 0 && (
-                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                            <div className="absolute top-full left-0 right-0 z-[1000] bg-white border border-black/10 rounded-lg max-h-[180px] overflow-y-auto shadow-[0_4px_12px_rgba(0,0,0,0.1)] mt-1">
                                                 {getAirportSuggestions(draftSource).map(apt => (
                                                     <div
                                                         key={apt.id}
@@ -494,23 +491,21 @@ export default function FlightOverviewPage() {
                                                             setDraftSource(apt.iata_code);
                                                             setSourceFocus(false);
                                                         }}
-                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 2 }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                        className="p-[8px_12px] cursor-pointer border-b border-black/[0.04] flex flex-col gap-0.5 hover:bg-[#705d00]/[0.06] transition-colors duration-200"
                                                     >
-                                                        <span style={{ fontWeight: 700, color: '#705d00', fontSize: 13 }}>{apt.iata_code}</span>
-                                                        <span style={{ fontSize: 11, color: '#5e5e5e' }}>{apt.city} ({apt.airport_name})</span>
+                                                        <span className="font-bold text-[#705d00] text-[13px]">{apt.iata_code}</span>
+                                                        <span className="text-[11px] text-[#5e5e5e]">{apt.city} ({apt.airport_name})</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <div style={{ position: 'relative' }}>
-                                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', marginBottom: 6 }}>{t("admin.modals.destAirport", { defaultValue: 'Destination Airport (IATA)' })}</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9e9488', pointerEvents: 'none' }} />
+                                    <div className="relative">
+                                        <label className="block text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] mb-1.5">{t("admin.modals.destAirport", { defaultValue: 'Destination Airport (IATA)' })}</label>
+                                        <div className="relative">
+                                            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9488] pointer-events-none" />
                                             <input
-                                                className="filter-input"
+                                                className="filter-input w-full p-[9px_12px_9px_34px] bg-white/65 border-[1.5px] border-black/10 rounded-[10px] text-sm text-[#1a1c1d] font-sans outline-none transition-all duration-200 box-border focus:border-[#705d00]/30 focus:shadow-[0_0_0_3px_rgba(112,93,0,0.08)]"
                                                 type="text"
                                                 placeholder="e.g. DEL"
                                                 maxLength={5}
@@ -518,11 +513,10 @@ export default function FlightOverviewPage() {
                                                 onChange={(e) => setDraftDest(e.target.value)}
                                                 onFocus={() => setDestFocus(true)}
                                                 onBlur={() => setDestFocus(false)}
-                                                style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'rgba(255,255,255,0.65)', border: '1.5px solid rgba(0,0,0,0.1)', borderRadius: 10, fontSize: 14, color: '#1a1c1d', fontFamily: 'Inter,sans-serif', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         {destFocus && getAirportSuggestions(draftDest).length > 0 && (
-                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                            <div className="absolute top-full left-0 right-0 z-[1000] bg-white border border-black/10 rounded-lg max-h-[180px] overflow-y-auto shadow-[0_4px_12px_rgba(0,0,0,0.1)] mt-1">
                                                 {getAirportSuggestions(draftDest).map(apt => (
                                                     <div
                                                         key={apt.id}
@@ -530,12 +524,10 @@ export default function FlightOverviewPage() {
                                                             setDraftDest(apt.iata_code);
                                                             setDestFocus(false);
                                                         }}
-                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 2 }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                        className="p-[8px_12px] cursor-pointer border-b border-black/[0.04] flex flex-col gap-0.5 hover:bg-[#705d00]/[0.06] transition-colors duration-200"
                                                     >
-                                                        <span style={{ fontWeight: 700, color: '#705d00', fontSize: 13 }}>{apt.iata_code}</span>
-                                                        <span style={{ fontSize: 11, color: '#5e5e5e' }}>{apt.city} ({apt.airport_name})</span>
+                                                        <span className="font-bold text-[#705d00] text-[13px]">{apt.iata_code}</span>
+                                                        <span className="text-[11px] text-[#5e5e5e]">{apt.city} ({apt.airport_name})</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -544,7 +536,7 @@ export default function FlightOverviewPage() {
                                 </div>
 
                                 {/* Status and Dates */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="grid grid-cols-2 gap-3">
                                     <Select
                                         label={t("admin.table.status", { defaultValue: 'Status' })}
                                         options={getStatusOptions(t)}
@@ -554,7 +546,7 @@ export default function FlightOverviewPage() {
                                     <div />
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <DatePicker
                                             label={t("admin.modals.departureDate", { defaultValue: 'Departure Date' })}
@@ -601,18 +593,18 @@ export default function FlightOverviewPage() {
                                 <button className="btn-icon" onClick={() => setEditTarget(null)}><X size={16} /></button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '4px 0' }}>
+                            <div className="flex flex-col gap-[18px] py-1">
                                 {/* Flight identifier banner */}
-                                <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.12)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <span style={{ fontSize: 18, fontWeight: 900, color: '#1a1c1d', letterSpacing: '-0.02em' }}>{editTarget.flight_number}</span>
-                                    <span style={{ fontSize: 13, color: '#9e9488' }}>·</span>
-                                    <span style={{ fontSize: 13, color: '#5e5e5e', fontWeight: 500 }}>
+                                <div className="bg-[#705d00]/[0.06] border border-[#705d00]/[0.12] rounded-[10px] py-2.5 px-3.5 flex items-center gap-2.5">
+                                    <span className="text-lg font-black text-[#1a1c1d] tracking-[-0.02em]">{editTarget.flight_number}</span>
+                                    <span className="text-[13px] text-[#9e9488]">·</span>
+                                    <span className="text-[13px] text-[#5e5e5e] font-medium">
                                         {editTarget.route?.source?.iata_code} → {editTarget.route?.destination?.iata_code}
                                     </span>
                                 </div>
 
                                 {/* Status + Delay side by side */}
-                                <div style={{ display: 'grid', gridTemplateColumns: editStatus === 'DELAYED' ? '1.4fr 1fr' : '1fr', gap: 14, alignItems: 'start' }}>
+                                <div className="grid gap-[14px] items-start" style={{ gridTemplateColumns: editStatus === 'DELAYED' ? '1.4fr 1fr' : '1fr' }}>
                                     <Select
                                         label="New Status"
                                         options={getStatusOptions(t).filter(o => o.value !== '')}
@@ -629,13 +621,13 @@ export default function FlightOverviewPage() {
 
                                     {/* Delay stepper */}
                                     {editStatus === 'DELAYED' && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 140 }}>
-                                            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e' }}>Delay (min)</label>
-                                            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(0,0,0,0.15)', borderRadius: 9, overflow: 'hidden', background: '#fff', height: 38 }}>
+                                        <div className="flex flex-col gap-1.5 max-w-[140px]">
+                                            <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">Delay (min)</label>
+                                            <div className="flex items-center border-[1.5px] border-black/[0.15] rounded-[9px] overflow-hidden bg-white h-[38px]">
                                                 <button
                                                     type="button"
                                                     onClick={() => { const v = Math.max(0, editDelay - 5); setEditDelay(v); if (v === 0 && editStatus === 'DELAYED') setEditStatus('SCHEDULED'); }}
-                                                    style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderRight: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                                    className="w-[34px] h-full border-none bg-black/[0.03] border-r border-black/[0.09] text-lg font-bold cursor-pointer text-[#5e5e5e] flex items-center justify-center shrink-0 transition-colors hover:bg-black/[0.06]"
                                                 >−</button>
                                                 <input
                                                     type="text"
@@ -646,18 +638,18 @@ export default function FlightOverviewPage() {
                                                         setEditDelay(v);
                                                         if (v > 0) setEditStatus('DELAYED');
                                                     }}
-                                                    style={{ flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800, fontFamily: 'Inter, sans-serif', color: '#1a1c1d', background: 'transparent' }}
+                                                    className="flex-1 min-w-0 w-full border-none outline-none text-center text-[15px] font-extrabold font-sans text-[#1a1c1d] bg-transparent"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={() => { const v = Math.min(999, editDelay + 5); setEditDelay(v); setEditStatus('DELAYED'); }}
-                                                    style={{ width: 34, height: '100%', border: 'none', background: 'rgba(0,0,0,0.03)', borderLeft: '1px solid rgba(0,0,0,0.09)', fontSize: 18, fontWeight: 700, cursor: 'pointer', color: '#5e5e5e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                                    className="w-[34px] h-full border-none bg-black/[0.03] border-l border-black/[0.09] text-lg font-bold cursor-pointer text-[#5e5e5e] flex items-center justify-center shrink-0 transition-colors hover:bg-black/[0.06]"
                                                 >+</button>
                                             </div>
                                             {editDelay > 0 ? (
-                                                <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>⚠ Auto-sets to Delayed</span>
+                                                <span className="text-[10px] text-[#92400e] font-semibold">⚠ Auto-sets to Delayed</span>
                                             ) : (
-                                                <span style={{ fontSize: 10, color: '#9e9488' }}>0 = no delay</span>
+                                                <span className="text-[10px] text-[#9e9488]">0 = no delay</span>
                                             )}
                                         </div>
                                     )}
@@ -683,8 +675,7 @@ export default function FlightOverviewPage() {
                                             setConfirmOpen(true);
                                         }}
                                         disabled={actionLoading}
-                                        className="btn-primary"
-                                        style={{ opacity: actionLoading ? 0.7 : 1 }}
+                                        className={`btn-primary ${actionLoading ? 'opacity-70' : ''}`}
                                     >
                                         Save
                                     </button>
@@ -703,23 +694,23 @@ export default function FlightOverviewPage() {
                                 <button className="btn-icon" onClick={() => setConfirmOpen(false)}><X size={16} /></button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '12px 4px' }}>
-                                <p style={{ fontSize: 14, color: '#1a1c1d', margin: 0, lineHeight: 1.7 }}>
+                            <div className="flex flex-col gap-5 py-3 px-1">
+                                <p className="text-sm text-[#1a1c1d] m-0 leading-[1.7]">
                                     You are about to update <strong>{editTarget?.flight_number}</strong>:
                                 </p>
-                                <div style={{ background: 'rgba(112,93,0,0.06)', borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Status</span>
-                                        <span style={{ fontWeight: 800, color: '#1a1c1d' }}>{editStatus}</span>
+                                <div className="bg-[#705d00]/[0.06] rounded-[10px] p-[14px_16px] flex flex-col gap-2">
+                                    <div className="text-[13px] flex justify-between">
+                                        <span className="text-[#5e5e5e] font-semibold">Status</span>
+                                        <span className="font-extrabold text-[#1a1c1d]">{editStatus}</span>
                                     </div>
-                                    <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Delay</span>
-                                        <span style={{ fontWeight: 800, color: editDelay > 0 ? '#92400e' : '#1a1c1d' }}>
+                                    <div className="text-[13px] flex justify-between">
+                                        <span className="text-[#5e5e5e] font-semibold">Delay</span>
+                                        <span className={`font-extrabold ${editDelay > 0 ? 'text-[#92400e]' : 'text-[#1a1c1d]'}`}>
                                             {editDelay > 0 ? `${editDelay} minutes` : 'No delay'}
                                         </span>
                                     </div>
                                 </div>
-                                <p style={{ fontSize: 12, color: '#9e9488', margin: 0 }}>This will update the live flight record and notify affected passengers.</p>
+                                <p className="text-xs text-[#9e9488] m-0">This will update the live flight record and notify affected passengers.</p>
                                 <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-4">
                                     <button
                                         onClick={() => setConfirmOpen(false)}
@@ -730,8 +721,7 @@ export default function FlightOverviewPage() {
                                     <button
                                         onClick={handleStatusUpdate}
                                         disabled={actionLoading}
-                                        className="btn-primary"
-                                        style={{ opacity: actionLoading ? 0.7 : 1 }}
+                                        className={`btn-primary ${actionLoading ? 'opacity-70' : ''}`}
                                     >
                                         {actionLoading ? 'Updating...' : 'Confirm Update'}
                                     </button>

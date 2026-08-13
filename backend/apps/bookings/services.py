@@ -6,10 +6,107 @@ from django.utils import timezone
 
 BOOKING_CUTOFF_HOURS = 3  # bookings close this many hours before scheduled departure
 
-from .models import Booking, BookingStatus, Passenger
+from .models import Booking, BookingStatus, Passenger, SeatHold, SEAT_HOLD_MINUTES
 from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus
 
 logger = logging.getLogger(__name__)
+
+def expire_stale_holds(flight_instance):
+    """
+    Lazy expiry: release all expired SeatHolds for a given flight instance.
+    Call this before any seat availability check or seat map read.
+    Runs inside the caller's transaction if one is active.
+    """
+    stale_holds = SeatHold.objects.select_related('seat').filter(
+        flight_instance=flight_instance,
+        expires_at__lt=timezone.now(),
+    )
+    seat_ids = list(stale_holds.values_list('seat_id', flat=True))
+    if seat_ids:
+        stale_holds.delete()  # cascade removes SeatHold rows
+        Seat.objects.filter(id__in=seat_ids, status=SeatStatus.HELD).update(
+            status=SeatStatus.AVAILABLE
+        )
+
+
+def hold_seat(flight_instance, seat_number, user):
+    """
+    Temporarily hold a seat for a user for SEAT_HOLD_MINUTES minutes.
+    Raises ValidationError if the seat is unavailable or already held.
+    Returns the SeatHold instance.
+    """
+    with transaction.atomic():
+        # Lazy expiry first
+        expire_stale_holds(flight_instance)
+
+        try:
+            seat = Seat.objects.select_for_update().get(
+                flight_instance=flight_instance,
+                seat_number=seat_number,
+            )
+        except Seat.DoesNotExist:
+            raise ValidationError(f"Seat {seat_number} does not exist on this flight.")
+
+        if seat.status == SeatStatus.HELD:
+            # If the same user already holds it, just return the existing hold
+            existing_hold = SeatHold.objects.filter(seat=seat, user=user).first()
+            if existing_hold and not existing_hold.is_expired:
+                return existing_hold
+            raise ValidationError(f"Seat {seat_number} is currently held by another user.")
+
+        if seat.status != SeatStatus.AVAILABLE:
+            raise ValidationError(f"Seat {seat_number} is not available (status: {seat.status}).")
+
+        # Mark seat as HELD
+        seat.status = SeatStatus.HELD
+        seat.save(update_fields=['status'])
+
+        # Release any prior hold this user had for a different seat on this flight,
+        # and free those seats back to AVAILABLE.
+        old_holds = SeatHold.objects.select_related('seat').filter(
+            flight_instance=flight_instance,
+            user=user,
+        ).exclude(seat=seat)
+        old_seat_ids = list(old_holds.values_list('seat_id', flat=True))
+        old_holds.delete()
+        if old_seat_ids:
+            Seat.objects.filter(id__in=old_seat_ids, status=SeatStatus.HELD).update(
+                status=SeatStatus.AVAILABLE
+            )
+
+        # Create the hold with an explicit expires_at
+        hold = SeatHold.objects.create(
+            seat=seat,
+            flight_instance=flight_instance,
+            user=user,
+            expires_at=timezone.now() + timedelta(minutes=SEAT_HOLD_MINUTES),
+        )
+        return hold
+
+
+def release_hold(hold_id, user):
+    """
+    Explicitly release a seat hold before it expires (user deselects seat).
+    Frees the seat back to AVAILABLE immediately.
+    Raises ValidationError if the hold is not found or does not belong to the user.
+    """
+    with transaction.atomic():
+        try:
+            hold = SeatHold.objects.select_related('seat').select_for_update().get(
+                id=hold_id, user=user
+            )
+        except SeatHold.DoesNotExist:
+            raise ValidationError("Seat hold not found or does not belong to you.")
+
+        seat = hold.seat
+        hold.delete()
+
+        # Only free the seat if it is still HELD (guard against double-free)
+        if seat.status == SeatStatus.HELD:
+            seat.status = SeatStatus.AVAILABLE
+            seat.save(update_fields=['status'])
+
+
 
 
 def _resolve_flight_instance(flight_id) -> FlightInstance:
@@ -56,17 +153,21 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             f"Online booking closes {BOOKING_CUTOFF_HOURS} hours before scheduled departure."
         )
 
-    # Seat availability check (use Seat table as source of truth)
+    # Seat availability check (use Seat table as source of truth).
+    # Include HELD seats in the count — lazy expiry inside the atomic block
+    # will free any stale holds, so we must not pre-reject based on held seats.
     if cabin_class:
         available_count = flight_instance.seats.filter(
-            seat_class=cabin_class, status=SeatStatus.AVAILABLE
+            seat_class=cabin_class, status__in=[SeatStatus.AVAILABLE, SeatStatus.HELD]
         ).count()
         if available_count < seat_count:
             raise ValidationError(
                 f"Only {available_count} {cabin_class.lower()} seat(s) available on this flight."
             )
     else:
-        available_count = flight_instance.seats.filter(status=SeatStatus.AVAILABLE).count()
+        available_count = flight_instance.seats.filter(
+            status__in=[SeatStatus.AVAILABLE, SeatStatus.HELD]
+        ).count()
         if available_count < seat_count:
             raise ValidationError(
                 f"Only {available_count} seats available on this flight."
@@ -105,6 +206,9 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 
     # ── Atomic write: re-check with lock, then create ─────────────────────────
     with transaction.atomic():
+        # Lazy expiry: release stale holds before any seat check
+        expire_stale_holds(flight_instance)
+
         # Lock the flight instance row to prevent race conditions
         try:
             flight_instance = FlightInstance.objects.select_for_update(nowait=False).get(
@@ -347,13 +451,13 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 
 
 @transaction.atomic
-def cancel_booking(booking_id, user):
+def cancel_booking(booking_id, user=None, is_admin_cancel=False):
     """
-    Cancels a booking, frees the Seat rows and restores Fare.available_seats,
+    Cancel a booking (frees up seats and decreases fare available_seats).,
     then triggers waitlist auto-allocation.
     """
     try:
-        booking = Booking.objects.select_for_update().get(id=booking_id, user=user)
+        booking = Booking.objects.select_for_update().get(id=booking_id, user=user) if user else Booking.objects.select_for_update().get(id=booking_id)
     except Booking.DoesNotExist:
         raise ValidationError("Booking not found.")
 
@@ -365,7 +469,10 @@ def cancel_booking(booking_id, user):
 
     try:
         from apps.notifications.services import NotificationService
-        NotificationService.send_booking_cancellation(booking)
+        if is_admin_cancel:
+            NotificationService.send_admin_booking_cancellation(booking)
+        else:
+            NotificationService.send_booking_cancellation(booking)
     except Exception:
         logger.exception("Failed to send booking cancellation notification")
 

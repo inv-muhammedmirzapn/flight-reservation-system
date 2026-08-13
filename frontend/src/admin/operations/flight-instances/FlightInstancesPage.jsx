@@ -362,7 +362,7 @@ export default function FlightInstancesPage() {
               </button>
             )}
           </div>
-          <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
+          <button type="submit" className="btn-primary px-[14px] py-[7px] text-[13px]">Search</button>
         </form>
 
         {error && (
@@ -377,7 +377,7 @@ export default function FlightInstancesPage() {
           ) : instances?.length === 0 ? (
             <div className="admin-empty"><p>No instances. Create one above.</p></div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="overflow-x-auto">
               <table className="admin-table">
                 <thead>
                   <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th className="text-right">Actions</th></tr>
@@ -391,31 +391,31 @@ export default function FlightInstancesPage() {
                         <td>{inst.date}</td>
                         <td>{inst.aircraft_registration}</td>
                         <td>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
+                          <span className="text-[11px] font-bold px-2 py-[3px] rounded-full" style={{ background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
                             {inst.status}
                           </span>
                         </td>
                         <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
                         <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
                         <td className="text-right whitespace-nowrap">
-                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
-                            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                          <div className="inline-flex gap-1.5 items-center justify-end">
+                            <div className="flex bg-black/[0.03] rounded-lg p-0.5">
+                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Fares">
                                 <Banknote size={13} /> Fares
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Seats">
                                 <Armchair size={13} /> Seats
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Meals">
                                 <Utensils size={13} /> Meals
                               </Link>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-                              <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
+                            <div className="flex gap-1 ml-1">
+                              <button className="btn-secondary px-2 py-1.5" title="Edit" onClick={() => openEdit(inst)}>
                                 <Pencil size={14} />
                               </button>
-                              <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(inst)} style={{ padding: '6px 8px' }}>
+                              <button className="btn-danger px-2 py-1.5" title="Delete" onClick={() => setDeleteItem(inst)}>
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -498,7 +498,7 @@ export default function FlightInstancesPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
+              <div className="admin-form-grid mb-5">
                 <Select id="fi_flight" label="Flight Route" options={routeOptions} value={form.flight}
                   onChange={(e) => { handleFlightChange(e.target.value); clearError('flight'); }} error={localErrors.flight} />
                 <Select id="fi_aircraft" label="Aircraft (filtered by airline)" options={aircraftOptions}
@@ -525,7 +525,7 @@ export default function FlightInstancesPage() {
                     });
                     if (depTime) clearError('scheduled_departure');
                   }} />
-                  {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}
+                  {localErrors.scheduled_departure && <p className="text-xs text-[#b91c1c] mt-1">{localErrors.scheduled_departure}</p>}
                 </div>
                 <div>
                   <label className="text-[11px] font-bold tracking-[.06em] uppercase text-[#5e5e5e] block mb-1.5">Scheduled Arrival</label>
@@ -533,7 +533,7 @@ export default function FlightInstancesPage() {
                     setForm((f) => ({ ...f, scheduled_arrival: e.target.value }));
                     if (e.target.value) clearError('scheduled_arrival');
                   }} />
-                  {localErrors.scheduled_arrival && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_arrival}</p>}
+                  {localErrors.scheduled_arrival && <p className="text-xs text-[#b91c1c] mt-1">{localErrors.scheduled_arrival}</p>}
                 </div>
                 <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12"
                   value={form.boarding_gate} options={gateOptions}

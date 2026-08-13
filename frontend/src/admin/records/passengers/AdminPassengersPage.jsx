@@ -40,8 +40,8 @@ export default function AdminPassengersPage() {
   return (
     <div className="admin-page">
       <div className="admin-container">
-        <h1 className="admin-page-title" style={{ marginBottom: 8 }}>Passengers</h1>
-        <p className="admin-page-subtitle" style={{ marginBottom: 24 }}>View passenger records linked to bookings.</p>
+        <h1 className="admin-page-title mb-2">Passengers</h1>
+        <p className="admin-page-subtitle mb-6">View passenger records linked to bookings.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
           <div className="admin-toolbar-search">
@@ -71,9 +71,9 @@ export default function AdminPassengersPage() {
                     <td><strong>{p.full_name || p.name}</strong></td>
                     <td>{p.gender || '—'}</td>
                     <td>{p.category || '—'}</td>
-                    <td><code style={{ fontSize: 12 }}>{p.passport_no || '—'}</code></td>
+                    <td><code className="text-xs">{p.passport_no || '—'}</code></td>
                     <td>{p.need_wheelchair ? '✓' : '—'}</td>
-                    <td style={{ fontSize: 12, color: '#888' }}>{String(p.booking).slice(0, 8)}…</td>
+                    <td className="text-xs text-[#888]">{String(p.booking).slice(0, 8)}…</td>
                   </tr>
                 ))}
               </tbody>
@@ -92,7 +92,7 @@ export default function AdminPassengersPage() {
 
         {selected && (
           <div className="detail-card">
-            <h3 style={{ fontWeight: 800, fontSize: 16, marginBottom: 16, color: '#1a1c1d' }}>Passenger Detail</h3>
+            <h3 className="text-base font-extrabold mb-4 text-[#1a1c1d]">Passenger Detail</h3>
             <dl className="kv">
               {Object.entries(selected).map(([k, v]) => (
                 <><dt key={`dt-${k}`}>{k}</dt><dd key={`dd-${k}`}>{String(v)}</dd></>

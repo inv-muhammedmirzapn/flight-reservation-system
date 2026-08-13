@@ -7,9 +7,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as rf_serializers
-from .models import Booking, Passenger
-from .serializers import BookingSerializer, PassengerSerializer
-from .services import cancel_booking, create_booking
+from .models import Booking, Passenger, SeatHold
+from .serializers import BookingSerializer, PassengerSerializer, SeatHoldSerializer
+from .services import cancel_booking, create_booking, hold_seat, release_hold
 from apps.flights.permissions import IsAdminOrSuperuser
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ class AdminBookingViewSet(mixins.ListModelMixin,
         try:
             # Pass the booking's own user so service-layer ownership logic passes
             booking = Booking.objects.get(pk=pk)
-            booking = cancel_booking(booking_id=pk, user=booking.user)
+            booking = cancel_booking(booking_id=pk, user=booking.user, is_admin_cancel=True)
             return Response(
                 {
                     "detail": "Booking force-cancelled by admin. Waitlist allocation triggered (if applicable).",
@@ -189,5 +189,60 @@ class AdminBookingViewSet(mixins.ListModelMixin,
             )
         except Booking.DoesNotExist:
             return Response({'detail': 'Booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except DjangoValidationError as e:
+            raise ValidationError({'detail': str(e)})
+
+
+class SeatHoldViewSet(mixins.CreateModelMixin,
+                      mixins.DestroyModelMixin,
+                      viewsets.GenericViewSet):
+    """
+    Temporary seat hold endpoints.
+      POST   /api/bookings/holds/          — hold a seat (returns hold id + seconds_remaining)
+      DELETE /api/bookings/holds/{id}/     — release a hold early (user deselected seat)
+    """
+    serializer_class = SeatHoldSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SeatHold.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """
+        POST /api/bookings/holds/
+        Body: { "flight_instance": <id>, "seat_number": "12A" }
+        """
+        flight_instance_id = request.data.get('flight_instance')
+        seat_number = request.data.get('seat_number', '').strip().upper()
+
+        if not flight_instance_id:
+            raise ValidationError({'detail': 'flight_instance is required.'})
+        if not seat_number:
+            raise ValidationError({'detail': 'seat_number is required.'})
+
+        try:
+            from apps.flights.models import FlightInstance
+            flight_instance = FlightInstance.objects.get(pk=flight_instance_id)
+        except FlightInstance.DoesNotExist:
+            raise ValidationError({'detail': 'Flight instance not found.'})
+
+        try:
+            hold = hold_seat(flight_instance, seat_number, request.user)
+            serializer = self.get_serializer(hold)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except DjangoValidationError as e:
+            msg = e.message if isinstance(getattr(e, 'message', None), str) else (
+                e.messages[0] if getattr(e, 'messages', None) else str(e)
+            )
+            raise ValidationError({'detail': msg})
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        DELETE /api/bookings/holds/{id}/
+        Releases the hold and frees the seat back to AVAILABLE immediately.
+        """
+        try:
+            release_hold(kwargs['pk'], request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except DjangoValidationError as e:
             raise ValidationError({'detail': str(e)})
