@@ -1,7 +1,9 @@
 import uuid
+from datetime import timedelta
 from django.db import models
 from django.conf import settings
-from apps.flights.models import FlightInstance, CabinClass, FoodItem, FlightMeal, FlightLeg
+from django.utils import timezone
+from apps.flights.models import FlightInstance, CabinClass, FoodItem, FlightMeal, FlightLeg, Seat
 
 
 class BookingStatus(models.TextChoices):
@@ -100,3 +102,52 @@ class PassengerMeal(models.Model):
         item_name = self.food_item.name if self.food_item else self.flight_meal.name
         leg_info = f" (Leg {self.flight_leg.leg_order})" if self.flight_leg else ""
         return f"{self.passenger.name} - {item_name} x{self.quantity}{leg_info}"
+
+
+SEAT_HOLD_MINUTES = 10
+
+
+class SeatHold(models.Model):
+    """
+    Represents a temporary 10-minute hold on a seat for a user.
+    When expires_at < now(), the hold is stale and will be lazily cleaned up
+    on the next read request (seat map fetch or booking attempt).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    seat = models.OneToOneField(
+        Seat,
+        on_delete=models.CASCADE,
+        related_name="hold",
+    )
+    flight_instance = models.ForeignKey(
+        FlightInstance,
+        on_delete=models.CASCADE,
+        related_name="seat_holds",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="seat_holds",
+    )
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["expires_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(minutes=SEAT_HOLD_MINUTES)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    @property
+    def seconds_remaining(self):
+        delta = self.expires_at - timezone.now()
+        return max(0, int(delta.total_seconds()))
+
+    def __str__(self):
+        return f"Hold({self.seat.seat_number} / {self.flight_instance} / {self.user})"

@@ -630,6 +630,19 @@ class SeatViewSet(AdminModelViewSet):
             qs = qs.filter(flight_instance_id=instance_id)
         return qs
 
+    def list(self, request, *args, **kwargs):
+        """Run lazy expiry before returning the seat map so stale holds are cleared."""
+        instance_id = request.query_params.get("flight_instance")
+        if instance_id:
+            try:
+                from apps.bookings.services import expire_stale_holds
+                from .models import FlightInstance
+                fi = FlightInstance.objects.get(pk=instance_id)
+                expire_stale_holds(fi)
+            except FlightInstance.DoesNotExist:
+                pass
+        return super().list(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         old_status = self.get_object().status
         new_status = serializer.validated_data.get("status", old_status)

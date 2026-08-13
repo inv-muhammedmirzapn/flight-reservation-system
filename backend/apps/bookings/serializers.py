@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Booking, Passenger, PassengerMeal
+from .models import Booking, Passenger, PassengerMeal, SeatHold
 from apps.flights.models import FlightInstance
 
 
@@ -111,3 +111,13 @@ class BookingSerializer(serializers.ModelSerializer):
             return FlightInstance.objects.get(id=int(value))
         except (FlightInstance.DoesNotExist, (ValueError, TypeError)):
             raise serializers.ValidationError("Invalid flight instance ID.")
+
+
+class SeatHoldSerializer(serializers.ModelSerializer):
+    seat_number = serializers.CharField(source='seat.seat_number', read_only=True)
+    seconds_remaining = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = SeatHold
+        fields = ['id', 'seat_number', 'flight_instance', 'expires_at', 'seconds_remaining', 'created_at']
+        read_only_fields = ['id', 'seat_number', 'expires_at', 'seconds_remaining', 'created_at']
