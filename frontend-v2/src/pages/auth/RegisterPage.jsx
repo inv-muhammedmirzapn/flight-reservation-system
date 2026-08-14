@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "@/store/authSlice";
 import toast from "react-hot-toast";
@@ -10,8 +10,11 @@ import { PASSWORD_RULES } from "@/utils/validators";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.auth);
+
+  const fromDestination = location.state?.from;
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -251,7 +254,7 @@ export default function RegisterPage() {
 
       if (registerUser.fulfilled.match(resultAction)) {
         toast.success("Account created successfully! Please sign in.");
-        navigate("/login");
+        navigate("/login", { state: { from: fromDestination } });
       } else {
         const errorMsg = resultAction.payload || "Registration failed";
         toast.error(errorMsg);
@@ -281,6 +284,7 @@ export default function RegisterPage() {
         <div className="mb-4">
           <Link
             to="/login"
+            state={{ from: fromDestination }}
             className="inline-flex items-center gap-2 text-slate-600 font-semibold text-xs hover:text-slate-900 transition-colors mb-3"
           >
             <span className="material-symbols-outlined text-xs select-none">arrow_back</span>
@@ -539,7 +543,7 @@ export default function RegisterPage() {
         <div className="mt-8 text-center pt-5 border-t border-slate-100">
           <p className="text-xs font-semibold text-slate-500">
             Already have an account?{" "}
-            <Link to="/login" className="text-slate-900 font-bold hover:underline transition-all">
+            <Link to="/login" state={{ from: fromDestination }} className="text-slate-900 font-bold hover:underline transition-all">
               Sign In
             </Link>
           </p>

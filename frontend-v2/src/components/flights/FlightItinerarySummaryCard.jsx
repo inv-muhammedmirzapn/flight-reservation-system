@@ -5,6 +5,7 @@ export default function FlightItinerarySummaryCard({ flight }) {
 
   const {
     airline = "IndiGo",
+    airline_logo,
     source_airport = "COK",
     destination_airport = "DEL",
     departure_time,
@@ -48,15 +49,25 @@ export default function FlightItinerarySummaryCard({ flight }) {
   const stopCount = Array.isArray(stops) ? stops.length : typeof stops === "number" ? stops : 0;
   const stopsStr = stopCount === 0 ? "Non-stop" : `${stopCount} Stop${stopCount > 1 ? "s" : ""}`;
 
+  const getLogoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const logoSrc = getLogoUrl(airline_logo);
+
   return (
     <div className="booking-container-card animate-fade-in transition-all duration-300 relative">
-      {/* Top Header Row: Route Title & Airline Badge */}
-      <div className="flex items-center gap-2 mb-2">
-        {/* Airline Badge */}
-        <div className="inline-flex items-center bg-sky-100/70 border border-sky-200/60 rounded-xl px-3 py-1.5">
-          <span className="text-xs font-bold text-slate-900">{airline}</span>
-        </div>
-
+      {/* Top Header Row: Route Title & Airline Logo */}
+      <div className="flex items-center gap-3 mb-2">
+        {logoSrc && (
+          <img
+            src={logoSrc}
+            alt={airline}
+            className="h-8 object-contain shadow-2xs"
+          />
+        )}
         <h2 className="text-xl font-bold text-slate-950">
           {sourceInfo.city} &rarr; {destInfo.city}
         </h2>

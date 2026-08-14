@@ -272,7 +272,7 @@ class FlightListCreateView(APIView):
         paginator = FlightPagination()
         page = paginator.paginate_queryset(qs, request)
         from .serializers import FrontendFlightInstanceSerializer
-        serializer = FrontendFlightInstanceSerializer(page, many=True)
+        serializer = FrontendFlightInstanceSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
 
 

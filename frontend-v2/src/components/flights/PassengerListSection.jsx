@@ -3,7 +3,9 @@ import CustomSelect from "@/components/ui/CustomSelect";
 export default function PassengerListSection({
   passengers = [],
   onChangePassengers,
-  errors = {}
+  errors = {},
+  inputRefs,
+  onBlurField,
 }) {
   const handleAddPassenger = () => {
     const updated = [
@@ -24,7 +26,7 @@ export default function PassengerListSection({
     const sanitized = rawValue.replace(/[^A-Za-z\s]/g, "").slice(0, 40);
     const updated = [...passengers];
     updated[index] = { ...updated[index], name: sanitized };
-    onChangePassengers(updated);
+    onChangePassengers(updated, index, "name");
   };
 
   const handleAgeChange = (index, rawValue) => {
@@ -35,20 +37,20 @@ export default function PassengerListSection({
     }
     const updated = [...passengers];
     updated[index] = { ...updated[index], age: sanitized };
-    onChangePassengers(updated);
+    onChangePassengers(updated, index, "age");
   };
 
   const handleGenderChange = (index, value) => {
     const updated = [...passengers];
     updated[index] = { ...updated[index], gender: value };
-    onChangePassengers(updated);
+    onChangePassengers(updated, index, "gender");
   };
 
   const handlePhoneChange = (index, rawValue) => {
     const sanitized = rawValue.replace(/[^0-9+\s-]/g, "").slice(0, 15);
     const updated = [...passengers];
     updated[index] = { ...updated[index], phone_number: sanitized };
-    onChangePassengers(updated);
+    onChangePassengers(updated, index, "phone_number");
   };
 
   return (
@@ -103,19 +105,25 @@ export default function PassengerListSection({
                     </span>
                   </div>
                   <input
+                    ref={(el) => {
+                      if (inputRefs && inputRefs.current) {
+                        inputRefs.current[`${index}-name`] = el;
+                      }
+                    }}
                     type="text"
                     placeholder="e.g. John Doe"
                     maxLength={40}
                     value={passenger.name}
                     onChange={(e) => handleNameChange(index, e.target.value)}
+                    onBlur={() => onBlurField?.(index, "name")}
                     className={`input-field transition-all duration-200 ${
                       pErrors.name ? "border border-rose-400 bg-rose-50/20 focus:ring-1 focus:ring-rose-500" : ""
                     }`}
                   />
                   {pErrors.name && (
-                    <span className="field-error mt-1 block">
-                      {pErrors.name}
-                    </span>
+                    <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                      <p className="field-error ml-2">{pErrors.name}</p>
+                    </div>
                   )}
                 </div>
 
@@ -125,18 +133,24 @@ export default function PassengerListSection({
                     Age
                   </label>
                   <input
+                    ref={(el) => {
+                      if (inputRefs && inputRefs.current) {
+                        inputRefs.current[`${index}-age`] = el;
+                      }
+                    }}
                     type="text"
                     placeholder="e.g. 28"
                     value={passenger.age}
                     onChange={(e) => handleAgeChange(index, e.target.value)}
+                    onBlur={() => onBlurField?.(index, "age")}
                     className={`input-field transition-all duration-200 ${
                       pErrors.age ? "border border-rose-400 bg-rose-50/20 focus:ring-1 focus:ring-rose-500" : ""
                     }`}
                   />
                   {pErrors.age && (
-                    <span className="field-error mt-1 block">
-                      {pErrors.age}
-                    </span>
+                    <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                      <p className="field-error ml-2">{pErrors.age}</p>
+                    </div>
                   )}
                 </div>
 
@@ -153,9 +167,9 @@ export default function PassengerListSection({
                     error={Boolean(pErrors.gender)}
                   />
                   {pErrors.gender && (
-                    <span className="field-error mt-1 block">
-                      {pErrors.gender}
-                    </span>
+                    <div className="overflow-hidden transition-all duration-200 mt-1 animate-fade-in">
+                      <p className="field-error ml-2">{pErrors.gender}</p>
+                    </div>
                   )}
                 </div>
               </div>

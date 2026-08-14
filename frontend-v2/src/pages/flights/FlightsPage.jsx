@@ -183,7 +183,7 @@ export default function FlightsPage() {
       />
 
       {/* Top Search Header Component */}
-      <div className="mb-10">
+      <div className="mb-10 relative z-30">
         <FlightSearchHeader />
       </div>
 

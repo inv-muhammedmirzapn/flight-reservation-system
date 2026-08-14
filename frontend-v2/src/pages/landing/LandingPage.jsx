@@ -107,7 +107,7 @@ export default function LandingPage() {
     <div className="flex-1 flex flex-col min-h-screen">
 
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center items-center px-4 overflow-hidden pt-16">
+      <section className="relative min-h-[90vh] md:min-h-[90vh] flex flex-col justify-center items-center px-3 sm:px-4 overflow-hidden pt-12 sm:pt-16">
 
         {/* Background Image & Overlay */}
         <div
@@ -118,24 +118,24 @@ export default function LandingPage() {
 
         {/* Content Box */}
         <div className="relative animate-fade-in z-10 w-full max-w-4xl text-center flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-8 drop-shadow-sm">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4 sm:mb-6 md:mb-8 drop-shadow-sm">
             {t("landing.heroTitle", "Where to next?")}
           </h1>
 
           <form onSubmit={handleSearch} className="w-full flex flex-col items-center">
 
             {/* Route Selection Card (From / Swap / To) */}
-            <div className="w-full max-w-2xl glass-card shadow hover:shadow rounded-3xl flex flex-col md:flex-row items-center relative z-20 p-2 md:p-0">
+            <div className="w-full max-w-2xl glass-card shadow hover:shadow rounded-2xl sm:rounded-3xl grid grid-cols-5 items-center relative z-20 p-1 sm:p-2 md:p-0">
 
               {/* From Box */}
               <div
-                className="flex-1 w-full pl-6 pr-10 md:pr-14 py-4 text-left cursor-pointer transition-colors hover:bg-slate-500/5 rounded-2xl md:rounded-l-3xl relative"
+                className="col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-left cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-l-3xl relative"
                 onClick={() => {
                   setIsFromFocused(true);
                   setTimeout(() => fromInputRef.current?.focus(), 50);
                 }}
               >
-                <span className="text-[10px] font-bold tracking-wider text-slate-400 select-none">
+                <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">
                   {t("landing.from", "From")}
                 </span>
 
@@ -143,19 +143,19 @@ export default function LandingPage() {
                   <input
                     ref={fromInputRef}
                     type="text"
-                    className="airport-input-field font-bold mt-1"
+                    className="airport-input-field font-bold mt-0.5 sm:mt-1"
                     value={fromSearch}
                     onChange={(e) => setFromSearch(e.target.value)}
                     onBlur={() => setTimeout(() => setIsFromFocused(false), 200)}
                     autoComplete="off"
                   />
                 ) : (
-                  <div className="mt-1">
-                    <div className="text-xl font-bold text-slate-800 truncate">
+                  <div className="mt-0.5 sm:mt-1">
+                    <div className="text-sm sm:text-base md:text-xl font-bold text-slate-800 truncate">
                       {from ? (findAirport(from)?.city || from) : t("landing.cityOrAirport", "City or Airport")}
                     </div>
                     {from && findAirport(from) && (
-                      <div className="text-xs font-semibold text-slate-500 truncate mt-2">
+                      <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-slate-500 truncate mt-0.5 sm:mt-1">
                         {findAirport(from).code}, {findAirport(from).name}
                       </div>
                     )}
@@ -164,11 +164,11 @@ export default function LandingPage() {
 
                 {/* Autocomplete Dropdown */}
                 {isFromFocused && getSuggestions(fromSearch).length > 0 && (
-                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
+                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-2 sm:mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
                     {getSuggestions(fromSearch).map((airport) => (
                       <div
                         key={airport.code}
-                        className="px-4 py-3 hover:bg-primary-container/40 text-left transition-colors cursor-pointer"
+                        className="px-3 py-2 sm:px-4 sm:py-3 hover:bg-primary-container/40 text-left transition-colors cursor-pointer"
                         onMouseDown={(e) => {
                           e.preventDefault();
                           setFrom(airport.code);
@@ -176,8 +176,8 @@ export default function LandingPage() {
                           setIsFromFocused(false);
                         }}
                       >
-                        <div className="font-extrabold text-slate-800 text-xs">{airport.city} ({airport.code})</div>
-                        <div className="text-[10px] text-slate-500 font-semibold mt-1">{airport.name}, {airport.country}</div>
+                        <div className="font-extrabold text-slate-800 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name}, {airport.country}</div>
                       </div>
                     ))}
                   </div>
@@ -185,26 +185,26 @@ export default function LandingPage() {
               </div>
 
               {/* Swap Divider / Button */}
-              <div className="h-[1px] w-full bg-slate-100 md:w-[1px] md:h-14 relative my-2 md:my-0">
+              <div>
                 <button
                   type="button"
                   onClick={handleSwap}
-                  className="btn-ghost absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md"
+                  className="btn-ghost absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white border border-slate-200 shadow-md"
                   aria-label="Swap Locations"
                 >
-                  <span className="material-symbols-outlined select-none text-xl font-bold">swap_horiz</span>
+                  <span className="material-symbols-outlined select-none text-base sm:text-lg md:text-xl font-bold">swap_horiz</span>
                 </button>
               </div>
 
               {/* To Box */}
               <div
-                className="flex-1 w-full pr-6 pl-10 md:pl-14 py-4 text-right cursor-pointer transition-colors hover:bg-slate-500/5 rounded-2xl md:rounded-r-3xl relative"
+                className="col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-right cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-r-3xl relative"
                 onClick={() => {
                   setIsToFocused(true);
                   setTimeout(() => toInputRef.current?.focus(), 50);
                 }}
               >
-                <span className="text-[10px] font-extrabold tracking-wider text-slate-400 select-none">
+                <span className="text-[9px] sm:text-[10px] font-extrabold tracking-wider text-slate-400 select-none">
                   {t("landing.to", "To")}
                 </span>
 
@@ -212,19 +212,19 @@ export default function LandingPage() {
                   <input
                     ref={toInputRef}
                     type="text"
-                    className="airport-input-field text-right font-bold mt-1"
+                    className="airport-input-field text-right font-bold mt-0.5 sm:mt-1"
                     value={toSearch}
                     onChange={(e) => setToSearch(e.target.value)}
                     onBlur={() => setTimeout(() => setIsToFocused(false), 200)}
                     autoComplete="off"
                   />
                 ) : (
-                  <div className="mt-1">
-                    <div className="text-xl font-bold text-slate-800 truncate">
+                  <div className="mt-0.5 sm:mt-1">
+                    <div className="text-sm sm:text-base md:text-xl font-bold text-slate-800 truncate">
                       {to ? (findAirport(to)?.city || to) : t("landing.destination", "Destination")}
                     </div>
                     {to && findAirport(to) && (
-                      <div className="text-xs font-semibold text-slate-500 truncate mt-2">
+                      <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-slate-500 truncate mt-0.5 sm:mt-1">
                         {to.code || to}, {findAirport(to).name}
                       </div>
                     )}
@@ -233,11 +233,11 @@ export default function LandingPage() {
 
                 {/* Autocomplete Dropdown */}
                 {isToFocused && getSuggestions(toSearch).length > 0 && (
-                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
+                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-2 sm:mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
                     {getSuggestions(toSearch).map((airport) => (
                       <div
                         key={airport.code}
-                        className="px-4 py-3 hover:bg-primary-container/40 text-left transition-colors cursor-pointer"
+                        className="px-3 py-2 sm:px-4 sm:py-3 hover:bg-primary-container/40 text-left transition-colors cursor-pointer"
                         onMouseDown={(e) => {
                           e.preventDefault();
                           setTo(airport.code);
@@ -245,8 +245,8 @@ export default function LandingPage() {
                           setIsToFocused(false);
                         }}
                       >
-                        <div className="font-extrabold text-slate-800 text-xs">{airport.city} ({airport.code})</div>
-                        <div className="text-[10px] text-slate-500 font-semibold mt-1">{airport.name}, {airport.country}</div>
+                        <div className="font-extrabold text-slate-800 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name}, {airport.country}</div>
                       </div>
                     ))}
                   </div>
@@ -257,7 +257,7 @@ export default function LandingPage() {
 
             {/* Date Display Bar */}
             <div
-              className="w-full max-w-lg glass-card shadow hover:shadow rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
+              className="w-[90%] md:w-full md:max-w-lg glass-card shadow hover:shadow rounded-b-2xl sm:rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
             >
               {/* Departure Display */}
               <div
@@ -265,18 +265,18 @@ export default function LandingPage() {
                   setCalendarTab("dep");
                   setIsCalendarOpen(true);
                 }}
-                className="flex-1 px-5 py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
+                className="flex-1 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-5">
-                  <span className="material-symbols-outlined text-slate-400 select-none text-xl">flight_takeoff</span>
+                <div className="flex items-center gap-2 sm:gap-4 md:gap-5">
+                  <span className="material-symbols-outlined text-slate-400 select-none text-base sm:text-lg md:text-xl">flight_takeoff</span>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold tracking-wider text-slate-400 select-none">Departure</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1 select-none">
+                    <div className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">Departure</div>
+                    <div className="text-[10px] sm:text-sm font-bold text-slate-800 mt-1.5 select-none">
                       {depDate ? formatDisplayDate(depDate) : "Select Date"}
                     </div>
                   </div>
                 </div>
-                <span className="material-symbols-outlined text-slate-400 select-none text-lg">expand_more</span>
+                <span className="material-symbols-outlined text-slate-400 select-none text-xs sm:text-base md:text-lg">expand_more</span>
               </div>
 
               {/* Return Display */}
@@ -285,25 +285,25 @@ export default function LandingPage() {
                   setCalendarTab("arr");
                   setIsCalendarOpen(true);
                 }}
-                className="flex-1 px-5 py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
+                className="flex-1 px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between hover:bg-slate-500/5 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-5">
-                  <span className="material-symbols-outlined text-slate-400 select-none text-xl">flight_land</span>
+                <div className="flex items-center gap-2 sm:gap-4 md:gap-5">
+                  <span className="material-symbols-outlined text-slate-400 select-none text-base sm:text-lg md:text-xl">flight_land</span>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold tracking-wider text-slate-400 select-none">Return</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1 select-none">
+                    <div className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">Return</div>
+                    <div className="text-[10px] sm:text-sm font-bold text-slate-800 mt-1.5 select-none">
                       {arrDate ? formatDisplayDate(arrDate) : "One way"}
                     </div>
                   </div>
                 </div>
-                <span className="material-symbols-outlined text-slate-400 select-none text-lg">expand_more</span>
+                <span className="material-symbols-outlined text-slate-400 select-none text-xs sm:text-base md:text-lg">expand_more</span>
               </div>
             </div>
 
             {/* Search Button */}
             <button
               type="submit"
-              className="btn-primary mt-8 font-bold text-lg px-8 py-3 rounded-2xl shadow-lg shadow-yellow-500/35 hover:shadow-xl hover:shadow-yellow-500/25"
+              className="btn-primary mt-4 sm:mt-6 md:mt-8 font-bold text-sm sm:text-base md:text-lg px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-yellow-500/35 hover:shadow-xl hover:shadow-yellow-500/25"
             >
               {t("landing.searchFlights", "Search Flights")}
             </button>
@@ -324,14 +324,14 @@ export default function LandingPage() {
       />
 
       {/* Popular Destinations Section */}
-      <section className="py-16 bg-white/40 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-6">
+      <section className="py-8 sm:py-12 md:py-16 bg-white/40 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
-          <h2 className="text-2xl font-extrabold text-slate-800 mb-8 tracking-tight">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-800 mb-4 sm:mb-6 md:mb-8 tracking-tight">
             {t("landing.popularDestinations", "Popular Destinations")}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {[
               {
                 city: t("landing.london", "London"), sub: t("landing.directFlights", "Direct flights"), price: t("landing.from540", "From $540"),
@@ -348,7 +348,7 @@ export default function LandingPage() {
             ].map(({ city, sub, price, img, key }) => (
               <div
                 key={key}
-                className="group relative h-96 rounded-3xl overflow-hidden shadow-lg shadow-slate-900/5 hover:shadow-2xl hover:shadow-slate-900/10 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                className="group relative h-64 sm:h-80 md:h-96 rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg shadow-slate-900/5 hover:shadow-2xl hover:shadow-slate-900/10 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
               >
                 <img
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -358,13 +358,13 @@ export default function LandingPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent transition-opacity duration-300 group-hover:opacity-90" />
 
                 {/* Info Card inside Overlay */}
-                <div className="absolute inset-x-6 bottom-6">
-                  <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between border border-white/20 shadow-lg">
+                <div className="absolute inset-x-3 sm:inset-x-4 md:inset-x-6 bottom-3 sm:bottom-4 md:bottom-6">
+                  <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-4 flex items-center justify-between border border-white/20 shadow-lg">
                     <div>
-                      <div className="font-extrabold text-slate-800 text-base">{city}</div>
-                      <div className="text-xs text-slate-500 font-semibold mt-0.5">{sub}</div>
+                      <div className="font-extrabold text-slate-800 text-xs sm:text-sm md:text-base">{city}</div>
+                      <div className="text-[9px] sm:text-[10px] md:text-xs text-slate-500 font-semibold mt-0.5">{sub}</div>
                     </div>
-                    <div className="text-sm font-extrabold text-primary-dark bg-primary-container/80 px-3 py-1.5 rounded-xl border border-yellow-500/10">
+                    <div className="text-[11px] sm:text-xs md:text-sm font-extrabold text-primary-dark bg-primary-container/80 px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-yellow-500/10">
                       {price}
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import CustomSelect from "./CustomSelect";
 
 export function getOrdinalSuffix(day) {
@@ -33,8 +34,6 @@ export default function DatePickerModal({
   onSelectDates,
   initialTab
 }) {
-  // removed useTranslation
-
   const [depDate, setDepDate] = useState(initialDepDate || "");
   const [arrDate, setArrDate] = useState(initialArrDate || "");
   const [activeTab, setActiveTab] = useState(initialTab || "dep");
@@ -54,6 +53,7 @@ export default function DatePickerModal({
   }, [isOpen, initialDepDate, initialArrDate, initialTab]);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const currentYear = viewDate.getFullYear();
   const currentMonth = viewDate.getMonth();
@@ -133,72 +133,72 @@ export default function DatePickerModal({
 
   const todayStr = toDateString(new Date());
 
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in">
       
       {/* Backdrop click closer */}
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-md mx-4 bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-3xl p-6 overflow-hidden transition-transform duration-300 scale-100 hover:shadow-primary/5">
+      <div className="relative w-full max-w-md bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 overflow-hidden transition-transform duration-300 scale-100 hover:shadow-primary/5">
         
         {/* Selected Dates summary bar / Tabs */}
-        <div className="flex gap-2 p-1.5 bg-black/5 rounded-2xl mb-6 text-xs">
+        <div className="flex gap-1.5 p-1 sm:p-1.5 bg-black/5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 text-xs">
           <button
             type="button"
             onClick={() => setActiveTab("dep")}
-            className={`flex-1 py-3 text-center transition-all duration-200 rounded-xl cursor-pointer ${
+            className={`flex-1 py-2 sm:py-3 text-center transition-all duration-200 rounded-lg sm:rounded-xl cursor-pointer ${
               activeTab === "dep"
                 ? "bg-white shadow-sm ring-1 ring-black/5"
                 : "hover:bg-white/50"
             }`}
           >
-            <div className="text-[10px] font-extrabold tracking-wider text-slate-400 uppercase select-none">Departure</div>
-            <div className="font-extrabold text-on-surface mt-0.5">
+            <div className="text-[9px] sm:text-[10px] font-extrabold tracking-wider text-slate-400 uppercase select-none">Departure</div>
+            <div className="font-extrabold text-on-surface text-[11px] sm:text-xs mt-0.5">
               {depDate ? formatDisplayDate(depDate) : "Select date"}
             </div>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("arr")}
-            className={`flex-1 py-3 text-center transition-all duration-200 rounded-xl cursor-pointer ${
+            className={`flex-1 py-2 sm:py-3 text-center transition-all duration-200 rounded-lg sm:rounded-xl cursor-pointer ${
               activeTab === "arr"
                 ? "bg-white shadow-sm ring-1 ring-black/5"
                 : "hover:bg-white/50"
             }`}
           >
-            <div className="text-[10px] font-extrabold tracking-wider text-slate-400 uppercase select-none">Return</div>
-            <div className="font-extrabold text-on-surface mt-0.5">
+            <div className="text-[9px] sm:text-[10px] font-extrabold tracking-wider text-slate-400 uppercase select-none">Return</div>
+            <div className="font-extrabold text-on-surface text-[11px] sm:text-xs mt-0.5">
               {arrDate ? formatDisplayDate(arrDate) : "One way / Select"}
             </div>
           </button>
         </div>
 
         {/* Month & Year Navigation with CustomSelect */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <div className="flex-1">
             <CustomSelect
               value={currentMonth.toString()}
               onChange={handleMonthChange}
               options={monthOptions}
-              className="py-1.5 px-3 text-xs"
+              className="py-1 sm:py-1.5 px-2.5 sm:px-3 text-xs"
             />
           </div>
-          <div className="w-28">
+          <div className="w-24 sm:w-28">
             <CustomSelect
               value={currentYear.toString()}
               onChange={handleYearChange}
               options={yearOptions}
-              className="py-1.5 px-3 text-xs"
+              className="py-1 sm:py-1.5 px-2.5 sm:px-3 text-xs"
             />
           </div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1 text-center mb-6">
+        <div className="grid grid-cols-7 gap-1 text-center mb-4 sm:mb-6">
           {/* Weekdays */}
           {weekdayNames.map((w) => (
-            <div key={w} className="text-xs font-bold text-on-surface-variant opacity-60 py-1 select-none">
+            <div key={w} className="text-[10px] sm:text-xs font-bold text-on-surface-variant opacity-60 py-0.5 sm:py-1 select-none">
               {w}
             </div>
           ))}
@@ -231,7 +231,7 @@ export default function DatePickerModal({
                 onMouseEnter={() => !isDisabled && setHoveredDate(dateStr)}
                 onMouseLeave={() => setHoveredDate(null)}
                 className={`
-                  aspect-square rounded-full flex flex-col items-center justify-center text-xs font-bold relative transition-all duration-150 cursor-pointer
+                  aspect-square rounded-full flex flex-col items-center justify-center text-[11px] sm:text-xs font-bold relative transition-all duration-150 cursor-pointer
                   ${isDisabled ? "opacity-20 cursor-not-allowed" : "hover:bg-primary-container hover:text-primary-dark"}
                   ${isToday && !isDep && !isArr ? "border border-primary text-primary font-extrabold" : ""}
                   ${isDep ? "bg-primary text-white scale-105 shadow-md shadow-primary/20 font-extrabold" : ""}
@@ -246,10 +246,10 @@ export default function DatePickerModal({
         </div>
 
         {/* Action Controls */}
-        <div className="flex justify-between items-center gap-3">
+        <div className="flex justify-between items-center gap-2 sm:gap-3">
           <button
             onClick={handleClear}
-            className="px-4 py-2.5 rounded-full text-xs font-extrabold text-on-surface-variant/80 hover:bg-black/5 active:scale-95 transition-all cursor-pointer"
+            className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-extrabold text-on-surface-variant/80 hover:bg-black/5 active:scale-95 transition-all cursor-pointer"
           >
             Clear
           </button>
@@ -257,14 +257,14 @@ export default function DatePickerModal({
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
             >
               Cancel
             </button>
             <button
               disabled={!depDate}
               onClick={handleConfirm}
-              className="btn-primary px-5 py-2 rounded-xl text-xs disabled:opacity-50"
+              className="btn-primary px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs disabled:opacity-50"
             >
               Confirm
             </button>
@@ -272,6 +272,7 @@ export default function DatePickerModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

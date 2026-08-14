@@ -14,7 +14,7 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
     """Maps a FlightInstance to the legacy Flight JSON structure expected by the frontend."""
     flight_number = serializers.CharField(source='flight.flight_no')
     airline = serializers.CharField(source='flight.airline.airline_name')
-    aircraft = serializers.CharField(source='aircraft.registration')
+    aircraft = serializers.SerializerMethodField()
     source_airport = serializers.SerializerMethodField()
     source_airport_name = serializers.SerializerMethodField()
     source_terminals = serializers.SerializerMethodField()
@@ -60,12 +60,25 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
             "delayed_departure_time", "delayed_arrival_time",
         ]
 
+    def get_aircraft(self, obj):
+        if obj.aircraft and obj.aircraft.aircraft_model:
+            model = obj.aircraft.aircraft_model
+            manufacturer = model.manufacturer or ""
+            model_name = model.model_name or ""
+            if model_name.lower().startswith(manufacturer.lower()):
+                return model_name
+            return f"{manufacturer} {model_name}".strip()
+        return "Airbus A320"
+
     def get_airline_logo(self, obj):
         if obj.flight and obj.flight.airline and obj.flight.airline.logo:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.flight.airline.logo.url)
-            return obj.flight.airline.logo.url
+            logo_url = obj.flight.airline.logo.url
+            if logo_url.startswith('/'):
+                return f"http://127.0.0.1:8000{logo_url}"
+            return logo_url
         return None
 
     def _get_first_leg(self, obj):

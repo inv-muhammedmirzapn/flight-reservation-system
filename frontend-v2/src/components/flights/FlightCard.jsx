@@ -1,10 +1,10 @@
-
 export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails }) {
   if (!flight) return null;
 
   const {
     flight_number = "SA-224",
     airline = "Skyline Airways",
+    airline_logo,
     source_airport = "DEL",
     destination_airport = "HAM",
     departure_time,
@@ -41,7 +41,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
     if (!isoString) return { dateStr: "-", timeStr: "--:--" };
     const d = new Date(isoString);
     const day = d.getDate();
-    const monthLong = d.toLocaleString("en-US", { month: "long" });
+    const monthLong = d.toLocaleString("en-US", { month: "short" });
     const hours = String(d.getHours()).padStart(2, "0");
     const minutes = String(d.getMinutes()).padStart(2, "0");
     return { dateStr: `${day} ${monthLong}`, timeStr: `${hours}:${minutes}` };
@@ -66,89 +66,206 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
   const stopsStr = stopCount === 0 ? "Non-stop" : `${stopCount} Stop${stopCount > 1 ? "s" : ""}`;
 
   const cardClass = isWaitlisted
-    ? "bg-amber-50/80 border border-amber-200/80 shadow-2xs hover:shadow-xs"
-    : "plain-card shadow-2xs hover:shadow-xs";
+    ? "bg-amber-50/80 border border-amber-200/80 shadow-sm hover:shadow"
+    : "plain-card shadow-sm hover:shadow";
+
+  const getLogoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const logoSrc = getLogoUrl(airline_logo);
 
   return (
-    <div className={`w-full mx-auto rounded-3xl px-4 sm:px-5 flex flex-col md:grid md:grid-cols-10 items-center justify-between gap-3 md:gap-0 transition-all mb-4 animate-fade-in ${cardClass}`}>
+    <div className={`w-full mx-auto rounded-2xl md:rounded-3xl p-4 sm:p-5 transition-all mb-4 animate-fade-in ${cardClass}`}>
 
-      {/* 1. Airline & Flight Info */}
-      <div className="flex flex-col md:col-span-2 items-center md:items-start min-w-[150px] gap-0.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-slate-500">{flight_number}</span>
-          {isDelayed && (
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
-              Delayed · +{delay_minutes}m
-            </span>
-          )}
-          {!isDelayed && isWaitlisted && (
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">Waitlist</span>
+      {/* ── DESKTOP & TABLET LAYOUT (visible on md: grid) ────────────────────────── */}
+      <div className="hidden md:grid md:grid-cols-12 items-center gap-4">
+
+        {/* 1. Airline & Flight Info */}
+        <div className="col-span-3 flex flex-col justify-center gap-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500">{flight_number}</span>
+            {isDelayed && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                Delayed · +{delay_minutes}m
+              </span>
+            )}
+            {!isDelayed && isWaitlisted && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">Waitlist</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt={airline}
+                className="h-4 max-w-[80px] object-contain"
+              />
+            )}
+            <span className="text-xs font-semibold text-slate-800 truncate">{airline}</span>
+          </div>
+          <span className="text-xs font-extrabold text-slate-950">
+            {source_airport} &rarr; {destination_airport}
+          </span>
+        </div>
+
+        {/* 2. Departure */}
+        <div className="col-span-2 flex flex-col items-start">
+          <span className="text-xs font-semibold text-slate-500 mb-0.5">
+            {isDelayed && delayedDep ? delayedDep.dateStr : dep.dateStr}
+          </span>
+          {isDelayed && delayedDep ? (
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-xs font-medium text-slate-400 line-through">{dep.timeStr}</span>
+              <span className="text-2xl lg:text-3xl font-bold text-amber-700 mt-0.5">{delayedDep.timeStr}</span>
+            </div>
+          ) : (
+            <span className="text-2xl lg:text-3xl font-bold text-slate-950">{dep.timeStr}</span>
           )}
         </div>
-        <span className="text-xs font-semibold text-slate-800">{airline}</span>
-        <span className="text-xs font-bold text-slate-950">
-          {source_airport} &rarr; {destination_airport}
-        </span>
-      </div>
 
-      {/* 2. Departure */}
-      <div className="flex-1 flex flex-col md:col-span-2 items-center md:items-start max-w-[20%]">
-        {/* Date: show original if not delayed, else new date */}
-        <span className="text-xs font-semibold text-slate-500 mb-1">
-          {isDelayed && delayedDep ? delayedDep.dateStr : dep.dateStr}
-        </span>
-        {isDelayed && delayedDep ? (
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-sm font-medium text-slate-400 line-through">{dep.timeStr}</span>
-            <span className="text-2xl sm:text-4xl font-bold text-amber-700 mt-0.5">{delayedDep.timeStr}</span>
-          </div>
-        ) : (
-          <span className="text-2xl sm:text-4xl font-bold text-slate-950">{dep.timeStr}</span>
-        )}
-      </div>
-
-      {/* 3. Arrival */}
-      <div className="flex-1 flex flex-col md:col-span-2 items-center md:items-start max-w-[20%]">
-        <span className="text-xs font-semibold text-slate-500 mb-1">
-          {isDelayed && delayedArr ? delayedArr.dateStr : arr.dateStr}
-        </span>
-        {isDelayed && delayedArr ? (
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-sm font-medium text-slate-400 line-through">{arr.timeStr}</span>
-            <span className="text-2xl sm:text-4xl font-bold text-amber-700 mt-0.5">{delayedArr.timeStr}</span>
-          </div>
-        ) : (
-          <span className="text-2xl sm:text-4xl font-bold text-slate-950">{arr.timeStr}</span>
-        )}
-      </div>
-
-      {/* 4. Duration & Stops box */}
-      <div className="px-3 py-5 shadow-2xs flex flex-col items-center justify-center min-w-[10%] bg-[#f3f3f3] h-full">
-        <span className="material-symbols-outlined text-slate-900 text-lg select-none font-semibold">schedule</span>
-        <span className="text-xs font-bold text-slate-950 mt-1 tracking-wide">{durationStr}</span>
-        <span className="text-[10px] font-semibold text-slate-500 mt-0.5">{stopsStr}</span>
-      </div>
-
-      {/* 5. Price & CTA */}
-      <div className="flex flex-col md:col-span-3 items-end gap-1 min-w-[25%] py-4">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{selectedCabinClass}</span>
-        <span className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-wide">
-          ₹{Math.round(displayPrice)}
-        </span>
-        {booking_cutoff_passed ? (
-          <span className="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1 rounded-lg">
-            Booking Closed
+        {/* 3. Arrival */}
+        <div className="col-span-2 flex flex-col items-start">
+          <span className="text-xs font-semibold text-slate-500 mb-0.5">
+            {isDelayed && delayedArr ? delayedArr.dateStr : arr.dateStr}
           </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onViewDetails && onViewDetails(flight)}
-            className="px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer btn-primary mt-0.5"
-          >
-            View Details
-          </button>
-        )}
+          {isDelayed && delayedArr ? (
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-xs font-medium text-slate-400 line-through">{arr.timeStr}</span>
+              <span className="text-2xl lg:text-3xl font-bold text-amber-700 mt-0.5">{delayedArr.timeStr}</span>
+            </div>
+          ) : (
+            <span className="text-2xl lg:text-3xl font-bold text-slate-950">{arr.timeStr}</span>
+          )}
+        </div>
+
+        {/* 4. Duration & Stops */}
+        <div className="col-span-2 flex flex-col items-center justify-center p-3 rounded-2xl bg-black/5 text-center">
+          <span className="material-symbols-outlined text-slate-700 text-lg select-none">schedule</span>
+          <span className="text-xs font-bold text-slate-900 mt-0.5 tracking-wide">{durationStr}</span>
+          <span className="text-[10px] font-semibold text-slate-500">{stopsStr}</span>
+        </div>
+
+        {/* 5. Price & CTA */}
+        <div className="col-span-3 flex flex-col items-end justify-center gap-1">
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{selectedCabinClass}</span>
+          <span className="text-2xl lg:text-3xl font-extrabold text-slate-950 tracking-wide">
+            ₹{Math.round(displayPrice)}
+          </span>
+          {booking_cutoff_passed ? (
+            <span className="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1 rounded-lg">
+              Booking Closed
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onViewDetails && onViewDetails(flight)}
+              className="px-4 py-1.5 text-xs rounded-xl font-bold transition-all cursor-pointer btn-primary mt-0.5 shadow-sm"
+            >
+              View Details
+            </button>
+          )}
+        </div>
+
       </div>
+
+
+      {/* ── MOBILE LAYOUT (visible on small screens, hidden on md:) ────────────── */}
+      <div className="flex md:hidden flex-col gap-3">
+
+        {/* Top Bar: Airline info & Status Badges */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt={airline}
+                className="h-4 max-w-[60px] object-contain shrink-0"
+              />
+            )}
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-slate-900 truncate">{airline}</span>
+              <span className="text-[10px] font-semibold text-slate-500">{flight_number}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
+              {selectedCabinClass}
+            </span>
+            {isDelayed && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                +{delay_minutes}m
+              </span>
+            )}
+            {!isDelayed && isWaitlisted && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">Waitlist</span>
+            )}
+          </div>
+        </div>
+
+        {/* Flight Schedule & Route Line */}
+        <div className="flex items-center justify-between gap-2 py-1">
+          {/* Departure */}
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] font-bold text-slate-400">{source_airport}</span>
+            <span className="text-xl font-bold text-slate-900 leading-tight">
+              {isDelayed && delayedDep ? delayedDep.timeStr : dep.timeStr}
+            </span>
+            <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+              {isDelayed && delayedDep ? delayedDep.dateStr : dep.dateStr}
+            </span>
+          </div>
+
+          {/* Center Graphic / Duration */}
+          <div className="flex-1 flex flex-col items-center px-2">
+            <span className="text-[10px] font-bold text-slate-600">{durationStr}</span>
+            <div className="w-full flex items-center gap-1 my-1">
+              <div className="h-[2px] flex-1 bg-slate-200" />
+              <span className="material-symbols-outlined text-slate-400 text-xs select-none rotate-90">flight</span>
+              <div className="h-[2px] flex-1 bg-slate-200" />
+            </div>
+            <span className="text-[9px] font-semibold text-slate-400">{stopsStr}</span>
+          </div>
+
+          {/* Arrival */}
+          <div className="flex flex-col text-right">
+            <span className="text-[10px] font-bold text-slate-400">{destination_airport}</span>
+            <span className="text-xl font-bold text-slate-900 leading-tight">
+              {isDelayed && delayedArr ? delayedArr.timeStr : arr.timeStr}
+            </span>
+            <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+              {isDelayed && delayedArr ? delayedArr.dateStr : arr.dateStr}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Price & CTA */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block select-none">Total Fare</span>
+            <span className="text-xl font-extrabold text-slate-950">₹{Math.round(displayPrice)}</span>
+          </div>
+
+          {booking_cutoff_passed ? (
+            <span className="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1 rounded-lg">
+              Booking Closed
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onViewDetails && onViewDetails(flight)}
+              className="px-4 py-1.5 text-xs rounded-xl font-bold transition-all cursor-pointer btn-primary shadow-sm"
+            >
+              View Details
+            </button>
+          )}
+        </div>
+
+      </div>
+
     </div>
   );
 }
