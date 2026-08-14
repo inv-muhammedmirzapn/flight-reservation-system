@@ -29,12 +29,15 @@ def expire_stale_holds(flight_instance):
         )
 
 
-def hold_seat(flight_instance, seat_number, user):
+def hold_seat(flight_instance, seat_number, user, old_seat_number=None):
     """
     Temporarily hold a seat for a user for SEAT_HOLD_MINUTES minutes.
+    If old_seat_number is provided, explicitly releases that prior seat hold.
+    Supports holding multiple seats (e.g. for multi-passenger bookings) up to 10 active holds.
     Raises ValidationError if the seat is unavailable or already held.
     Returns the SeatHold instance.
     """
+    MAX_HELD_SEATS_PER_USER = 10
     with transaction.atomic():
         # Lazy expiry first
         expire_stale_holds(flight_instance)
@@ -57,22 +60,30 @@ def hold_seat(flight_instance, seat_number, user):
         if seat.status != SeatStatus.AVAILABLE:
             raise ValidationError(f"Seat {seat_number} is not available (status: {seat.status}).")
 
+        # If old_seat_number is provided (e.g. user selected a different seat for a passenger), release that hold first
+        if old_seat_number:
+            old_holds = SeatHold.objects.select_related('seat').filter(
+                flight_instance=flight_instance,
+                user=user,
+                seat__seat_number=old_seat_number,
+            )
+            old_seat_ids = list(old_holds.values_list('seat_id', flat=True))
+            old_holds.delete()
+            if old_seat_ids:
+                Seat.objects.filter(id__in=old_seat_ids, status=SeatStatus.HELD).update(
+                    status=SeatStatus.AVAILABLE
+                )
+
+        # Enforce maximum active holds limit per user for this flight
+        user_holds_count = SeatHold.objects.filter(
+            flight_instance=flight_instance, user=user
+        ).count()
+        if user_holds_count >= MAX_HELD_SEATS_PER_USER:
+            raise ValidationError(f"Maximum limit of {MAX_HELD_SEATS_PER_USER} held seats reached.")
+
         # Mark seat as HELD
         seat.status = SeatStatus.HELD
         seat.save(update_fields=['status'])
-
-        # Release any prior hold this user had for a different seat on this flight,
-        # and free those seats back to AVAILABLE.
-        old_holds = SeatHold.objects.select_related('seat').filter(
-            flight_instance=flight_instance,
-            user=user,
-        ).exclude(seat=seat)
-        old_seat_ids = list(old_holds.values_list('seat_id', flat=True))
-        old_holds.delete()
-        if old_seat_ids:
-            Seat.objects.filter(id__in=old_seat_ids, status=SeatStatus.HELD).update(
-                status=SeatStatus.AVAILABLE
-            )
 
         # Create the hold with an explicit expires_at
         hold = SeatHold.objects.create(
@@ -222,6 +233,11 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             except FlightInstance.DoesNotExist:
                 raise ValidationError("Flight not found.")
 
+        # Fetch IDs of seats currently held by this user for this flight
+        user_held_seat_ids = set(SeatHold.objects.filter(
+            flight_instance=flight_instance, user=user
+        ).values_list('seat_id', flat=True))
+
         # Lock available seats and get per-class price
         fare_obj = None
         price_per_pax = 0
@@ -234,16 +250,22 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             if fare_obj:
                 price_per_pax = fare_obj.price
 
-            # Final guard inside the lock
-            real_available = flight_instance.seats.filter(
-                seat_class=cabin_class, status=SeatStatus.AVAILABLE
-            ).count()
+            # Final guard inside the lock (AVAILABLE or HELD by current user)
+            class_seats = flight_instance.seats.filter(seat_class=cabin_class)
+            real_available = sum(
+                1 for s in class_seats
+                if s.status == SeatStatus.AVAILABLE or (s.status == SeatStatus.HELD and s.id in user_held_seat_ids)
+            )
             if real_available < seat_count:
                 raise ValidationError(
                     f"Only {real_available} {cabin_class.lower()} seat(s) available."
                 )
         else:
-            real_available = flight_instance.seats.filter(status=SeatStatus.AVAILABLE).count()
+            all_seats = flight_instance.seats.all()
+            real_available = sum(
+                1 for s in all_seats
+                if s.status == SeatStatus.AVAILABLE or (s.status == SeatStatus.HELD and s.id in user_held_seat_ids)
+            )
             if real_available < seat_count:
                 raise ValidationError(
                     f"Only {real_available} seats available on this flight."
@@ -259,15 +281,22 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             # All seats were explicitly requested
             requested_seats_qs = flight_instance.seats.select_for_update().filter(
                 seat_number__in=requested_seat_numbers,
-                status=SeatStatus.AVAILABLE
             )
             if cabin_class:
                 requested_seats_qs = requested_seats_qs.filter(seat_class=cabin_class)
                 
-            if requested_seats_qs.count() != seat_count:
+            requested_seats = list(requested_seats_qs)
+            if len(requested_seats) != seat_count:
                 raise ValidationError("One or more selected seats are not available or invalid for this cabin class.")
                 
-            for seat_obj in requested_seats_qs:
+            for seat_obj in requested_seats:
+                if seat_obj.status == SeatStatus.HELD:
+                    if seat_obj.id not in user_held_seat_ids:
+                        raise ValidationError(f"Seat {seat_obj.seat_number} is currently held by another user.")
+                elif seat_obj.status != SeatStatus.AVAILABLE:
+                    raise ValidationError(f"Seat {seat_obj.seat_number} is not available (status: {seat_obj.status}).")
+
+            for seat_obj in requested_seats:
                 seat_obj.status = SeatStatus.BOOKED
                 seat_obj.save(update_fields=['status'])
                 total_seat_fee += seat_obj.seat_fee
@@ -304,6 +333,9 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             booking_kwargs["cabin_class"] = cabin_class
 
         booking = Booking.objects.create(**booking_kwargs)
+
+        # Clean up any active SeatHold records for this user/flight after successful booking
+        SeatHold.objects.filter(flight_instance=flight_instance, user=user).delete()
 
         # Keep Fare.available_seats in sync
         if fare_obj and assigned_seats:

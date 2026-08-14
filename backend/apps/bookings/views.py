@@ -214,6 +214,9 @@ class SeatHoldViewSet(mixins.CreateModelMixin,
         """
         flight_instance_id = request.data.get('flight_instance')
         seat_number = request.data.get('seat_number', '').strip().upper()
+        old_seat_number = request.data.get('old_seat_number')
+        if old_seat_number:
+            old_seat_number = str(old_seat_number).strip().upper()
 
         if not flight_instance_id:
             raise ValidationError({'detail': 'flight_instance is required.'})
@@ -227,7 +230,7 @@ class SeatHoldViewSet(mixins.CreateModelMixin,
             raise ValidationError({'detail': 'Flight instance not found.'})
 
         try:
-            hold = hold_seat(flight_instance, seat_number, request.user)
+            hold = hold_seat(flight_instance, seat_number, request.user, old_seat_number=old_seat_number)
             serializer = self.get_serializer(hold)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except DjangoValidationError as e:

@@ -209,15 +209,15 @@ class HoldSeatTests(TestCase):
 
     def test_switching_seats_releases_old_hold(self):
         """
-        When a user selects a new seat, their previous hold on the same flight
-        should be released (only one active hold per user per flight).
+        When a user explicitly switches a seat for a passenger, passing old_seat_number
+        releases the old hold and creates the new hold.
         """
         seat2 = Seat.objects.create(
             flight_instance=self.fi, seat_number="1B",
             seat_class=CabinClass.ECONOMY, status=SeatStatus.AVAILABLE,
         )
         hold_seat(self.fi, "1A", self.user)  # hold 1A
-        hold_seat(self.fi, "1B", self.user)  # switch to 1B
+        hold_seat(self.fi, "1B", self.user, old_seat_number="1A")  # switch to 1B
 
         self.assertEqual(
             SeatHold.objects.filter(user=self.user, flight_instance=self.fi).count(), 1
@@ -227,6 +227,23 @@ class HoldSeatTests(TestCase):
 
         self.seat.refresh_from_db()
         self.assertEqual(self.seat.status, SeatStatus.AVAILABLE)
+
+    def test_holding_multiple_seats_for_multi_passenger_booking(self):
+        """
+        A single user account can hold multiple seats for a multi-passenger booking.
+        """
+        seat2 = Seat.objects.create(
+            flight_instance=self.fi, seat_number="1B",
+            seat_class=CabinClass.ECONOMY, status=SeatStatus.AVAILABLE,
+        )
+        hold1 = hold_seat(self.fi, "1A", self.user)
+        hold2 = hold_seat(self.fi, "1B", self.user)
+
+        self.assertIsNotNone(hold1.pk)
+        self.assertIsNotNone(hold2.pk)
+        self.assertEqual(
+            SeatHold.objects.filter(user=self.user, flight_instance=self.fi).count(), 2
+        )
 
 
 class ReleaseHoldTests(TestCase):
@@ -511,3 +528,24 @@ class BookingWithHoldLazyExpiryTests(TestCase):
         from apps.bookings.services import create_booking
         with self.assertRaises(ValidationError):
             create_booking(self.fi.pk, self.user, self.passengers, cabin_class="ECONOMY")
+
+    def test_booking_succeeds_when_seat_is_actively_held_by_same_user(self):
+        """
+        If the current user has an active hold on the seat, booking should succeed
+        and the SeatHold record should be cleaned up upon booking.
+        """
+        hold = hold_seat(self.fi, "1A", self.user)
+        self.seat.refresh_from_db()
+        self.assertEqual(self.seat.status, SeatStatus.HELD)
+
+        passengers_with_seat = [{"name": "Jane Doe", "age": 28, "gender": "F", "seat_number": "1A"}]
+
+        from apps.bookings.services import create_booking
+        with patch("apps.notifications.services.NotificationService.send_booking_confirmation"):
+            booking = create_booking(self.fi.pk, self.user, passengers_with_seat, cabin_class="ECONOMY")
+
+        self.assertEqual(booking.status, BookingStatus.CONFIRMED)
+        self.seat.refresh_from_db()
+        self.assertEqual(self.seat.status, SeatStatus.BOOKED)
+        # SeatHold must be deleted
+        self.assertFalse(SeatHold.objects.filter(pk=hold.pk).exists())
