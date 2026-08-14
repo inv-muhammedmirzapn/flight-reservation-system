@@ -61,6 +61,26 @@ export default function BookingCheckoutPage() {
   // Selected seats array
   const [selectedSeats, setSelectedSeats] = useState([]);
 
+  // Track selected seats & submission status for unmount hold cleanup
+  const selectedSeatsRef = useRef(selectedSeats);
+  const bookingSubmittedRef = useRef(false);
+
+  useEffect(() => {
+    selectedSeatsRef.current = selectedSeats;
+  }, [selectedSeats]);
+
+  useEffect(() => {
+    return () => {
+      if (!bookingSubmittedRef.current) {
+        selectedSeatsRef.current.forEach((seat) => {
+          if (seat.holdId) {
+            bookingAPI.releaseHold(seat.holdId).catch(() => {});
+          }
+        });
+      }
+    };
+  }, []);
+
   useEffect(() => {
     async function loadCheckoutData() {
       try {
@@ -503,6 +523,7 @@ export default function BookingCheckoutPage() {
         };
       });
 
+      bookingSubmittedRef.current = true;
       if (isWaitlisted) {
         const response = await waitlistAPI.join(id, formattedPassengers, selectedCabin);
         toast.success(`Successfully joined waitlist (Position #${response.queue_position || 1})!`);
