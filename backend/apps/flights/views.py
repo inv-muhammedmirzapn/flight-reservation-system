@@ -448,7 +448,17 @@ class FlightRouteViewSet(AdminModelViewSet):
     queryset = FlightRoute.objects.select_related("airline").prefetch_related("legs").all()
     serializer_class = FlightRouteSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["flight_no"]
+    search_fields = [
+        "flight_no",
+        "airline__airline_name",
+        "airline__iata_airline_code",
+        "legs__departure_airport__airport_name",
+        "legs__departure_airport__city",
+        "legs__departure_airport__iata_code",
+        "legs__arrival_airport__airport_name",
+        "legs__arrival_airport__city",
+        "legs__arrival_airport__iata_code",
+    ]
     ordering_fields = ["flight_no"]
 
     def get_queryset(self):
@@ -477,7 +487,17 @@ class FlightInstanceViewSet(AdminModelViewSet):
     queryset = FlightInstance.objects.select_related("flight", "aircraft").all()
     serializer_class = FlightInstanceSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["flight__flight_no"]
+    search_fields = [
+        "flight__flight_no",
+        "flight__airline__airline_name",
+        "flight__airline__iata_airline_code",
+        "flight__legs__departure_airport__airport_name",
+        "flight__legs__departure_airport__city",
+        "flight__legs__departure_airport__iata_code",
+        "flight__legs__arrival_airport__airport_name",
+        "flight__legs__arrival_airport__city",
+        "flight__legs__arrival_airport__iata_code",
+    ]
     ordering_fields = ["date", "scheduled_departure"]
 
     def get_queryset(self):

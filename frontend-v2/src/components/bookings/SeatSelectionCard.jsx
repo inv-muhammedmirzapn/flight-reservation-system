@@ -46,7 +46,7 @@ export default function SeatSelectionCard({
     if (cabinClass === 'ECONOMY') layoutStr = flight?.aircraft_economy_layout || flight?.aircraft?.economy_layout || "3-3";
     else if (cabinClass === 'BUSINESS') layoutStr = flight?.aircraft_business_layout || flight?.aircraft?.business_layout || "2-2";
     else if (cabinClass === 'FIRST') layoutStr = flight?.aircraft_first_class_layout || flight?.aircraft?.first_class_layout || "2-2";
-    
+
     return layoutStr.split('-').map(Number);
   }, [flight, cabinClass]);
 
@@ -157,14 +157,14 @@ export default function SeatSelectionCard({
   const getSeatColor = (seat) => {
     const isSelected = selectedSeats.some(s => s.id === seat.id || s.seat_number === seat.seat_number);
     if (isSelected) return 'bg-yellow-400 text-yellow-950 border-yellow-500 shadow-sm';
-    
+
     if (seat.status === 'HELD') {
       return 'bg-amber-100/70 text-amber-700/60 border-amber-200 cursor-not-allowed';
     }
     if (seat.status !== 'AVAILABLE') {
       return 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed';
     }
-    
+
     const feeIndex = uniqueFees.indexOf(Number(seat.seat_fee || 0));
     const colorClass = FEE_COLORS[Math.min(feeIndex, FEE_COLORS.length - 1)] || FEE_COLORS[0];
     return `${colorClass} cursor-pointer`;
@@ -255,7 +255,7 @@ export default function SeatSelectionCard({
                   {layoutCols.map((colSize, groupIdx) => {
                     const blockSeats = row.seats.slice(seatIdx, seatIdx + colSize);
                     seatIdx += colSize;
-                    
+
                     return (
                       <React.Fragment key={`${row.rowId}-group-${groupIdx}`}>
                         <div className="flex gap-1 sm:gap-1.5 md:gap-2">
@@ -270,28 +270,27 @@ export default function SeatSelectionCard({
                                 type="button"
                                 onClick={() => toggleSeat(seat)}
                                 disabled={!isAvailable || isCurrentlyHolding}
-                                className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md border transition-all duration-200 flex flex-col items-center justify-center group relative hover:z-50 ${getSeatColor(seat)} ${
-                                  isCurrentlyHolding ? 'animate-pulse opacity-75' : ''
-                                }`}
+                                className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md border transition-all duration-200 flex flex-col items-center justify-center group relative hover:z-50 ${getSeatColor(seat)} ${isCurrentlyHolding ? 'animate-pulse opacity-75' : ''
+                                  }`}
                               >
-                                  {/* Hover Tooltip */}
-                                  <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
-                                    {seat.status === 'HELD' && !isSelected ? (
-                                      <span>Temporarily held by another passenger</span>
-                                    ) : seat.status !== 'AVAILABLE' && !isSelected ? (
-                                      <span>Seat already booked</span>
-                                    ) : (
-                                      <>
-                                        <span>{seat.seat_number} ({formatPosition(seat)})</span>
-                                        <span className={Number(seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
-                                          {Number(seat.seat_fee) > 0 ? '+₹' + Number(seat.seat_fee).toLocaleString('en-IN') : 'Included'}
-                                        </span>
-                                      </>
-                                    )}
-                                    {/* Tooltip Caret */}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800"></div>
-                                  </div>
-                                
+                                {/* Hover Tooltip */}
+                                <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
+                                  {seat.status === 'HELD' && !isSelected ? (
+                                    <span>Temporarily held by another passenger</span>
+                                  ) : seat.status !== 'AVAILABLE' && !isSelected ? (
+                                    <span>Seat already booked</span>
+                                  ) : (
+                                    <>
+                                      <span>{seat.seat_number} ({formatPosition(seat)})</span>
+                                      <span className={Number(seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
+                                        {Number(seat.seat_fee) > 0 ? '+₹' + Number(seat.seat_fee).toLocaleString('en-IN') : 'Included'}
+                                      </span>
+                                    </>
+                                  )}
+                                  {/* Tooltip Caret */}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800"></div>
+                                </div>
+
                                 {!isAvailable && !isSelected && (
                                   <span className="material-symbols-outlined text-slate-300 text-base sm:text-lg absolute inset-0 m-auto flex items-center justify-center select-none pointer-events-none opacity-50">
                                     {seat.status === 'HELD' ? 'lock' : 'close'}
@@ -325,16 +324,16 @@ export default function SeatSelectionCard({
           <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200">
             <div className="space-y-3">
               {uniqueFees.map((fee, idx) => {
-                 const colorClass = FEE_COLORS[Math.min(idx, FEE_COLORS.length - 1)];
-                 const legendBoxClass = colorClass.split(' hover:')[0];
-                 return (
-                   <div key={fee} className="flex items-center gap-3">
-                     <div className={`w-6 h-6 rounded border ${legendBoxClass}`}></div>
-                     <span className="text-xs text-slate-600 font-medium">
-                       {fee === 0 ? 'Standard Seat' : `₹${fee.toLocaleString('en-IN')}`}
-                     </span>
-                   </div>
-                 );
+                const colorClass = FEE_COLORS[Math.min(idx, FEE_COLORS.length - 1)];
+                const legendBoxClass = colorClass.split(' hover:')[0];
+                return (
+                  <div key={fee} className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded border ${legendBoxClass}`}></div>
+                    <span className="text-xs text-slate-600 font-medium">
+                      {fee === 0 ? 'Standard Seat' : `₹${fee.toLocaleString('en-IN')}`}
+                    </span>
+                  </div>
+                );
               })}
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded border border-yellow-500 bg-yellow-400 shadow-sm shadow-yellow-200"></div>

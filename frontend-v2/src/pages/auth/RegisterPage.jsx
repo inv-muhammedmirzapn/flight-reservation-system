@@ -71,9 +71,9 @@ export default function RegisterPage() {
 
   const isPasswordStrong = passwordRules.every((rule) => rule.met);
 
-  // Show requirements when typing, focused, or if password has errors
+  // Show requirements while typing and not yet complete; hide immediately once all rules pass
   const showPasswordRequirements =
-    isPasswordFocused || (formData.password.length > 0 && !isPasswordStrong);
+    !isPasswordStrong && (isPasswordFocused || formData.password.length > 0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

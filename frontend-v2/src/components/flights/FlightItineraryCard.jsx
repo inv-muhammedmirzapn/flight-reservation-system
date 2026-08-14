@@ -179,47 +179,72 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
 
 
       {/* Top Header Row: Route Title & Optional Seat/Waitlist Status Badge */}
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3 min-w-0">
           {logoSrc && (
             <img
               src={logoSrc}
               alt={airline}
-              className="h-8 object-contain shadow-2xs"
+              className="h-8 object-contain shadow-2xs flex-shrink-0"
             />
           )}
-          <h2 className="text-xl font-bold text-slate-950">
+          <h2 className="text-xl font-bold text-slate-950 truncate">
             {sourceInfo.city} &rarr; {destInfo.city}
           </h2>
         </div>
 
-        {/* Status Badge — Delayed overrides Available/Waitlist */}
+        {/* Status Badge — mobile: compact inline pill | sm+: absolute card */}
         {showBadge && (
-          isDelayed ? (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
-              <span>Delayed</span>
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-base text-amber-700 select-none">schedule</span>
-                <span className="font-bold text-sm">+{delay_minutes}m</span>
-              </span>
+          <>
+            {/* ── Mobile pill (visible only below sm) ── */}
+            <div className="sm:hidden flex-shrink-0">
+              {isDelayed ? (
+                <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold px-2 py-1 rounded-full">
+                  <span className="material-symbols-outlined text-xs select-none">schedule</span>
+                  +{delay_minutes}m
+                </span>
+              ) : isWaitlisted ? (
+                <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-bold px-2 py-1 rounded-full">
+                  <span className="material-symbols-outlined text-xs select-none">people</span>
+                  {queueCount} waiting
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-emerald-100 border border-emerald-300 text-emerald-900 text-[11px] font-bold px-2 py-1 rounded-full">
+                  <span className="material-symbols-outlined text-xs select-none">event_seat</span>
+                  {activeSeats} left
+                </span>
+              )}
             </div>
-          ) : isWaitlisted ? (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
-              <span>Waitlist</span>
-              <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">people</span>
-                <span className="font-bold text-lg">{queueCount}</span>
-              </span>
+
+            {/* ── Desktop card (hidden on mobile, absolute on sm+) ── */}
+            <div className="hidden sm:block">
+              {isDelayed ? (
+                <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+                  <span>Delayed</span>
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-base text-amber-700 select-none">schedule</span>
+                    <span className="font-bold text-sm">+{delay_minutes}m</span>
+                  </span>
+                </div>
+              ) : isWaitlisted ? (
+                <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+                  <span>Waitlist</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">people</span>
+                    <span className="font-bold text-lg">{queueCount}</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+                  <span>Available</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">event_seat</span>
+                    <span className="font-bold text-lg">{activeSeats}</span>
+                  </span>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
-              <span>Available</span>
-              <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">event_seat</span>
-                <span className="font-bold text-lg">{activeSeats}</span>
-              </span>
-            </div>
-          )
+          </>
         )}
       </div>
 

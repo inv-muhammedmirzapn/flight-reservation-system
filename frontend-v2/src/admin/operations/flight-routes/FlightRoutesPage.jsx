@@ -222,9 +222,27 @@ export default function FlightRoutesPage() {
         <form onSubmit={(e) => { e.preventDefault(); setActiveSearch(search); setPage(1); }} className="flex gap-2 mb-5">
           <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by flight number…"
+            />
+            {search && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => {
+                  setSearch('');
+                  setActiveSearch('');
+                  setPage(1);
+                }}
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <button type="submit" className="btn-primary">Search</button>
+          <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
         </form>
 
         {error && (
@@ -258,19 +276,24 @@ export default function FlightRoutesPage() {
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
                     <td>
-                      {(r.legs || []).map((leg, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 mr-1.5 mb-1">
-                          {i > 0 && (
-                            <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded">
-                              Layover {formatMins(leg.layover_duration_minutes)}
+                      <div className="flex flex-col gap-0.5">
+                        {(r.legs || []).map((leg, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            {i > 0 && (
+                              <div className="flex items-center gap-1 pl-1">
+                                <div className="w-px h-3 bg-[#ccc]" />
+                                <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded leading-none">
+                                  Layover {formatMins(leg.layover_duration_minutes)}
+                                </span>
+                              </div>
+                            )}
+                            <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold w-fit whitespace-nowrap">
+                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                              <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
                             </span>
-                          )}
-                          <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold">
-                            {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                            <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
-                          </span>
-                        </span>
-                      ))}
+                          </div>
+                        ))}
+                      </div>
                     </td>
                     <td>{r.baggage_weight_allowed_per_person}</td>
                     <td>{r.handbag_weight_allowed_per_person}</td>

@@ -133,7 +133,7 @@ function ResetStep({ email, onBack }) {
   // Password rules
   const passwordRules = PASSWORD_RULES.map((r) => ({ ...r, met: r.test(password) }));
   const isPasswordStrong = passwordRules.every((r) => r.met);
-  const showRequirements = isPasswordFocused || (password.length > 0 && !isPasswordStrong);
+  const showRequirements = !isPasswordStrong && (isPasswordFocused || password.length > 0);
 
   const passwordErrors = useMemo(() => {
     const e = {};
