@@ -261,7 +261,7 @@ export default function FlightOverviewPage() {
                 </div>
 
                 {/* Main Control & Search Bar */}
-                <div className="glass-card" style={{ borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
+                <div className="glass-card overview-controls" style={{ borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
                     {/* Quick Search */}
                     <form
                         onSubmit={(e) => {
@@ -354,7 +354,7 @@ export default function FlightOverviewPage() {
                 )}
 
                 {/* Table */}
-                <div className="glass-card" style={{ borderRadius: 20, overflow: 'hidden' }}>
+                <div className="glass-card overview-table-container" style={{ borderRadius: 20, overflow: 'hidden' }}>
                     {loading ? (
                         <PageLoader fullScreen={true} label={t("admin.fetching", { defaultValue: 'Fetching flights...' })} />
                     ) : flights.length === 0 ? (
@@ -366,31 +366,31 @@ export default function FlightOverviewPage() {
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <table className="overview-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
                                     <tr style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                                         {[t("admin.table.flightNo", { defaultValue: 'Flight No.' }), t("admin.table.route", { defaultValue: 'Route' }), t("admin.table.times", { defaultValue: 'Times (Dep / Arr)' }), t("admin.table.gate", { defaultValue: 'Gate/Terminal' }), t("admin.table.status", { defaultValue: 'Status' }), t("admin.table.actions", { defaultValue: 'Actions' })].map(h => (
-                                            <th key={h} style={{ padding: '14px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', whiteSpace: 'nowrap' }}>{h}</th>
+                                            <th key={h} className="overview-th" style={{ padding: '14px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', whiteSpace: 'nowrap' }}>{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {flights.map(f => (
                                         <tr key={f.id} className="admin-row" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '16px', fontWeight: 800, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>{f.flight_number}</td>
-                                            <td style={{ padding: '16px', fontWeight: 700, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>
+                                            <td className="overview-td-main" style={{ padding: '16px', fontWeight: 800, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>{f.flight_number}</td>
+                                            <td className="overview-td-main" style={{ padding: '16px', fontWeight: 700, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>
                                                 {f.route?.source?.iata_code}<span style={{ color: '#705d00', margin: '0 4px' }}>→</span>{f.route?.destination?.iata_code}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: 12, color: '#5e5e5e', lineHeight: 1.7 }}>
+                                            <td className="overview-td-sub" style={{ padding: '16px', fontSize: 12, color: '#5e5e5e', lineHeight: 1.7 }}>
                                                 <div>Dep: {fmtDT(f.scheduled_departure)}</div>
                                                 <div>Arr: {fmtDT(f.scheduled_arrival)}</div>
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: 13, color: '#5e5e5e', whiteSpace: 'nowrap' }}>
+                                            <td className="overview-td-sub" style={{ padding: '16px', fontSize: 13, color: '#5e5e5e', whiteSpace: 'nowrap' }}>
                                                 <div>Gate: {f.boarding_gate || '-'}</div>
                                                 <div>Term: {f.departure_terminal || '-'} / {f.arrival_terminal || '-'}</div>
                                             </td>
-                                            <td style={{ padding: '16px' }}><StatusBadge status={f.status} /></td>
-                                            <td style={{ padding: '16px' }}>
+                                            <td className="overview-td-status" style={{ padding: '16px' }}><StatusBadge status={f.status} /></td>
+                                            <td className="overview-td-actions" style={{ padding: '16px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
                                                 </div>
