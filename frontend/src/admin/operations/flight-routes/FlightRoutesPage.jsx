@@ -3,27 +3,29 @@
  * leg_order is auto-assigned by row position.
  * Cross-row layover validation: each leg's departure must be after prev leg's arrival.
  */
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
-import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
-  fetchFlightRoutes, fetchFlightRouteDetail, addFlightRoute, updateFlightRoute, removeFlightRoute,
+  fetchFlightRoutes, addFlightRoute, updateFlightRoute, removeFlightRoute,
   fetchAirlines, fetchAirports,
   flightRouteActions,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import {
-  Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronLeft, ChevronRight,
+  Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronRight,
   Search, PlusCircle, MinusCircle, MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useDeleteAction from '../../_core/hooks/useDeleteAction';
+import { SpinnerLoader } from '@/components/ui/Loaders';
+import { parseApiError } from '@/utils/errorUtils';
 
-const ACCENT = '#705d00';
+// const ACCENT = '#705d00';
 const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
 
 const EMPTY_FORM = {
@@ -46,19 +48,20 @@ export default function FlightRoutesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const PAGE_SIZE = 10;
 
-  const load = (s, p) => dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
+  const load = useCallback((s, p) => {
+    dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
+  }, [dispatch]);
 
   useEffect(() => {
-    load(search, page);
+    load(activeSearch, page);
     dispatch(fetchAirlines({}));
     dispatch(fetchAirports({ page_size: 500 }));
-  }, []);
+  }, [load, dispatch, activeSearch, page]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
   const airportOptions = airports.map((a) => ({ value: a.id, label: `${a.iata_code} – ${a.airport_name}` }));
@@ -179,33 +182,19 @@ export default function FlightRoutesPage() {
       if (goNext && routeId) {
         navigate(`/admin/operations/flight-instances?route=${routeId}&autoCreate=1`);
       } else {
-        load(search, page);
+        load(activeSearch, page);
       }
     } catch (err) {
-      if (typeof err === 'string') toast.error(err);
-      else if (err?.flight_no?.[0]) toast.error(err.flight_no[0]);
-      else if (err?.non_field_errors?.[0]) toast.error(err.non_field_errors[0]);
-      else toast.error('Failed to save.');
+      toast.error(parseApiError(err, 'Failed to save.'));
     }
   };
 
-  const isDeletingRef = useRef(false);
-  const confirmDelete = async () => {
-    if (!deleteItem || isDeletingRef.current) return;
-    isDeletingRef.current = true;
-    setDeleteLoading(true);
-    try {
-      await dispatch(removeFlightRoute(deleteItem.id)).unwrap();
-      toast.success('Flight route deleted successfully.');
-      setDeleteItem(null);
-      load(search, page);
-    } catch (err) {
-      toast.error('Failed to delete flight route.');
-    } finally {
-      setDeleteLoading(false);
-      isDeletingRef.current = false;
-    }
-  };
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: removeFlightRoute,
+    onSuccess: () => load(activeSearch, page),
+    successMessage: 'Flight route deleted successfully.',
+    errorMessage: 'Failed to delete flight route.'
+  });
 
   const formatMins = (mins) => {
     if (!mins) return '0m';
@@ -230,12 +219,30 @@ export default function FlightRoutesPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(search, 1); }} className="flex gap-2 mb-5">
+        <form onSubmit={(e) => { e.preventDefault(); setActiveSearch(search); setPage(1); }} className="flex gap-2 mb-5">
           <div className="admin-toolbar-search">
             <Search size={14} className="search-icon" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by flight number…"
+            />
+            {search && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => {
+                  setSearch('');
+                  setActiveSearch('');
+                  setPage(1);
+                }}
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <button type="submit" className="btn-primary">Search</button>
+          <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
         </form>
 
         {error && (
@@ -247,7 +254,7 @@ export default function FlightRoutesPage() {
         {/* Table */}
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
+            <SpinnerLoader />
           ) : routes?.length === 0 ? (
             <div className="admin-empty">
               <div className="admin-empty-icon"><MapPin size={28} /></div>
@@ -269,28 +276,33 @@ export default function FlightRoutesPage() {
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
                     <td>
-                      {(r.legs || []).map((leg, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 mr-1.5 mb-1">
-                          {i > 0 && (
-                            <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded">
-                              Layover {formatMins(leg.layover_duration_minutes)}
+                      <div className="flex flex-col gap-0.5">
+                        {(r.legs || []).map((leg, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            {i > 0 && (
+                              <div className="flex items-center gap-1 pl-1">
+                                <div className="w-px h-3 bg-[#ccc]" />
+                                <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded leading-none whitespace-nowrap w-max">
+                                  Layover {formatMins(leg.layover_duration_minutes)}
+                                </span>
+                              </div>
+                            )}
+                            <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold w-max whitespace-nowrap">
+                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                              <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
                             </span>
-                          )}
-                          <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold">
-                            {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                            <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
-                          </span>
-                        </span>
-                      ))}
+                          </div>
+                        ))}
+                      </div>
                     </td>
                     <td>{r.baggage_weight_allowed_per_person}</td>
                     <td>{r.handbag_weight_allowed_per_person}</td>
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
-                        <button className="btn-secondary px-2 py-1.5" title="Edit" onClick={() => openEdit(r)}>
+                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(r)} style={{ padding: '6px 8px' }}>
                           <Pencil size={14} />
                         </button>
-                         <button className="btn-danger px-2 py-1.5" title="Delete" onClick={() => setDeleteItem(r)}>
+                        <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -307,7 +319,7 @@ export default function FlightRoutesPage() {
           totalPages={totalPages}
           totalCount={count || routes?.length || 0}
           pageSize={PAGE_SIZE}
-          onPageChange={(p) => { setPage(p); load(search, p); }}
+          onPageChange={(p) => { setPage(p); }}
           entityLabel="routes"
         />
       </div>
@@ -325,7 +337,7 @@ export default function FlightRoutesPage() {
 
             {validationErrors && (
               <div className="admin-error">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div className="flex flex-col gap-1">
                   {typeof validationErrors === 'string' ? (
                     <span>{validationErrors}</span>
@@ -346,7 +358,7 @@ export default function FlightRoutesPage() {
             <form onSubmit={handleSubmit}>
               {/* General */}
               <div className="admin-form-grid mb-5">
-                 <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
+                <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
                   onChange={(e) => {
                     const airlineId = e.target.value;
                     setForm((f) => ({
@@ -360,19 +372,31 @@ export default function FlightRoutesPage() {
                   <label htmlFor="flight_no" className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                     Flight Number
                   </label>
-                  <div className="flex items-center">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
                     {form.airline ? (() => {
                       const selected = airlines.find((a) => String(a.id) === String(form.airline));
                       if (selected) {
                         return (
-                          <div className={`
-                            px-[14px] py-[9px] bg-black/[0.04] text-sm font-bold text-[#5e5e5e]
-                            flex items-center box-border whitespace-nowrap shrink-0 rounded-l-[10px]
-                            border-[1.5px] border-r-0 h-[40px]
-                            ${(localErrors.flight_no || validationErrors?.flight_no)
-                              ? 'border-[#b91c1c]'
-                              : (isFlightNoFocused ? 'border-[#888888]' : 'border-black/10')}
-                          `}>
+                          <div style={{
+                            padding: '9px 14px',
+                            background: 'rgba(0, 0, 0, 0.04)',
+                            border: `1.5px solid ${(localErrors.flight_no || validationErrors?.flight_no)
+                                ? '#b91c1c'
+                                : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
+                              }`,
+                            borderRight: 'none',
+                            borderRadius: '10px 0 0 10px',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: '#5e5e5e',
+                            fontFamily: 'Inter, sans-serif',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            boxSizing: 'border-box',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
                             {selected.iata_airline_code} -
                           </div>
                         );
@@ -390,23 +414,34 @@ export default function FlightRoutesPage() {
                       }}
                       onFocus={() => setIsFlightNoFocused(true)}
                       onBlur={() => setIsFlightNoFocused(false)}
-                      className={`
-                        flex-1 px-[13px] py-[9px] text-sm font-medium text-[#1a1c1d]
-                        outline-none h-[40px] box-border font-sans
-                        transition-all duration-200 border-[1.5px]
-                        ${form.airline 
-                          ? `border-l-0 rounded-r-[10px] ${isFlightNoFocused ? 'bg-white/90' : 'bg-white/65'}`
-                          : `rounded-[10px] bg-black/[0.03]`
-                        }
-                        ${(localErrors.flight_no || validationErrors?.flight_no)
-                          ? `border-[#b91c1c] ${isFlightNoFocused ? 'shadow-[0_0_0_3px_rgba(185,28,28,0.18)]' : 'shadow-[0_0_0_3px_rgba(185,28,28,0.1)]'}`
-                          : (isFlightNoFocused ? 'border-[#888888] shadow-[0_0_0_3px_rgba(0,0,0,0.05)]' : 'border-black/10 shadow-none')
-                        }
-                      `}
+                      style={{
+                        flex: 1,
+                        background: form.airline
+                          ? (isFlightNoFocused ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)')
+                          : 'rgba(0,0,0,0.03)',
+                        border: `1.5px solid ${(localErrors.flight_no || validationErrors?.flight_no)
+                            ? '#b91c1c'
+                            : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
+                          }`,
+                        borderLeft: form.airline ? 'none' : undefined,
+                        borderRadius: form.airline ? '0 10px 10px 0' : '10px',
+                        padding: '9px 13px',
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: '#1a1c1d',
+                        fontFamily: 'Inter, sans-serif',
+                        outline: 'none',
+                        height: '40px',
+                        boxSizing: 'border-box',
+                        boxShadow: (localErrors.flight_no || validationErrors?.flight_no)
+                          ? (isFlightNoFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
+                          : (isFlightNoFocused ? '0 0 0 3px rgba(0,0,0,0.05)' : 'none'),
+                        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s'
+                      }}
                     />
                   </div>
                   {(localErrors.flight_no || validationErrors?.flight_no) && (
-                    <p className="text-xs text-[#b91c1c] mt-0.5 pl-0.5">
+                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>
                       {localErrors.flight_no || (Array.isArray(validationErrors.flight_no) ? validationErrors.flight_no.join(', ') : validationErrors.flight_no)}
                     </p>
                   )}
@@ -428,7 +463,7 @@ export default function FlightRoutesPage() {
                   <h3 className="m-0 text-[13px] font-bold uppercase tracking-[.06em] text-[#705d00] flex items-center gap-1.5">
                     <MapPin size={14} /> Flight Legs
                   </h3>
-                  <button type="button" className="btn-secondary text-[12px] px-[10px] py-[5px]" onClick={addLeg}>
+                  <button type="button" className="btn-secondary" onClick={addLeg} style={{ fontSize: 12, padding: '5px 10px' }}>
                     <PlusCircle size={13} /> Add Leg
                   </button>
                 </div>
@@ -451,7 +486,7 @@ export default function FlightRoutesPage() {
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
                       <div className="leg-arrow-container select-none">
-                    <div className="h-[21px]" />
+                        <div style={{ height: 21 }} />
                         <div className="leg-arrow">→</div>
                       </div>
                       <Select id={`arr_apt_${i}`} label="Arrival Airport" options={airportOptions}

@@ -3,28 +3,28 @@
  * On selecting a flight_id, auto-suggests scheduled_departure/arrival from the route's first/last leg.
  * aircraft_id dropdown is filtered to aircraft owned by the flight's airline.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ComboInput } from '@/components/ui/ComboInput';
 import DateTimePicker from '@/components/ui/DateTimePicker';
-import DatePicker from '@/components/ui/DatePicker';
 import {
-  fetchFlightInstances, fetchFlightInstanceDetail, addFlightInstance,
+  fetchFlightInstances, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
   fetchFlightRoutes, fetchAircraft, fetchAirports,
 } from '@/admin/_core/store/adminSlices';
-import { fetchWithAuth } from '@/services/apiClient';
 import { Pagination } from '@/components/ui/Pagination';
 import {
-  Plus, Pencil, Trash2, Save, X, AlertCircle, Search, ChevronLeft, ChevronRight,
+  Plus, Pencil, Trash2, Save, X, AlertCircle, Search, ChevronRight,
   Banknote, Armchair, Utensils
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useDeleteAction from '../../_core/hooks/useDeleteAction';
+import { SpinnerLoader } from '@/components/ui/Loaders';
+import { parseApiError } from '@/utils/errorUtils';
 
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
@@ -66,15 +66,15 @@ export default function FlightInstancesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  
+
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const initialPage = isNaN(pageParam) ? 1 : pageParam;
   const [page, setPage] = useState(initialPage);
   const PAGE_SIZE = 10;
 
-  const load = (s, p) => dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
+  const load = useCallback((s, p) => {
+    dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
+  }, [dispatch]);
 
   const pageStr = searchParams.get('page') || '1';
 
@@ -83,7 +83,7 @@ export default function FlightInstancesPage() {
     const resolvedPage = isNaN(p) ? 1 : p;
     setPage(resolvedPage);
     load(activeSearch, resolvedPage);
-  }, [pageStr, activeSearch]);
+  }, [pageStr, activeSearch, load]);
 
   useEffect(() => {
     dispatch(fetchFlightRoutes({ page_size: 500 }));
@@ -199,8 +199,8 @@ export default function FlightInstancesPage() {
   const usedGates = [...new Set(
     instances.filter((i) => i.boarding_gate && String(i.flight) === String(form.flight)).map((i) => i.boarding_gate)
   )].map((g) => ({ value: g, label: g }));
-  const GENERIC_GATES = ['A1','A2','A3','A4','B1','B2','B3','B4','C1','C2','D1','D2',
-    'G1','G2','G3','G4','G5','G6','G10','G11','G12','G13','G14'].map((g) => ({ value: g, label: g }));
+  const GENERIC_GATES = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'D1', 'D2',
+    'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G10', 'G11', 'G12', 'G13', 'G14'].map((g) => ({ value: g, label: g }));
   const gateOptions = usedGates.length > 0 ? usedGates : GENERIC_GATES;
 
   const openCreate = () => { setEditId(null); setForm(EMPTY_FORM); setLocalErrors({}); setShowForm(true); };
@@ -271,41 +271,23 @@ export default function FlightInstancesPage() {
         load(activeSearch, page);
       }
     } catch (err) {
-      // DRF field errors come as { fieldName: ["msg", ...] | "msg" }
-      // Normalise every value to a plain string so input error props work
       if (err && typeof err === 'object') {
-        const normalised = {};
-        Object.entries(err).forEach(([key, val]) => {
-          if (Array.isArray(val)) normalised[key] = val[0];
-          else if (typeof val === 'string') normalised[key] = val;
-        });
-        setLocalErrors(prev => ({ ...prev, ...normalised }));
-        // Show non-field errors (cross-field / global) as a toast only
-        if (err.non_field_errors) {
-          toast.error(Array.isArray(err.non_field_errors) ? err.non_field_errors[0] : err.non_field_errors);
-        } else if (!Object.keys(normalised).length) {
-          toast.error('Failed to save. Please try again.');
+        const errors = {};
+        for (const [k, v] of Object.entries(err)) {
+          errors[k] = Array.isArray(v) ? v[0] : v;
         }
-      } else {
-        toast.error('Failed to save. Please try again.');
+        setLocalErrors(prev => ({ ...prev, ...errors }));
       }
+      toast.error(parseApiError(err, 'Failed to save.'));
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteItem) return;
-    setDeleteLoading(true);
-    try {
-      await dispatch(removeFlightInstance(deleteItem.id)).unwrap();
-      toast.success('Flight instance deleted successfully.');
-      setDeleteItem(null);
-      load(activeSearch, page);
-    } catch (err) {
-      toast.error('Failed to delete flight instance.');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
+  const { deleteItem, setDeleteItem, deleteLoading, confirmDelete } = useDeleteAction({
+    thunk: removeFlightInstance,
+    onSuccess: () => load(activeSearch, page),
+    successMessage: 'Flight instance deleted successfully.',
+    errorMessage: 'Failed to delete flight instance.'
+  });
 
   const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
 
@@ -362,7 +344,7 @@ export default function FlightInstancesPage() {
               </button>
             )}
           </div>
-          <button type="submit" className="btn-primary px-[14px] py-[7px] text-[13px]">Search</button>
+          <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
         </form>
 
         {error && (
@@ -373,11 +355,11 @@ export default function FlightInstancesPage() {
 
         <div className="admin-card admin-table-wrap">
           {loading ? (
-            <div className="admin-spinner-wrap"><div className="admin-spinner" /></div>
+            <SpinnerLoader />
           ) : instances?.length === 0 ? (
             <div className="admin-empty"><p>No instances. Create one above.</p></div>
           ) : (
-            <div className="overflow-x-auto">
+            <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
                 <thead>
                   <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th className="text-right">Actions</th></tr>
@@ -391,31 +373,31 @@ export default function FlightInstancesPage() {
                         <td>{inst.date}</td>
                         <td>{inst.aircraft_registration}</td>
                         <td>
-                          <span className="text-[11px] font-bold px-2 py-[3px] rounded-full" style={{ background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
                             {inst.status}
                           </span>
                         </td>
                         <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
                         <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
                         <td className="text-right whitespace-nowrap">
-                          <div className="inline-flex gap-1.5 items-center justify-end">
-                            <div className="flex bg-black/[0.03] rounded-lg p-0.5">
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Fares">
-                                <Banknote size={13} /> Fares
+                          <div className="fi-actions-wrap" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <div className="fi-quick-links" style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
+                              <Link className="fi-action-link" to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="Manage Fares">
+                                <Banknote size={13} /><span className="fi-action-label"> Fares</span>
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Seats">
-                                <Armchair size={13} /> Seats
+                              <Link className="fi-action-link" to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="Manage Seats">
+                                <Armchair size={13} /><span className="fi-action-label"> Seats</span>
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="flex items-center gap-1 px-2.5 py-1.5 text-[#1a1c1d] rounded-md no-underline text-xs font-semibold transition-colors hover:bg-black/5" title="Manage Meals">
-                                <Utensils size={13} /> Meals
+                              <Link className="fi-action-link" to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="Manage Meals">
+                                <Utensils size={13} /><span className="fi-action-label"> Meals</span>
                               </Link>
                             </div>
 
-                            <div className="flex gap-1 ml-1">
-                              <button className="btn-secondary px-2 py-1.5" title="Edit" onClick={() => openEdit(inst)}>
+                            <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+                              <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
                                 <Pencil size={14} />
                               </button>
-                              <button className="btn-danger px-2 py-1.5" title="Delete" onClick={() => setDeleteItem(inst)}>
+                              <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(inst)} style={{ padding: '6px 8px' }}>
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -498,7 +480,7 @@ export default function FlightInstancesPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="admin-form-grid mb-5">
+              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
                 <Select id="fi_flight" label="Flight Route" options={routeOptions} value={form.flight}
                   onChange={(e) => { handleFlightChange(e.target.value); clearError('flight'); }} error={localErrors.flight} />
                 <Select id="fi_aircraft" label="Aircraft (filtered by airline)" options={aircraftOptions}
@@ -525,7 +507,7 @@ export default function FlightInstancesPage() {
                     });
                     if (depTime) clearError('scheduled_departure');
                   }} />
-                  {localErrors.scheduled_departure && <p className="text-xs text-[#b91c1c] mt-1">{localErrors.scheduled_departure}</p>}
+                  {localErrors.scheduled_departure && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_departure}</p>}
                 </div>
                 <div>
                   <label className="text-[11px] font-bold tracking-[.06em] uppercase text-[#5e5e5e] block mb-1.5">Scheduled Arrival</label>
@@ -533,7 +515,7 @@ export default function FlightInstancesPage() {
                     setForm((f) => ({ ...f, scheduled_arrival: e.target.value }));
                     if (e.target.value) clearError('scheduled_arrival');
                   }} />
-                  {localErrors.scheduled_arrival && <p className="text-xs text-[#b91c1c] mt-1">{localErrors.scheduled_arrival}</p>}
+                  {localErrors.scheduled_arrival && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_arrival}</p>}
                 </div>
                 <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12"
                   value={form.boarding_gate} options={gateOptions}
