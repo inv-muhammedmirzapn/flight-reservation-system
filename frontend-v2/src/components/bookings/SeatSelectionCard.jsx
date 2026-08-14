@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { flightsAPI } from '@/services/flight-service/flightService';
+import { bookingAPI } from '@/services/booking-service/bookingService';
+import SeatHoldTimer from './SeatHoldTimer';
 import toast from 'react-hot-toast';
 
 export default function SeatSelectionCard({
@@ -11,33 +13,33 @@ export default function SeatSelectionCard({
 }) {
   const [seats, setSeats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [holdingSeatNumber, setHoldingSeatNumber] = useState(null);
+
+  const loadSeats = useCallback(async (isMounted = true) => {
+    try {
+      setLoading(true);
+      const res = await flightsAPI.getSeats(flight?.id);
+      if (!isMounted) return;
+
+      const rawSeats = Array.isArray(res) ? res : (res.results || []);
+      const cabinSeats = rawSeats.filter(s => s.seat_class === cabinClass);
+      setSeats(cabinSeats);
+    } catch (err) {
+      if (isMounted) toast.error("Failed to load seats.");
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  }, [flight?.id, cabinClass]);
 
   useEffect(() => {
     let isMounted = true;
-
-    async function loadSeats() {
-      try {
-        setLoading(true);
-        const res = await flightsAPI.getSeats(flight?.id);
-        if (!isMounted) return;
-        
-        const rawSeats = Array.isArray(res) ? res : (res.results || []);
-        const cabinSeats = rawSeats.filter(s => s.seat_class === cabinClass);
-        setSeats(cabinSeats);
-      } catch (err) {
-        if (isMounted) toast.error("Failed to load seats.");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
     if (flight?.id) {
-      loadSeats();
+      loadSeats(isMounted);
     }
-
     return () => {
       isMounted = false;
     };
-  }, [flight?.id, cabinClass]);
+  }, [flight?.id, cabinClass, loadSeats]);
 
   const layoutCols = useMemo(() => {
     let layoutStr = "3-3";
@@ -68,21 +70,72 @@ export default function SeatSelectionCard({
 
   const maxSeats = passengers.length;
 
-  const toggleSeat = (seat) => {
-    if (seat.status !== 'AVAILABLE') return;
-    
-    const isSelected = selectedSeats.some(s => s.id === seat.id);
+  // Find earliest hold expiration time among selected seats
+  const activeHoldExpiresAt = useMemo(() => {
+    const holds = selectedSeats.filter(s => s.expiresAt);
+    if (holds.length === 0) return null;
+    return Math.min(...holds.map(s => s.expiresAt));
+  }, [selectedSeats]);
+
+  const handleTimerExpire = useCallback(() => {
+    toast.error("Your seat hold has expired. Please select your seats again.");
+    onSeatSelect([]);
+    loadSeats();
+  }, [onSeatSelect, loadSeats]);
+
+  const toggleSeat = async (seat) => {
+    const isSelected = selectedSeats.some(s => s.id === seat.id || s.seat_number === seat.seat_number);
+
     if (isSelected) {
-      onSeatSelect(selectedSeats.filter(s => s.id !== seat.id));
+      // Release hold when deselecting seat
+      const targetSeat = selectedSeats.find(s => s.id === seat.id || s.seat_number === seat.seat_number);
+      if (targetSeat?.holdId) {
+        try {
+          setHoldingSeatNumber(seat.seat_number);
+          await bookingAPI.releaseHold(targetSeat.holdId);
+        } catch (err) {
+          console.warn("Could not release seat hold:", err);
+        } finally {
+          setHoldingSeatNumber(null);
+        }
+      }
+      onSeatSelect(selectedSeats.filter(s => s.id !== seat.id && s.seat_number !== seat.seat_number));
     } else {
       if (maxSeats <= 0) return;
-      
-      if (selectedSeats.length >= maxSeats) {
-        // FIFO: Remove oldest seat(s) to make room for the new one
-        const numToRemove = selectedSeats.length - maxSeats + 1;
-        onSeatSelect([...selectedSeats.slice(numToRemove), seat]);
-      } else {
-        onSeatSelect([...selectedSeats, seat]);
+      setHoldingSeatNumber(seat.seat_number);
+
+      try {
+        let oldSeatToReplace = null;
+        let remainingSeats = [...selectedSeats];
+
+        if (selectedSeats.length >= maxSeats) {
+          // FIFO seat replacement: pass old_seat_number to replace hold atomically
+          oldSeatToReplace = selectedSeats[0];
+          remainingSeats = selectedSeats.slice(1);
+        }
+
+        const holdRes = await bookingAPI.holdSeat(
+          flight.id,
+          seat.seat_number,
+          oldSeatToReplace ? oldSeatToReplace.seat_number : null
+        );
+
+        const secondsRemaining = holdRes.seconds_remaining || 600;
+        const expiresAt = Date.now() + secondsRemaining * 1000;
+
+        const updatedSeatObj = {
+          ...seat,
+          holdId: holdRes.id,
+          expiresAt,
+        };
+
+        onSeatSelect([...remainingSeats, updatedSeatObj]);
+      } catch (err) {
+        const errMsg = err?.detail || err?.message || "Failed to hold seat.";
+        toast.error(errMsg);
+        loadSeats();
+      } finally {
+        setHoldingSeatNumber(null);
       }
     }
   };
@@ -102,9 +155,15 @@ export default function SeatSelectionCard({
   ];
 
   const getSeatColor = (seat) => {
-    const isSelected = selectedSeats.some(s => s.id === seat.id);
+    const isSelected = selectedSeats.some(s => s.id === seat.id || s.seat_number === seat.seat_number);
     if (isSelected) return 'bg-yellow-400 text-yellow-950 border-yellow-500 shadow-sm';
-    if (seat.status !== 'AVAILABLE') return 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed';
+    
+    if (seat.status === 'HELD') {
+      return 'bg-amber-100/70 text-amber-700/60 border-amber-200 cursor-not-allowed';
+    }
+    if (seat.status !== 'AVAILABLE') {
+      return 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed';
+    }
     
     const feeIndex = uniqueFees.indexOf(Number(seat.seat_fee || 0));
     const colorClass = FEE_COLORS[Math.min(feeIndex, FEE_COLORS.length - 1)] || FEE_COLORS[0];
@@ -129,6 +188,11 @@ export default function SeatSelectionCard({
 
   return (
     <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm">
+      {/* Seat Hold Countdown Banner */}
+      {activeHoldExpiresAt && (
+        <SeatHoldTimer expiresAt={activeHoldExpiresAt} onExpire={handleTimerExpire} />
+      )}
+
       <div className="mb-6 flex justify-between items-end">
         <div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">Select Your Seats</h2>
@@ -195,19 +259,28 @@ export default function SeatSelectionCard({
                     return (
                       <React.Fragment key={`${row.rowId}-group-${groupIdx}`}>
                         <div className="flex gap-1 sm:gap-1.5 md:gap-2">
-                          {blockSeats.map(seat => (
-                            <button
-                              key={seat.id}
-                              type="button"
-                              onClick={() => toggleSeat(seat)}
-                              disabled={seat.status !== 'AVAILABLE'}
-                              className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md border transition-all duration-200 flex flex-col items-center justify-center group relative hover:z-50 ${getSeatColor(seat)}`}
-                            >
-                                {/* Hover Tooltip */}
-                                <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
-                                  {seat.status !== 'AVAILABLE' 
-                                    ? 'Seat already booked' 
-                                    : (
+                          {blockSeats.map(seat => {
+                            const isSelected = selectedSeats.some(s => s.id === seat.id || s.seat_number === seat.seat_number);
+                            const isAvailable = seat.status === 'AVAILABLE' || isSelected;
+                            const isCurrentlyHolding = holdingSeatNumber === seat.seat_number;
+
+                            return (
+                              <button
+                                key={seat.id}
+                                type="button"
+                                onClick={() => toggleSeat(seat)}
+                                disabled={!isAvailable || isCurrentlyHolding}
+                                className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md border transition-all duration-200 flex flex-col items-center justify-center group relative hover:z-50 ${getSeatColor(seat)} ${
+                                  isCurrentlyHolding ? 'animate-pulse opacity-75' : ''
+                                }`}
+                              >
+                                  {/* Hover Tooltip */}
+                                  <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
+                                    {seat.status === 'HELD' && !isSelected ? (
+                                      <span>Temporarily held by another passenger</span>
+                                    ) : seat.status !== 'AVAILABLE' && !isSelected ? (
+                                      <span>Seat already booked</span>
+                                    ) : (
                                       <>
                                         <span>{seat.seat_number} ({formatPosition(seat)})</span>
                                         <span className={Number(seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
@@ -215,15 +288,18 @@ export default function SeatSelectionCard({
                                         </span>
                                       </>
                                     )}
-                                  {/* Tooltip Caret */}
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800"></div>
-                                </div>
-                              
-                              {seat.status !== 'AVAILABLE' && (
-                                <span className="material-symbols-outlined text-slate-300 text-base sm:text-lg absolute inset-0 m-auto flex items-center justify-center select-none pointer-events-none opacity-50">close</span>
-                              )}
-                            </button>
-                          ))}
+                                    {/* Tooltip Caret */}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800"></div>
+                                  </div>
+                                
+                                {!isAvailable && !isSelected && (
+                                  <span className="material-symbols-outlined text-slate-300 text-base sm:text-lg absolute inset-0 m-auto flex items-center justify-center select-none pointer-events-none opacity-50">
+                                    {seat.status === 'HELD' ? 'lock' : 'close'}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                           {Array.from({ length: colSize - blockSeats.length }).map((_, i) => (
                             <div key={`empty-${i}`} className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9"></div>
                           ))}
@@ -265,6 +341,10 @@ export default function SeatSelectionCard({
                 <span className="text-xs text-slate-600 font-medium">Selected</span>
               </div>
               <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded border border-amber-200 bg-amber-100/70"></div>
+                <span className="text-xs text-slate-500 font-medium">Held by other</span>
+              </div>
+              <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded border border-slate-200 bg-slate-200"></div>
                 <span className="text-xs text-slate-400 font-medium">Unavailable</span>
               </div>
@@ -279,7 +359,7 @@ export default function SeatSelectionCard({
               </h3>
               <div className="space-y-2">
                 {selectedSeats.map(seat => (
-                  <div key={seat.id} className="flex justify-between items-center text-sm">
+                  <div key={seat.id || seat.seat_number} className="flex justify-between items-center text-sm">
                     <span className="font-bold text-slate-800">{seat.seat_number}</span>
                     <span className="text-slate-500 font-medium text-xs">
                       {Number(seat.seat_fee) > 0 ? `+₹${seat.seat_fee}` : 'Included'}

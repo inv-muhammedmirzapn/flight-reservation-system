@@ -55,4 +55,30 @@ export const bookingAPI = {
     const url = search ? `/bookings/passengers/?search=${encodeURIComponent(search)}` : '/bookings/passengers/';
     return fetchWithAuth(url);
   },
+
+  /**
+   * Hold a seat temporarily for a flight instance.
+   * POST /api/bookings/holds/
+   * Body: { flight_instance, seat_number, old_seat_number? }
+   */
+  holdSeat: async (flightInstanceId, seatNumber, oldSeatNumber = null) => {
+    return fetchWithAuth('/bookings/holds/', {
+      method: 'POST',
+      body: JSON.stringify({
+        flight_instance: flightInstanceId,
+        seat_number: seatNumber,
+        ...(oldSeatNumber && { old_seat_number: oldSeatNumber }),
+      }),
+    });
+  },
+
+  /**
+   * Release a temporary seat hold early.
+   * DELETE /api/bookings/holds/:id/
+   */
+  releaseHold: async (holdId) => {
+    return fetchWithAuth(`/bookings/holds/${holdId}/`, {
+      method: 'DELETE',
+    });
+  },
 };
