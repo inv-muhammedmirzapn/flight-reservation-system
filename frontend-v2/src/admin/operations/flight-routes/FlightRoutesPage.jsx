@@ -3,17 +3,18 @@
  * leg_order is auto-assigned by row position.
  * Cross-row layover validation: each leg's departure must be after prev leg's arrival.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '@/services/apiClient';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
 import {
   fetchFlightRoutes, addFlightRoute, updateFlightRoute, removeFlightRoute,
-  fetchAirlines, fetchAirports,
   flightRouteActions,
+  ADMIN_PAGE_SIZE,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import {
@@ -40,8 +41,8 @@ export default function FlightRoutesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items: routes, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightRoute);
-  const { items: airlines } = useSelector((s) => s.airline);
-  const { items: airports } = useSelector((s) => s.airport);
+  const [airlines, setAirlines] = useState([]);
+  const [airports, setAirports] = useState([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -49,24 +50,51 @@ export default function FlightRoutesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+
+  const searchSuggestions = useMemo(() => {
+    if (!search || search.trim().length < 2 || !routes) return [];
+    const q = search.toLowerCase().trim();
+    const map = new Map();
+    routes.forEach(r => {
+      if (r.flight_no?.toLowerCase().includes(q)) map.set(r.flight_no, 'Flight No');
+      if (r.airline_name?.toLowerCase().includes(q)) map.set(r.airline_name, 'Airline');
+      (r.legs || []).forEach(leg => {
+         if (leg.departure_airport_iata?.toLowerCase().includes(q)) map.set(leg.departure_airport_iata, 'Airport Code');
+         if (leg.arrival_airport_iata?.toLowerCase().includes(q)) map.set(leg.arrival_airport_iata, 'Airport Code');
+      });
+    });
+    return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
+  }, [search, routes]);
 
   const load = useCallback((s, p) => {
-    dispatch(fetchFlightRoutes({ search: s, page: p, page_size: PAGE_SIZE }));
+    dispatch(fetchFlightRoutes({ search: s, page: p }));
   }, [dispatch]);
 
   useEffect(() => {
     load(activeSearch, page);
-    dispatch(fetchAirlines({}));
-    dispatch(fetchAirports({ page_size: 500 }));
-  }, [load, dispatch, activeSearch, page]);
+  }, [load, activeSearch, page]);
+
+  const loadLookups = () => {
+    if (airlines.length === 0) {
+      fetchWithAuth('/flights/v2/airlines/?page_size=1000')
+        .then((data) => setAirlines(data.results || data || []))
+        .catch((err) => console.error('Failed to load airlines lookup:', err));
+    }
+    if (airports.length === 0) {
+      fetchWithAuth('/flights/v2/airports/?page_size=1000')
+        .then((data) => setAirports(data.results || data || []))
+        .catch((err) => console.error('Failed to load airports lookup:', err));
+    }
+  };
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
   const airportOptions = airports.map((a) => ({ value: a.id, label: `${a.iata_code} – ${a.airport_name}` }));
 
   const openCreate = () => {
+    loadLookups();
     dispatch(flightRouteActions.clearErrors());
     setEditId(null);
     setForm(EMPTY_FORM);
@@ -75,6 +103,7 @@ export default function FlightRoutesPage() {
   };
 
   const openEdit = (route) => {
+    loadLookups();
     dispatch(flightRouteActions.clearErrors());
     setEditId(route.id);
     const selectedAirline = airlines.find((a) => String(a.id) === String(route.airline));
@@ -203,7 +232,7 @@ export default function FlightRoutesPage() {
     return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}` : `${m}m`;
   };
 
-  const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
+  const totalPages = count ? Math.ceil(count / ADMIN_PAGE_SIZE) : 1;
 
   return (
     <div className="admin-page">
@@ -220,9 +249,37 @@ export default function FlightRoutesPage() {
 
         {/* Search */}
         <form onSubmit={(e) => { e.preventDefault(); setActiveSearch(search); setPage(1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search">
+          <div className="admin-toolbar-search" style={{ position: 'relative' }}>
             <Search size={14} className="search-icon" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by flight number…" />
+            <input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              onFocus={() => setSearchFocus(true)}
+              onBlur={() => setSearchFocus(false)}
+              placeholder="Search by flight number…" 
+            />
+            {searchFocus && searchSuggestions.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                {searchSuggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearch(sug.value);
+                      setActiveSearch(sug.value);
+                      setPage(1);
+                      setSearchFocus(false);
+                    }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                    <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <button type="submit" className="btn-primary">Search</button>
         </form>
@@ -234,7 +291,7 @@ export default function FlightRoutesPage() {
         )}
 
         {/* Table */}
-        <div className="admin-card admin-table-wrap">
+        <div className="admin-card admin-table-wrap fr-table">
           {loading ? (
             <SpinnerLoader />
           ) : routes?.length === 0 ? (
@@ -257,20 +314,25 @@ export default function FlightRoutesPage() {
                   <tr key={r.id} className="admin-row">
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
-                    <td>
-                      {(r.legs || []).map((leg, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 mr-1.5 mb-1">
-                          {i > 0 && (
-                            <span className="text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded">
-                              Layover {formatMins(leg.layover_duration_minutes)}
+                    <td className="fr-legs-cell">
+                      <div className="flex flex-col gap-1">
+                        {(r.legs || []).map((leg, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            {i > 0 && (
+                              <div className="fr-layover-row flex items-center gap-1 pl-1">
+                                <div className="w-px h-3 bg-[#ccc]" />
+                                <span className="fr-layover-pill text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded leading-none">
+                                  Layover {formatMins(leg.layover_duration_minutes)}
+                                </span>
+                              </div>
+                            )}
+                            <span className="fr-leg-badge text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold whitespace-nowrap w-max">
+                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                              <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
                             </span>
-                          )}
-                          <span className="text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold">
-                            {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                            <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
-                          </span>
-                        </span>
-                      ))}
+                          </div>
+                        ))}
+                      </div>
                     </td>
                     <td>{r.baggage_weight_allowed_per_person}</td>
                     <td>{r.handbag_weight_allowed_per_person}</td>
@@ -295,7 +357,7 @@ export default function FlightRoutesPage() {
           currentPage={page}
           totalPages={totalPages}
           totalCount={count || routes?.length || 0}
-          pageSize={PAGE_SIZE}
+          pageSize={ADMIN_PAGE_SIZE}
           onPageChange={(p) => { setPage(p); }}
           entityLabel="routes"
         />

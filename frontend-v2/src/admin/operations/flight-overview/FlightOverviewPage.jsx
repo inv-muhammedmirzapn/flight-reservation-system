@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchFlightInstances, updateFlightInstance, fetchAirports } from '@/admin/_core/store/adminSlices';
+import { fetchFlightInstances, updateFlightInstance, ADMIN_PAGE_SIZE } from '@/admin/_core/store/adminSlices';
 import { Select } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import { Edit2, Plane, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { parseApiError } from '@/utils/errorUtils';
 import { Pagination } from '@/components/ui/Pagination';
 import { useTranslation } from 'react-i18next';
+import { fetchWithAuth } from '@/services/apiClient';
 
 import '@/admin/_core/styles/admin.css';
 import StatusBadge from '@/admin/_core/components/StatusBadge';
@@ -31,13 +32,12 @@ export default function FlightOverviewPage() {
 
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
-    const { items: airports = [] } = useSelector(s => s.airport || {});
+    const [airports, setAirports] = useState([]);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [sourceFocus, setSourceFocus] = useState(false);
     const [destFocus, setDestFocus] = useState(false);
-    const PAGE_SIZE = 10;
-    const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
+    const totalPages = Math.ceil((count || 0) / ADMIN_PAGE_SIZE);
 
     const [editTarget, setEditTarget] = useState(null);
     const [editStatus, setEditStatus] = useState('');
@@ -56,6 +56,7 @@ export default function FlightOverviewPage() {
 
     // Input state for inline quick search
     const [searchInput, setSearchInput] = useState('');
+    const [searchFocus, setSearchFocus] = useState(false);
 
     // Modal open/close states
     const [filterOpen, setFilterOpen] = useState(false);
@@ -86,13 +87,14 @@ export default function FlightOverviewPage() {
     }, []);
 
     const fetchFiltered = useCallback((page = 1, params) => {
-        dispatch(fetchFlightInstances({ page, page_size: PAGE_SIZE, ...params }));
+        dispatch(fetchFlightInstances({ page, ...params }));
     }, [dispatch]);
 
     useEffect(() => {
         fetchFiltered(1, buildParams('', '', '', '', '', '', 'scheduled_departure', 'desc'));
-        dispatch(fetchAirports({ page_size: 500 }));
-    }, [fetchFiltered, buildParams, dispatch]); // initial load only
+    }, [fetchFiltered, buildParams]); // initial load only
+
+
 
     // Lock background page scroll when any modal is open
     const anyModalOpen = filterOpen || (!!editTarget && !confirmOpen) || confirmOpen;
@@ -111,6 +113,32 @@ export default function FlightOverviewPage() {
     const handleSearchChange = (e) => {
         setSearchInput(e.target.value);
     };
+
+    const searchSuggestions = useMemo(() => {
+        if (!searchInput || searchInput.trim().length < 2 || !flights) return [];
+        const q = searchInput.toLowerCase().trim();
+        const map = new Map();
+        flights.forEach(f => {
+            const num = f.flight_number;
+            const sIata = f.route?.source?.iata_code;
+            const dIata = f.route?.destination?.iata_code;
+            const al = f.route?.airline?.name;
+            const sCity = f.route?.source?.city;
+            const dCity = f.route?.destination?.city;
+            const sName = f.route?.source?.name;
+            const dName = f.route?.destination?.name;
+
+            if (num?.toLowerCase().includes(q) && !map.has(num)) map.set(num, 'Flight No.');
+            if (sIata?.toLowerCase().includes(q) && !map.has(sIata)) map.set(sIata, 'Airport Code');
+            if (dIata?.toLowerCase().includes(q) && !map.has(dIata)) map.set(dIata, 'Airport Code');
+            if (al?.toLowerCase().includes(q) && !map.has(al)) map.set(al, 'Airline');
+            if (sCity?.toLowerCase().includes(q) && !map.has(sCity)) map.set(sCity, 'City');
+            if (dCity?.toLowerCase().includes(q) && !map.has(dCity)) map.set(dCity, 'City');
+            if (sName?.toLowerCase().includes(q) && !map.has(sName)) map.set(sName, 'Airport');
+            if (dName?.toLowerCase().includes(q) && !map.has(dName)) map.set(dName, 'Airport');
+        });
+        return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
+    }, [searchInput, flights]);
 
     const getAirportSuggestions = (query) => {
         if (!query || query.trim().length < 1) return [];
@@ -131,6 +159,12 @@ export default function FlightOverviewPage() {
         setDraftSortBy(sortBy);
         setDraftSortOrder(sortOrder);
         setFilterOpen(true);
+        
+        if (airports.length === 0) {
+            fetchWithAuth('/flights/v2/airports/?page_size=1000')
+                .then((data) => setAirports(data.results || data || []))
+                .catch((err) => console.error('Failed to load airports lookup:', err));
+        }
     };
 
     const handleApplyFilters = () => {
@@ -261,7 +295,7 @@ export default function FlightOverviewPage() {
                 </div>
 
                 {/* Main Control & Search Bar */}
-                <div className="glass-card overview-controls" style={{ borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
+                <div className="glass-card overview-controls" style={{ position: 'relative', zIndex: 50, borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
                     {/* Quick Search */}
                     <form
                         onSubmit={(e) => {
@@ -272,7 +306,7 @@ export default function FlightOverviewPage() {
                         }}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 300px', maxWidth: 480 }}
                     >
-                        <div className="admin-toolbar-search">
+                        <div className="admin-toolbar-search" style={{ position: 'relative' }}>
                             <Search size={14} className="search-icon" />
                             <input
                                 className="filter-input"
@@ -280,6 +314,8 @@ export default function FlightOverviewPage() {
                                 placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
                                 value={searchInput}
                                 onChange={handleSearchChange}
+                                onFocus={() => setSearchFocus(true)}
+                                onBlur={() => setSearchFocus(false)}
                             />
                             {searchInput && (
                                 <button
@@ -295,6 +331,29 @@ export default function FlightOverviewPage() {
                                 >
                                     <X size={13} />
                                 </button>
+                            )}
+                            {searchFocus && searchSuggestions.length > 0 && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                    {searchSuggestions.map((sug, idx) => (
+                                        <div
+                                            key={idx}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault(); // Prevent blur
+                                                setSearchInput(sug.value);
+                                                setActiveSearch(sug.value);
+                                                setCurrentPage(1);
+                                                fetchFiltered(1, buildParams(sug.value, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                                setSearchFocus(false);
+                                            }}
+                                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                                            <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                         </div>
                         <button
@@ -404,7 +463,7 @@ export default function FlightOverviewPage() {
 
                     {!loading && flights.length > 0 && (
                         <div style={{ padding: '0 20px 20px' }}>
-                            <Pagination currentPage={currentPage} totalPages={totalPages} totalCount={count} pageSize={PAGE_SIZE} onPageChange={handlePageChange} />
+                            <Pagination currentPage={currentPage} totalPages={totalPages} totalCount={count} pageSize={ADMIN_PAGE_SIZE} onPageChange={handlePageChange} />
                         </div>
                     )}
                 </div>

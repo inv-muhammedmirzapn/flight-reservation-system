@@ -3,9 +3,10 @@
  * On selecting a flight_id, auto-suggests scheduled_departure/arrival from the route's first/last leg.
  * aircraft_id dropdown is filtered to aircraft owned by the flight's airline.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { fetchWithAuth } from '@/services/apiClient';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
@@ -14,7 +15,7 @@ import DateTimePicker from '@/components/ui/DateTimePicker';
 import {
   fetchFlightInstances, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
-  fetchFlightRoutes, fetchAircraft, fetchAirports,
+  ADMIN_PAGE_SIZE,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import {
@@ -56,9 +57,10 @@ export default function FlightInstancesPage() {
   const highlightInstance = searchParams.get('highlightInstance');
 
   const { items: instances, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightInstance);
-  const { items: routes } = useSelector((s) => s.flightRoute);
-  const { items: allAircraft } = useSelector((s) => s.aircraft);
-  const { items: airports } = useSelector((s) => s.airport);
+
+  const [routes, setRoutes] = useState([]);
+  const [allAircraft, setAllAircraft] = useState([]);
+  const [airports, setAirports] = useState([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -66,14 +68,25 @@ export default function FlightInstancesPage() {
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
+
+  const searchSuggestions = useMemo(() => {
+    if (!search || search.trim().length < 2 || !instances) return [];
+    const q = search.toLowerCase().trim();
+    const map = new Map();
+    instances.forEach(i => {
+      if (i.flight_no?.toLowerCase().includes(q)) map.set(i.flight_no, 'Flight No');
+      if (i.aircraft_registration?.toLowerCase().includes(q)) map.set(i.aircraft_registration, 'Aircraft');
+    });
+    return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
+  }, [search, instances]);
   
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const initialPage = isNaN(pageParam) ? 1 : pageParam;
   const [page, setPage] = useState(initialPage);
-  const PAGE_SIZE = 10;
 
   const load = useCallback((s, p) => {
-    dispatch(fetchFlightInstances({ search: s, page: p, page_size: PAGE_SIZE }));
+    dispatch(fetchFlightInstances({ search: s, page: p }));
   }, [dispatch]);
 
   const pageStr = searchParams.get('page') || '1';
@@ -85,13 +98,28 @@ export default function FlightInstancesPage() {
     load(activeSearch, resolvedPage);
   }, [pageStr, activeSearch, load]);
 
-  useEffect(() => {
-    dispatch(fetchFlightRoutes({ page_size: 500 }));
-    dispatch(fetchAircraft({ page_size: 500 }));
-    dispatch(fetchAirports({ page_size: 500 }));
-  }, [dispatch]);
+  const loadLookups = () => {
+    if (routes.length === 0) {
+      fetchWithAuth('/flights/v2/flight-routes/?page_size=1000')
+        .then((data) => setRoutes(data.results || data || []))
+        .catch((err) => console.error('Failed to load routes lookup:', err));
+    }
+    if (allAircraft.length === 0) {
+      fetchWithAuth('/flights/v2/aircraft/?page_size=1000')
+        .then((data) => setAllAircraft(data.results || data || []))
+        .catch((err) => console.error('Failed to load aircraft lookup:', err));
+    }
+    if (airports.length === 0) {
+      fetchWithAuth('/flights/v2/airports/?page_size=1000')
+        .then((data) => setAirports(data.results || data || []))
+        .catch((err) => console.error('Failed to load airports lookup:', err));
+    }
+  };
 
   useEffect(() => {
+    if (routeParam && autoCreate) {
+      loadLookups();
+    }
     if (routeParam && autoCreate && routes.length > 0) {
       setEditId(null);
       setForm({ ...EMPTY_FORM, flight: routeParam });
@@ -203,8 +231,9 @@ export default function FlightInstancesPage() {
     'G1','G2','G3','G4','G5','G6','G10','G11','G12','G13','G14'].map((g) => ({ value: g, label: g }));
   const gateOptions = usedGates.length > 0 ? usedGates : GENERIC_GATES;
 
-  const openCreate = () => { setEditId(null); setForm(EMPTY_FORM); setLocalErrors({}); setShowForm(true); };
+  const openCreate = () => { loadLookups(); setEditId(null); setForm(EMPTY_FORM); setLocalErrors({}); setShowForm(true); };
   const openEdit = (inst) => {
+    loadLookups();
     setEditId(inst.id);
     setForm({
       flight: inst.flight, date: inst.date, aircraft: inst.aircraft, status: inst.status,
@@ -289,7 +318,14 @@ export default function FlightInstancesPage() {
     errorMessage: 'Failed to delete flight instance.'
   });
 
-  const totalPages = count ? Math.ceil(count / PAGE_SIZE) : 1;
+  const totalPages = count ? Math.ceil(count / ADMIN_PAGE_SIZE) : 1;
+
+  // Short datetime for tablet: "Aug 24, 4:45 PM"
+  const fmtDT = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
 
   return (
     <div className="admin-page">
@@ -315,11 +351,13 @@ export default function FlightInstancesPage() {
             });
           }
         }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search">
+          <div className="admin-toolbar-search" style={{ position: 'relative' }}>
             <Search size={14} className="search-icon" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setSearchFocus(true)}
+              onBlur={() => setSearchFocus(false)}
               placeholder="Search by flight number…"
             />
             {search && (
@@ -339,9 +377,36 @@ export default function FlightInstancesPage() {
                   }
                 }}
                 title="Clear search"
+                style={{ right: searchSuggestions.length > 0 ? 30 : 10 }}
               >
                 <X size={13} />
               </button>
+            )}
+            {searchFocus && searchSuggestions.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                {searchSuggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearch(sug.value);
+                      setActiveSearch(sug.value);
+                      setSearchParams((prev) => {
+                        const nextParams = new URLSearchParams(prev);
+                        nextParams.set('page', '1');
+                        return nextParams;
+                      });
+                      setSearchFocus(false);
+                    }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                    <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
@@ -371,25 +436,25 @@ export default function FlightInstancesPage() {
                       <tr key={inst.id} onClick={(e) => handleRowClick(e, inst.id)} className={`admin-row ${isHighlighted ? 'admin-row-highlight' : ''}`}>
                         <td><strong>{inst.flight_no}</strong></td>
                         <td>{inst.date}</td>
-                        <td>{inst.aircraft_registration}</td>
+                        <td className="fi-aircraft-col">{inst.aircraft_registration}</td>
                         <td>
                           <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: STATUS_COLORS[inst.status] + '20', color: STATUS_COLORS[inst.status] }}>
                             {inst.status}
                           </span>
                         </td>
-                        <td>{inst.scheduled_departure ? new Date(inst.scheduled_departure).toLocaleString() : '—'}</td>
-                        <td>{inst.scheduled_arrival ? new Date(inst.scheduled_arrival).toLocaleString() : '—'}</td>
+                        <td className="fi-datetime-col">{fmtDT(inst.scheduled_departure)}</td>
+                        <td className="fi-datetime-col">{fmtDT(inst.scheduled_arrival)}</td>
                         <td className="text-right whitespace-nowrap">
-                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
-                            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
-                                <Banknote size={13} /> Fares
+                          <div className="fi-actions-wrap" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <div className="fi-quick-links" style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
+                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                                <Banknote size={13} /><span className="fi-action-label"> Fares</span>
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
-                                <Armchair size={13} /> Seats
+                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                                <Armchair size={13} /><span className="fi-action-label"> Seats</span>
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
-                                <Utensils size={13} /> Meals
+                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                                <Utensils size={13} /><span className="fi-action-label"> Meals</span>
                               </Link>
                             </div>
 
@@ -416,7 +481,7 @@ export default function FlightInstancesPage() {
           currentPage={page}
           totalPages={totalPages}
           totalCount={count || instances?.length || 0}
-          pageSize={PAGE_SIZE}
+          pageSize={ADMIN_PAGE_SIZE}
           onPageChange={(p) => {
             setSearchParams((prev) => {
               const nextParams = new URLSearchParams(prev);

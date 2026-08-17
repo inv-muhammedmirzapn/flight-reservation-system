@@ -17,8 +17,7 @@ import { parseApiError } from '@/utils/errorUtils';
 
 
 import PageLoader from '@/admin/_core/components/PageLoader';
-
-const PAGE_SIZE = 10;
+import { ADMIN_PAGE_SIZE } from '@/admin/_core/store/adminSlices';
 
 export default function AdminCrudPage({
   config,
@@ -53,11 +52,12 @@ export default function AdminCrudPage({
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
   const [page, setPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const loadList = useCallback((searchVal, pg) => {
-    dispatch(thunks.fetchList({ search: searchVal, page: pg, page_size: PAGE_SIZE }));
+    dispatch(thunks.fetchList({ search: searchVal, page: pg }));
   }, [dispatch, thunks]);
 
   useEffect(() => { loadList(activeSearch, page); }, [loadList, activeSearch, page]);
@@ -157,9 +157,10 @@ export default function AdminCrudPage({
   });
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setActiveSearch(search);
     setPage(1);
+    setSearchFocus(false);
   };
 
   const handlePage = (next) => {
@@ -186,7 +187,25 @@ export default function AdminCrudPage({
     });
   }, [items, sortConfig]);
 
-  const totalPages = state?.count ? Math.ceil(state.count / PAGE_SIZE) : 1;
+  const searchSuggestions = useMemo(() => {
+    if (!search || search.trim().length < 2 || !items) return [];
+    const q = search.toLowerCase().trim();
+    const suggestionsMap = new Map();
+    
+    items.forEach(item => {
+      columns.forEach(col => {
+        const val = item[col.key];
+        if (typeof val === 'string' && val.toLowerCase().includes(q)) {
+          if (!suggestionsMap.has(val)) {
+            suggestionsMap.set(val, col.label || col.key);
+          }
+        }
+      });
+    });
+    return Array.from(suggestionsMap.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
+  }, [search, items, columns]);
+
+  const totalPages = state?.count ? Math.ceil(state.count / ADMIN_PAGE_SIZE) : 1;
 
   return (
     <div className="admin-page">
@@ -241,11 +260,13 @@ export default function AdminCrudPage({
         {/* Toolbar */}
         <div className="admin-toolbar">
           <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="admin-toolbar-search">
+            <div className="admin-toolbar-search" style={{ position: 'relative' }}>
               <Search size={14} className="search-icon" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onFocus={() => setSearchFocus(true)}
+                onBlur={() => setSearchFocus(false)}
                 placeholder={`Search ${title.toLowerCase()}…`}
               />
               {search && (
@@ -257,6 +278,28 @@ export default function AdminCrudPage({
                 >
                   <X size={13} />
                 </button>
+              )}
+              {searchFocus && searchSuggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                  {searchSuggestions.map((sug, idx) => (
+                    <div
+                      key={idx}
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent blur
+                        setSearch(sug.value);
+                        setActiveSearch(sug.value);
+                        setPage(1);
+                        setSearchFocus(false);
+                      }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                      <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
@@ -327,7 +370,7 @@ export default function AdminCrudPage({
           currentPage={page}
           totalPages={totalPages}
           totalCount={state?.count || items?.length || 0}
-          pageSize={PAGE_SIZE}
+          pageSize={ADMIN_PAGE_SIZE}
           onPageChange={handlePage}
           entityLabel={title.toLowerCase()}
         />

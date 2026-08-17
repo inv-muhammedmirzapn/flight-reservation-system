@@ -54,7 +54,11 @@ export default function FaresPage() {
   const instanceParam = searchParams.get('instance');
 
   const { items: instances } = useSelector((s) => s.flightInstance);
-  useEffect(() => { dispatch(fetchFlightInstances({ page_size: 500 })); }, [dispatch]);
+  useEffect(() => {
+    if (!instances || instances.length === 0) {
+      dispatch(fetchFlightInstances({ page_size: 500 }));
+    }
+  }, [dispatch, instances.length]);
 
   const instanceOptions = instances.map((i) => ({
     value: i.id,

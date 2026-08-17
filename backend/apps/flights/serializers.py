@@ -505,9 +505,22 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         legs = obj.flight.legs.order_by('leg_order')
         if not legs.exists():
             return None
+        first_leg = legs.first()
+        last_leg = legs.last()
         return {
-            "source": {"iata_code": legs.first().departure_airport.iata_code},
-            "destination": {"iata_code": legs.last().arrival_airport.iata_code}
+            "source": {
+                "iata_code": first_leg.departure_airport.iata_code,
+                "city": first_leg.departure_airport.city,
+                "name": first_leg.departure_airport.airport_name
+            },
+            "destination": {
+                "iata_code": last_leg.arrival_airport.iata_code,
+                "city": last_leg.arrival_airport.city,
+                "name": last_leg.arrival_airport.airport_name
+            },
+            "airline": {
+                "name": obj.flight.airline.airline_name if obj.flight.airline else None
+            }
         }
 
     def validate(self, attrs):
@@ -632,10 +645,12 @@ class FlightMealItemSerializer(serializers.ModelSerializer):
 
 class FlightMealSerializer(serializers.ModelSerializer):
     items = FlightMealItemSerializer(many=True)
+    flight_no = serializers.CharField(source="flight_instance.flight.flight_no", read_only=True)
+    date = serializers.DateField(source="flight_instance.date", read_only=True)
 
     class Meta:
         model = FlightMeal
-        fields = ["id", "flight_instance", "name", "items"]
+        fields = ["id", "flight_instance", "flight_no", "date", "name", "items"]
 
     @transaction.atomic
     def create(self, validated_data):

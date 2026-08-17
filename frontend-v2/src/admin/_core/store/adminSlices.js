@@ -7,6 +7,8 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { createCrudSlice } from './crudSliceFactory';
 import { fetchWithAuth } from '@/services/apiClient';
 
+export const ADMIN_PAGE_SIZE = 10;
+
 // ─── Country ──────────────────────────────────────────────────────────────────
 const countrySliceDef = createCrudSlice('country', '/flights/v2/countries');
 export const countryActions = countrySliceDef.actions;

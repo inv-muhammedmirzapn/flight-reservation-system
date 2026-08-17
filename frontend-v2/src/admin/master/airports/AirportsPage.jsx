@@ -46,7 +46,11 @@ export default function AirportsPage() {
   const [limit, setLimit] = useState('200');
   const [countryFilter, setCountryFilter] = useState('India');
 
-  useEffect(() => { dispatch(fetchCountries({ page_size: 1000 })); }, [dispatch]);
+  useEffect(() => {
+    if (!countries || countries.length === 0) {
+      dispatch(fetchCountries({ page_size: 1000 }));
+    }
+  }, [dispatch, countries.length]);
 
   const countryOptions = countries.map((c) => ({ value: c.id, label: `${c.name} (${c.iso_code})` }));
 

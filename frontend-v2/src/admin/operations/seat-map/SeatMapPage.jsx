@@ -90,8 +90,10 @@ export default function SeatMapPage() {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchFlightInstances({ page_size: 500 }));
-  }, [dispatch]);
+    if (!instances || instances.length === 0) {
+      dispatch(fetchFlightInstances({ page_size: 500 }));
+    }
+  }, [dispatch, instances.length]);
 
   useEffect(() => {
     if (instanceParam) {
