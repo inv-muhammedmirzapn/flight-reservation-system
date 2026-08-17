@@ -209,6 +209,8 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             extra_kg_dec = Decimal(str(extra_kg))
             if extra_kg_dec < 0:
                 raise ValidationError("Extra baggage weight cannot be negative.")
+            if extra_kg_dec % 1 != 0:
+                raise ValidationError("Extra baggage weight must be specified in whole kg increments.")
             max_allowed = flight_instance.flight.max_extra_baggage_kg_per_person
             if extra_kg_dec > max_allowed:
                 raise ValidationError(f"Extra baggage cannot exceed {max_allowed} kg per passenger.")
@@ -362,6 +364,9 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             total_extra_baggage_cost += p_extra_cost
 
 
+            free_checked_kg = fare_obj.effective_baggage_allowance_kg if fare_obj else route.baggage_weight_allowed_per_person
+            free_handbag_kg = fare_obj.effective_handbag_allowance_kg if fare_obj else route.handbag_weight_allowed_per_person
+
             passenger_obj = Passenger.objects.create(
                 booking=booking,
                 name=p_data['name'],
@@ -370,6 +375,8 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 phone_number=p_data.get('phone_number', ''),
                 meal_preference=p_data.get('meal_preference', 'NONE'),
                 seat_number=seat_num,
+                free_baggage_allowance_kg=free_checked_kg,
+                free_handbag_allowance_kg=free_handbag_kg,
                 extra_baggage_kg=p_extra_kg,
                 extra_baggage_cost=p_extra_cost,
             )

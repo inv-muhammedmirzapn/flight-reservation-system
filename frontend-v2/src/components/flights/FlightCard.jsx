@@ -1,3 +1,5 @@
+import FlightBaggageMealIndicators from "./FlightBaggageMealIndicators";
+
 export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails }) {
   if (!flight) return null;
 
@@ -36,6 +38,24 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
   const displayPrice = activeFare ? activeFare.price : base_fare;
   const activeSeats = activeFare ? activeFare.available_seats : available_seats;
   const isWaitlisted = activeSeats === 0;
+
+  const checkedBaggageKg =
+    activeFare?.effective_baggage_allowance_kg ??
+    activeFare?.baggage_allowance ??
+    flight.baggage_weight_allowed_per_person ??
+    20;
+
+  const handbagKg =
+    activeFare?.effective_handbag_allowance_kg ??
+    activeFare?.handbag_allowance ??
+    flight.handbag_weight_allowed_per_person ??
+    7;
+
+  const isMealIncluded = Boolean(
+    activeFare?.meal_included ??
+      flight.meal_included ??
+      Object.values(fares || {}).some((f) => f?.meal_included)
+  );
 
   const formatDateTime = (isoString) => {
     if (!isoString) return { dateStr: "-", timeStr: "--:--" };
@@ -84,7 +104,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
       <div className="hidden md:grid md:grid-cols-12 items-center gap-4">
 
         {/* 1. Airline & Flight Info */}
-        <div className="col-span-3 flex flex-col justify-center gap-1 min-w-0">
+        <div className="col-span-2 flex flex-col justify-center gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold text-slate-500">{flight_number}</span>
             {isDelayed && (
@@ -148,8 +168,18 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
           <span className="text-[10px] font-semibold text-slate-500">{stopsStr}</span>
         </div>
 
-        {/* 5. Price & CTA */}
-        <div className="col-span-3 flex flex-col items-end justify-center gap-1">
+        {/* 5. Baggage & Meal Indicators (Flex Column to the right of Duration & Stops) */}
+        <div className="col-span-2 flex flex-col justify-center items-start border-l border-slate-200/60 pl-3 md:pl-4">
+          <FlightBaggageMealIndicators
+            checkedBaggageKg={checkedBaggageKg}
+            handbagKg={handbagKg}
+            isMealIncluded={isMealIncluded}
+            vertical={true}
+          />
+        </div>
+
+        {/* 6. Price & CTA */}
+        <div className="col-span-2 flex flex-col items-end justify-center gap-1">
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{selectedCabinClass}</span>
           <span className="text-2xl lg:text-3xl font-extrabold text-slate-950 tracking-wide">
             ₹{Math.round(displayPrice)}
@@ -241,6 +271,15 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             </span>
           </div>
         </div>
+
+        {/* Mobile Subtle Indicators */}
+        <FlightBaggageMealIndicators
+          checkedBaggageKg={checkedBaggageKg}
+          handbagKg={handbagKg}
+          isMealIncluded={isMealIncluded}
+          compact={true}
+          className="justify-start py-0.5"
+        />
 
         {/* Bottom Bar: Price & CTA */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">

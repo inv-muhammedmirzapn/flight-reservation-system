@@ -7,6 +7,7 @@ import FlightItinerarySummaryCard from "@/components/flights/FlightItinerarySumm
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
 import CheckoutStepper from "@/components/bookings/CheckoutStepper";
 import BookingReviewCard from "@/components/bookings/BookingReviewCard";
+import BaggageSelectionCard from "@/components/bookings/BaggageSelectionCard";
 import SeatSelectionCard from "@/components/bookings/SeatSelectionCard";
 import ComplimentaryMealCard from "@/components/meals/ComplimentaryMealCard";
 import PaidAddonsCard from "@/components/meals/PaidAddonsCard";
@@ -43,6 +44,7 @@ export default function BookingCheckoutPage() {
       name: "",
       age: "",
       gender: "Male",
+      extra_baggage_kg: 0,
     }))
   );
 
@@ -190,6 +192,30 @@ export default function BookingCheckoutPage() {
 
   const hasMealsOrAddons = isMealIncluded || foodItems.length > 0 || flightMeals.length > 0;
 
+  // Extra baggage price & allowance info
+  const extraBaggagePricePerKg = Number(
+    flight.extra_baggage_display_price_per_kg ||
+      flight.extra_baggage_price_per_kg ||
+      1000
+  );
+
+  const baggageInfo = {
+    cabin_baggage_kg:
+      fareObj?.effective_baggage_allowance_kg ??
+      fareObj?.baggage_allowance ??
+      flight.baggage_weight_allowed_per_person ??
+      20,
+    handbag_kg:
+      fareObj?.effective_handbag_allowance_kg ??
+      fareObj?.handbag_allowance ??
+      flight.handbag_weight_allowed_per_person ??
+      7,
+    max_extra_baggage_kg_per_person:
+      flight.max_extra_baggage_kg_per_person ?? 20,
+    extra_baggage_display_price_per_kg: extraBaggagePricePerKg,
+    display_currency: targetCurrency,
+  };
+
   // Calculate total meal cost from paid add-ons
   const calculateMealTotal = () => {
     let sum = 0;
@@ -203,8 +229,16 @@ export default function BookingCheckoutPage() {
     return sum;
   };
 
+  const calculateExtraBaggageTotal = () => {
+    return passengers.reduce((sum, p) => {
+      const kg = Math.max(0, parseInt(p.extra_baggage_kg || 0, 10));
+      return sum + kg * extraBaggagePricePerKg;
+    }, 0);
+  };
+
   const mealTotal = calculateMealTotal();
   const seatTotal = selectedSeats.reduce((sum, seat) => sum + Number(seat.seat_fee || 0), 0);
+  const extraBaggageTotal = calculateExtraBaggageTotal();
 
   // Dynamically define stepper steps
   const steps = [
@@ -215,6 +249,7 @@ export default function BookingCheckoutPage() {
     ...(hasMealsOrAddons
       ? [{ id: "free_meal", title: "Meals & Menu", subtitle: "In-Flight Selection" }]
       : []),
+    { id: "baggage", title: "Baggage", subtitle: "Extra Luggage" },
     { id: "review", title: "Payment", subtitle: "Confirm Booking" },
   ];
 
@@ -235,7 +270,6 @@ export default function BookingCheckoutPage() {
   const handleMealSelection = (paxIdx, selectedItem) => {
     if (!selectedItem || selectedItem.key === "NONE") {
       setComplimentaryPrefMap((prev) => ({ ...prev, [paxIdx]: "NONE" }));
-      // Retain paid add-ons (> 0 price), remove complimentary item
       setSelectedMealsMap((prev) => ({
         ...prev,
         [paxIdx]: (prev[paxIdx] || []).filter((m) => Number(m.price) > 0),
@@ -302,6 +336,19 @@ export default function BookingCheckoutPage() {
     });
   };
 
+  const handleBaggageChange = (paxIdx, newKg) => {
+    setPassengers((prev) => {
+      const updated = [...prev];
+      if (updated[paxIdx]) {
+        updated[paxIdx] = {
+          ...updated[paxIdx],
+          extra_baggage_kg: Math.max(0, parseInt(newKg || 0, 10)),
+        };
+      }
+      return updated;
+    });
+  };
+
   const validatePassengers = (paxList) => {
     let isValid = true;
     const newErrors = {};
@@ -309,7 +356,6 @@ export default function BookingCheckoutPage() {
 
     paxList.forEach((p, idx) => {
       const pErr = {};
-      // Name validation
       if (!p.name || p.name.trim() === "") {
         pErr.name = "Full name is required";
         isValid = false;
@@ -320,7 +366,6 @@ export default function BookingCheckoutPage() {
         if (!firstInvalidKey) firstInvalidKey = `${idx}-name`;
       }
 
-      // Age validation
       if (!p.age || p.age.toString().trim() === "") {
         pErr.age = "Age is required";
         isValid = false;
@@ -442,7 +487,6 @@ export default function BookingCheckoutPage() {
         return false;
       }
 
-      // Check for case-insensitive duplicate passenger details
       const hasDuplicates = checkForDuplicatePassengers(passengers);
       if (hasDuplicates && !hasConfirmedDuplicates) {
         const nextIdx = targetStepIdx !== undefined ? targetStepIdx : currentStepIndex + 1;
@@ -514,6 +558,7 @@ export default function BookingCheckoutPage() {
           phone_number: p.phone_number?.trim() || "",
           meal_preference: mealPref,
           seat_number: selectedSeats[idx]?.seat_number || "",
+          extra_baggage_kg: Math.max(0, parseInt(p.extra_baggage_kg || 0, 10)),
           selected_meals: paidMeals.map((m) => ({
             food_item_id: m.food_item_id || null,
             flight_meal_id: m.flight_meal_id || null,
@@ -564,7 +609,7 @@ export default function BookingCheckoutPage() {
       </div>
 
       {/* Flight Header Summary */}
-      <FlightItinerarySummaryCard flight={flight} />
+      <FlightItinerarySummaryCard flight={flight} selectedCabinClass={selectedCabin} />
 
       {/* Main Grid: Left Stepper Forms, Right Sticky Fare Details */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -634,13 +679,25 @@ export default function BookingCheckoutPage() {
             </div>
           )}
 
+          {/* STEP: Baggage Selection */}
+          {currentStepObj.id === "baggage" && (
+            <BaggageSelectionCard
+              passengers={passengers}
+              baggageInfo={baggageInfo}
+              onBaggageChange={handleBaggageChange}
+            />
+          )}
+
           {/* STEP: Review & Final Confirmation */}
           {currentStepObj.id === "review" && (
             <BookingReviewCard
               passengers={passengers}
+              selectedSeats={selectedSeats}
               isMealIncluded={isMealIncluded}
               complimentaryPrefMap={complimentaryPrefMap}
               selectedMealsMap={selectedMealsMap}
+              extraBaggagePricePerKg={extraBaggagePricePerKg}
+              currency={targetCurrency}
             />
           )}
 
@@ -690,6 +747,7 @@ export default function BookingCheckoutPage() {
             passengerCount={passengers.length}
             mealTotal={mealTotal}
             seatTotal={seatTotal}
+            extraBaggageTotal={extraBaggageTotal}
             onBookingAction={currentStepIndex < steps.length - 1 ? handleNext : handleConfirmBooking}
             actionButtonText={currentStepIndex < steps.length - 1 ? "Continue" : (isWaitlisted ? "Join Waitlist" : "Confirm Ticket & Pay")}
           />

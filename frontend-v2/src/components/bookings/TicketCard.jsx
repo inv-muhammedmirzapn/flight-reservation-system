@@ -8,6 +8,83 @@ export default function TicketCard({ item, isPastView = false }) {
   const isWaitlist = item.itemType === "WAITLIST" || Boolean(item.queue_position !== undefined && item.queue_position !== null);
   const flight = item.flight_detail || item.flight || {};
 
+  const cabinClass = (item?.cabin_class || "ECONOMY").toUpperCase();
+  const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
+  const passengers = item?.passengers || [];
+  const paxCount = passengers.length || item?.seat_count || 1;
+  const firstPax = passengers[0];
+
+  const totalExtraBaggageKg = passengers.reduce(
+    (sum, p) => sum + Math.round(Number(p.extra_baggage_kg || 0)),
+    0
+  );
+
+  const baseCheckedKg = Math.round(
+    Number(
+      firstPax?.free_baggage_allowance_kg ??
+      item?.free_baggage_allowance_kg ??
+      fareObj?.effective_baggage_allowance_kg ??
+      fareObj?.baggage_allowance ??
+      flight.baggage_weight_allowed_per_person ??
+      20
+    )
+  );
+
+  const handbagKg = Math.round(
+    Number(
+      firstPax?.free_handbag_allowance_kg ??
+      item?.free_handbag_allowance_kg ??
+      fareObj?.effective_handbag_allowance_kg ??
+      fareObj?.handbag_allowance ??
+      flight.handbag_weight_allowed_per_person ??
+      7
+    )
+  );
+
+  const isMealIncluded = Boolean(
+    fareObj?.meal_included ??
+      flight.meal_included ??
+      Object.values(flight.fares || {}).some((f) => f?.meal_included)
+  );
+
+  // Real Booking Info Calculations
+  const baggageSummaryText = totalExtraBaggageKg > 0
+    ? `${baseCheckedKg * paxCount + totalExtraBaggageKg} kg (${baseCheckedKg * paxCount}kg + ${totalExtraBaggageKg}kg extra)`
+    : paxCount > 1
+      ? `${baseCheckedKg * paxCount} kg Total (${baseCheckedKg}kg/pax · ${handbagKg}kg cabin)`
+      : `${baseCheckedKg} kg Checked · ${handbagKg} kg Cabin`;
+
+  const seatNumbers = passengers
+    .map((p) => p.seat_number)
+    .filter(Boolean);
+
+  const seatsText = seatNumbers.length > 0
+    ? seatNumbers.length === 1 ? `Seat ${seatNumbers[0]}` : `Seats ${seatNumbers.join(", ")}`
+    : "No seat selected";
+
+  const mealItems = [];
+  passengers.forEach((p) => {
+    const meals = p.selected_meals || p.meals || [];
+    meals.forEach((m) => {
+      const name = m.food_item_name || m.flight_meal_name || m.name || m.food_item?.name;
+      if (name && !mealItems.includes(name)) {
+        mealItems.push(name);
+      }
+    });
+    if (meals.length === 0 && p.meal_preference && p.meal_preference !== "NONE") {
+      const prefLabel = p.meal_preference === "VEG" ? "Veg Meal" : p.meal_preference === "NON_VEG" ? "Non-Veg Meal" : p.meal_preference;
+      if (!mealItems.includes(prefLabel)) {
+        mealItems.push(prefLabel);
+      }
+    }
+  });
+
+  const mealSummaryText = mealItems.length > 0
+    ? mealItems.join(", ")
+    : isMealIncluded
+      ? "Complimentary Meal"
+      : "No Meal Selected";
+
   // Formats timestamp for black top header: e.g. 08:57 on 10th July, 2026
   const formatHeaderTimestamp = (isoStr) => {
     if (!isoStr) return "";
@@ -159,7 +236,7 @@ export default function TicketCard({ item, isPastView = false }) {
   const airlineName = typeof flight.airline === "object" ? flight.airline?.airline_name || flight.airline?.name : (flight.airline || "Skyline Airways");
 
   return (
-    <div className="group animate-fade-in shadow-sm hover:shadow transition-all mb-4">
+    <div className="group animate-fade-in shadow-sm hover:shadow transition-all mb-4 overflow-hidden rounded-2xl md:rounded-3xl ">
       {/* Top Header Bar */}
       <div className="rounded-t-2xl md:rounded-t-3xl mx-auto bg-slate-950 text-white px-4 sm:px-6 pt-2 pb-6 flex items-center justify-between text-[10px] sm:text-xs font-semibold tracking-wide">
         <span className="text-slate-200">
@@ -175,7 +252,7 @@ export default function TicketCard({ item, isPastView = false }) {
         onClick={handleCardClick}
         className={`w-full rounded-2xl md:rounded-3xl p-4 sm:p-5 transition-all duration-300 cursor-pointer -mt-4 border ${
           isWaitlist
-            ? "bg-amber-50/80 border-amber-200/80 hover:border-amber-300"
+            ? "bg-amber-50 border-amber-200/80 hover:border-amber-300"
             : "plain-card border-slate-200/70"
         }`}
       >
@@ -183,7 +260,7 @@ export default function TicketCard({ item, isPastView = false }) {
         <div className="hidden md:grid md:grid-cols-12 items-center gap-4">
 
           {/* 1. Airline & Flight Info */}
-          <div className="col-span-3 flex flex-col justify-center gap-1 min-w-0">
+          <div className="col-span-2 flex flex-col justify-center gap-1 min-w-0">
             <span className="text-xs font-semibold text-slate-500 mb-0.5">
               {flight.flight_number || "SA-224"}
             </span>
@@ -241,8 +318,35 @@ export default function TicketCard({ item, isPastView = false }) {
             </span>
           </div>
 
-          {/* 5. Passenger Count & Double Status Badges */}
-          <div className="col-span-3 flex items-center justify-end gap-4">
+          {/* 5. Real Booking Info Column (Seats, Baggage, Meals) */}
+          <div className="col-span-2 flex flex-col justify-center gap-1 text-[11px] font-semibold text-slate-600 border-l border-slate-200/60 pl-3 md:pl-4 min-w-0">
+            {/* Seat Info */}
+            <div className="flex items-center gap-1.5 truncate" title={`Seats: ${seatsText}`}>
+              <span className="material-symbols-outlined text-xs text-indigo-600 shrink-0 select-none">
+                event_seat
+              </span>
+              <span className="truncate text-slate-900 font-bold">{seatsText}</span>
+            </div>
+
+            {/* Baggage Info */}
+            <div className="flex items-center gap-1.5 truncate" title={`Baggage: ${baggageSummaryText}`}>
+              <span className="material-symbols-outlined text-xs text-emerald-600 shrink-0 select-none">
+                work
+              </span>
+              <span className="truncate">{baggageSummaryText}</span>
+            </div>
+
+            {/* Meal Info */}
+            <div className="flex items-center gap-1.5 truncate" title={`Meal: ${mealSummaryText}`}>
+              <span className={`material-symbols-outlined text-xs shrink-0 select-none ${mealItems.length > 0 || isMealIncluded ? "text-amber-600" : "text-slate-400"}`}>
+                {mealItems.length > 0 || isMealIncluded ? "restaurant" : "no_meals"}
+              </span>
+              <span className="truncate">{mealSummaryText}</span>
+            </div>
+          </div>
+
+          {/* 6. Passenger Count & Double Status Badges */}
+          <div className="col-span-2 flex items-center justify-end gap-3">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 bg-black/5 px-2.5 py-1.5 rounded-xl">
               <span className="material-symbols-outlined text-sm text-slate-700 select-none">person</span>
               <span>{passengerCount}</span>
@@ -315,6 +419,24 @@ export default function TicketCard({ item, isPastView = false }) {
               <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
                 {arr.dateStr}
               </span>
+            </div>
+          </div>
+
+          {/* Mobile Real Booking Summary Row */}
+          <div className="flex flex-col gap-1 py-2 px-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-semibold text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-xs text-indigo-600 select-none shrink-0">event_seat</span>
+              <span className="font-bold text-slate-900 truncate">{seatsText}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-xs text-emerald-600 select-none shrink-0">work</span>
+              <span className="truncate">{baggageSummaryText}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`material-symbols-outlined text-xs select-none shrink-0 ${mealItems.length > 0 || isMealIncluded ? "text-amber-600" : "text-slate-400"}`}>
+                {mealItems.length > 0 || isMealIncluded ? "restaurant" : "no_meals"}
+              </span>
+              <span className="truncate">{mealSummaryText}</span>
             </div>
           </div>
 

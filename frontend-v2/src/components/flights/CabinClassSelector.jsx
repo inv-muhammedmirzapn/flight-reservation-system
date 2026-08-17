@@ -64,13 +64,6 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
               >
                 {isAvailable ? `${seatsCount} seats` : "Waitlist"}
               </span>
-
-              {fareObj?.meal_included && (
-                <span className={`text-[10px] font-extrabold flex items-center gap-0.5 mt-0.5 ${isSelected ? "text-amber-300" : "text-amber-800"}`}>
-                  <span className="material-symbols-outlined text-[11px]">restaurant</span>
-                  Meal Included
-                </span>
-              )}
             </button>
           );
         })}

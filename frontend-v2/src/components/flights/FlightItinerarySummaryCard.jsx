@@ -1,6 +1,7 @@
 import { getAirportInfo } from "@/utils/airportHelpers";
+import BaggageAndMealsInfoCards from "@/components/flights/BaggageAndMealsInfoCards";
 
-export default function FlightItinerarySummaryCard({ flight }) {
+export default function FlightItinerarySummaryCard({ flight, selectedCabinClass = "ECONOMY" }) {
   if (!flight) return null;
 
   const {
@@ -11,6 +12,9 @@ export default function FlightItinerarySummaryCard({ flight }) {
     departure_time,
     arrival_time,
     stops = [],
+    fares,
+    baggage_weight_allowed_per_person,
+    handbag_weight_allowed_per_person,
   } = flight;
 
   const sourceInfo = getAirportInfo(source_airport);
@@ -57,30 +61,76 @@ export default function FlightItinerarySummaryCard({ flight }) {
 
   const logoSrc = getLogoUrl(airline_logo);
 
+  // Resolve fare for cabin class to get effective allowances & meal inclusion
+  const getActiveFare = () => {
+    if (!fares) return null;
+    const norm = (selectedCabinClass || "ECONOMY").toUpperCase().replace(/\s+/g, "_");
+    if (fares[norm]) return fares[norm];
+    if (norm.includes("BUSINESS") && fares["BUSINESS"]) return fares["BUSINESS"];
+    if (norm.includes("FIRST") && fares["FIRST"]) return fares["FIRST"];
+    if (fares["ECONOMY"]) return fares["ECONOMY"];
+    const firstKey = Object.keys(fares)[0];
+    return firstKey ? fares[firstKey] : null;
+  };
+
+  const activeFare = getActiveFare();
+
+  const baggageKg =
+    activeFare?.effective_baggage_allowance_kg ??
+    activeFare?.baggage_allowance ??
+    baggage_weight_allowed_per_person ??
+    20;
+
+  const handbagKg =
+    activeFare?.effective_handbag_allowance_kg ??
+    activeFare?.handbag_allowance ??
+    handbag_weight_allowed_per_person ??
+    7;
+
+  const isMealInc = Boolean(
+    activeFare?.meal_included ??
+      flight.meal_included ??
+      Object.values(fares || {}).some((f) => f?.meal_included)
+  );
+
   return (
-    <div className="booking-container-card animate-fade-in transition-all duration-300 relative">
+    <div className="booking-container-card animate-fade-in transition-all duration-300 relative flex flex-col sm:flex-row justify-between gap-4">
       {/* Top Header Row: Route Title & Airline Logo */}
-      <div className="flex items-center gap-3 mb-2">
-        {logoSrc && (
-          <img
-            src={logoSrc}
-            alt={airline}
-            className="h-8 object-contain shadow-2xs"
-          />
-        )}
-        <h2 className="text-xl font-bold text-slate-950">
-          {sourceInfo.city} &rarr; {destInfo.city}
-        </h2>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt={airline}
+                className="h-8 object-contain shadow-2xs"
+              />
+            )}
+            <h2 className="text-xl font-bold text-slate-950">
+              {sourceInfo.city} &rarr; {destInfo.city}
+            </h2>
+          </div>
+        </div>
+
+        {/* Flight Meta Info */}
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-600">
+          <span>{dep.fullDateStr}</span>
+          <span>&bull;</span>
+          <span>{stopsStr}</span>
+          <span>&bull;</span>
+          <span>{durationStr}</span>
+        </div>
       </div>
 
-      {/* Flight Meta Info */}
-      <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-600">
-        <span>{dep.fullDateStr}</span>
-        <span>&bull;</span>
-        <span>{stopsStr}</span>
-        <span>&bull;</span>
-        <span>{durationStr}</span>
-      </div>
+      {/* Baggage & In-Flight Services Section */}
+      <BaggageAndMealsInfoCards
+        checkedBaggageKg={baggageKg}
+        handbagKg={handbagKg}
+        mealIncluded={isMealInc}
+        summary={true}
+        title="Baggage & In-Flight Services"
+        className="pt-4 border-t border-slate-200/80"
+      />
     </div>
   );
 }

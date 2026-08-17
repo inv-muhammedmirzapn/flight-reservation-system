@@ -66,6 +66,12 @@ class Passenger(models.Model):
         help_text="Complimentary in-flight meal preference"
     )
     seat_number = models.CharField(max_length=10, null=True, blank=True, help_text="Allocated seat number (e.g. 12A)")
+    free_baggage_allowance_kg = models.DecimalField(
+        max_digits=6, decimal_places=2, default=20.00, help_text="Snapshot of free checked baggage allowance at booking time"
+    )
+    free_handbag_allowance_kg = models.DecimalField(
+        max_digits=6, decimal_places=2, default=7.00, help_text="Snapshot of free handbag allowance at booking time"
+    )
     extra_baggage_kg = models.DecimalField(
         max_digits=6, decimal_places=2, default=0.00, help_text="Purchased extra baggage in kg"
     )

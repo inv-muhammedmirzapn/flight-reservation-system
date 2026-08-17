@@ -3,9 +3,12 @@ import PassengerReviewCard from "./PassengerReviewCard";
 
 export default function BookingReviewCard({
   passengers = [],
+  selectedSeats = [],
   isMealIncluded = false,
   complimentaryPrefMap = {},
   selectedMealsMap = {},
+  extraBaggagePricePerKg = 0,
+  currency = "INR",
 }) {
   return (
     <div className="booking-container-card rounded-3xl p-6 space-y-5 animate-fade-in transition-all duration-300">
@@ -19,7 +22,7 @@ export default function BookingReviewCard({
             <h3 className="text-lg font-bold text-slate-950">
               Passenger & Selection Summary
             </h3>
-            <p className="text-xs text-slate-500 font-medium pt-0.5">
+            <p className="text-[10px] text-slate-500 font-medium pt-0.5">
               Review traveler details and selected items before final payment
             </p>
           </div>
@@ -33,16 +36,20 @@ export default function BookingReviewCard({
           const paxSelectedMeals = selectedMealsMap[idx] || [];
           const paidMeals = paxSelectedMeals.filter((m) => Number(m.price) > 0);
           const compMealItem = paxSelectedMeals.find((m) => Number(m.price) === 0);
+          const selectedSeat = selectedSeats[idx] || null;
 
           return (
             <PassengerReviewCard
               key={idx}
               index={idx}
               passenger={p}
+              selectedSeat={selectedSeat}
               isMealIncluded={isMealIncluded}
               compPref={compPref}
               compMealItem={compMealItem}
               paidMeals={paidMeals}
+              extraBaggagePricePerKg={extraBaggagePricePerKg}
+              currency={currency}
             />
           );
         })}

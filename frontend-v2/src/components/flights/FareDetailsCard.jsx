@@ -7,6 +7,7 @@ export default function FareDetailsCard({
   passengerCount = 1,
   mealTotal = 0,
   seatTotal = 0,
+  extraBaggageTotal = 0,
   onBookingAction,
   actionButtonText,
 }) {
@@ -22,6 +23,18 @@ export default function FareDetailsCard({
   const cabinAvailableSeats = fareObj?.available_seats ?? flight.available_seats;
   const isWaitlisted = Number(cabinAvailableSeats) === 0;
 
+  // Effective baggage allowances
+  const checkedBaggageKg =
+    fareObj?.effective_baggage_allowance_kg ??
+    fareObj?.baggage_allowance ??
+    flight.baggage_weight_allowed_per_person ??
+    20;
+  const handbagKg =
+    fareObj?.effective_handbag_allowance_kg ??
+    fareObj?.handbag_allowance ??
+    flight.handbag_weight_allowed_per_person ??
+    7;
+
   const getCabinLabel = (cabin) => {
     const norm = (cabin || "ECONOMY").toUpperCase();
     if (norm.includes("BUSINESS")) return "Business Fare";
@@ -31,7 +44,7 @@ export default function FareDetailsCard({
   const cabinLabel = getCabinLabel(selectedCabin);
 
   const totalBaseFare = unitFare * passengerCount;
-  const subTotalWithExtras = totalBaseFare + mealTotal + seatTotal;
+  const subTotalWithExtras = totalBaseFare + mealTotal + seatTotal + extraBaggageTotal;
   const gstAmount = Math.round(subTotalWithExtras * 0.12);
   const grandTotal = subTotalWithExtras + gstAmount;
 
@@ -51,7 +64,7 @@ export default function FareDetailsCard({
 
   return (
     <div className="booking-container-card w-full shadow-xs animate-fade-in transition-all duration-300">
-      <h3 className="text-xl font-bold text-slate-950 mb-6">
+      <h3 className="text-xl font-bold text-slate-950 mb-4">
         Fare Details
       </h3>
 
@@ -71,9 +84,9 @@ export default function FareDetailsCard({
           </span>
         </div>
 
-        <div className="flex items-center justify-between mt-4">
-          <span>Total Fare</span>
-          <span className="text-slate-950">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/60">
+          <span>Total Base Fare</span>
+          <span className="text-slate-950 font-semibold">
             ₹ {totalBaseFare.toLocaleString("en-IN")}
           </span>
         </div>
@@ -91,12 +104,25 @@ export default function FareDetailsCard({
         )}
 
         {seatTotal > 0 && (
-          <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-blue-800 font-semibold">
               <span className="material-symbols-outlined text-sm">airline_seat_recline_normal</span>
-Seat Fare            </span>
-            <span className="text-blue-900 font-bold"> 
+              Seat Fare
+            </span>
+            <span className="text-blue-900 font-bold">
               ₹ {seatTotal.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
+
+        {extraBaggageTotal > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1 text-indigo-800 font-semibold">
+              <span className="material-symbols-outlined text-sm">luggage</span>
+              Extra Luggage
+            </span>
+            <span className="text-indigo-900 font-bold">
+              ₹ {extraBaggageTotal.toLocaleString("en-IN")}
             </span>
           </div>
         )}

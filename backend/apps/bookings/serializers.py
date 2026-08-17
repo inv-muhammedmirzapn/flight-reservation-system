@@ -11,6 +11,9 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
     aircraft = serializers.SerializerMethodField()
     source_airport = serializers.SerializerMethodField()
     destination_airport = serializers.SerializerMethodField()
+    baggage_weight_allowed_per_person = serializers.DecimalField(source='flight.baggage_weight_allowed_per_person', max_digits=6, decimal_places=2, read_only=True)
+    handbag_weight_allowed_per_person = serializers.DecimalField(source='flight.handbag_weight_allowed_per_person', max_digits=6, decimal_places=2, read_only=True)
+    fares = serializers.SerializerMethodField()
 
     class Meta:
         model = FlightInstance
@@ -18,7 +21,26 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
             'id', 'flight_number', 'airline', 'airline_logo', 'aircraft',
             'source_airport', 'destination_airport',
             'scheduled_departure', 'scheduled_arrival', 'status',
+            'baggage_weight_allowed_per_person', 'handbag_weight_allowed_per_person',
+            'fares',
         ]
+
+    def get_fares(self, obj):
+        fares = {}
+        route = obj.flight
+        for fare in obj.fares.all():
+            checked_kg = float(fare.effective_baggage_allowance_kg)
+            handbag_kg = float(fare.effective_handbag_allowance_kg)
+            fares[fare.cabin_class] = {
+                'price': float(fare.price),
+                'currency': fare.currency,
+                'meal_included': fare.meal_included,
+                'effective_baggage_allowance_kg': checked_kg,
+                'effective_handbag_allowance_kg': handbag_kg,
+                'baggage_allowance': checked_kg,
+                'handbag_allowance': handbag_kg,
+            }
+        return fares if fares else None
 
     def get_airline_logo(self, obj):
         if obj.flight and obj.flight.airline and obj.flight.airline.logo:
@@ -80,7 +102,9 @@ class PassengerSerializer(serializers.ModelSerializer):
         model = Passenger
         fields = [
             'id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number',
-            'meal_preference', 'seat_number', 'extra_baggage_kg', 'extra_baggage_cost',
+            'meal_preference', 'seat_number',
+            'free_baggage_allowance_kg', 'free_handbag_allowance_kg',
+            'extra_baggage_kg', 'extra_baggage_cost',
             'selected_meals'
         ]
 
