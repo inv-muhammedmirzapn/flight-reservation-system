@@ -49,7 +49,11 @@ const THUNKS = { fetchList: fetchFoodItems, fetchDetail: fetchFoodItemDetail, ad
 export default function FoodItemsPage() {
   const dispatch = useDispatch();
   const { items: airlines } = useSelector((s) => s.airline);
-  useEffect(() => { dispatch(fetchAirlines({})); }, [dispatch]);
+  useEffect(() => {
+    if (!airlines || airlines.length === 0) {
+      dispatch(fetchAirlines({}));
+    }
+  }, [dispatch, airlines.length]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
 

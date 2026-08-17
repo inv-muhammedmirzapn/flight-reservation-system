@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Search, AlertCircle, X, Eye, Plane, User as UserIcon, CreditCard, Ticket } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
@@ -7,6 +7,7 @@ import '@/admin/_core/styles/admin.css';
 import { parseApiError } from '@/utils/errorUtils';
 import toast from 'react-hot-toast';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
+import { ADMIN_PAGE_SIZE } from '@/admin/_core/store/adminSlices';
 
 const STATUS_COLORS = {
   CONFIRMED: '#22c55e',
@@ -22,13 +23,14 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const PAGE_SIZE = 10;
+
 
   const executeCancelBooking = async () => {
     if (!selected) return;
@@ -50,7 +52,7 @@ export default function AdminBookingsPage() {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams({ page: p, page_size: PAGE_SIZE });
+      const params = new URLSearchParams({ page: p });
       if (s) params.set('pnr', s);
       if (st) params.set('status', st);
       const data = await fetchWithAuth(`/bookings/?${params}`);
@@ -74,7 +76,17 @@ export default function AdminBookingsPage() {
   };
 
   const STATUS_OPTIONS = ['', 'CONFIRMED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
-  const totalPages = Math.ceil(count / PAGE_SIZE) || 1;
+  const totalPages = Math.ceil(count / ADMIN_PAGE_SIZE) || 1;
+
+  const searchSuggestions = useMemo(() => {
+    if (!search || search.trim().length < 2 || !bookings) return [];
+    const q = search.toLowerCase().trim();
+    const map = new Map();
+    bookings.forEach(b => {
+      if (b.pnr?.toLowerCase().includes(q)) map.set(b.pnr, 'PNR');
+    });
+    return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
+  }, [search, bookings]);
 
   return (
     <div className="admin-page">
@@ -85,9 +97,37 @@ export default function AdminBookingsPage() {
         </p>
 
         <form onSubmit={handleSearch} className="flex gap-3 mb-5 flex-wrap items-center">
-          <div className="admin-toolbar-search">
+          <div className="admin-toolbar-search" style={{ position: 'relative' }}>
             <Search size={14} className="search-icon" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by PNR..." />
+            <input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              onFocus={() => setSearchFocus(true)}
+              onBlur={() => setSearchFocus(false)}
+              placeholder="Search by PNR..." 
+            />
+            {searchFocus && searchSuggestions.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                {searchSuggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearch(sug.value);
+                      setPage(1);
+                      load(sug.value, statusFilter, 1);
+                      setSearchFocus(false);
+                    }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                    <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ minWidth: 180 }}>
             <Select
@@ -189,7 +229,7 @@ export default function AdminBookingsPage() {
           currentPage={page}
           totalPages={totalPages}
           totalCount={count}
-          pageSize={PAGE_SIZE}
+          pageSize={ADMIN_PAGE_SIZE}
           onPageChange={(p) => {
             setPage(p);
             load(search, statusFilter, p);

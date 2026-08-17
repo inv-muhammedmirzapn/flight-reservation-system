@@ -5,14 +5,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '@/services/apiClient';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import {
   fetchFlightMeals, addFlightMeal, updateFlightMeal, removeFlightMeal,
-  fetchFlightInstances, fetchFoodItems,
-  fetchFlightRoutes,
+  ADMIN_PAGE_SIZE,
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import { Plus, Pencil, Trash2, Save, X, AlertCircle, PlusCircle, MinusCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
@@ -27,9 +27,9 @@ export default function MealsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items: meals, loading, actionLoading, count, error } = useSelector((s) => s.flightMeal);
-  const { items: instances } = useSelector((s) => s.flightInstance);
-  const { items: foodItems } = useSelector((s) => s.foodItem);
-  const { items: routes } = useSelector((s) => s.flightRoute);
+  const [instances, setInstances] = useState([]);
+  const [foodItems, setFoodItems] = useState([]);
+  const [routes, setRoutes] = useState([]);
 
   const [searchParams] = useSearchParams();
   const instanceParam = searchParams.get('instance') || '';
@@ -40,18 +40,32 @@ export default function MealsPage() {
   const [form, setForm] = useState({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] });
   const [localErrors, setLocalErrors] = useState({});
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
 
   const loadMeals = useCallback((p) => {
-    dispatch(fetchFlightMeals({ page: p, page_size: PAGE_SIZE, ...(instanceParam ? { flight_instance: instanceParam } : {}) }));
+    dispatch(fetchFlightMeals({ page: p, ...(instanceParam ? { flight_instance: instanceParam } : {}) }));
   }, [dispatch, instanceParam]);
 
   useEffect(() => {
     loadMeals(page);
-    dispatch(fetchFlightInstances({ page_size: 500 }));
-    dispatch(fetchFoodItems({ page_size: 500 }));
-    dispatch(fetchFlightRoutes({ page_size: 500 }));
-  }, [dispatch, loadMeals, page]);
+  }, [loadMeals, page]);
+
+  const loadLookups = () => {
+    if (instances.length === 0) {
+      fetchWithAuth('/flights/v2/flight-instances/?page_size=1000')
+        .then((data) => setInstances(data.results || data || []))
+        .catch((err) => console.error('Failed to load flight instances lookup:', err));
+    }
+    if (foodItems.length === 0) {
+      fetchWithAuth('/flights/v2/food-items/?page_size=1000')
+        .then((data) => setFoodItems(data.results || data || []))
+        .catch((err) => console.error('Failed to load food items lookup:', err));
+    }
+    if (routes.length === 0) {
+      fetchWithAuth('/flights/v2/flight-routes/?page_size=1000')
+        .then((data) => setRoutes(data.results || data || []))
+        .catch((err) => console.error('Failed to load flight routes lookup:', err));
+    }
+  };
 
   const instanceOptions = instances.map((i) => ({
     value: i.id,
@@ -68,8 +82,9 @@ export default function MealsPage() {
     : foodItems;
   const foodItemOptions = filteredFoodItems.map((fi) => ({ value: fi.id, label: fi.name }));
 
-  const openCreate = useCallback(() => { setEditId(null); setForm({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] }); setLocalErrors({}); setShowForm(true); }, [instanceParam]);
+  const openCreate = useCallback(() => { loadLookups(); setEditId(null); setForm({ flight_instance: instanceParam, name: '', items: [{ ...EMPTY_ITEM }] }); setLocalErrors({}); setShowForm(true); }, [instanceParam]);
   const openEdit = (meal) => {
+    loadLookups();
     setEditId(meal.id);
     setForm({
       flight_instance: meal.flight_instance,
@@ -182,10 +197,7 @@ export default function MealsPage() {
                   <tr key={meal.id} className="admin-row">
                     <td><strong>{meal.name}</strong></td>
                     <td>
-                      {(() => {
-                        const inst = instances.find((i) => String(i.id) === String(meal.flight_instance));
-                        return inst ? `${inst.flight_no} — ${inst.date}` : meal.flight_instance;
-                      })()}
+                      {meal.flight_no && meal.date ? `${meal.flight_no} — ${meal.date}` : meal.flight_instance}
                     </td>
                     <td>
                       {(meal.items || []).map((item, i) => (
@@ -212,9 +224,9 @@ export default function MealsPage() {
         </div>
         <Pagination
           currentPage={page}
-          totalPages={Math.ceil((count || meals.length) / PAGE_SIZE) || 1}
+          totalPages={Math.ceil((count || meals.length) / ADMIN_PAGE_SIZE) || 1}
           totalCount={count || meals.length || 0}
-          pageSize={PAGE_SIZE}
+          pageSize={ADMIN_PAGE_SIZE}
           onPageChange={(p) => setPage(p)}
           entityLabel="meals"
         />
@@ -309,10 +321,9 @@ export default function MealsPage() {
         message="Are you sure you want to delete this meal?"
         details={(() => {
           if (!deleteItem) return null;
-          const inst = instances.find((i) => String(i.id) === String(deleteItem.flight_instance));
           return {
             NAME: deleteItem.name,
-            INSTANCE: inst ? `${inst.flight_no} — ${inst.date}` : deleteItem.flight_instance,
+            INSTANCE: deleteItem.flight_no && deleteItem.date ? `${deleteItem.flight_no} — ${deleteItem.date}` : deleteItem.flight_instance,
           };
         })()}
         onClose={() => setDeleteItem(null)}

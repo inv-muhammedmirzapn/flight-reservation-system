@@ -145,8 +145,8 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/20 backdrop-blur-md border-b border-white/10 shadow-sm transition-all duration-300 w-[90%] md:max-w-7xl rounded-b-2xl md:rounded-b-3xl mx-auto">
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[68px] flex items-center justify-between relative">
 
-          {/* Left: Hamburger Button on Mobile */}
-          <div className="flex items-center md:hidden z-10">
+          {/* Left: Hamburger Button — visible on mobile AND tablet portrait (< 1024px for admin) */}
+          <div className={`flex items-center z-10 ${isAdmin ? 'lg:hidden' : 'md:hidden'}`}>
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
@@ -157,20 +157,26 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Center Logo on Mobile, Left Logo on Desktop */}
+          {/* Center Logo on Mobile/Portrait-Tablet, Left Logo on Desktop */}
           <div
-            className="flex items-center cursor-pointer transform hover:scale-105 transition-transform duration-200 absolute md:relative left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0"
+            className={`flex items-center cursor-pointer transform hover:scale-105 transition-transform duration-200 absolute left-1/2 -translate-x-1/2 ${isAdmin
+                ? 'lg:relative lg:left-0 lg:translate-x-0'
+                : 'md:relative md:left-0 md:translate-x-0'
+              }`}
             onClick={() => navigate(isAdmin ? "/admin/overview" : "/")}
           >
             <img
               src="/updated%20logo.png"
               alt="Passenger Logo"
-              className="h-[28px] md:h-[34px] object-contain"
+              className={`object-contain ${isAdmin
+                  ? 'h-[30px] lg:h-[38px]'
+                  : 'h-[28px] md:h-[34px]'
+                }`}
             />
           </div>
 
-          {/* Center: Desktop Navigation Links */}
-          <div className="hidden md:flex items-center justify-center flex-1">
+          {/* Center: Desktop Navigation Links — lg: for admin (1024px+), md: for passengers (768px+) */}
+          <div className={`items-center justify-center flex-1 ${isAdmin ? 'hidden lg:flex' : 'hidden md:flex'}`}>
             {isAuthenticated ? (
               isAdmin ? (
                 // Admin navigation (desktop)
@@ -180,11 +186,10 @@ export default function Navbar() {
                       key={link.href}
                       to={link.href}
                       onClick={() => setOpenGroup(null)}
-                      className={`transition-all duration-200 px-4 py-2 rounded-full cursor-pointer ${
-                        isAdminLinkActive(link.href)
+                      className={`transition-all duration-200 px-4 py-2 rounded-full cursor-pointer ${isAdminLinkActive(link.href)
                           ? "font-extrabold text-slate-900"
                           : "font-semibold text-slate-700 hover:text-slate-900"
-                      }`}
+                        }`}
                     >
                       {link.label}
                     </Link>
@@ -201,11 +206,10 @@ export default function Navbar() {
                       >
                         <button
                           onClick={() => setOpenGroup(isOpen ? null : group.label)}
-                          className={`flex items-center gap-1.5 transition-all duration-200 px-4 py-2 rounded-full cursor-pointer ${
-                            isActive
+                          className={`flex items-center gap-1.5 transition-all duration-200 px-4 py-2 rounded-full cursor-pointer ${isActive
                               ? "font-extrabold text-slate-900"
                               : "font-semibold text-slate-700 hover:text-slate-900"
-                          }`}
+                            }`}
                         >
                           {group.label}
                           <svg
@@ -230,11 +234,10 @@ export default function Navbar() {
                                 <button
                                   key={link.href}
                                   onClick={() => { navigate(link.href); setOpenGroup(null); }}
-                                  className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors duration-150 cursor-pointer ${
-                                    active
+                                  className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors duration-150 cursor-pointer ${active
                                       ? "font-bold text-amber-700 bg-amber-50/80"
                                       : "font-medium text-slate-700 hover:bg-slate-100/80"
-                                  }`}
+                                    }`}
                                 >
                                   {link.label}
                                 </button>
@@ -251,21 +254,19 @@ export default function Navbar() {
                 <div className="flex items-center gap-10 text-xs px-12">
                   <Link
                     to="/"
-                    className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${
-                      isFlightsActive
+                    className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${isFlightsActive
                         ? "font-extrabold text-slate-900"
                         : "font-semibold text-slate-700 hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     Flights
                   </Link>
                   <Link
                     to="/my-bookings"
-                    className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${
-                      isBookingsActive
+                    className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${isBookingsActive
                         ? "font-extrabold text-slate-900"
                         : "font-semibold text-slate-700 hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     Bookings
                   </Link>
@@ -276,11 +277,10 @@ export default function Navbar() {
               <div className="flex items-center gap-10 text-xs px-12">
                 <Link
                   to="/"
-                  className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${
-                    isFlightsActive
+                  className={`transition-all duration-200 px-4.5 py-2 rounded-full cursor-pointer ${isFlightsActive
                       ? "font-extrabold text-slate-900"
                       : "font-semibold text-slate-700 hover:text-slate-900"
-                  }`}
+                    }`}
                 >
                   Flights
                 </Link>
@@ -289,7 +289,7 @@ export default function Navbar() {
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 md:gap-5 z-10">
+          <div className={`flex items-center z-10 ${isAdmin ? 'gap-2 lg:gap-5' : 'gap-2 md:gap-5'}`}>
 
             {/* Language Switcher (Desktop) */}
             <button
@@ -309,9 +309,8 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => navigate("/notifications")}
-                    className={`relative text-slate-900 hover:text-black transition-colors w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-black/5 cursor-pointer flex items-center justify-center ${
-                      location.pathname === "/notifications" ? "bg-black/10 font-bold" : ""
-                    }`}
+                    className={`relative text-slate-900 hover:text-black transition-colors w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-black/5 cursor-pointer flex items-center justify-center ${location.pathname === "/notifications" ? "bg-black/10 font-bold" : ""
+                      }`}
                     title="Notifications"
                   >
                     <span className="material-symbols-outlined text-xl md:text-2xl select-none">
@@ -390,7 +389,7 @@ export default function Navbar() {
 
       {/* ── Mobile Side Navigation Drawer ─────────────────────────────────── */}
       {isMobileMenuOpen && createPortal(
-        <div className="fixed inset-0 z-[200] md:hidden">
+        <div className={`fixed inset-0 z-[200] ${isAdmin ? 'lg:hidden' : 'md:hidden'}`}>
           {/* Semi-transparent backdrop */}
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
@@ -399,7 +398,7 @@ export default function Navbar() {
 
           {/* Sliding Side Panel */}
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white/95 backdrop-blur-2xl shadow-2xl flex flex-col justify-between p-5 overflow-y-auto border-r border-slate-200/50 z-[210] animate-slide-in-left">
-            
+
             <div>
               {/* Header inside side panel: Logo & Close Button */}
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -452,9 +451,8 @@ export default function Navbar() {
                     <Link
                       to="/"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${
-                        isFlightsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${isFlightsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       <span className="material-symbols-outlined text-lg">flight_takeoff</span>
                       Flights
@@ -463,9 +461,8 @@ export default function Navbar() {
                     <Link
                       to="/my-bookings"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${
-                        isBookingsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${isBookingsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       <span className="material-symbols-outlined text-lg">confirmation_number</span>
                       Bookings
@@ -474,9 +471,8 @@ export default function Navbar() {
                     <Link
                       to="/notifications"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors justify-between ${
-                        location.pathname === "/notifications" ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors justify-between ${location.pathname === "/notifications" ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-lg">notifications</span>
@@ -492,9 +488,8 @@ export default function Navbar() {
                     <Link
                       to="/profile"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${
-                        location.pathname === "/profile" ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${location.pathname === "/profile" ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       <span className="material-symbols-outlined text-lg">person</span>
                       My Profile
@@ -509,9 +504,8 @@ export default function Navbar() {
                         key={link.href}
                         to={link.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs transition-colors ${
-                          isAdminLinkActive(link.href) ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                        }`}
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs transition-colors ${isAdminLinkActive(link.href) ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                          }`}
                       >
                         <span className="material-symbols-outlined text-lg">dashboard</span>
                         {link.label}
@@ -526,9 +520,8 @@ export default function Navbar() {
                           <button
                             type="button"
                             onClick={() => setOpenMobileAdminGroup(isOpen ? null : group.label)}
-                            className={`flex items-center justify-between px-4 py-2.5 rounded-2xl text-xs font-semibold transition-colors ${
-                              isActive ? "text-slate-900 font-bold bg-slate-100" : "text-slate-700 hover:bg-slate-100"
-                            }`}
+                            className={`flex items-center justify-between px-4 py-2.5 rounded-2xl text-xs font-semibold transition-colors ${isActive ? "text-slate-900 font-bold bg-slate-100" : "text-slate-700 hover:bg-slate-100"
+                              }`}
                           >
                             <span>{group.label}</span>
                             <span className={`material-symbols-outlined text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}>
@@ -543,9 +536,8 @@ export default function Navbar() {
                                   key={link.href}
                                   to={link.href}
                                   onClick={() => setIsMobileMenuOpen(false)}
-                                  className={`px-4 py-2 rounded-xl text-[11px] transition-colors ${
-                                    location.pathname === link.href ? "font-bold text-amber-700 bg-amber-50" : "font-medium text-slate-600 hover:bg-slate-100"
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl text-[11px] transition-colors ${location.pathname === link.href ? "font-bold text-amber-700 bg-amber-50" : "font-medium text-slate-600 hover:bg-slate-100"
+                                    }`}
                                 >
                                   {link.label}
                                 </Link>
@@ -563,9 +555,8 @@ export default function Navbar() {
                     <Link
                       to="/"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${
-                        isFlightsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs transition-colors ${isFlightsActive ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       <span className="material-symbols-outlined text-lg">flight_takeoff</span>
                       Flights

@@ -77,9 +77,13 @@ export default function AircraftPage() {
   const { items: models } = useSelector((s) => s.aircraftModel);
 
   useEffect(() => {
-    dispatch(fetchAirlines({}));
-    dispatch(fetchAircraftModels({}));
-  }, [dispatch]);
+    if (!airlines || airlines.length === 0) {
+      dispatch(fetchAirlines({}));
+    }
+    if (!models || models.length === 0) {
+      dispatch(fetchAircraftModels({}));
+    }
+  }, [dispatch, airlines.length, models.length]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
   const modelOptions = models.map((m) => ({ value: m.id, label: `${m.manufacturer} ${m.model_name}` }));
