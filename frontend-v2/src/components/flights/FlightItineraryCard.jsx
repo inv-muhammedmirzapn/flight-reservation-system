@@ -1,6 +1,14 @@
 import { getAirportInfo } from "@/utils/airportHelpers";
+import BaggageAndMealsInfoCards from "@/components/flights/BaggageAndMealsInfoCards";
 
-export default function FlightItineraryCard({ flight, showBadge = true, isWaitlistedOverride, selectedCabinClass = "Economy" }) {
+export default function FlightItineraryCard({
+  flight,
+  showBadge = true,
+  isWaitlistedOverride,
+  selectedCabinClass = "Economy",
+  overrideCheckedBaggage,
+  overrideHandbag,
+}) {
   if (!flight) return null;
 
   const {
@@ -39,6 +47,20 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
   const activeSeats = activeFare !== null ? activeFare.available_seats : available_seats;
   const isWaitlisted = isWaitlistedOverride !== undefined ? Boolean(isWaitlistedOverride) : Number(activeSeats) === 0;
   const queueCount = waitlist_count;
+
+  const checkedBaggageKg =
+    overrideCheckedBaggage ??
+    activeFare?.effective_baggage_allowance_kg ??
+    activeFare?.baggage_allowance ??
+    flight.baggage_weight_allowed_per_person ??
+    20;
+  const handbagKg =
+    overrideHandbag ??
+    activeFare?.effective_handbag_allowance_kg ??
+    activeFare?.handbag_allowance ??
+    flight.handbag_weight_allowed_per_person ??
+    7;
+  const isMealIncluded = Boolean(activeFare?.meal_included ?? flight.meal_included);
 
   const sourceInfo = getAirportInfo(source_airport);
   const destInfo = getAirportInfo(destination_airport);
@@ -252,17 +274,6 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
             </span>
           </span>
         </div>
-
-        {activeFare?.meal_included && (
-          <div
-            className="w-9 h-9 rounded-xl bg-amber-100/90 border border-amber-300/80 text-amber-950 flex items-center justify-center shadow-2xs flex-shrink-0"
-            title="Complimentary Meal Included"
-          >
-            <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">
-              restaurant
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Vertical Timeline Route Details Container */}
@@ -394,6 +405,15 @@ export default function FlightItineraryCard({ flight, showBadge = true, isWaitli
           </span>
         </div>
       </div>
+
+      {/* Baggage & In-Flight Services Section */}
+      <BaggageAndMealsInfoCards
+        checkedBaggageKg={checkedBaggageKg}
+        handbagKg={handbagKg}
+        mealIncluded={isMealIncluded}
+        title="Baggage & In-Flight Services"
+        className="mt-4 pt-6"
+      />
     </div>
   );
 }

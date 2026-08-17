@@ -16,7 +16,6 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
   const grandTotal = Number(detailData?.total_price || detailData?.price || 0);
   const seatCount = detailData?.seat_count || passengers.length || 1;
   const subTotal = grandTotal > 0 ? Math.round(grandTotal / 1.12) : 0;
-  const taxesCalc = grandTotal - subTotal;
 
   // Calculate meal total
   let mealTotal = 0;
@@ -28,6 +27,12 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
     });
   });
 
+  // Calculate extra baggage total
+  let extraBaggageTotal = 0;
+  passengers.forEach(p => {
+    extraBaggageTotal += Number(p.extra_baggage_cost || 0);
+  });
+
   // Calculate base fare
   let baseFareTotal = Number(detailData?.base_fare) || 0;
   if (!baseFareTotal) {
@@ -37,15 +42,17 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
   }
 
   // Calculate seat total by taking what's left
-  let seatTotal = Math.max(0, subTotal - baseFareTotal - mealTotal);
+  let seatTotal = Math.max(0, subTotal - baseFareTotal - mealTotal - extraBaggageTotal);
 
   // Safety fallback if fare data doesn't align
-  if (subTotal - baseFareTotal - mealTotal < -2) {
+  if (subTotal - baseFareTotal - mealTotal - extraBaggageTotal < -2) {
       baseFareTotal = subTotal;
       seatTotal = 0;
       mealTotal = 0;
+      extraBaggageTotal = 0;
   }
 
+  const taxesCalc = grandTotal - subTotal;
   const ticketStatus = (detailData?.status || "CONFIRMED").toUpperCase();
 
   const getTicketStatusBadge = () => {
@@ -106,9 +113,23 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
       </div>
 
       {/* Reused Flight Itinerary Card */}
-      <FlightItineraryCard flight={flight} showBadge={false} />
+      <FlightItineraryCard
+        flight={flight}
+        showBadge={false}
+        selectedCabinClass={cabinClass}
+        overrideCheckedBaggage={
+          passengers?.[0]?.free_baggage_allowance_kg !== undefined && passengers?.[0]?.free_baggage_allowance_kg !== null
+            ? Math.round(Number(passengers[0].free_baggage_allowance_kg))
+            : undefined
+        }
+        overrideHandbag={
+          passengers?.[0]?.free_handbag_allowance_kg !== undefined && passengers?.[0]?.free_handbag_allowance_kg !== null
+            ? Math.round(Number(passengers[0].free_handbag_allowance_kg))
+            : undefined
+        }
+      />
 
-      {/* Passenger List Box (Reuses timeline-card) */}
+      {/* Passenger List Box */}
       <div className="px-5 pb-5 space-y-3">
         <h4 className="text-xs font-bold text-slate-500 tracking-wide mb-5">
           Passenger Details ({passengers.length || seatCount})
@@ -140,6 +161,29 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                     ? "Male"
                     : p.gender || "Passenger";
 
+              const extraKg = Number(p.extra_baggage_kg || 0);
+              const extraCost = Number(p.extra_baggage_cost || 0);
+
+              const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
+              const freeBaggageKg = Math.round(
+                Number(
+                  p.free_baggage_allowance_kg ??
+                  fareObj?.effective_baggage_allowance_kg ??
+                  fareObj?.baggage_allowance ??
+                  flight.baggage_weight_allowed_per_person ??
+                  20
+                )
+              );
+              const freeHandbagKg = Math.round(
+                Number(
+                  p.free_handbag_allowance_kg ??
+                  fareObj?.effective_handbag_allowance_kg ??
+                  fareObj?.handbag_allowance ??
+                  flight.handbag_weight_allowed_per_person ??
+                  7
+                )
+              );
+
               return (
                 <div key={idx} className="timeline-card p-3.5 flex flex-col gap-2 font-medium">
                   <div className="flex items-center justify-between">
@@ -164,53 +208,81 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                     )}
                   </div>
 
-                  {/* Options Breakdown */}
-                  {(compMealName || paidMeals.length > 0) && (
-                    <div className="receipt-container">
-                      {compMealName && p.meal_preference !== "NONE" && (
-                        <div className="receipt-row receipt-row-muted">
-                          <div className="receipt-item-label">
-                            <span className="material-symbols-outlined text-xs text-emerald-600">
-                              restaurant
-                            </span>
-                            <span>{compMealName}</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200/80">
-                            Included
-                          </span>
-                        </div>
-                      )}
-
-                      {paidMeals.map((m, mIdx) => {
-                        const mealName =
-                          m.food_item_name ||
-                          m.name ||
-                          m.food_item?.name ||
-                          "Pre-ordered Item";
-                        const qty = m.quantity || 1;
-                        const itemPrice = Number(m.unit_price || m.price || 0);
-                        const subtotal = itemPrice * qty;
-
-                        return (
-                          <div key={mIdx} className="receipt-row receipt-row-muted">
-                            <div className="receipt-item-label">
-                              <span className="material-symbols-outlined text-xs text-amber-600">
-                                shopping_bag
-                              </span>
-                              <span>
-                                {mealName} {qty > 1 ? <span className="font-medium text-slate-950 ml-1">x{qty}</span> : ""}
-                              </span>
-                            </div>
-                            {itemPrice > 0 && (
-                              <div className="receipt-item-price">
-                                {m.display_currency || "INR"} {subtotal.toLocaleString()}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {/* Options & Baggage Breakdown */}
+                  <div className="receipt-container">
+                    {/* Free Baggage Snapshot Row */}
+                    <div className="receipt-row receipt-row-muted">
+                      <div className="receipt-item-label">
+                        <span className="material-symbols-outlined text-xs text-emerald-600">
+                          work
+                        </span>
+                        <span>{freeBaggageKg} kg Checked | {freeHandbagKg} kg Handbag</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                        Included
+                      </span>
                     </div>
-                  )}
+
+                    {/* Extra Baggage Row if purchased */}
+                    {extraKg > 0 && (
+                      <div className="receipt-row receipt-row-muted">
+                        <div className="receipt-item-label">
+                          <span className="material-symbols-outlined text-xs text-indigo-600">
+                            luggage
+                          </span>
+                          <span>+{extraKg} kg Extra Luggage</span>
+                        </div>
+                        <div className="receipt-item-price">
+                          INR {extraCost.toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Complimentary Meal Row */}
+                    {compMealName && p.meal_preference !== "NONE" && (
+                      <div className="receipt-row receipt-row-muted">
+                        <div className="receipt-item-label">
+                          <span className="material-symbols-outlined text-xs text-emerald-600">
+                            restaurant
+                          </span>
+                          <span>{compMealName}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                          Included
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Paid Meals Row */}
+                    {paidMeals.map((m, mIdx) => {
+                      const mealName =
+                        m.food_item_name ||
+                        m.name ||
+                        m.food_item?.name ||
+                        "Pre-ordered Item";
+                      const qty = m.quantity || 1;
+                      const itemPrice = Number(m.unit_price || m.price || 0);
+                      const subtotal = itemPrice * qty;
+
+                      return (
+                        <div key={mIdx} className="receipt-row receipt-row-muted">
+                          <div className="receipt-item-label">
+                            <span className="material-symbols-outlined text-xs text-amber-600">
+                              shopping_bag
+                            </span>
+                            <span>
+                              {mealName} {qty > 1 ? <span className="font-medium text-slate-950 ml-1">x{qty}</span> : ""}
+                            </span>
+                          </div>
+                          {itemPrice > 0 && (
+                            <div className="receipt-item-price">
+                              {m.display_currency || "INR"} {subtotal.toLocaleString("en-IN")}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })
@@ -222,7 +294,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
         </div>
       </div>
 
-      {/* Fare Summary Breakdown (Reuses timeline-card) */}
+      {/* Fare Summary Breakdown */}
       <div className="px-5 pb-5 space-y-3">
         <h4 className="text-xs font-bold text-slate-500 tracking-wider mb-6">
           Payment Summary
@@ -249,6 +321,16 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
               In-Flight Meals
             </span>
             <span className="font-bold text-amber-900">₹ {mealTotal.toLocaleString("en-IN")}</span>
+          </div>
+        )}
+
+        {extraBaggageTotal > 0 && (
+          <div className="flex items-center justify-between text-xs text-indigo-700 font-medium mt-2">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">luggage</span>
+              Extra Luggage
+            </span>
+            <span className="font-bold text-indigo-900">₹ {extraBaggageTotal.toLocaleString("en-IN")}</span>
           </div>
         )}
 

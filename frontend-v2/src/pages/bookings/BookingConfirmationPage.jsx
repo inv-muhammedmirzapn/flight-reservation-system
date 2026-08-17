@@ -98,11 +98,12 @@ export default function BookingConfirmationPage() {
       </div>
 
       {/* Email Delivery Confirmation Banner */}
-      <div className="px-5 flex items-center justify-center gap-2 text-sky-950 text-[10px] font-medium mb-8">
-        <span className="material-symbols-outlined text-base text-sky-700 select-none flex-shrink-0 mt-0.5">
-          mark_email_read
-        </span>
+      <div className="px-5 text-sky-950 text-[10px] font-medium mb-8 text-center">
+
         <p className="text-sky-900/90 mt-0.5">
+          <span className="material-symbols-outlined text-base text-sky-700 select-none flex-shrink-0 mr-1">
+            mark_email_read
+          </span>
           A detailed ticket invoice and confirmation receipt have been dispatched to <strong>{userEmail}</strong>.
         </p>
       </div>

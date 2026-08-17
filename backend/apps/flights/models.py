@@ -379,11 +379,37 @@ class Fare(models.Model):
     meal_included = models.BooleanField(default=False)
     baggage_allowance = models.DecimalField(
         max_digits=6, decimal_places=2, null=True, blank=True,
-        help_text="Override flight-level baggage allowance (kg). Leave blank to use flight default."
+        help_text="Override flight-level checked baggage allowance (kg). Leave blank to use flight default."
+    )
+    handbag_allowance = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text="Override flight-level handbag allowance (kg). Leave blank to use flight default."
+    )
+    baggage_pieces_allowance = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Override flight-level free checked piece count. Leave blank to use flight default."
     )
 
     class Meta:
         ordering = ["flight_instance", "cabin_class", "price"]
+
+    @property
+    def effective_baggage_allowance_kg(self):
+        if self.baggage_allowance is not None:
+            return self.baggage_allowance
+        return self.flight_instance.flight.baggage_weight_allowed_per_person
+
+    @property
+    def effective_handbag_allowance_kg(self):
+        if self.handbag_allowance is not None:
+            return self.handbag_allowance
+        return self.flight_instance.flight.handbag_weight_allowed_per_person
+
+    @property
+    def effective_baggage_pieces(self):
+        if self.baggage_pieces_allowance is not None:
+            return self.baggage_pieces_allowance
+        return self.flight_instance.flight.baggage_number_allowed_per_person
 
     def clean(self):
         errors = {}
@@ -391,6 +417,10 @@ class Fare(models.Model):
             errors["price"] = "Price cannot be negative."
         if self.change_fee is not None and self.change_fee < 0:
             errors["change_fee"] = "Change fee cannot be negative."
+        if self.baggage_allowance is not None and self.baggage_allowance < 0:
+            errors["baggage_allowance"] = "Baggage allowance cannot be negative."
+        if self.handbag_allowance is not None and self.handbag_allowance < 0:
+            errors["handbag_allowance"] = "Handbag allowance cannot be negative."
         if errors:
             raise ValidationError(errors)
 

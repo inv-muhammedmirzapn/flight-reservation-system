@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -5,7 +6,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from apps.flights.models import (
-    Airline, FlightRoute, FlightInstance, Fare, FoodItem, FlightMeal
+    Airline, FlightRoute, FlightInstance, Fare, FoodItem, FlightMeal, AircraftModel, Aircraft, Seat
 )
 from apps.flights.services_currency import CurrencyService
 from apps.users.models import Profile
@@ -16,14 +17,17 @@ User = get_user_model()
 
 class CurrencyServiceTests(TestCase):
     def setUp(self):
-        self.user_in = User.objects.create_user(email="user_in@example.com", password="Password123!")
-        Profile.objects.filter(user=self.user_in).update(country="India")
+        self.user_in = User.objects.create_user(username="user_in@example.com", email="user_in@example.com", password="Password123!")
+        self.user_in.profile.country = "India"
+        self.user_in.profile.save()
 
-        self.user_us = User.objects.create_user(email="user_us@example.com", password="Password123!")
-        Profile.objects.filter(user=self.user_us).update(country="United States")
+        self.user_us = User.objects.create_user(username="user_us@example.com", email="user_us@example.com", password="Password123!")
+        self.user_us.profile.country = "United States"
+        self.user_us.profile.save()
 
-        self.user_uk = User.objects.create_user(email="user_uk@example.com", password="Password123!")
-        Profile.objects.filter(user=self.user_uk).update(country="United Kingdom")
+        self.user_uk = User.objects.create_user(username="user_uk@example.com", email="user_uk@example.com", password="Password123!")
+        self.user_uk.profile.country = "United Kingdom"
+        self.user_uk.profile.save()
 
     def test_get_user_currency(self):
         self.assertEqual(CurrencyService.get_user_currency(self.user_in), "INR")
@@ -43,10 +47,13 @@ class CurrencyServiceTests(TestCase):
 class MealsAndBaggageApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(email="testpax@example.com", password="Password123!")
-        Profile.objects.filter(user=self.user).update(country="Germany")
+        self.user = User.objects.create_user(username="testpax@example.com", email="testpax@example.com", password="Password123!")
+        self.user.profile.country = "Germany"
+        self.user.profile.save()
 
-        self.airline = Airline.objects.create(name="Lufthansa", iata_code="LH")
+        self.airline = Airline.objects.create(airline_name="Lufthansa", iata_airline_code="LH")
+        self.ac_model = AircraftModel.objects.create(manufacturer="Airbus", model_name="A350")
+        self.aircraft = Aircraft.objects.create(registration="D-AIXA", airline=self.airline, aircraft_model=self.ac_model, economy_capacity=250)
         self.route = FlightRoute.objects.create(
             airline=self.airline,
             flight_no="LH400",
@@ -58,11 +65,16 @@ class MealsAndBaggageApiTests(TestCase):
         )
         self.instance = FlightInstance.objects.create(
             flight=self.route,
+            date=datetime.date(2026, 9, 1),
+            aircraft=self.aircraft,
             scheduled_departure="2026-09-01T10:00:00Z",
             scheduled_arrival="2026-09-01T18:00:00Z",
         )
+        Seat.objects.create(flight_instance=self.instance, seat_number="1A", seat_class="ECONOMY", status="AVAILABLE")
+
         self.fare = Fare.objects.create(
             flight_instance=self.instance,
+            fare_code="LH_ECO",
             cabin_class="ECONOMY",
             price=Decimal("15000.00"),
             currency="INR",
@@ -79,11 +91,12 @@ class MealsAndBaggageApiTests(TestCase):
 
     def test_meals_api_response_with_currency_and_baggage(self):
         self.client.force_authenticate(user=self.user)
-        url = f"/api/flights/instances/{self.instance.id}/meals/"
+        url = f"/api/flights/{self.instance.id}/meals/"
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        self.assertEqual(response.status_code, status.HTTP_200_OK, msg=f"Response failed: {response.content}")
+        res_json = response.json()
+        data = res_json.get("data", res_json)
 
         self.assertEqual(data["target_currency"], "EUR")
         self.assertTrue(data["meal_included"])
@@ -120,5 +133,5 @@ class MealsAndBaggageApiTests(TestCase):
         self.assertEqual(pax.extra_baggage_kg, Decimal("5.00"))
         # Extra cost: 5 kg * 1000 INR = 5000 INR
         self.assertEqual(pax.extra_baggage_cost, Decimal("5000.00"))
-        # Booking total: 15000 base fare + 5000 extra baggage = 20000 INR
-        self.assertEqual(booking.total_price, Decimal("20000.00"))
+        # Booking total: 15000 base fare + 5000 extra baggage = 20000 INR + 12% GST = 22400.00 INR
+        self.assertEqual(booking.total_price, Decimal("22400.00"))

@@ -76,7 +76,7 @@ export default function MyBookingsPage() {
   const displayedItems = showPastBookings ? pastItems : activeItems;
 
   return (
-    <div className="flex-1 min-h-screen mt-12 pt-12 pb-16 px-4 md:px-6 max-w-4xl mx-auto w-full">
+    <div className="flex-1 min-h-screen mt-12 pt-12 pb-16 px-4 md:px-6 max-w-6xl mx-auto w-full">
       {/* Header Container with Toggle Link */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-2">
         <h1 className="text-xl font-bold text-slate-950">
