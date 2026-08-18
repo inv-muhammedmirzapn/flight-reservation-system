@@ -186,16 +186,34 @@ def _spacer(px: int = 32) -> str:
 
 def booking_confirmation(user_name: str, passenger_name: str,
                          flight_number: str, origin: str, destination: str,
-                         seat_count: int, total_price: float) -> tuple[str, str]:
+                         seat_count: int, total_price: float,
+                         cabin_class: str = "N/A",
+                         seat_numbers: str = "Unassigned",
+                         baggage_info: str = "N/A") -> tuple[str, str]:
     subject = f"Booking Confirmed — Flight {flight_number}"
     extra = f"""
           <tr>
-            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Passenger</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Passenger(s)</td>
             <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
                 colspan="2">{passenger_name}</td>
           </tr>
           <tr>
-            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Seats</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Cabin Class</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{cabin_class}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Seat(s)</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{seat_numbers}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Baggage Allowance</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;line-height:1.4;"
+                colspan="2">{baggage_info}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Seats Count</td>
             <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
                 colspan="2">{seat_count}</td>
           </tr>
@@ -221,8 +239,42 @@ def booking_confirmation(user_name: str, passenger_name: str,
 
 
 def booking_cancellation(user_name: str, flight_number: str,
-                          origin: str, destination: str) -> tuple[str, str]:
+                          origin: str, destination: str,
+                          passenger_name: str = "",
+                          seat_count: int = 0,
+                          total_price: float = 0.0,
+                          cabin_class: str = "N/A",
+                          seat_numbers: str = "Unassigned",
+                          baggage_info: str = "N/A") -> tuple[str, str]:
     subject = f"Booking Cancellation — Flight {flight_number}"
+    
+    extra = f"""
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Passenger(s)</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{passenger_name}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Cabin Class</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{cabin_class}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Seat(s)</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{seat_numbers}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Baggage Allowance</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;line-height:1.4;"
+                colspan="2">{baggage_info}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Refund Amount</td>
+            <td style="padding:12px 16px;font-weight:700;color:#1a1c1d;font-size:15px;"
+                colspan="2">&#8377;{total_price:,.2f}</td>
+          </tr>"""
+
     html = _wrap(
         _heading("Booking Cancelled",
                  "Your reservation has been cancelled as requested.") +
@@ -230,7 +282,7 @@ def booking_cancellation(user_name: str, flight_number: str,
         _body_text(f"Dear <strong>{user_name}</strong>,<br><br>"
                    "Your booking has been successfully cancelled. "
                    "If you did not request this cancellation, please contact our support team immediately.") +
-        _flight_info_table(flight_number, origin, destination) +
+        _flight_info_table(flight_number, origin, destination, extra) +
         _body_text("Refunds, if applicable, will be processed within 5 to 7 business days "
                    "to your original payment method.") +
         _spacer(),
@@ -240,8 +292,42 @@ def booking_cancellation(user_name: str, flight_number: str,
 
 
 def admin_booking_cancellation(user_name: str, flight_number: str,
-                               origin: str, destination: str) -> tuple[str, str]:
+                               origin: str, destination: str,
+                               passenger_name: str = "",
+                               seat_count: int = 0,
+                               total_price: float = 0.0,
+                               cabin_class: str = "N/A",
+                               seat_numbers: str = "Unassigned",
+                               baggage_info: str = "N/A") -> tuple[str, str]:
     subject = f"Booking Cancellation by Admin — Flight {flight_number}"
+    
+    extra = f"""
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Passenger(s)</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{passenger_name}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Cabin Class</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{cabin_class}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Seat(s)</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;"
+                colspan="2">{seat_numbers}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Baggage Allowance</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;line-height:1.4;"
+                colspan="2">{baggage_info}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Refund Amount</td>
+            <td style="padding:12px 16px;font-weight:700;color:#1a1c1d;font-size:15px;"
+                colspan="2">&#8377;{total_price:,.2f}</td>
+          </tr>"""
+
     html = _wrap(
         _heading("Booking Cancelled by Administrator",
                  "Your reservation has been cancelled by our administration team.") +
@@ -249,7 +335,7 @@ def admin_booking_cancellation(user_name: str, flight_number: str,
         _body_text(f"Dear <strong>{user_name}</strong>,<br><br>"
                    "We regret to inform you that your booking has been cancelled by our administration side. "
                    "We sincerely apologise for any inconvenience this may have caused.") +
-        _flight_info_table(flight_number, origin, destination) +
+        _flight_info_table(flight_number, origin, destination, extra) +
         _body_text("A full refund of the amount paid for this booking has been initiated. "
                    "The full amount will be processed within 5 to 7 business days to your original payment method.") +
         _spacer(),

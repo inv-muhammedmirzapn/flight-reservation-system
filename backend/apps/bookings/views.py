@@ -3,6 +3,7 @@ from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -109,6 +110,53 @@ class BookingViewSet(mixins.CreateModelMixin,
             )
         except DjangoValidationError as e:
             raise ValidationError({'detail': str(e)})
+
+    @action(detail=True, methods=['get'], url_path='download-pdf')
+    def download_pdf(self, request, pk=None):
+        """
+        GET /api/bookings/:id/download-pdf/
+        Returns a PDF of the booking ticket as a file download.
+        """
+        from .ticket_pdf import generate_booking_pdf
+        try:
+            booking = self.get_object()
+            if not (request.user.is_staff or request.user.is_superuser):
+                if booking.user != request.user:
+                    return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+            if booking.status != 'CONFIRMED':
+                return Response({'detail': 'PDF is only available for confirmed bookings.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            pdf_bytes = generate_booking_pdf(booking)
+            ref = str(booking.id).replace('-', '').upper()[:8]
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="Passenger-Ticket-{ref}.pdf"'
+            return response
+        except Exception:
+            logger.exception('Failed to generate ticket PDF')
+            return Response({'detail': 'Failed to generate PDF. Please try again.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], url_path='send-ticket-email')
+    def send_ticket_email(self, request, pk=None):
+        """
+        POST /api/bookings/:id/send-ticket-email/
+        Re-sends the booking confirmation email with the PDF attached.
+        """
+        from apps.notifications.services import NotificationService
+        try:
+            booking = self.get_object()
+            if not (request.user.is_staff or request.user.is_superuser):
+                if booking.user != request.user:
+                    return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+            if booking.status != 'CONFIRMED':
+                return Response({'detail': 'Ticket email is only available for confirmed bookings.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            NotificationService.send_booking_confirmation(booking)
+            return Response({'detail': 'Ticket email sent successfully.'}, status=status.HTTP_200_OK)
+        except Exception:
+            logger.exception('Failed to send ticket email')
+            return Response({'detail': 'Failed to send email. Please try again.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PassengerViewSet(viewsets.ReadOnlyModelViewSet):

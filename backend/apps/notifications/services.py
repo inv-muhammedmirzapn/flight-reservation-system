@@ -21,9 +21,10 @@ class NotificationService:
         )
 
     @staticmethod
-    def _send_email_task(user_email: str, subject: str, html_body: str):
+    def _send_email_task(user_email: str, subject: str, html_body: str, pdf_attachment: bytes = None, pdf_filename: str = None):
         """
         Send an HTML email with the logo embedded as a CID inline attachment.
+        Optionally attaches a PDF file (e.g. the booking ticket).
         """
         if not user_email:
             return
@@ -62,33 +63,57 @@ class NotificationService:
                 img.add_header('Content-Disposition', 'inline')
                 msg.attach(img)
 
+            # Attach PDF ticket if provided
+            if pdf_attachment and pdf_filename:
+                msg.attach(pdf_filename, pdf_attachment, 'application/pdf')
+
             msg.send(fail_silently=False)
         except Exception:
             logger.exception(f"FAILED TO SEND EMAIL TO {user_email}")
 
     @staticmethod
-    def _send_email(user_email: str, subject: str, html_body: str):
+    def _send_email(user_email: str, subject: str, html_body: str, pdf_attachment: bytes = None, pdf_filename: str = None):
         import sys
         if 'test' in sys.argv or getattr(settings, 'TESTING', False):
-            NotificationService._send_email_task(user_email, subject, html_body)
+            NotificationService._send_email_task(user_email, subject, html_body, pdf_attachment, pdf_filename)
         else:
             thread = threading.Thread(
                 target=NotificationService._send_email_task,
-                args=(user_email, subject, html_body)
+                args=(user_email, subject, html_body, pdf_attachment, pdf_filename)
             )
             thread.daemon = True
             thread.start()
 
     # ── Booking ──────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _extract_booking_details(booking):
+        passengers = list(booking.passengers.all())
+        passenger_name = ", ".join(p.name for p in passengers) if passengers else (booking.user.get_full_name() or booking.user.email)
+        seat_numbers = ", ".join(filter(None, [p.seat_number for p in passengers])) or "Unassigned"
+        
+        baggage_list = []
+        for p in passengers:
+            checked = p.free_baggage_allowance_kg + p.extra_baggage_kg
+            cabin = p.free_handbag_allowance_kg
+            baggage_list.append(f"{p.name}: {checked:g}kg Checked, {cabin:g}kg Cabin")
+        baggage_info = "<br>".join(baggage_list) if baggage_list else "N/A"
+        
+        cabin_class = booking.get_cabin_class_display() if booking.cabin_class else "N/A"
+        
+        return {
+            "passenger_name": passenger_name,
+            "seat_numbers": seat_numbers,
+            "baggage_info": baggage_info,
+            "cabin_class": cabin_class,
+            "seat_count": booking.seat_count,
+            "total_price": float(booking.total_price),
+        }
+
     @classmethod
     def send_booking_confirmation(cls, booking):
         user = booking.user
         user_name = user.get_full_name() or user.email
-
-        # Use the first passenger's name if available, else fall back to account name
-        first_passenger = booking.passengers.first()
-        passenger_name = first_passenger.name if first_passenger else user_name
 
         fi = booking.flight  # FlightInstance
         first_leg = fi.flight.legs.order_by('leg_order').first()
@@ -97,19 +122,31 @@ class NotificationService:
         origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
         destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
 
+        details = cls._extract_booking_details(booking)
+
         subject, html = tpl.booking_confirmation(
             user_name=user_name,
-            passenger_name=passenger_name,
             flight_number=flight_number,
             origin=origin,
             destination=destination,
-            seat_count=booking.seat_count,
-            total_price=float(booking.total_price),
+            **details
         )
+
+        # Generate PDF ticket to attach
+        pdf_bytes = None
+        pdf_filename = None
+        try:
+            from apps.bookings.ticket_pdf import generate_booking_pdf
+            pdf_bytes = generate_booking_pdf(booking)
+            ref = str(booking.id).replace('-', '').upper()[:8]
+            pdf_filename = f'Passenger-Ticket-{ref}.pdf'
+        except Exception:
+            logger.exception('Failed to generate PDF for email attachment')
+
         cls._create_notification(user, subject,
             f"Your booking for flight {flight_number} is confirmed!",
             NotificationType.BOOKING_CONFIRMED)
-        cls._send_email(user.email, subject, html)
+        cls._send_email(user.email, subject, html, pdf_attachment=pdf_bytes, pdf_filename=pdf_filename)
 
     @classmethod
     def send_booking_cancellation(cls, booking):
@@ -121,11 +158,13 @@ class NotificationService:
         flight_number = fi.flight.flight_no
         origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
         destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        details = cls._extract_booking_details(booking)
         subject, html = tpl.booking_cancellation(
             user_name=name,
             flight_number=flight_number,
             origin=origin,
             destination=destination,
+            **details
         )
         cls._create_notification(user, subject,
             f"Your booking for flight {flight_number} has been cancelled.",
@@ -142,11 +181,13 @@ class NotificationService:
         flight_number = fi.flight.flight_no
         origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
         destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        details = cls._extract_booking_details(booking)
         subject, html = tpl.admin_booking_cancellation(
             user_name=name,
             flight_number=flight_number,
             origin=origin,
             destination=destination,
+            **details
         )
         cls._create_notification(user, subject,
             f"Your booking for flight {flight_number} has been cancelled by the administration. A full refund has been initiated.",
