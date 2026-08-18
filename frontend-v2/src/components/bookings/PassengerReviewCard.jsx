@@ -59,9 +59,18 @@ export default function PassengerReviewCard({
 
   const extraBaggageKg = Math.max(0, parseInt(passenger?.extra_baggage_kg || 0, 10));
   const extraBaggageCost = extraBaggageKg * extraBaggagePricePerKg;
-  const seatFee = Number(selectedSeat?.seat_fee || 0);
+  const seatFee = Number(selectedSeat?.display_seat_fee || selectedSeat?.seat_fee || 0);
 
   const hasItems = compMealText || paidMeals.length > 0 || extraBaggageKg > 0 || seatFee > 0;
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
 
   return (
     <div className="plain-card p-4 rounded-2xl transition-all duration-200 hover:border-slate-200">
@@ -103,7 +112,7 @@ export default function PassengerReviewCard({
                 <span>Seat {seatNum} Selection ({seatPosLabel || "Reserved"})</span>
               </div>
               <div className="receipt-item-price">
-                {currency} {seatFee.toLocaleString()}
+                {formatCurrency(seatFee)}
               </div>
             </div>
           )}
@@ -126,7 +135,8 @@ export default function PassengerReviewCard({
           {/* Paid Add-ons Itemized List */}
           {paidMeals.map((item, mIdx) => {
             const qty = item.quantity || 1;
-            const subtotal = Number(item.price || 0) * qty;
+            const itemPrice = Number(item.display_price || item.price || 0);
+            const subtotal = itemPrice * qty;
 
             return (
               <div key={mIdx} className="receipt-row receipt-row-muted">
@@ -139,7 +149,7 @@ export default function PassengerReviewCard({
                   </span>
                 </div>
                 <div className="receipt-item-price">
-                  {currency} {subtotal.toLocaleString()}
+                  {formatCurrency(subtotal)}
                 </div>
               </div>
             );
@@ -155,7 +165,7 @@ export default function PassengerReviewCard({
                 <span>+{extraBaggageKg} kg Extra Luggage</span>
               </div>
               <div className="receipt-item-price">
-                {currency} {extraBaggageCost.toLocaleString()}
+                {formatCurrency(extraBaggageCost)}
               </div>
             </div>
           )}

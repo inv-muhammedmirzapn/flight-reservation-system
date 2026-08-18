@@ -45,6 +45,7 @@ from .services import (
     sync_seat_availability_on_destroy,
     trigger_waitlist_if_seats_freed,
 )
+from .services_currency import CurrencyService
 
 logger = logging.getLogger(__name__)
 
@@ -147,17 +148,21 @@ class FlightListCreateView(APIView):
         if status_filter:
             qs = qs.filter(status__iexact=status_filter)
 
+        target_currency = CurrencyService.get_user_currency(request.user)
+        
         min_price = request.query_params.get("min_fare", request.query_params.get("min_price", "")).strip()
         if min_price:
             try:
-                qs = qs.filter(fares__price__gte=float(min_price))
+                min_price_inr = CurrencyService.convert_amount(min_price, target_currency, "INR")
+                qs = qs.filter(fares__price__gte=min_price_inr)
             except ValueError:
                 pass
         
         max_price = request.query_params.get("max_fare", request.query_params.get("max_price", "")).strip()
         if max_price:
             try:
-                qs = qs.filter(fares__price__lte=float(max_price))
+                max_price_inr = CurrencyService.convert_amount(max_price, target_currency, "INR")
+                qs = qs.filter(fares__price__lte=max_price_inr)
             except ValueError:
                 pass
 
@@ -286,7 +291,7 @@ class FlightDetailView(APIView):
     def get(self, request, id, *args, **kwargs) -> Response:
         from .serializers import FrontendFlightInstanceSerializer
         instance = get_object_or_404(FlightInstance, id=int(id))
-        serializer = FrontendFlightInstanceSerializer(instance)
+        serializer = FrontendFlightInstanceSerializer(instance, context={'request': request})
         return Response(serializer.data)
 
 

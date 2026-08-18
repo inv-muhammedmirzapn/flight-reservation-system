@@ -22,9 +22,19 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
         {availableCabins.map((cabin) => {
           const fareObj = flight?.fares?.[cabin.key];
           const isSelected = selectedCabin === cabin.key;
-          const cabinPrice = fareObj ? fareObj.price : (cabin.key === "ECONOMY" ? flight?.base_fare : null);
+          const cabinPrice = fareObj ? (fareObj.display_price || fareObj.price) : (cabin.key === "ECONOMY" ? flight?.base_fare : null);
+          const cabinCurrency = fareObj?.display_currency || "INR";
           const isAvailable = fareObj ? fareObj.available_seats > 0 : flight?.available_seats > 0;
           const seatsCount = fareObj?.available_seats ?? flight?.available_seats ?? 0;
+
+          const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-IN', {
+              style: 'currency',
+              currency: cabinCurrency,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0
+            }).format(amount);
+          };
 
           return (
             <button
@@ -48,7 +58,7 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
               <span className="text-xs font-bold mt-1">{cabin.label}</span>
               {cabinPrice != null ? (
                 <span className={`text-sm font-extrabold ${isSelected ? "text-[#ffeb00]" : "text-emerald-700"}`}>
-                  ₹{Number(cabinPrice).toLocaleString("en-IN")}
+                  {formatCurrency(Number(cabinPrice))}
                 </span>
               ) : (
                 <span className="text-[10px] text-slate-400">N/A</span>

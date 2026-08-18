@@ -142,9 +142,19 @@ export default function SeatSelectionCard({
 
   const uniqueFees = useMemo(() => {
     const fees = new Set();
-    seats.forEach(s => fees.add(Number(s.seat_fee || 0)));
+    seats.forEach(s => fees.add(Number(s.display_seat_fee || s.seat_fee || 0)));
     return Array.from(fees).sort((a, b) => a - b);
   }, [seats]);
+
+  const displayCurrency = seats.length > 0 ? (seats[0].display_currency || "INR") : "INR";
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
 
   const FEE_COLORS = [
     'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300',
@@ -165,7 +175,8 @@ export default function SeatSelectionCard({
       return 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed';
     }
     
-    const feeIndex = uniqueFees.indexOf(Number(seat.seat_fee || 0));
+    const feeValue = Number(seat.display_seat_fee || seat.seat_fee || 0);
+    const feeIndex = uniqueFees.indexOf(feeValue);
     const colorClass = FEE_COLORS[Math.min(feeIndex, FEE_COLORS.length - 1)] || FEE_COLORS[0];
     return `${colorClass} cursor-pointer`;
   };
@@ -203,8 +214,8 @@ export default function SeatSelectionCard({
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto">
-          <div className="flex flex-col items-center gap-4 w-full max-w-sm sm:max-w-md md:max-w-lg">
+        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto lg:overflow-visible">
+          <div className="flex flex-col items-center gap-4 w-max px-4">
             <div className="w-full text-center pb-4 border-b-2 border-slate-200 border-dashed mb-2">
               <span className="material-symbols-outlined text-slate-300 text-3xl">flight</span>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Front</p>
@@ -275,7 +286,7 @@ export default function SeatSelectionCard({
                                 }`}
                               >
                                   {/* Hover Tooltip */}
-                                  <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center whitespace-nowrap bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium z-[100]">
                                     {seat.status === 'HELD' && !isSelected ? (
                                       <span>Temporarily held by another passenger</span>
                                     ) : seat.status !== 'AVAILABLE' && !isSelected ? (
@@ -283,8 +294,8 @@ export default function SeatSelectionCard({
                                     ) : (
                                       <>
                                         <span>{seat.seat_number} ({formatPosition(seat)})</span>
-                                        <span className={Number(seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
-                                          {Number(seat.seat_fee) > 0 ? '+₹' + Number(seat.seat_fee).toLocaleString('en-IN') : 'Included'}
+                                        <span className={Number(seat.display_seat_fee || seat.seat_fee) > 0 ? "text-amber-300" : "text-emerald-300"}>
+                                          {Number(seat.display_seat_fee || seat.seat_fee) > 0 ? '+' + formatCurrency(Number(seat.display_seat_fee || seat.seat_fee)) : 'Included'}
                                         </span>
                                       </>
                                     )}
@@ -331,7 +342,7 @@ export default function SeatSelectionCard({
                    <div key={fee} className="flex items-center gap-3">
                      <div className={`w-6 h-6 rounded border ${legendBoxClass}`}></div>
                      <span className="text-xs text-slate-600 font-medium">
-                       {fee === 0 ? 'Standard Seat' : `₹${fee.toLocaleString('en-IN')}`}
+                       {fee === 0 ? 'Standard Seat' : `${formatCurrency(fee)}`}
                      </span>
                    </div>
                  );
@@ -362,7 +373,7 @@ export default function SeatSelectionCard({
                   <div key={seat.id || seat.seat_number} className="flex justify-between items-center text-sm">
                     <span className="font-bold text-slate-800">{seat.seat_number}</span>
                     <span className="text-slate-500 font-medium text-xs">
-                      {Number(seat.seat_fee) > 0 ? `+₹${seat.seat_fee}` : 'Included'}
+                      {Number(seat.display_seat_fee || seat.seat_fee) > 0 ? `+${formatCurrency(Number(seat.display_seat_fee || seat.seat_fee))}` : 'Included'}
                     </span>
                   </div>
                 ))}

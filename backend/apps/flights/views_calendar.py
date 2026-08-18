@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from .models import FlightInstance, Fare, FlightLeg
+from .services_currency import CurrencyService
 
 class FlightFaresCalendarView(APIView):
     permission_classes = [AllowAny]
@@ -116,13 +117,16 @@ class FlightFaresCalendarView(APIView):
 
         qs = qs.distinct().prefetch_related('fares', 'flight', 'seats')
 
+        target_currency = CurrencyService.get_user_currency(request.user)
+
         max_fare_val = None
         if max_fare_param:
             try:
                 max_fare_val = float(max_fare_param)
+                max_fare_val = float(CurrencyService.convert_amount(max_fare_val, target_currency, "INR"))
             except ValueError:
                 pass
-        
+
         now = timezone.now()
         fares_by_date = {}
         for instance in qs:
@@ -150,8 +154,10 @@ class FlightFaresCalendarView(APIView):
                     continue
                 elif waitlist_mode == "waitlisted_only" and is_avail:
                     continue
-
-                matching_prices.append(float(f.price))
+                
+                # Convert price to user currency
+                display_price = CurrencyService.convert_amount(f.price, f.currency, target_currency)
+                matching_prices.append(float(display_price))
 
             if matching_prices:
                 min_price = min(matching_prices)
@@ -160,7 +166,15 @@ class FlightFaresCalendarView(APIView):
                 else:
                     fares_by_date[date_str] = min(fares_by_date[date_str], min_price)
                     
-        return Response(fares_by_date, status=200)
+        # Wrap the result
+        fares_with_currency = {
+            date_str: {
+                "min_fare": price,
+                "currency": target_currency
+            } for date_str, price in fares_by_date.items()
+        }
+                    
+        return Response(fares_with_currency, status=200)
 
 class FlightFareBoundsView(APIView):
     permission_classes = [AllowAny]
@@ -223,9 +237,16 @@ class FlightFareBoundsView(APIView):
         min_val = float('inf')
         max_val = float('-inf')
 
+        target_currency = CurrencyService.get_user_currency(request.user)
+
         for instance in qs:
             instance_fares = instance.fares.all()
-            prices = [float(f.price) for f in instance_fares if f.cabin_class == class_key]
+            prices = []
+            for f in instance_fares:
+                if f.cabin_class == class_key:
+                    # Convert price to target currency
+                    display_price = CurrencyService.convert_amount(f.price, f.currency, target_currency)
+                    prices.append(float(display_price))
 
             if prices:
                 min_val = min(min_val, *prices)
@@ -235,4 +256,4 @@ class FlightFareBoundsView(APIView):
             min_val = 0
             max_val = 100000
             
-        return Response({"min": min_val, "max": max_val}, status=200)
+        return Response({"min": min_val, "max": max_val, "currency": target_currency}, status=200)

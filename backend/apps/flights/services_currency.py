@@ -56,10 +56,10 @@ USD_RATES = {
 
 class CurrencyService:
     @staticmethod
-    def get_user_currency(user=None, default_currency="USD") -> str:
+    def get_user_currency(user=None, default_currency="INR") -> str:
         """
         Determines target currency based on user profile country.
-        If user country is missing, blank, or unmapped, returns default_currency ('USD').
+        If user country is missing, blank, or unmapped, returns default_currency ('INR').
         """
         if not user or not hasattr(user, "is_authenticated") or not user.is_authenticated:
             return default_currency

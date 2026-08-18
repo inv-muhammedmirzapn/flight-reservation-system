@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 
 from apps.bookings.serializers import FlightInstanceSummarySerializer as FlightSummarySerializer
+from apps.flights.services_currency import CurrencyService
 
 class WaitlistPassengerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,6 +27,8 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
             "seat_count",
             "cabin_class",
             "price",
+            "display_total_price",
+            "display_currency",
             "status",
             "booking",
             "queue_position",
@@ -39,6 +42,8 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
             "username",
             "flight_detail",
             "price",
+            "display_total_price",
+            "display_currency",
             "status",
             "booking",
             "created_at",
@@ -64,3 +69,15 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
                 "Seat count must be between 1 and 9 seats."
             )
         return value
+
+    display_total_price = serializers.SerializerMethodField()
+    display_currency = serializers.SerializerMethodField()
+
+    def get_display_currency(self, obj):
+        request = self.context.get('request')
+        return CurrencyService.get_user_currency(request.user if request else None)
+
+    def get_display_total_price(self, obj):
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
+        return float(CurrencyService.convert_amount(obj.price, "INR", target_currency))

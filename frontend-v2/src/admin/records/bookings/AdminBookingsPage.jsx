@@ -88,6 +88,15 @@ export default function AdminBookingsPage() {
     return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
   }, [search, bookings]);
 
+  const formatCurrency = (amount, currency = 'INR') => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount || 0);
+  };
+
   return (
     <div className="admin-page">
       <div className="admin-container">
@@ -201,7 +210,7 @@ export default function AdminBookingsPage() {
                           {b.status || b.booking_status}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 700 }}>₹{b.total_price_paid ?? b.total_price ?? '0.00'}</td>
+                      <td style={{ fontWeight: 700 }}>{formatCurrency(b.display_total_price ?? b.total_price_paid ?? b.total_price, b.display_currency)}</td>
                       <td style={{ color: '#555' }}>
                         {b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}
                       </td>
@@ -332,7 +341,7 @@ export default function AdminBookingsPage() {
                     <CreditCard size={14} /> Payment & Ticket Info
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>
-                    Total Paid: ₹{selected.total_price ?? selected.total_price_paid ?? '0.00'}
+                    Total Paid: {formatCurrency(selected.display_total_price ?? selected.total_price ?? selected.total_price_paid, selected.display_currency)}
                   </div>
                   <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
                     Class: <strong>{selected.cabin_class || 'ECONOMY'}</strong> | Seats: <strong>{selected.seat_count || 1}</strong>

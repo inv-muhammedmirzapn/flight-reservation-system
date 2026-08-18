@@ -19,7 +19,18 @@ export default function FareDetailsCard({
   if (!flight) return null;
 
   const fareObj = flight.fares?.[selectedCabin];
-  const unitFare = Math.round(fareObj ? Number(fareObj.price) : Number(flight.base_fare) || 0);
+  const unitFare = Math.round(fareObj ? Number(fareObj.display_price || fareObj.price) : Number(flight.base_fare) || 0);
+  const displayCurrency = fareObj?.display_currency || "INR";
+  
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   const cabinAvailableSeats = fareObj?.available_seats ?? flight.available_seats;
   const isWaitlisted = Number(cabinAvailableSeats) === 0;
 
@@ -73,7 +84,7 @@ export default function FareDetailsCard({
         <div className="flex items-center justify-between">
           <span>{cabinLabel} (per person)</span>
           <span className="text-slate-950 font-bold">
-            ₹ {unitFare.toLocaleString("en-IN")}
+            {formatCurrency(unitFare)}
           </span>
         </div>
 
@@ -87,7 +98,7 @@ export default function FareDetailsCard({
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/60">
           <span>Total Base Fare</span>
           <span className="text-slate-950 font-semibold">
-            ₹ {totalBaseFare.toLocaleString("en-IN")}
+            {formatCurrency(totalBaseFare)}
           </span>
         </div>
 
@@ -98,7 +109,7 @@ export default function FareDetailsCard({
               In-Flight Meals
             </span>
             <span className="text-amber-900 font-bold">
-              ₹ {mealTotal.toLocaleString("en-IN")}
+              {formatCurrency(mealTotal)}
             </span>
           </div>
         )}
@@ -110,7 +121,7 @@ export default function FareDetailsCard({
               Seat Fare
             </span>
             <span className="text-blue-900 font-bold">
-              ₹ {seatTotal.toLocaleString("en-IN")}
+              {formatCurrency(seatTotal)}
             </span>
           </div>
         )}
@@ -122,7 +133,7 @@ export default function FareDetailsCard({
               Extra Luggage
             </span>
             <span className="text-indigo-900 font-bold">
-              ₹ {extraBaggageTotal.toLocaleString("en-IN")}
+              {formatCurrency(extraBaggageTotal)}
             </span>
           </div>
         )}
@@ -130,7 +141,7 @@ export default function FareDetailsCard({
         <div className="flex items-center justify-between">
           <span>GST (12%)</span>
           <span className="text-slate-950">
-            ₹ {gstAmount.toLocaleString("en-IN")}
+            {formatCurrency(gstAmount)}
           </span>
         </div>
       </div>
@@ -142,7 +153,7 @@ export default function FareDetailsCard({
       <div className="flex flex-col items-end gap-1">
         <span className="text-xs font-semibold text-slate-500">Grand Total</span>
         <span className="text-2xl font-bold text-slate-950">
-          ₹ {grandTotal.toLocaleString("en-IN")}
+          {formatCurrency(grandTotal)}
         </span>
       </div>
 

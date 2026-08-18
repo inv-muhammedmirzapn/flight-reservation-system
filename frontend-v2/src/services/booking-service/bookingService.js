@@ -81,4 +81,32 @@ export const bookingAPI = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Download the booking ticket PDF (server-generated).
+   * GET /api/bookings/:id/download-pdf/
+   * Triggers a browser file download.
+   */
+  downloadPdf: async (id, refCode) => {
+    // fetchWithAuth will automatically handle 401s, token refreshes, and returning the Blob
+    const blob = await fetchWithAuth(`/bookings/${id}/download-pdf/`);
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = `Passenger-Ticket-${refCode}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objUrl);
+  },
+
+  /**
+   * Re-send the booking confirmation email with PDF attached.
+   * POST /api/bookings/:id/send-ticket-email/
+   */
+  sendTicketEmail: async (id) => {
+    return fetchWithAuth(`/bookings/${id}/send-ticket-email/`, {
+      method: 'POST',
+    });
+  },
 };

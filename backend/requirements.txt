@@ -12,3 +12,4 @@ Pillow
 pycountry
 openpyxl
 pandas
+reportlab

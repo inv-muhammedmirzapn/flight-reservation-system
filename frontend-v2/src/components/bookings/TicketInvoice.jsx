@@ -13,16 +13,26 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
     FIRST: "First Class"
   };
 
-  const grandTotal = Number(detailData?.total_price || detailData?.price || 0);
+  const grandTotal = Number(detailData?.display_total_price || detailData?.total_price || detailData?.price || 0);
   const seatCount = detailData?.seat_count || passengers.length || 1;
   const subTotal = grandTotal > 0 ? Math.round(grandTotal / 1.12) : 0;
+  
+  const displayCurrency = detailData?.display_currency || detailData?.flight?.fares?.[cabinClass]?.display_currency || "INR";
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
 
   // Calculate meal total
   let mealTotal = 0;
   passengers.forEach(p => {
     (p.selected_meals || p.meals || []).forEach(m => {
        const qty = m.quantity || 1;
-       const price = Number(m.unit_price || m.food_item?.price || m.flight_meal?.price || 0);
+       const price = Number(m.display_price || m.unit_price || m.food_item?.display_price || m.flight_meal?.display_price || 0);
        mealTotal += (qty * price);
     });
   });
@@ -30,14 +40,14 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
   // Calculate extra baggage total
   let extraBaggageTotal = 0;
   passengers.forEach(p => {
-    extraBaggageTotal += Number(p.extra_baggage_cost || 0);
+    extraBaggageTotal += Number(p.display_extra_baggage_cost || p.extra_baggage_cost || 0);
   });
 
   // Calculate base fare
   let baseFareTotal = Number(detailData?.base_fare) || 0;
   if (!baseFareTotal) {
       const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
-      const baseFarePerPax = fareObj ? Number(fareObj.price) : Number(flight?.base_fare || 0);
+      const baseFarePerPax = fareObj ? Number(fareObj.display_price || fareObj.price) : Number(flight?.base_fare || 0);
       baseFareTotal = baseFarePerPax * seatCount;
   }
 
@@ -162,7 +172,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                     : p.gender || "Passenger";
 
               const extraKg = Number(p.extra_baggage_kg || 0);
-              const extraCost = Number(p.extra_baggage_cost || 0);
+              const extraCost = Number(p.display_extra_baggage_cost || p.extra_baggage_cost || 0);
 
               const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
               const freeBaggageKg = Math.round(
@@ -233,7 +243,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                           <span>+{extraKg} kg Extra Luggage</span>
                         </div>
                         <div className="receipt-item-price">
-                          INR {extraCost.toLocaleString("en-IN")}
+                          {formatCurrency(extraCost)}
                         </div>
                       </div>
                     )}
@@ -261,7 +271,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                         m.food_item?.name ||
                         "Pre-ordered Item";
                       const qty = m.quantity || 1;
-                      const itemPrice = Number(m.unit_price || m.price || 0);
+                      const itemPrice = Number(m.display_price || m.unit_price || m.price || 0);
                       const subtotal = itemPrice * qty;
 
                       return (
@@ -276,7 +286,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                           </div>
                           {itemPrice > 0 && (
                             <div className="receipt-item-price">
-                              {m.display_currency || "INR"} {subtotal.toLocaleString("en-IN")}
+                              {formatCurrency(subtotal)}
                             </div>
                           )}
                         </div>
@@ -301,7 +311,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
         </h4>
         <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
           <span>Base Fare ({seatCount} seat{seatCount > 1 ? "s" : ""})</span>
-          <span className="font-bold text-slate-950">₹ {baseFareTotal.toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-950">{formatCurrency(baseFareTotal)}</span>
         </div>
 
         {seatTotal > 0 && (
@@ -310,7 +320,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
               <span className="material-symbols-outlined text-xs">airline_seat_recline_normal</span>
               Seat Fare
             </span>
-            <span className="font-bold text-blue-900">₹ {seatTotal.toLocaleString("en-IN")}</span>
+            <span className="font-bold text-blue-900">{formatCurrency(seatTotal)}</span>
           </div>
         )}
 
@@ -320,7 +330,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
               <span className="material-symbols-outlined text-xs">restaurant</span>
               In-Flight Meals
             </span>
-            <span className="font-bold text-amber-900">₹ {mealTotal.toLocaleString("en-IN")}</span>
+            <span className="font-bold text-amber-900">{formatCurrency(mealTotal)}</span>
           </div>
         )}
 
@@ -330,17 +340,17 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
               <span className="material-symbols-outlined text-xs">luggage</span>
               Extra Luggage
             </span>
-            <span className="font-bold text-indigo-900">₹ {extraBaggageTotal.toLocaleString("en-IN")}</span>
+            <span className="font-bold text-indigo-900">{formatCurrency(extraBaggageTotal)}</span>
           </div>
         )}
 
         <div className="flex items-center justify-between text-xs text-slate-600 font-medium mt-2 pb-3">
           <span>Taxes & Service Charges (12%)</span>
-          <span className="font-bold text-slate-950">₹ {taxesCalc.toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-950">{formatCurrency(taxesCalc)}</span>
         </div>
         <div className="flex items-center justify-between text-base font-extrabold text-slate-950 pt-3 border-t border-slate-200/80">
           <span>Total Amount</span>
-          <span>₹ {grandTotal.toLocaleString("en-IN")}</span>
+          <span>{formatCurrency(grandTotal)}</span>
         </div>
       </div>
     </div>

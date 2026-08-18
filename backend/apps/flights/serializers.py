@@ -554,6 +554,8 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
 
 class SeatSerializer(serializers.ModelSerializer):
     attributes = serializers.SerializerMethodField(read_only=True)
+    display_seat_fee = serializers.SerializerMethodField()
+    display_currency = serializers.SerializerMethodField()
 
     class Meta:
         model = Seat
@@ -561,9 +563,25 @@ class SeatSerializer(serializers.ModelSerializer):
             "id", "flight_instance", "seat_number",
             "seat_class", "position", "status",
             "exit_row", "extra_legroom", "seat_fee", "currency",
+            "display_seat_fee", "display_currency",
             "last_rule_applied", "attributes",
         ]
-        read_only_fields = ["id", "attributes"]
+        read_only_fields = ["id", "attributes", "display_seat_fee", "display_currency"]
+
+    def _get_target_currency(self):
+        request = self.context.get('request')
+        user = request.user if request else None
+        from .services_currency import CurrencyService
+        return CurrencyService.get_user_currency(user)
+
+    def get_display_seat_fee(self, obj):
+        from .services_currency import CurrencyService
+        target_currency = self._get_target_currency()
+        display_price = CurrencyService.convert_amount(obj.seat_fee, obj.currency, target_currency)
+        return str(display_price)
+
+    def get_display_currency(self, obj):
+        return self._get_target_currency()
 
     def get_attributes(self, obj):
         return obj.attributes

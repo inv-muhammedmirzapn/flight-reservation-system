@@ -64,7 +64,9 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
             });
           } else {
             Object.entries(dataObj).forEach(([dateStr, price]) => {
-              if (price != null && !isNaN(price)) {
+              if (typeof price === "object" && price !== null) {
+                map[dateStr] = price;
+              } else if (price != null && !isNaN(price)) {
                 map[dateStr] = Number(price);
               }
             });
@@ -182,6 +184,16 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           const priceVal = typeof rawVal === "object" ? rawVal?.min_fare : rawVal;
           const hasPrice = priceVal != null && !isNaN(priceVal) && Number(priceVal) > 0;
           const numPrice = Number(priceVal);
+          
+          const itemCurrency = typeof rawVal === "object" ? (rawVal?.currency || "INR") : "INR";
+          const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-IN', {
+              style: 'currency',
+              currency: itemCurrency,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0
+            }).format(amount);
+          };
 
           let priceColorClass;
           if (isSelected) {
@@ -215,7 +227,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
               </span>
               {hasPrice ? (
                 <span className={`text-[10px] mt-0.5 ${priceColorClass}`}>
-                  ₹{numPrice.toLocaleString("en-IN")}
+                  {formatCurrency(numPrice)}
                 </span>
               ) : (
                 <span className={`text-[9px] font-medium mt-0.5 ${isSelected ? "text-slate-800" : "text-slate-400"}`}>

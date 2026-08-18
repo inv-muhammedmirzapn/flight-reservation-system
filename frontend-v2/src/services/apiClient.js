@@ -32,6 +32,12 @@ const dispatchLogout = async () => {
 
 export const getResponseData = async (res) => {
   if (res.status === 204) return null;
+  
+  const contentType = res.headers.get('Content-Type') || '';
+  if (contentType.includes('application/pdf')) {
+    return await res.blob();
+  }
+
   const text = await res.text();
   if (!text) return null;
   try {
