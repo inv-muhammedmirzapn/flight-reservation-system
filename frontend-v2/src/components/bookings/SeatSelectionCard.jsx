@@ -214,8 +214,8 @@ export default function SeatSelectionCard({
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto">
-          <div className="flex flex-col items-center gap-4 w-full max-w-sm sm:max-w-md md:max-w-lg">
+        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto lg:overflow-visible">
+          <div className="flex flex-col items-center gap-4 w-max px-4">
             <div className="w-full text-center pb-4 border-b-2 border-slate-200 border-dashed mb-2">
               <span className="material-symbols-outlined text-slate-300 text-3xl">flight</span>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Front</p>
@@ -286,7 +286,7 @@ export default function SeatSelectionCard({
                                 }`}
                               >
                                   {/* Hover Tooltip */}
-                                  <div className="absolute bottom-full mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center w-max bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium">
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 sm:mb-1.5 hidden group-hover:flex flex-col items-center justify-center whitespace-nowrap bg-slate-800 text-white text-[10px] sm:text-[11px] rounded py-1.5 px-2.5 pointer-events-none shadow-md font-medium z-[100]">
                                     {seat.status === 'HELD' && !isSelected ? (
                                       <span>Temporarily held by another passenger</span>
                                     ) : seat.status !== 'AVAILABLE' && !isSelected ? (

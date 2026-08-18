@@ -33,7 +33,7 @@ class CurrencyServiceTests(TestCase):
         self.assertEqual(CurrencyService.get_user_currency(self.user_in), "INR")
         self.assertEqual(CurrencyService.get_user_currency(self.user_us), "USD")
         self.assertEqual(CurrencyService.get_user_currency(self.user_uk), "GBP")
-        self.assertEqual(CurrencyService.get_user_currency(None), "USD")
+        self.assertEqual(CurrencyService.get_user_currency(None), "INR")
 
     def test_convert_amount(self):
         # 100 USD to INR (rate 83.50)

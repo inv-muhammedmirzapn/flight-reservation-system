@@ -3,7 +3,7 @@ from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -131,6 +131,8 @@ class BookingViewSet(mixins.CreateModelMixin,
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="Passenger-Ticket-{ref}.pdf"'
             return response
+        except Http404:
+            raise
         except Exception:
             logger.exception('Failed to generate ticket PDF')
             return Response({'detail': 'Failed to generate PDF. Please try again.'},
@@ -153,6 +155,8 @@ class BookingViewSet(mixins.CreateModelMixin,
                                 status=status.HTTP_400_BAD_REQUEST)
             NotificationService.send_booking_confirmation(booking)
             return Response({'detail': 'Ticket email sent successfully.'}, status=status.HTTP_200_OK)
+        except Http404:
+            raise
         except Exception:
             logger.exception('Failed to send ticket email')
             return Response({'detail': 'Failed to send email. Please try again.'},
