@@ -1,19 +1,13 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFilters, onResetFilters, bounds }) {
   const minPrice = Math.floor(bounds?.min || bounds?.min_price || 0);
   const maxPrice = Math.ceil(bounds?.max || bounds?.max_price || 100000);
   const displayCurrency = bounds?.currency || "INR";
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   const priceStep = Math.ceil((maxPrice - minPrice) / 20) || 500;
 

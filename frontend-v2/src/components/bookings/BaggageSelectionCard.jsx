@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function BaggageSelectionCard({
   passengers = [],
@@ -11,14 +12,7 @@ export default function BaggageSelectionCard({
   const pricePerKg = Number(baggageInfo.extra_baggage_display_price_per_kg || baggageInfo.extra_baggage_price_per_kg || 0);
   const displayCurrency = baggageInfo.display_currency || baggageInfo.extra_baggage_currency || "INR";
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   return (
     <div className="booking-container-card rounded-3xl p-6 space-y-6 animate-fade-in">

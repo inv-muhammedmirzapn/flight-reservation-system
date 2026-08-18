@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function PaidAddonsCard({
   passengers = [],
@@ -9,14 +10,7 @@ export default function PaidAddonsCard({
 }) {
   if (!foodItems || foodItems.length === 0) return null;
 
-  const formatCurrency = (amount, currencyCode) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currencyCode || targetCurrency || "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount, currencyCode) => fmtCurr(amount, currencyCode || targetCurrency);
 
   return (
     <div className="booking-container-card rounded-3xl p-6 space-y-6 animate-fade-in">

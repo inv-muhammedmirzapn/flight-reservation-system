@@ -4,6 +4,7 @@ COUNTRY_CURRENCY_MAP = {
     # India
     "INDIA": "INR",
     "IND": "INR",
+    "IN": "INR",
     # United States
     "UNITED STATES": "USD",
     "UNITED STATES OF AMERICA": "USD",
@@ -14,29 +15,59 @@ COUNTRY_CURRENCY_MAP = {
     "UK": "GBP",
     "GREAT BRITAIN": "GBP",
     "ENGLAND": "GBP",
+    "GB": "GBP",
     # Eurozone
     "GERMANY": "EUR",
+    "DEUTSCHLAND": "EUR",
+    "DE": "EUR",
     "FRANCE": "EUR",
+    "FR": "EUR",
     "ITALY": "EUR",
+    "IT": "EUR",
     "SPAIN": "EUR",
+    "ES": "EUR",
     "NETHERLANDS": "EUR",
+    "HOLLAND": "EUR",
+    "NL": "EUR",
     "BELGIUM": "EUR",
+    "BE": "EUR",
     "AUSTRIA": "EUR",
+    "AT": "EUR",
     "IRELAND": "EUR",
+    "IE": "EUR",
     "FINLAND": "EUR",
+    "FI": "EUR",
     "PORTUGAL": "EUR",
+    "PT": "EUR",
     "GREECE": "EUR",
+    "GR": "EUR",
     # Middle East
     "UNITED ARAB EMIRATES": "AED",
     "UAE": "AED",
     "DUBAI": "AED",
+    "ABU DHABI": "AED",
     "SAUDI ARABIA": "SAR",
     "KSA": "SAR",
     "QATAR": "QAR",
-    # Americas & Oceania
+    "OMAN": "OMR",
+    "BAHRAIN": "BHD",
+    "KUWAIT": "KWD",
+    # Americas & Oceania & Asia
     "CANADA": "CAD",
+    "CA": "CAD",
     "AUSTRALIA": "AUD",
+    "AUS": "AUD",
+    "AU": "AUD",
     "SINGAPORE": "SGD",
+    "SG": "SGD",
+    "JAPAN": "JPY",
+    "JP": "JPY",
+    "SWITZERLAND": "CHF",
+    "CH": "CHF",
+    "NEW ZEALAND": "NZD",
+    "NZ": "NZD",
+    "CHINA": "CNY",
+    "CN": "CNY",
 }
 
 # FX rates relative to USD (1 USD = rate in currency)
@@ -51,16 +82,27 @@ USD_RATES = {
     "CAD": Decimal("1.37"),
     "AUD": Decimal("1.52"),
     "SGD": Decimal("1.35"),
+    "JPY": Decimal("155.00"),
+    "CHF": Decimal("0.90"),
+    "NZD": Decimal("1.65"),
+    "CNY": Decimal("7.23"),
+    "OMR": Decimal("0.38"),
+    "BHD": Decimal("0.38"),
+    "KWD": Decimal("0.31"),
 }
 
 
 class CurrencyService:
     @staticmethod
-    def get_user_currency(user=None, default_currency="INR") -> str:
+    def get_user_currency(user=None, request=None, default_currency="INR") -> str:
         """
         Determines target currency based on user profile country.
+        Accepts either a User model instance or a HttpRequest instance.
         If user country is missing, blank, or unmapped, returns default_currency ('INR').
         """
+        if user is None and request is not None:
+            user = getattr(request, "user", None)
+
         if not user or not hasattr(user, "is_authenticated") or not user.is_authenticated:
             return default_currency
 

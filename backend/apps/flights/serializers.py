@@ -112,8 +112,14 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
         return leg.arrival_airport.terminals if leg else []
 
     def get_base_fare(self, obj):
+        from .services_currency import CurrencyService
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request=request)
         fare = obj.fares.order_by('price').first()
-        return float(fare.price) if fare else 0.0
+        if fare:
+            display_price = CurrencyService.convert_amount(fare.price, fare.currency, target_currency)
+            return float(display_price)
+        return 0.0
 
     def get_total_seats(self, obj):
         return obj.seats.count()
@@ -635,15 +641,29 @@ class FareSerializer(serializers.ModelSerializer):
 class FoodItemSerializer(serializers.ModelSerializer):
     airline_name = serializers.CharField(source="airline.airline_name", read_only=True)
     image_url = serializers.SerializerMethodField()
+    display_price = serializers.SerializerMethodField()
+    display_currency = serializers.SerializerMethodField()
 
     class Meta:
         model = FoodItem
         fields = [
             "id", "airline", "airline_name",
             "name", "price", "currency",
+            "display_price", "display_currency",
             "is_veg", "is_halal", "is_vegan",
             "image", "image_url"
         ]
+
+    def get_display_currency(self, obj):
+        from .services_currency import CurrencyService
+        request = self.context.get("request")
+        return CurrencyService.get_user_currency(request=request)
+
+    def get_display_price(self, obj):
+        from .services_currency import CurrencyService
+        request = self.context.get("request")
+        target_currency = CurrencyService.get_user_currency(request=request)
+        return float(CurrencyService.convert_amount(obj.price, obj.currency or "INR", target_currency))
 
     def get_image_url(self, obj):
         if obj.image:

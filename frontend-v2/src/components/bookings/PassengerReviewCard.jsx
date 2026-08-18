@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function PassengerReviewCard({
   index,
@@ -63,14 +64,7 @@ export default function PassengerReviewCard({
 
   const hasItems = compMealText || paidMeals.length > 0 || extraBaggageKg > 0 || seatFee > 0;
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, currency);
 
   return (
     <div className="plain-card p-4 rounded-2xl transition-all duration-200 hover:border-slate-200">

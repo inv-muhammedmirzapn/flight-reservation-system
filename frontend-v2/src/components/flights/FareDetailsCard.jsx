@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function FareDetailsCard({
   flight,
@@ -22,14 +23,7 @@ export default function FareDetailsCard({
   const unitFare = Math.round(fareObj ? Number(fareObj.display_price || fareObj.price) : Number(flight.base_fare) || 0);
   const displayCurrency = fareObj?.display_currency || "INR";
   
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   const cabinAvailableSeats = fareObj?.available_seats ?? flight.available_seats;
   const isWaitlisted = Number(cabinAvailableSeats) === 0;
