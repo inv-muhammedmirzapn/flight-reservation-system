@@ -1,14 +1,29 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
-export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFilters, onResetFilters }) {
+export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFilters, onResetFilters, bounds }) {
+  const minPrice = Math.floor(bounds?.min || bounds?.min_price || 0);
+  const maxPrice = Math.ceil(bounds?.max || bounds?.max_price || 100000);
+  const displayCurrency = bounds?.currency || "INR";
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const priceStep = Math.ceil((maxPrice - minPrice) / 20) || 500;
+
   // Local draft state — only applies when user clicks 'Apply Filters'
   const [draftFilters, setDraftFilters] = useState({
     ordering: "base_fare",
     stops: "",
     airlines: [],
-    waitlistMode: "all", // "all" | "available_only" | "waitlisted_only"
-    maxFare: 100000
+    waitlistMode: "all",
+    maxFare: maxPrice
   });
 
   // Sync draft state with incoming filters when drawer opens
@@ -19,10 +34,10 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
         stops: filters?.stops !== undefined ? filters.stops : "",
         airlines: filters?.airlines || [],
         waitlistMode: filters?.waitlistMode || "all",
-        maxFare: filters?.maxFare ?? 100000
+        maxFare: filters?.maxFare ?? maxPrice
       });
     }
-  }, [isOpen, filters]);
+  }, [isOpen, filters, maxPrice]);
 
   // Prevent body scrolling when drawer is open
   useEffect(() => {
@@ -53,7 +68,7 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
       stops: "",
       airlines: [],
       waitlistMode: "all",
-      maxFare: 100000
+      maxFare: maxPrice
     };
     setDraftFilters(defaultFilters);
     if (onResetFilters) {
@@ -172,14 +187,14 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
                 Max Price
               </h3>
               <span className="text-xs font-bold text-slate-950 bg-slate-100 px-2.5 py-1 rounded-lg">
-                ₹{draftFilters.maxFare >= 100000 ? "1,00,000+" : draftFilters.maxFare.toLocaleString("en-IN")}
+                {draftFilters.maxFare >= maxPrice ? `${formatCurrency(maxPrice)}+` : formatCurrency(draftFilters.maxFare)}
               </span>
             </div>
             <input
               type="range"
-              min="5000"
-              max="100000"
-              step="2500"
+              min={minPrice}
+              max={maxPrice}
+              step={priceStep}
               value={draftFilters.maxFare}
               onChange={(e) =>
                 setDraftFilters((prev) => ({ ...prev, maxFare: Number(e.target.value) }))
@@ -187,8 +202,8 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-950"
             />
             <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-1">
-              <span>₹5,000</span>
-              <span>₹1,00,000+</span>
+              <span>{formatCurrency(minPrice)}</span>
+              <span>{formatCurrency(maxPrice)}+</span>
             </div>
           </div>
 

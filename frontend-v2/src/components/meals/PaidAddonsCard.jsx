@@ -9,6 +9,15 @@ export default function PaidAddonsCard({
 }) {
   if (!foodItems || foodItems.length === 0) return null;
 
+  const formatCurrency = (amount, currencyCode) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currencyCode || targetCurrency || "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
     <div className="booking-container-card rounded-3xl p-6 space-y-6 animate-fade-in">
       {/* Header Banner */}
@@ -121,8 +130,8 @@ export default function PaidAddonsCard({
 
                       {/* Price & Quantity Controls */}
                       <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 mt-1">
-                        <span className="text-xs font-extrabold text-slate-950">
-                          {itemCurrency} {Number(displayPrice).toLocaleString()}
+                        <span className="text-xs font-bold text-slate-950">
+                          {formatCurrency(displayPrice, itemCurrency)}
                         </span>
 
                         {qty > 0 ? (

@@ -186,7 +186,7 @@ export default function BookingCheckoutPage() {
   const isMealIncluded = Boolean(mealsData?.meal_included ?? fareObj?.meal_included);
   const foodItems = mealsData?.food_items || [];
   const flightMeals = mealsData?.flight_meals || [];
-  const targetCurrency = mealsData?.target_currency || fareObj?.currency || "INR";
+  const targetCurrency = mealsData?.target_currency || fareObj?.display_currency || fareObj?.currency || "INR";
   const availableSeats = fareObj?.available_seats ?? flight.available_seats ?? 0;
   const isWaitlisted = Number(availableSeats) === 0;
 
@@ -194,7 +194,8 @@ export default function BookingCheckoutPage() {
 
   // Extra baggage price & allowance info
   const extraBaggagePricePerKg = Number(
-    flight.extra_baggage_display_price_per_kg ||
+    mealsData?.baggage_info?.extra_baggage_display_price_per_kg ||
+      flight.extra_baggage_display_price_per_kg ||
       flight.extra_baggage_price_per_kg ||
       1000
   );
@@ -237,7 +238,7 @@ export default function BookingCheckoutPage() {
   };
 
   const mealTotal = calculateMealTotal();
-  const seatTotal = selectedSeats.reduce((sum, seat) => sum + Number(seat.seat_fee || 0), 0);
+  const seatTotal = selectedSeats.reduce((sum, seat) => sum + Number(seat.display_seat_fee || seat.seat_fee || 0), 0);
   const extraBaggageTotal = calculateExtraBaggageTotal();
 
   // Dynamically define stepper steps

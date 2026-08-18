@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Booking, Passenger, PassengerMeal, SeatHold
 from apps.flights.models import FlightInstance
+from apps.flights.services_currency import CurrencyService
 
 
 class FlightInstanceSummarySerializer(serializers.ModelSerializer):
@@ -28,12 +29,16 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
     def get_fares(self, obj):
         fares = {}
         route = obj.flight
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
         for fare in obj.fares.all():
             checked_kg = float(fare.effective_baggage_allowance_kg)
             handbag_kg = float(fare.effective_handbag_allowance_kg)
             fares[fare.cabin_class] = {
                 'price': float(fare.price),
+                'display_price': float(CurrencyService.convert_amount(fare.price, fare.currency, target_currency)),
                 'currency': fare.currency,
+                'display_currency': target_currency,
                 'meal_included': fare.meal_included,
                 'effective_baggage_allowance_kg': checked_kg,
                 'effective_handbag_allowance_kg': handbag_kg,
@@ -73,15 +78,21 @@ class PassengerMealSerializer(serializers.ModelSerializer):
     food_item_name = serializers.CharField(source='food_item.name', read_only=True, default=None)
     flight_meal_name = serializers.CharField(source='flight_meal.name', read_only=True, default=None)
     leg_info = serializers.SerializerMethodField()
+    display_price = serializers.SerializerMethodField()
 
     class Meta:
         model = PassengerMeal
         fields = [
             'id', 'food_item', 'flight_meal', 'flight_leg',
             'food_item_name', 'flight_meal_name', 'leg_info',
-            'quantity', 'unit_price',
+            'quantity', 'unit_price', 'display_price',
         ]
-        read_only_fields = ['id', 'unit_price', 'food_item_name', 'flight_meal_name', 'leg_info']
+        read_only_fields = ['id', 'unit_price', 'display_price', 'food_item_name', 'flight_meal_name', 'leg_info']
+
+    def get_display_price(self, obj):
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
+        return float(CurrencyService.convert_amount(obj.unit_price, "INR", target_currency))
 
     def get_leg_info(self, obj):
         if obj.flight_leg:
@@ -97,6 +108,7 @@ class PassengerMealSerializer(serializers.ModelSerializer):
 class PassengerSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='name', read_only=True)
     selected_meals = PassengerMealSerializer(many=True, read_only=True)
+    display_extra_baggage_cost = serializers.SerializerMethodField()
 
     class Meta:
         model = Passenger
@@ -104,9 +116,14 @@ class PassengerSerializer(serializers.ModelSerializer):
             'id', 'booking', 'name', 'full_name', 'age', 'gender', 'phone_number',
             'meal_preference', 'seat_number',
             'free_baggage_allowance_kg', 'free_handbag_allowance_kg',
-            'extra_baggage_kg', 'extra_baggage_cost',
+            'extra_baggage_kg', 'extra_baggage_cost', 'display_extra_baggage_cost',
             'selected_meals'
         ]
+
+    def get_display_extra_baggage_cost(self, obj):
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
+        return float(CurrencyService.convert_amount(obj.extra_baggage_cost, "INR", target_currency))
 
     def validate_age(self, value):
         if value < 0:
@@ -122,6 +139,8 @@ class BookingSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_full_name = serializers.SerializerMethodField()
     base_fare = serializers.SerializerMethodField()
+    display_total_price = serializers.SerializerMethodField()
+    display_currency = serializers.SerializerMethodField()
 
     # Accept an integer FlightInstance PK
     flight_id_input = serializers.IntegerField(write_only=True, source='flight')
@@ -130,13 +149,22 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             'id', 'flight_id_input', 'flight_detail',
-            'cabin_class', 'status', 'seat_count', 'total_price', 'base_fare',
+            'cabin_class', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare',
             'created_at', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
         read_only_fields = [
-            'id', 'status', 'seat_count', 'total_price', 'base_fare',
+            'id', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare',
             'created_at', 'flight_detail', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
+
+    def get_display_currency(self, obj):
+        request = self.context.get('request')
+        return CurrencyService.get_user_currency(request.user if request else None)
+
+    def get_display_total_price(self, obj):
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
+        return float(CurrencyService.convert_amount(obj.total_price, "INR", target_currency))
 
     def get_base_fare(self, obj):
         fare = obj.flight.fares.filter(cabin_class=obj.cabin_class).first()

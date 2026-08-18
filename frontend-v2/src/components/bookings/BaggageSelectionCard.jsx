@@ -11,6 +11,15 @@ export default function BaggageSelectionCard({
   const pricePerKg = Number(baggageInfo.extra_baggage_display_price_per_kg || baggageInfo.extra_baggage_price_per_kg || 0);
   const displayCurrency = baggageInfo.display_currency || baggageInfo.extra_baggage_currency || "INR";
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
     <div className="booking-container-card rounded-3xl p-6 space-y-6 animate-fade-in">
       {/* Header Banner */}
@@ -33,7 +42,7 @@ export default function BaggageSelectionCard({
         {pricePerKg > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200/80 text-xs font-semibold text-slate-700 shadow-2xs self-start sm:self-auto">
             <span className="material-symbols-outlined text-sm text-indigo-600">info</span>
-            <span>{displayCurrency} {pricePerKg.toLocaleString()} / kg</span>
+            <span>{formatCurrency(pricePerKg)} / kg</span>
           </div>
         )}
       </div>
@@ -125,7 +134,7 @@ export default function BaggageSelectionCard({
                     Extra Luggage: +{currentExtraKg} kg
                   </span>
                   <span className="font-bold text-amber-950">
-                    + {displayCurrency} {passengerExtraCost.toLocaleString()}
+                    + {formatCurrency(passengerExtraCost)}
                   </span>
                 </div>
               )}

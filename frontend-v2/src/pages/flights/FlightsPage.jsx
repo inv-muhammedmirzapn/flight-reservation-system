@@ -5,6 +5,8 @@ import DateStripCarousel from "@/components/flights/DateStripCarousel";
 import FlightCard from "@/components/flights/FlightCard";
 import FlightFilterDrawer from "@/components/flights/FlightFilterDrawer";
 import { flightsAPI } from "@/services/flight-service/flightService";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchFlightBounds } from "@/store/flightSlice";
 
 export default function FlightsPage() {
   const [searchParams] = useSearchParams();
@@ -19,6 +21,19 @@ export default function FlightsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFilteredResult, setIsFilteredResult] = useState(true);
+  
+  const dispatch = useDispatch();
+  const { bounds } = useSelector((state) => state.flights);
+  const user = useSelector((state) => state.auth.user);
+  
+  useEffect(() => {
+    dispatch(fetchFlightBounds({
+      source: from,
+      destination: to,
+      date: depDate,
+      cabin_class: cabinClassParam
+    }));
+  }, [dispatch, from, to, depDate, cabinClassParam]);
 
   // Filter drawer state
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -27,8 +42,18 @@ export default function FlightsPage() {
     stops: "",
     airlines: [],
     waitlistMode: "all",
-    maxFare: 100000
+    maxFare: bounds?.max_price || bounds?.max || 100000
   });
+
+  // Sync draft maxFare when bounds load
+  useEffect(() => {
+    if (bounds && (bounds.max_price || bounds.max)) {
+      setFilters(prev => ({
+        ...prev,
+        maxFare: prev.maxFare === 100000 ? (bounds.max_price || bounds.max) : prev.maxFare
+      }));
+    }
+  }, [bounds]);
 
   const handleApplyFilters = (newFilters) => {
     setFilters(newFilters);
@@ -180,6 +205,7 @@ export default function FlightsPage() {
         filters={filters}
         onApplyFilters={handleApplyFilters}
         onResetFilters={handleResetFilters}
+        bounds={bounds}
       />
 
       {/* Top Search Header Component */}

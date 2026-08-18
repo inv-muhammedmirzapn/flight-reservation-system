@@ -35,9 +35,19 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
   };
 
   const activeFare = getFareForCabin(selectedCabinClass);
-  const displayPrice = activeFare ? activeFare.price : base_fare;
+  const displayPrice = activeFare ? (activeFare.display_price || activeFare.price) : base_fare;
+  const displayCurrency = activeFare?.display_currency || "INR";
   const activeSeats = activeFare ? activeFare.available_seats : available_seats;
   const isWaitlisted = activeSeats === 0;
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   const checkedBaggageKg =
     activeFare?.effective_baggage_allowance_kg ??
@@ -182,7 +192,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
         <div className="col-span-2 flex flex-col items-end justify-center gap-1">
           <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{selectedCabinClass}</span>
           <span className="text-2xl lg:text-3xl font-extrabold text-slate-950 tracking-wide">
-            ₹{Math.round(displayPrice)}
+            {formatCurrency(Math.round(displayPrice))}
           </span>
           {booking_cutoff_passed ? (
             <span className="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-3 py-1 rounded-lg">
@@ -285,7 +295,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
           <div>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block select-none">Total Fare</span>
-            <span className="text-xl font-extrabold text-slate-950">₹{Math.round(displayPrice)}</span>
+            <span className="text-xl font-extrabold text-slate-950">{formatCurrency(Math.round(displayPrice))}</span>
           </div>
 
           {booking_cutoff_passed ? (

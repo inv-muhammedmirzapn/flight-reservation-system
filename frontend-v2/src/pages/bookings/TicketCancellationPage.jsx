@@ -62,10 +62,20 @@ export default function TicketCancellationPage() {
   const flight = detailData?.flight_detail || detailData?.flight || location.state?.flight || {};
   const passengers = detailData?.passengers || [];
   const seatCount = detailData?.seat_count || passengers.length || 1;
-  const unitFare = Number(flight.base_fare) || 0;
+  const unitFare = Number(flight.display_price || flight.base_fare) || 0;
   const totalBaseFare = Math.round(unitFare * seatCount);
   const taxesAndOther = Math.round(totalBaseFare * 0.12);
-  const grandTotal = detailData?.total_price || detailData?.price || (totalBaseFare + taxesAndOther);
+  const grandTotal = Number(detailData?.display_total_price || detailData?.total_price || detailData?.price || (totalBaseFare + taxesAndOther));
+  const displayCurrency = detailData?.display_currency || "INR";
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: displayCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
 
   // Cancellation fee calculation
   const cancellationFee = isWaitlist ? 0 : Math.round(grandTotal * 0.1); // 0 fee for waitlist, 10% for confirmed
@@ -141,19 +151,19 @@ export default function TicketCancellationPage() {
         <div className="space-y-3 mx-3">
           <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
             <span>Original Amount Paid</span>
-            <span className="font-bold text-slate-950">₹ {Number(grandTotal).toLocaleString("en-IN")}</span>
+            <span className="font-bold text-slate-950">{formatCurrency(grandTotal)}</span>
           </div>
 
           <div className="flex items-center justify-between text-xs text-rose-600 font-medium">
             <span>Cancellation Processing Fee</span>
             <span className="font-bold">
-              {cancellationFee === 0 ? "₹ 0 (Free)" : `- ₹ ${cancellationFee.toLocaleString("en-IN")}`}
+              {cancellationFee === 0 ? "0 (Free)" : `- ${formatCurrency(cancellationFee)}`}
             </span>
           </div>
 
           <div className="flex items-center justify-between text-lg font-bold text-slate-950 pt-3 border-t border-slate-200/80">
             <span>Refund Amount</span>
-            <span>₹ {estimatedRefund.toLocaleString("en-IN")}</span>
+            <span>{formatCurrency(estimatedRefund)}</span>
           </div>
         </div>
 
@@ -200,7 +210,7 @@ export default function TicketCancellationPage() {
 
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between text-xs font-bold text-slate-900">
               <span>Net Refund:</span>
-              <span className="text-emerald-600">₹ {estimatedRefund.toLocaleString("en-IN")}</span>
+              <span className="text-emerald-600">{formatCurrency(estimatedRefund)}</span>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
