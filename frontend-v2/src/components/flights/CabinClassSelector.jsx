@@ -1,4 +1,6 @@
 
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
+
 export default function CabinClassSelector({ flight, selectedCabin, onSelectCabin }) {
   const allCabins = [
     { key: "ECONOMY", label: "Economy", icon: "chair" },
@@ -27,14 +29,7 @@ export default function CabinClassSelector({ flight, selectedCabin, onSelectCabi
           const isAvailable = fareObj ? fareObj.available_seats > 0 : flight?.available_seats > 0;
           const seatsCount = fareObj?.available_seats ?? flight?.available_seats ?? 0;
 
-          const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-IN', {
-              style: 'currency',
-              currency: cabinCurrency,
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            }).format(amount);
-          };
+          const formatCurrency = (amount) => fmtCurr(amount, cabinCurrency);
 
           return (
             <button

@@ -1,4 +1,5 @@
 import FlightBaggageMealIndicators from "./FlightBaggageMealIndicators";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails }) {
   if (!flight) return null;
@@ -40,14 +41,7 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
   const activeSeats = activeFare ? activeFare.available_seats : available_seats;
   const isWaitlisted = activeSeats === 0;
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   const checkedBaggageKg =
     activeFare?.effective_baggage_allowance_kg ??

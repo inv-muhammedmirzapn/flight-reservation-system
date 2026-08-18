@@ -139,6 +139,7 @@ class BookingSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_full_name = serializers.SerializerMethodField()
     base_fare = serializers.SerializerMethodField()
+    display_base_fare = serializers.SerializerMethodField()
     display_total_price = serializers.SerializerMethodField()
     display_currency = serializers.SerializerMethodField()
 
@@ -149,11 +150,11 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             'id', 'flight_id_input', 'flight_detail',
-            'cabin_class', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare',
+            'cabin_class', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare', 'display_base_fare',
             'created_at', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
         read_only_fields = [
-            'id', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare',
+            'id', 'status', 'seat_count', 'total_price', 'display_total_price', 'display_currency', 'base_fare', 'display_base_fare',
             'created_at', 'flight_detail', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
 
@@ -171,6 +172,15 @@ class BookingSerializer(serializers.ModelSerializer):
         if fare:
             return fare.price * obj.seat_count
         return 0
+
+    def get_display_base_fare(self, obj):
+        request = self.context.get('request')
+        target_currency = CurrencyService.get_user_currency(request.user if request else None)
+        fare = obj.flight.fares.filter(cabin_class=obj.cabin_class).first()
+        if fare:
+            raw_val = fare.price * obj.seat_count
+            return float(CurrencyService.convert_amount(raw_val, fare.currency, target_currency))
+        return 0.0
 
     def get_user_full_name(self, obj):
         if obj.user:

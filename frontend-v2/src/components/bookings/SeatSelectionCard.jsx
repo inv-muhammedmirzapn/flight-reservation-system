@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { formatCurrency as fmtCurr } from '@/utils/formatters';
 import { flightsAPI } from '@/services/flight-service/flightService';
 import { bookingAPI } from '@/services/booking-service/bookingService';
 import SeatHoldTimer from './SeatHoldTimer';
@@ -147,14 +148,7 @@ export default function SeatSelectionCard({
   }, [seats]);
 
   const displayCurrency = seats.length > 0 ? (seats[0].display_currency || "INR") : "INR";
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   const FEE_COLORS = [
     'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300',

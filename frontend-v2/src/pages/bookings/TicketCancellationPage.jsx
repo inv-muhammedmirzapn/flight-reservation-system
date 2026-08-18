@@ -6,6 +6,7 @@ import { handleApiError, logError } from "@/utils/errorUtils";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function TicketCancellationPage() {
   const { id } = useParams();
@@ -68,14 +69,7 @@ export default function TicketCancellationPage() {
   const grandTotal = Number(detailData?.display_total_price || detailData?.total_price || detailData?.price || (totalBaseFare + taxesAndOther));
   const displayCurrency = detailData?.display_currency || "INR";
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   // Cancellation fee calculation
   const cancellationFee = isWaitlist ? 0 : Math.round(grandTotal * 0.1); // 0 fee for waitlist, 10% for confirmed

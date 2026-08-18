@@ -1,4 +1,5 @@
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
+import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
 export default function TicketInvoice({ detailData, isWaitlist = false, locationStateFlight = null, locationStatePassengers = null }) {
   if (!detailData) return null;
@@ -18,14 +19,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
   const subTotal = grandTotal > 0 ? Math.round(grandTotal / 1.12) : 0;
   
   const displayCurrency = detailData?.display_currency || detailData?.flight?.fares?.[cabinClass]?.display_currency || "INR";
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: displayCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurr(amount, displayCurrency);
 
   // Calculate meal total
   let mealTotal = 0;
