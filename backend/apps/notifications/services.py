@@ -12,12 +12,14 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     @staticmethod
-    def _create_notification(user, title, message, notification_type):
+    def _create_notification(user, title, message, notification_type, related_object_id=None, link=None):
         return Notification.objects.create(
             user=user,
             title=title,
             message=message,
-            notification_type=notification_type
+            notification_type=notification_type,
+            related_object_id=related_object_id,
+            link=link
         )
 
     @staticmethod
@@ -143,9 +145,13 @@ class NotificationService:
         except Exception:
             logger.exception('Failed to generate PDF for email attachment')
 
-        cls._create_notification(user, subject,
+        cls._create_notification(
+            user, subject,
             f"Your booking for flight {flight_number} is confirmed!",
-            NotificationType.BOOKING_CONFIRMED)
+            NotificationType.BOOKING_CONFIRMED,
+            related_object_id=str(booking.id),
+            link=f"/my-bookings/ticket/{booking.id}"
+        )
         cls._send_email(user.email, subject, html, pdf_attachment=pdf_bytes, pdf_filename=pdf_filename)
 
     @classmethod
@@ -166,9 +172,13 @@ class NotificationService:
             destination=destination,
             **details
         )
-        cls._create_notification(user, subject,
+        cls._create_notification(
+            user, subject,
             f"Your booking for flight {flight_number} has been cancelled.",
-            NotificationType.BOOKING_CANCELLED)
+            NotificationType.BOOKING_CANCELLED,
+            related_object_id=str(booking.id),
+            link=f"/my-bookings/ticket/{booking.id}"
+        )
         cls._send_email(user.email, subject, html)
 
     @classmethod
@@ -189,9 +199,13 @@ class NotificationService:
             destination=destination,
             **details
         )
-        cls._create_notification(user, subject,
+        cls._create_notification(
+            user, subject,
             f"Your booking for flight {flight_number} has been cancelled by the administration. A full refund has been initiated.",
-            NotificationType.BOOKING_CANCELLED)
+            NotificationType.BOOKING_CANCELLED,
+            related_object_id=str(booking.id),
+            link=f"/my-bookings/ticket/{booking.id}"
+        )
         cls._send_email(user.email, subject, html)
 
     # ── Waitlist ──────────────────────────────────────────────────────────────
@@ -213,9 +227,13 @@ class NotificationService:
             destination=destination,
             seat_count=booking.seat_count,
         )
-        cls._create_notification(user, subject,
+        cls._create_notification(
+            user, subject,
             f"Your waitlist for flight {flight_number} has been confirmed!",
-            NotificationType.WAITLIST_ALLOCATED)
+            NotificationType.WAITLIST_ALLOCATED,
+            related_object_id=str(booking.id),
+            link=f"/my-bookings/ticket/{booking.id}"
+        )
         cls._send_email(user.email, subject, html)
 
     # ── Flight status (bulk notifications) ────────────────────────────────────
@@ -238,9 +256,13 @@ class NotificationService:
                 destination=destination,
                 new_departure_time=new_time_str,
             )
-            cls._create_notification(user, subject,
+            cls._create_notification(
+                user, subject,
                 f"Flight {flight_number} delayed. New departure: {new_time_str}.",
-                NotificationType.FLIGHT_DELAYED)
+                NotificationType.FLIGHT_DELAYED,
+                related_object_id=str(flight_instance.id),
+                link=f"/flights/{flight_instance.id}"
+            )
             cls._send_email(user.email, subject, html)
 
     @classmethod
@@ -259,9 +281,13 @@ class NotificationService:
                 origin=origin,
                 destination=destination,
             )
-            cls._create_notification(user, subject,
+            cls._create_notification(
+                user, subject,
                 f"Flight {flight_number} has been cancelled.",
-                NotificationType.FLIGHT_CANCELLED)
+                NotificationType.FLIGHT_CANCELLED,
+                related_object_id=str(flight_instance.id),
+                link=f"/flights/{flight_instance.id}"
+            )
             cls._send_email(user.email, subject, html)
 
     @classmethod
@@ -312,9 +338,13 @@ class NotificationService:
         for user, email in users_to_notify:
             name = user.first_name or email
             subject, html = build_template(user, name)
-            cls._create_notification(user, subject,
+            cls._create_notification(
+                user, subject,
                 f"Flight {flight_number} status updated to {new_status}.",
-                notif_type)
+                notif_type,
+                related_object_id=str(flight_instance.id),
+                link=f"/flights/{flight_instance.id}"
+            )
             cls._send_email(email, subject, html)
 
     # ── User Account ────────────────────────────────────────────────────────
@@ -346,5 +376,7 @@ class NotificationService:
                 f"({origin} → {destination}) has been cancelled. "
                 f"A refund of ₹{refund_amount:.2f} will be processed (5% processing fee applied)."
             ),
-            notification_type=NotificationType.BOOKING_CANCELLED
+            notification_type=NotificationType.BOOKING_CANCELLED,
+            related_object_id=str(flight_instance.id),
+            link="/my-bookings"
         )
