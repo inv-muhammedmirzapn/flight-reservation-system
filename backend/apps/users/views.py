@@ -55,6 +55,15 @@ class RegisterView(generics.CreateAPIView):
                 
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
+            
+            try:
+                from apps.notifications.services import NotificationService
+                user = User.objects.get(email__iexact=email)
+                NotificationService.send_welcome_email(user)
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).exception("Failed to send welcome email")
+
             return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED, headers=headers)
         except ValidationError as e:
             errors = dict(e.detail)

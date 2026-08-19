@@ -74,6 +74,10 @@ def _diff_hm(dep, arr):
     except Exception:
         return '—'
 
+def _layover_hm(arr_time, next_dep_time):
+    """Return a human-readable layover duration string between two leg times."""
+    return _diff_hm(arr_time, next_dep_time)
+
 def _logo_path():
     from django.conf import settings
     base = str(settings.BASE_DIR)
@@ -274,13 +278,13 @@ def generate_booking_pdf(booking) -> bytes:
     story.append(P(f'Booked by: <b>{user_name}</b>  •  Cabin: <b>{cabin}</b>  •  {booking.seat_count} seat(s)', size=8, color=SUBTXT))
     story.append(sp(5))
 
-    # Assume booking can have multiple sectors in the future.
-    # For now, wrap the single flight in a list.
+    # Sectors: currently one flight per booking; structured for future multi-sector support.
     sectors = [booking.flight]
 
     for idx, fi in enumerate(sectors):
-        first_leg  = fi.flight.legs.order_by('leg_order').first()
-        last_leg   = fi.flight.legs.order_by('leg_order').last()
+        legs        = list(fi.flight.legs.order_by('leg_order'))
+        first_leg   = legs[0] if legs else None
+        last_leg    = legs[-1] if legs else None
         flight_no  = fi.flight.flight_no
         airline    = (fi.flight.airline.airline_name
                       if hasattr(fi.flight, 'airline') and fi.flight.airline else '—')
@@ -357,6 +361,49 @@ def generate_booking_pdf(booking) -> bytes:
         ]))
         story.append(route_tbl)
         story.append(sp(3))
+
+        # ── Transit Stop Strip (only shown when there are intermediate stops) ──
+        if len(legs) > 1:
+            transit_rows = []
+            for i, leg in enumerate(legs[:-1]):
+                next_leg = legs[i + 1]
+                arr_airport = leg.arrival_airport
+
+                # next_leg.layover_duration_minutes = layover *before* the next leg starts
+                # That is exactly the connection time we want to display here.
+                lm = int(next_leg.layover_duration_minutes or 0)
+                if lm > 0:
+                    layover_dur = f'{lm // 60}h {lm % 60}m'
+                elif leg.scheduled_arrival and next_leg.scheduled_departure:
+                    layover_dur = _diff_hm(leg.scheduled_arrival, next_leg.scheduled_departure)
+                else:
+                    layover_dur = 'Check airline'
+
+                iata = arr_airport.iata_code if arr_airport else '—'
+                city = (arr_airport.city or iata) if arr_airport else '—'
+                transit_rows.append([
+                    P('LAYOVER', size=6, bold=True, color=GOLD),
+                    P(f'{iata}  •  {city}', size=8, bold=True, color=DARK),
+                    P(f'{layover_dur} connection time', size=7, color=SUBTXT, align=2),
+                ])
+
+            transit_tbl = Table(
+                transit_rows,
+                colWidths=[18 * mm, cw_total - 18 * mm - 38 * mm, 38 * mm],
+            )
+            transit_tbl.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fffbeb')),
+                ('BOX', (0, 0), (-1, -1), 0.5, GOLD),
+                ('LINEBELOW', (0, 0), (-1, -2), 0.3, MID),
+                ('TOPPADDING', (0, 0), (-1, -1), 7),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+                ('LEFTPADDING', (0, 0), (0, -1), 10),
+                ('LEFTPADDING', (1, 0), (1, -1), 8),
+                ('RIGHTPADDING', (2, 0), (2, -1), 10),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            story.append(transit_tbl)
+            story.append(sp(3))
 
         date_tbl = Table([[
             P(dep_d, size=8, color=DARK),
