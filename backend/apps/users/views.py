@@ -44,6 +44,7 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
 
+<<<<<<< HEAD
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         try:
@@ -76,6 +77,9 @@ class RegisterView(generics.CreateAPIView):
                 return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED)
             
             raise ValidationError(errors)
+=======
+
+>>>>>>> origin/develop
 
 
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
