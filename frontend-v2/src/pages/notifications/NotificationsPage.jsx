@@ -42,6 +42,41 @@ export default function NotificationsPage() {
     }
   };
 
+  const getNotificationLink = (item) => {
+    if (item?.link) return item.link;
+
+    const type = item?.notification_type || "";
+    const relId = item?.related_object_id;
+
+    if (type === "BOOKING_CONFIRMED" || type === "BOOKING_CANCELLED" || type === "WAITLIST_ALLOCATED") {
+      return relId ? `/my-bookings/ticket/${relId}` : "/my-bookings";
+    }
+
+    if (type.startsWith("FLIGHT_")) {
+      return relId ? `/flights/${relId}` : "/my-bookings";
+    }
+
+    const text = `${item?.title || ""} ${item?.message || ""}`.toLowerCase();
+    if (text.includes("booking") || text.includes("ticket") || text.includes("waitlist")) {
+      return "/my-bookings";
+    }
+    if (text.includes("flight") || text.includes("delay") || text.includes("schedule")) {
+      return "/my-bookings";
+    }
+
+    return "/my-bookings";
+  };
+
+  const handleCardClick = async (item) => {
+    if (!item.is_read) {
+      handleMarkAsRead(item.id);
+    }
+    const targetLink = getNotificationLink(item);
+    if (targetLink) {
+      navigate(targetLink);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     try {
@@ -198,14 +233,11 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => {
-                    if (isUnread) handleMarkAsRead(item.id);
-                    if (item.link) navigate(item.link);
-                  }}
-                  className={`rounded-3xl p-4 sm:p-5 flex items-start gap-4 transition-all duration-200 cursor-pointer border ${
+                  onClick={() => handleCardClick(item)}
+                  className={`group rounded-3xl p-4 sm:p-5 flex items-start gap-4 transition-all duration-200 cursor-pointer border ${
                     isUnread
-                      ? "bg-amber-500/5 border-amber-300/60 shadow-xs hover:bg-amber-500/10"
-                      : "bg-slate-50/70 border-slate-100 hover:bg-slate-100/80"
+                      ? "bg-amber-500/5 border-amber-300/60 shadow-xs hover:bg-amber-500/10 hover:border-amber-400"
+                      : "bg-slate-50/70 border-slate-100 hover:bg-slate-100/80 hover:border-slate-300"
                   }`}
                 >
                   {/* Icon Wrapper */}
@@ -213,7 +245,7 @@ export default function NotificationsPage() {
                     className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                       isUnread
                         ? "bg-[#ffd600] text-slate-950 shadow-xs"
-                        : "bg-slate-200/70 text-slate-500"
+                        : "bg-slate-200/70 text-slate-500 group-hover:bg-slate-300/70"
                     }`}
                   >
                     <span className="material-symbols-outlined text-xl select-none">
@@ -236,9 +268,9 @@ export default function NotificationsPage() {
                     </p>
                   </div>
 
-                  {/* Unread Action / Status */}
-                  <div className="flex items-center gap-2 flex-shrink-0 self-center">
-                    {isUnread ? (
+                  {/* Unread Action & Arrow Navigation Indicator */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0 self-center">
+                    {isUnread && (
                       <button
                         type="button"
                         onClick={(e) => handleMarkAsRead(item.id, e)}
@@ -247,11 +279,10 @@ export default function NotificationsPage() {
                       >
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-xs" />
                       </button>
-                    ) : (
-                      <span className="material-symbols-outlined text-sm text-slate-300 select-none">
-                        check_circle
-                      </span>
                     )}
+                    <span className="material-symbols-outlined text-lg text-slate-400 group-hover:text-slate-800 group-hover:translate-x-0.5 transition-all select-none">
+                      chevron_right
+                    </span>
                   </div>
                 </div>
               );

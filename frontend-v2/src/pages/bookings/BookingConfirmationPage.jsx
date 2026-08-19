@@ -14,7 +14,7 @@ export default function BookingConfirmationPage() {
 
   const auth = useSelector((state) => state?.auth) || {};
   const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
-  const userEmail = auth.profile?.email || auth.decodedToken?.email || "your registered email";
+  const userEmail = auth.profile?.email || "your registered email";
 
   const [detailData, setDetailData] = useState(location.state?.booking || location.state?.waitlist || null);
   const [loading, setLoading] = useState(!detailData);

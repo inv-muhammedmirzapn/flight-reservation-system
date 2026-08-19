@@ -198,4 +198,6 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(required=True, max_length=6, min_length=6)
 
 class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField(required=True)
+    # refresh is no longer required — the token is read from the HttpOnly cookie.
+    # This field is kept for backwards compatibility with API clients using the header flow.
+    refresh = serializers.CharField(required=False, allow_blank=True)
