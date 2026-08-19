@@ -44,6 +44,7 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
 
+<<<<<<< HEAD
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         try:
@@ -76,6 +77,9 @@ class RegisterView(generics.CreateAPIView):
                 return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED)
             
             raise ValidationError(errors)
+=======
+
+>>>>>>> origin/develop
 
 
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
@@ -95,7 +99,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     returning them in the response body. Only profile data is returned in JSON."""
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
-
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -123,6 +126,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     path='/',
                 )
         return response
+    
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -310,7 +314,7 @@ class ForgotPasswordView(APIView):
                 "detail": (
                     "If an account with that email exists, "
                     "we have sent a password reset OTP."
-                )
+                )   
             },
             status=status.HTTP_200_OK,
         )
