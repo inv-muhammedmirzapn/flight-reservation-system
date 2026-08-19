@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { Provider, useSelector } from "react-redux";
+import { Provider, useSelector, useDispatch } from "react-redux";
 import { store } from "@/store";
+import { fetchProfile } from "@/store/authSlice";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -61,9 +62,14 @@ const AdminRoute = ({ children }) => (
 );
 
 function AppContent() {
+  const dispatch = useDispatch();
   const isServerDown = useSelector((state) => state?.system?.isServerDown);
   const isAdmin = useSelector((state) => state?.auth?.isAdmin);
   const location = useLocation();
+
+  useEffect(() => {
+    dispatch(fetchProfile());
+  }, [dispatch]);
 
   const isAdminPanel = isAdmin || location.pathname.startsWith("/admin");
 

@@ -2,25 +2,36 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '@/services/auth-service/authService';
 import { parseApiError } from '@/utils/errorUtils';
 
-const decodeToken = (token) => {
-  if (!token) return null;
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(window.atob(base64));
-  } catch (e) {
-    console.error("Token decoding error", e);
-    return null;
-  }
-};
+/**
+ * Auth slice — cookie-based token edition.
+ *
+ * Tokens (access_token, refresh_token) are now stored as HttpOnly cookies set
+ * by the backend. JavaScript can never read them. The browser attaches them
+ * automatically on every credentialed request (credentials: 'include').
+ *
+ * Authentication state is derived from:
+ *  - Login / Google Login success → isAuthenticated = true
+ *  - fetchProfile success        → profile populated, isInitializing = false
+ *  - fetchProfile failure (401)  → not authenticated, isInitializing = false
+ *  - Logout                      → cookies deleted by server, state reset
+ *
+ * No localStorage is used anywhere in this file.
+ */
 
+// ---------------------------------------------------------------------------
+// Async thunks
+// ---------------------------------------------------------------------------
 
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { dispatch }) => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken) {
-      await authAPI.logout(refreshToken);
+    // No token argument needed — the backend reads the refresh_token cookie
+    // automatically and blacklists it, then deletes both cookies from the response.
+    try {
+      await authAPI.logout();
+    } catch (_err) {
+      // Even if the server call fails (already expired, network error), we
+      // still clear local auth state so the user is redirected to login.
     }
     dispatch(logout());
   }
@@ -43,11 +54,12 @@ export const loginUser = createAsyncThunk(
   async ({ credentials, requireAdmin, requireCustomer }, { rejectWithValue }) => {
     try {
       const rawData = await authAPI.login(credentials);
-      const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
-      
-      const decoded = data.access ? decodeToken(data.access) : null;
-      const isAdmin = decoded?.is_superuser || data.role === 'ADMIN';
-      
+      // The response body no longer contains access/refresh tokens (they are in
+      // HttpOnly cookies). We get profile info directly: id, username, email, role, is_superuser.
+      const data = rawData?.data || rawData;
+
+      const isAdmin = data.is_superuser === true || data.role === 'ADMIN';
+
       if (requireAdmin && !isAdmin) {
         return rejectWithValue('Access Denied: Administrator privileges required.');
       }
@@ -55,16 +67,13 @@ export const loginUser = createAsyncThunk(
         return rejectWithValue('Invalid username or password');
       }
 
-      if (data.access) localStorage.setItem('access_token', data.access);
-      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
-      
       const profile = {
         id: data.id,
         username: data.username,
         email: data.email,
-        role: data.role
+        role: data.role,
       };
-      return { token: data.access, profile };
+      return { profile, isAdmin };
     } catch (error) {
       return rejectWithValue(parseApiError(error, 'Login failed'));
     }
@@ -76,24 +85,20 @@ export const googleLoginUser = createAsyncThunk(
   async ({ token, requireCustomer }, { rejectWithValue }) => {
     try {
       const rawData = await authAPI.googleLogin(token);
-      const data = (rawData && rawData.access) ? rawData : (rawData?.data || rawData);
-      
-      const decoded = data.access ? decodeToken(data.access) : null;
-      const isAdmin = decoded?.is_superuser || data.role === 'ADMIN';
+      const data = rawData?.data || rawData;
+
+      const isAdmin = data.is_superuser === true || data.role === 'ADMIN';
       if (requireCustomer && isAdmin) {
         return rejectWithValue('Invalid username or password');
       }
 
-      if (data.access) localStorage.setItem('access_token', data.access);
-      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
-      
       const profile = {
         id: data.id,
         username: data.username,
         email: data.email,
-        role: data.role
+        role: data.role,
       };
-      return { token: data.access, profile };
+      return { profile, isAdmin };
     } catch (error) {
       return rejectWithValue(parseApiError(error, 'Google Login failed'));
     }
@@ -112,32 +117,43 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-const initialToken = localStorage.getItem('access_token');
-const decoded = decodeToken(initialToken);
+// ---------------------------------------------------------------------------
+// Initial state
+// ---------------------------------------------------------------------------
 
 const initialState = {
-  token: initialToken,
-  decodedToken: decoded,
+  // token and decodedToken are removed — we never hold the JWT in JS memory.
+  // All token transmission is handled transparently by browser cookies.
+  token: null,
+  decodedToken: null,
   profile: null,
-  isAuthenticated: !!initialToken,
-  isAdmin: decoded?.is_superuser || false,
+  isAuthenticated: false,
+  isAdmin: false,
   loading: false,
-  isInitializing: !!initialToken,
+  // isInitializing: true means the app hasn't yet confirmed auth status via fetchProfile.
+  // Navbar dispatches fetchProfile on mount, which resolves this.
+  isInitializing: true,
   error: null,
 };
+
+// ---------------------------------------------------------------------------
+// Slice
+// ---------------------------------------------------------------------------
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
     logout: (state) => {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      // Tokens live in HttpOnly cookies — only the server can delete them.
+      // The logoutUser thunk calls authAPI.logout() first, which instructs the
+      // server to delete the cookies. This reducer just clears the Redux state.
       state.token = null;
       state.decodedToken = null;
       state.profile = null;
       state.isAuthenticated = false;
       state.isAdmin = false;
+      state.isInitializing = false;
       state.error = null;
     },
     clearAuthError: (state) => {
@@ -146,9 +162,9 @@ const authSlice = createSlice({
     updateProfileSuccess: (state, action) => {
       state.profile = action.payload;
       if (action.payload?.role) {
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.role === 'ADMIN';
+        state.isAdmin = action.payload.role === 'ADMIN';
       }
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -159,11 +175,10 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
-        state.decodedToken = decodeToken(action.payload.token);
         state.profile = action.payload.profile;
         state.isAuthenticated = true;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
+        state.isAdmin = action.payload.isAdmin;
+        state.isInitializing = false;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -176,11 +191,10 @@ const authSlice = createSlice({
       })
       .addCase(googleLoginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
-        state.decodedToken = decodeToken(action.payload.token);
         state.profile = action.payload.profile;
         state.isAuthenticated = true;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.profile?.role === 'ADMIN';
+        state.isAdmin = action.payload.isAdmin;
+        state.isInitializing = false;
       })
       .addCase(googleLoginUser.rejected, (state, action) => {
         state.loading = false;
@@ -199,18 +213,21 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Fetch Profile
+      // Fetch Profile — used on app mount to restore session from cookie
       .addCase(fetchProfile.pending, (state) => {
         state.isInitializing = true;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.isInitializing = false;
         state.profile = action.payload;
-        state.isAdmin = state.decodedToken?.is_superuser || action.payload.role === 'ADMIN';
+        state.isAuthenticated = true;
+        state.isAdmin = action.payload?.role === 'ADMIN';
       })
       .addCase(fetchProfile.rejected, (state) => {
         state.isInitializing = false;
-        // Don't force logout immediately on profile fail, but clear profile state
+        // Profile fetch failed (likely 401 — no valid cookie).
+        // Don't redirect here; ProtectedRoute handles routing.
+        state.isAuthenticated = false;
         state.profile = null;
       });
   },

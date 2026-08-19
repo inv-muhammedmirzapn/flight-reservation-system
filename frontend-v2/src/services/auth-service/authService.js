@@ -17,18 +17,19 @@ export const authAPI = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
+      credentials: 'include',  // allows server to set HttpOnly cookies on the response
     });
     const data = await getResponseData(response);
     if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
     return data;
   },
 
-  logout: async (refreshToken) => {
-    if (!refreshToken) return null;
+  logout: async () => {
+    // No body needed — the backend reads the refresh_token HttpOnly cookie automatically,
+    // blacklists it, and deletes both cookies from the response.
     try {
       return await fetchWithAuth('/auth/logout/', {
         method: 'POST',
-        body: JSON.stringify({ refresh: refreshToken }),
       });
     } catch (err) {
       console.warn("Logout endpoint error:", err);
@@ -41,6 +42,7 @@ export const authAPI = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
+      credentials: 'include',  // allows server to set HttpOnly cookies on the response
     });
     const data = await getResponseData(response);
     if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));

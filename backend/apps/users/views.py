@@ -9,6 +9,7 @@ from rest_framework import serializers as rf_serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from django.contrib.auth.models import User
+from django.conf import settings
 
 from .serializers import (
     RegisterSerializer,
@@ -81,26 +82,58 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
 # ---------------------------------------------------------------------------
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """Custom token view that ensures a Profile exists for authenticated user."""
+    """Custom token view that sets JWT tokens as HttpOnly cookies instead of
+    returning them in the response body. Only profile data is returned in JSON."""
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            data = response.data
+            access = data.pop('access', None)
+            refresh = data.pop('refresh', None)
+            secure = getattr(settings, 'JWT_COOKIE_SECURE', False)
+            samesite = getattr(settings, 'JWT_COOKIE_SAMESITE', 'Lax')
+            if access:
+                response.set_cookie(
+                    'access_token', access,
+                    max_age=60 * 10,          # 10 minutes — matches ACCESS_TOKEN_LIFETIME
+                    httponly=True,
+                    samesite=samesite,
+                    secure=secure,
+                    path='/',
+                )
+            if refresh:
+                response.set_cookie(
+                    'refresh_token', refresh,
+                    max_age=60 * 60 * 24,     # 1 day — matches REFRESH_TOKEN_LIFETIME
+                    httponly=True,
+                    samesite=samesite,
+                    secure=secure,
+                    path='/',
+                )
+        return response
+
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
-    
+
     @extend_schema(
-        request=LogoutSerializer,
+        request=None,
         responses={200: inline_serializer("LogoutResponse", {"detail": rf_serializers.CharField()})}
     )
     def post(self, request, *args, **kwargs):
-        serializer = LogoutSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            token = RefreshToken(serializer.validated_data["refresh"])
-            token.blacklist()
-            return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
-        except Exception:
-            raise ValidationError({"detail": "Invalid token or already logged out."})
+        refresh_token = request.COOKIES.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass  # already invalid / blacklisted — still clear cookies
+        response = Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+        response.delete_cookie('access_token', path='/')
+        response.delete_cookie('refresh_token', path='/')
+        return response
 
 # ---------------------------------------------------------------------------
 # Google OAuth
@@ -119,12 +152,11 @@ class GoogleLoginView(APIView):
             200: inline_serializer(
                 "GoogleLoginResponse",
                 {
-                    "refresh": rf_serializers.CharField(),
-                    "access": rf_serializers.CharField(),
                     "id": rf_serializers.IntegerField(),
                     "username": rf_serializers.CharField(),
                     "email": rf_serializers.CharField(),
                     "role": rf_serializers.CharField(),
+                    "is_superuser": rf_serializers.BooleanField(),
                 },
             )
         },
@@ -138,9 +170,77 @@ class GoogleLoginView(APIView):
 
         try:
             data = google_login(token)
-            return Response(data, status=status.HTTP_200_OK)
         except GoogleAuthError:
             raise AuthenticationFailed("Google login failed or token is invalid.")
+
+        # Move tokens into HttpOnly cookies
+        secure = getattr(settings, 'JWT_COOKIE_SECURE', False)
+        samesite = getattr(settings, 'JWT_COOKIE_SAMESITE', 'Lax')
+        access = data.pop('access', None)
+        refresh = data.pop('refresh', None)
+
+        response = Response(data, status=status.HTTP_200_OK)
+        if access:
+            response.set_cookie(
+                'access_token', access,
+                max_age=60 * 10,
+                httponly=True, samesite=samesite, secure=secure, path='/',
+            )
+        if refresh:
+            response.set_cookie(
+                'refresh_token', refresh,
+                max_age=60 * 60 * 24,
+                httponly=True, samesite=samesite, secure=secure, path='/',
+            )
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Cookie-based Token Refresh
+# ---------------------------------------------------------------------------
+
+class CookieTokenRefreshView(APIView):
+    """
+    Replaces the default TokenRefreshView. Reads the refresh token from the
+    HttpOnly 'refresh_token' cookie, issues a new access token (and rotated
+    refresh token if ROTATE_REFRESH_TOKENS=True), and sets them as HttpOnly
+    cookies. Returns no sensitive data in the response body.
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response(
+                {'detail': 'Refresh token not found. Please log in again.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        try:
+            token = RefreshToken(refresh_token)
+            new_access = str(token.access_token)
+            rotate = getattr(settings, 'SIMPLE_JWT', {}).get('ROTATE_REFRESH_TOKENS', False)
+            new_refresh = str(token) if rotate else refresh_token
+
+            secure = getattr(settings, 'JWT_COOKIE_SECURE', False)
+            samesite = getattr(settings, 'JWT_COOKIE_SAMESITE', 'Lax')
+
+            response = Response({'detail': 'Token refreshed successfully.'})
+            response.set_cookie(
+                'access_token', new_access,
+                max_age=60 * 10,
+                httponly=True, samesite=samesite, secure=secure, path='/',
+            )
+            response.set_cookie(
+                'refresh_token', new_refresh,
+                max_age=60 * 60 * 24,
+                httponly=True, samesite=samesite, secure=secure, path='/',
+            )
+            return response
+        except Exception:
+            return Response(
+                {'detail': 'Token is invalid or expired. Please log in again.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
 # ---------------------------------------------------------------------------

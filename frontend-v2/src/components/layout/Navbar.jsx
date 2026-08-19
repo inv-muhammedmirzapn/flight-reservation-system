@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "@/store/authSlice";
+import { logoutUser } from "@/store/authSlice";
 import { fetchNotifications } from "@/store/notificationsSlice";
 import toast from "react-hot-toast";
 import LogoutConfirmModal from "@/components/common/LogoutConfirmModal";
@@ -65,7 +65,7 @@ export default function Navbar() {
   const groupRefs = useRef({});
 
   const auth = useSelector((state) => state?.auth) || {};
-  const { isAuthenticated, profile, decodedToken, isAdmin } = auth;
+  const { isAuthenticated, profile, isAdmin } = auth;
   const unreadCount = useSelector((state) => state?.notifications?.unreadCount || 0);
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function Navbar() {
     closeProfileMenu();
     setIsMobileMenuOpen(false);
     navigate(targetPath);
-    dispatch(logout());
+    dispatch(logoutUser());
     if (isAdmin) {
       toast.success("Signed out successfully.", { position: "top-right" });
     } else {
@@ -130,7 +130,6 @@ export default function Navbar() {
       return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
     }
     if (profile?.username) return profile.username.substring(0, 2).toUpperCase();
-    if (decodedToken?.username) return decodedToken.username.substring(0, 2).toUpperCase();
     return "AM";
   };
 
@@ -336,7 +335,7 @@ export default function Navbar() {
                   <div className="absolute right-0 top-[52px] md:top-[72px] w-52 bg-white backdrop-blur-xl border border-slate-200/60 shadow-2xl rounded-2xl p-2.5 animate-fade-in z-[9999]">
                     <div className="px-3.5 py-2 border-b border-slate-100">
                       <p className="text-sm font-bold text-slate-800 truncate">
-                        {profile?.username || decodedToken?.username || (isAdmin ? "Admin" : "Passenger")}
+                        {profile?.username || (isAdmin ? "Admin" : "Passenger")}
                       </p>
                       {profile?.email && (
                         <p className="text-xs text-slate-500 truncate">{profile.email}</p>
@@ -430,7 +429,7 @@ export default function Navbar() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 truncate">
-                      {profile?.first_name ? `${profile.first_name} ${profile.last_name || ""}` : (profile?.username || decodedToken?.username || "User")}
+                      {profile?.first_name ? `${profile.first_name} ${profile.last_name || ""}` : (profile?.username || "User")}
                     </p>
                     <p className="text-[10px] text-slate-500 truncate">{profile?.email || (isAdmin ? "Admin Account" : "Passenger Account")}</p>
                   </div>

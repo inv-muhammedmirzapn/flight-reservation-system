@@ -4,8 +4,16 @@ import { useSelector } from "react-redux";
 export default function ProtectedRoute({ children, adminOnly = false, guestOnly = false }) {
   const location = useLocation();
   const auth = useSelector((state) => state?.auth) || {};
-  const isAuthenticated = Boolean(auth.isAuthenticated || auth.token);
-  const isAdmin = Boolean(auth.isAdmin);
+  const { isAuthenticated, isAdmin, isInitializing } = auth;
+
+  // While app is checking session cookie on initial load, show loading state
+  if (isInitializing) {
+    return (
+      <div className="flex-grow flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500" />
+      </div>
+    );
+  }
 
   // Logged-in user trying to access guest-only pages (login/register)
   if (isAuthenticated && guestOnly) {

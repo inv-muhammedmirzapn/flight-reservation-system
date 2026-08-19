@@ -101,17 +101,12 @@ export const flightsAPI = {
   },
 
   bulkImportCsv: async (file) => {
-    const token = localStorage.getItem('access_token');
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/flights/v2/bulk-upload/`, {
+    return fetchWithAuth('/flights/v2/bulk-upload/', {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
-    const data = await getResponseData(response);
-    if (!response.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
-    return data;
   },
 
   stats: async () => {
