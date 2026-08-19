@@ -44,29 +44,7 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-            
-            email = serializer.validated_data.get("email", "")
-            if User.objects.filter(email__iexact=email).exists():
-                return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED)
-                
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED, headers=headers)
-        except ValidationError as e:
-            errors = dict(e.detail)
-            if "username" in errors:
-                # If the error is about uniqueness, swallow it
-                if any("already exists" in str(err).lower() for err in errors["username"]):
-                    errors.pop("username")
-            
-            if not errors:
-                return Response({"detail": "If the details are valid, your account has been created."}, status=status.HTTP_201_CREATED)
-            
-            raise ValidationError(errors)
+
 
 
 class ProfileAPIView(generics.RetrieveUpdateAPIView):
@@ -86,7 +64,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     returning them in the response body. Only profile data is returned in JSON."""
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
-
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -114,6 +91,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     path='/',
                 )
         return response
+    
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -301,7 +279,7 @@ class ForgotPasswordView(APIView):
                 "detail": (
                     "If an account with that email exists, "
                     "we have sent a password reset OTP."
-                )
+                )   
             },
             status=status.HTTP_200_OK,
         )

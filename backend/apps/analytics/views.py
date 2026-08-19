@@ -71,7 +71,7 @@ def _parse_filters(request):
             return None
         try:
             from datetime import datetime
-            return datetime.strptime(raw, "%Y-%m-%d").date()
+            return datetime.strptime(raw, "%Y-%m-%d").date() 
         except (ValueError, TypeError):
             return None
 

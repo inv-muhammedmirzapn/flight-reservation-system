@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { profileAPI } from "@/services/profile-service/profileService";
-import { updateProfileSuccess } from "@/store/authSlice";
+import { fetchProfile, updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
 import { handleApiError, logError } from "@/utils/errorUtils";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -68,21 +68,21 @@ export default function UserProfilePage() {
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchProfile() {
+    async function loadProfileData() {
+     // console.log("this is profile api");
+
       try {
-        const res = await profileAPI.getProfile();
-        if (isMounted) {
-          setLocalProfile(res);
-          dispatch(updateProfileSuccess(res));
+        const actionResult = await dispatch(fetchProfile());
+        if (isMounted && fetchProfile.fulfilled.match(actionResult)) {
+          setLocalProfile(actionResult.payload);
         }
       } catch (err) {
-        logError('UserProfilePage/fetchProfile', err);
+        logError('UserProfilePage/loadProfileData', err);
       } finally {
         if (isMounted) setLoading(false);
       }
     }
-
-    fetchProfile();
+    loadProfileData();
   }, [dispatch]);
 
 
@@ -225,6 +225,7 @@ export default function UserProfilePage() {
         phone_number: fullPhoneNumber,
       };
       const updated = await profileAPI.updateProfile(payload);
+      
       setLocalProfile(updated);
       dispatch(updateProfileSuccess(updated));
       toast.success("Profile updated successfully!");

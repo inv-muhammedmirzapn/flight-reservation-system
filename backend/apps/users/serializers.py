@@ -52,10 +52,29 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source="user.username", required=False)
-    email = serializers.EmailField(source="user.email", read_only=True)
-    first_name = serializers.CharField(source="user.first_name", required=True, allow_blank=False)
-    last_name = serializers.CharField(source="user.last_name", required=True, allow_blank=False)
+    username = serializers.CharField(
+        source="user.username",
+        required=False,
+        allow_blank=False
+    )
+
+    email = serializers.EmailField(
+        source="user.email",
+        read_only=True
+    )
+
+    first_name = serializers.CharField(
+        source="user.first_name",
+        required=False,
+        allow_blank=False
+    )
+
+    last_name = serializers.CharField(
+        source="user.last_name",
+        required=False,
+        allow_blank=False
+    )
+
     has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
