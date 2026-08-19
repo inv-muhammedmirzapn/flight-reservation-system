@@ -1,13 +1,12 @@
 from django.db.models import (
-    Count, Sum, Avg, FloatField, ExpressionWrapper, F, Q
+    Count, Sum, F, Q
 )
 from django.db.models.functions import TruncMonth, ExtractHour
 from django.utils import timezone
-from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
 from apps.bookings.models import Booking, BookingStatus
-from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat
+from apps.flights.models import FlightInstance, InstanceStatus
 
 
 # ─── Shared filter helpers ───────────────────────────────────────────────────
@@ -98,7 +97,21 @@ def get_monthly_revenue(months: int = 12, start_date=None, end_date=None,
     Each item: { month: "YYYY-MM", revenue: float }
     Supports optional filtering by date range, airline, aircraft.
     """
-    cutoff = timezone.now() - relativedelta(months=months)
+    now = timezone.now()
+    # To get exactly `months` calendar months, we go back `months - 1` months
+    # and start from the first day of that month.
+    cutoff = (now - relativedelta(months=months - 1)).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+
+    # Initialize a dict to ensure all months in the window are present
+    revenue_map = {}
+    curr = cutoff
+    end_curr = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    while curr <= end_curr:
+        revenue_map[curr.strftime("%Y-%m")] = 0.0
+        curr += relativedelta(months=1)
 
     qs = Booking.objects.filter(status=BookingStatus.CONFIRMED, created_at__gte=cutoff)
     qs = _apply_booking_filters(qs, start_date, end_date, airline_id, aircraft_id)
@@ -110,12 +123,13 @@ def get_monthly_revenue(months: int = 12, start_date=None, end_date=None,
         .order_by("month")
     )
 
+    for item in qs:
+        month_str = item["month"].strftime("%Y-%m")
+        revenue_map[month_str] = float(item["revenue"] or 0)
+
     return [
-        {
-            "month": item["month"].strftime("%Y-%m"),
-            "revenue": float(item["revenue"] or 0),
-        }
-        for item in qs
+        {"month": m, "revenue": revenue_map[m]}
+        for m in sorted(revenue_map.keys())
     ]
 
 
@@ -182,38 +196,50 @@ def get_flight_occupancy(top_n: int = 15, start_date=None, end_date=None,
     Sorted highest occupancy first. Supports optional filtering.
     """
     pool = top_n * 4
-    from django.db.models import Count as DCount
 
     instances_qs = FlightInstance.objects.select_related('flight', 'flight__airline')
     instances_qs = _apply_instance_filters(instances_qs, start_date, end_date, airline_id, aircraft_id)
-    instances_qs = (
+    
+    # Aggregate across all instances of the same flight route
+    aggregated_qs = (
         instances_qs
+        .values(
+            flight_number=F('flight__flight_no'),
+            airline_name=F('flight__airline__airline_name'),
+        )
         .annotate(
-            confirmed_bookings=DCount(
-                'bookings', filter=Q(bookings__status=BookingStatus.CONFIRMED)
+            confirmed_bookings=Count(
+                'bookings', filter=Q(bookings__status=BookingStatus.CONFIRMED), distinct=True
             ),
-            total_seat_count=DCount('seats'),
-            booked_seat_count=DCount('seats', filter=Q(seats__status='BOOKED')),
+            total_seat_count=Count('seats', distinct=True),
+            booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED'), distinct=True),
         )
         .filter(total_seat_count__gt=0)
         .order_by('-confirmed_bookings')[:pool]
     )
 
     results = []
-    for fi in instances_qs:
-        booked = fi.booked_seat_count
-        total = fi.total_seat_count
+    for item in aggregated_qs:
+        flight_no = item['flight_number']
+        booked = item['booked_seat_count']
+        total = item['total_seat_count']
         occupancy_rate = round((booked / total) * 100, 2) if total > 0 else 0.0
 
         # Resolve route from legs
-        first_leg = fi.flight.legs.order_by('leg_order').first()
-        last_leg = fi.flight.legs.order_by('leg_order').last()
-        src = first_leg.departure_airport.iata_code if first_leg else "N/A"
-        dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        from apps.flights.models import FlightRoute
+        try:
+            fr = FlightRoute.objects.get(flight_no=flight_no)
+            first_leg = fr.legs.order_by('leg_order').first()
+            last_leg = fr.legs.order_by('leg_order').last()
+            src = first_leg.departure_airport.iata_code if first_leg else "N/A"
+            dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        except FlightRoute.DoesNotExist:
+            src = "N/A"
+            dst = "N/A"
 
         results.append({
-            "flight_number": fi.flight.flight_no,
-            "airline": fi.flight.airline.airline_name,
+            "flight_number": flight_no,
+            "airline": item['airline_name'],
             "route": f"{src} → {dst}",
             "total_seats": total,
             "booked_seats": booked,
@@ -262,7 +288,6 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
     }
     """
     from apps.flights.models import Airline
-    from django.db.models import Count as DCount
 
     # Confirmed booking stats per airline
     confirmed_qs = Booking.objects.filter(status=BookingStatus.CONFIRMED)
@@ -327,8 +352,8 @@ def get_airline_performance(top_n: int = 10, start_date=None, end_date=None) -> 
             fi_qs = fi_qs.filter(scheduled_departure__date__lte=end_date)
 
         fi_qs = fi_qs.annotate(
-            total_seat_count=DCount('seats'),
-            booked_seat_count=DCount('seats', filter=Q(seats__status='BOOKED')),
+            total_seat_count=Count('seats'),
+            booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED')),
         ).filter(total_seat_count__gt=0)
 
         total_cap = sum(fi.total_seat_count for fi in fi_qs)
@@ -360,7 +385,6 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
         economy_fill_rate, business_fill_rate, first_fill_rate
     }
     """
-    from django.db.models import Count as DCount
     from apps.flights.models import Aircraft, CabinClass
 
     fi_qs = FlightInstance.objects.select_related(
@@ -390,15 +414,15 @@ def get_aircraft_utilization(top_n: int = 10, start_date=None, end_date=None) ->
             continue
 
         instances = fi_qs.filter(aircraft_id=ac_id).annotate(
-            total_seat_count=DCount('seats'),
-            booked_seat_count=DCount('seats', filter=Q(seats__status='BOOKED')),
+            total_seat_count=Count('seats'),
+            booked_seat_count=Count('seats', filter=Q(seats__status='BOOKED')),
             # Cabin-class fill rates
-            eco_total=DCount('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY)),
-            eco_booked=DCount('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY, seats__status='BOOKED')),
-            biz_total=DCount('seats', filter=Q(seats__seat_class=CabinClass.BUSINESS)),
-            biz_booked=DCount('seats', filter=Q(seats__seat_class=CabinClass.BUSINESS, seats__status='BOOKED')),
-            first_total=DCount('seats', filter=Q(seats__seat_class=CabinClass.FIRST)),
-            first_booked=DCount('seats', filter=Q(seats__seat_class=CabinClass.FIRST, seats__status='BOOKED')),
+            eco_total=Count('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY)),
+            eco_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.ECONOMY, seats__status='BOOKED')),
+            biz_total=Count('seats', filter=Q(seats__seat_class=CabinClass.BUSINESS)),
+            biz_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.BUSINESS, seats__status='BOOKED')),
+            first_total=Count('seats', filter=Q(seats__seat_class=CabinClass.FIRST)),
+            first_booked=Count('seats', filter=Q(seats__seat_class=CabinClass.FIRST, seats__status='BOOKED')),
         ).filter(total_seat_count__gt=0)
 
         total_cap = sum(fi.total_seat_count for fi in instances)

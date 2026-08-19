@@ -65,7 +65,7 @@ def hold_seat(flight_instance, seat_number, user, old_seat_number=None):
             old_holds = SeatHold.objects.select_related('seat').filter(
                 flight_instance=flight_instance,
                 user=user,
-                seat__seat_number=old_seat_number,
+                seat__seat_number=old_seat_number,  
             )
             old_seat_ids = list(old_holds.values_list('seat_id', flat=True))
             old_holds.delete()
