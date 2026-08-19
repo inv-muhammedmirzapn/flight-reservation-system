@@ -359,6 +359,11 @@ class NotificationService:
         subject, html = tpl.email_change_otp(otp, email)
         cls._send_email(email, subject, html)
 
+    @classmethod
+    def send_welcome_email(cls, user):
+        subject, html = tpl.welcome_email(user.first_name, user.last_name)
+        cls._send_email(user.email, subject, html)
+
     # ── Waitlist ─────────────────────────────────────────────────────────────
 
     @classmethod

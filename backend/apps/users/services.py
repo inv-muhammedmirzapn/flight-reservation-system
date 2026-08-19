@@ -51,6 +51,12 @@ def google_login(token: str) -> dict:
             )
             user.set_unusable_password()
             user.save()
+            
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.send_welcome_email(user)
+            except Exception:
+                logger.exception("Failed to send welcome email on Google login")
 
         # Ensure profile exists
         Profile.objects.get_or_create(user=user)

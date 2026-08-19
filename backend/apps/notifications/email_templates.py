@@ -228,10 +228,25 @@ def booking_confirmation(user_name: str, passenger_name: str,
         _divider() +
         _body_text(f"Dear <strong>{user_name}</strong>,<br><br>"
                    "Thank you for booking with Passenger. Your flight reservation is confirmed. "
-                   "Please find the details below.") +
+                   "Please find the summary of your booking below.") +
         _flight_info_table(flight_number, origin, destination, extra) +
-        _body_text("Please carry a valid photo ID at the airport. "
-                   "We recommend arriving at least 2 hours before departure.") +
+        f"""
+        <tr>
+          <td style="padding:24px 32px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9; border-left:4px solid #c9aa2e; border-radius:4px;">
+              <tr>
+                <td style="padding:16px;">
+                  <strong style="color:#1a1c1d; font-size:14px;">&#128196; Your E-Ticket is Attached</strong><br>
+                  <p style="margin:6px 0 0; font-size:13px; color:#666; line-height:1.5;">
+                    Please find your official e-ticket attached to this email as a PDF document. You must present this document (printed or on your mobile device) along with a valid Government-issued photo ID at the airport.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        """ +
+        _body_text("We recommend arriving at least 2 hours before your scheduled departure time to ensure a smooth check-in process.") +
         _spacer(),
         preview_text=f"Your booking for flight {flight_number} is confirmed."
     )
@@ -501,3 +516,23 @@ def email_change_otp(otp_code: str, new_email: str) -> tuple[str, str]:
         preview_text="Your Passenger email change verification code is ready."
     )
     return subject, html
+
+
+def welcome_email(first_name: str, last_name: str) -> tuple[str, str]:
+    subject = "Welcome to Passenger Flight Reservation!"
+    full_name = f"{first_name} {last_name}".strip() or "Customer"
+    html = _wrap(
+        _heading("Welcome to Passenger",
+                 "Your account has been successfully created.") +
+        _divider() +
+        _body_text(f"Dear <strong>{full_name}</strong>,<br><br>"
+                   "Welcome to Passenger! We are thrilled to have you on board. "
+                   "With your new account, you can easily search for flights, book tickets, "
+                   "and manage all your reservations in one place.") +
+        _body_text("Get ready to explore the world with our seamless booking experience. "
+                   "If you have any questions or need assistance, our support team is always here to help.") +
+        _spacer(),
+        preview_text="Welcome to Passenger! Your account is ready."
+    )
+    return subject, html
+
