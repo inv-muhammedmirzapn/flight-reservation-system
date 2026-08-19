@@ -50,6 +50,7 @@ export const authAPI = {
   },
 
   getProfile: async () => {
+    //console.log("Auth Service :", API_BASE_URL);
     return fetchWithAuth('/auth/profile/');
   },
 

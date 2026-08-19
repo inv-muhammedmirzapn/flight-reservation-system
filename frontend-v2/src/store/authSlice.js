@@ -161,6 +161,8 @@ const authSlice = createSlice({
     },
     updateProfileSuccess: (state, action) => {
       state.profile = action.payload;
+      
+      //console.log("PROFILE: ", action.payload);
       if (action.payload?.role) {
         state.isAdmin = action.payload.role === 'ADMIN';
       }

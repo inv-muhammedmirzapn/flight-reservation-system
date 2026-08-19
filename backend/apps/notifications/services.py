@@ -34,7 +34,6 @@ class NotificationService:
         import re
         import os
         from email.mime.image import MIMEImage
-        from django.core.mail import EmailMultiAlternatives
 
         from_email = getattr(settings, 'EMAIL_HOST_USER', 'noreply@flightreservation.com')
 

@@ -95,7 +95,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     returning them in the response body. Only profile data is returned in JSON."""
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
-
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -123,6 +122,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     path='/',
                 )
         return response
+    
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -310,7 +310,7 @@ class ForgotPasswordView(APIView):
                 "detail": (
                     "If an account with that email exists, "
                     "we have sent a password reset OTP."
-                )
+                )   
             },
             status=status.HTTP_200_OK,
         )

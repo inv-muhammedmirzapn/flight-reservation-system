@@ -62,6 +62,7 @@ export const flightsAPI = {
   },
 
   getSeats: async (instanceId) => {
+    //console.log("INSTANCE ID: ", instanceId);
     return fetchWithAuth(`/flights/v2/seats/?flight_instance=${instanceId}`);
   },
 

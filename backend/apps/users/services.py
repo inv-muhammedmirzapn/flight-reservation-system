@@ -1,6 +1,5 @@
 import logging
 import secrets
-import re
 
 import requests as http_requests
 from django.conf import settings
