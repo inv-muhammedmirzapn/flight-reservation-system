@@ -144,6 +144,7 @@ export default function FaresPage() {
     title: 'Fares',
     breadcrumb,
     entityName: 'fare',
+    hideSearch: !!instanceParam,
     columns: COLUMNS,
     fields: FIELDS,
     emptyForm: initialForm,

@@ -395,8 +395,8 @@ export default function FlightRoutesPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              {/* General */}
-              <div className="admin-form-grid mb-5">
+              {/* Row 1: Airline + Flight Number */}
+              <div className="admin-form-grid" style={{ marginBottom: 16 }}>
                  <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
                   onChange={(e) => {
                     const airlineId = e.target.value;
@@ -487,6 +487,10 @@ export default function FlightRoutesPage() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Row 2: Baggage Allowance + Baggage Count + Handbag Allowance */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
                 <Input id="baggage_weight" label="Baggage Allowance (kg)" type="number"
                   value={form.baggage_weight_allowed_per_person}
                   onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_per_person: e.target.value }))} />

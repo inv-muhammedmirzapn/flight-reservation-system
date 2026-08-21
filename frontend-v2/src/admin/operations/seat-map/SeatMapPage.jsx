@@ -181,6 +181,36 @@ export default function SeatMapPage() {
     setSelectedIds(sel); setDragStart(null); setDragCur(null);
   };
 
+  // Update bulk price input when selection changes
+  useEffect(() => {
+    if (selectedIds.size === 0) {
+      setBulkPrice('');
+      return;
+    }
+    
+    let commonPrice = null;
+    let allSame = true;
+
+    for (const id of selectedIds) {
+      const seat = seats.find(s => s.id === id);
+      if (seat) {
+        const fee = Number(seat.seat_fee);
+        if (commonPrice === null) {
+          commonPrice = fee;
+        } else if (commonPrice !== fee) {
+          allSame = false;
+          break;
+        }
+      }
+    }
+
+    if (allSame && commonPrice !== null && commonPrice > 0) {
+      setBulkPrice(String(commonPrice));
+    } else {
+      setBulkPrice('');
+    }
+  }, [selectedIds, seats]);
+
   const handleBulkApply = () => {
     if (!selectedIds.size) return toast.error('No seats selected.');
     if (!bulkPrice || isNaN(bulkPrice) || Number(bulkPrice) < 0) return toast.error('Enter a valid price.');
@@ -303,23 +333,28 @@ export default function SeatMapPage() {
           <div className="smp-sidebar">
 
             {/* Filters Section A: Flight Instance */}
-            <div className="smp-section">
-              <span className="smp-section-label">Flight Instance</span>
-              <div className="smp-instance-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Select id="seat-map-instance" options={[{ value: '', label: '— Select Flight Instance —' }, ...instanceOptions]} value={selInstance} onChange={e => handleInstanceChange(e.target.value)} style={{ margin: 0, height: '38px', padding: '0 32px 0 12px' }} />
+            {!instanceParam && (
+              <div className="smp-section">
+                <span className="smp-section-label">Flight Instance</span>
+                <div className="smp-instance-row">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Select id="seat-map-instance" options={[{ value: '', label: '— Select Flight Instance —' }, ...instanceOptions]} value={selInstance} onChange={e => handleInstanceChange(e.target.value)} style={{ margin: 0, height: '38px', padding: '0 32px 0 12px' }} />
+                  </div>
+                  <button className="btn-primary" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading} style={{ padding: '0 14px', height: '38px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {seatsLoading ? 'Loading…' : 'Search Seats'}
+                  </button>
                 </div>
-                <button className="btn-primary" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading} style={{ padding: '0 14px', height: '38px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {seatsLoading ? 'Loading…' : 'Search Seats'}
-                </button>
               </div>
-              {hasSeatCountWarning && (
+            )}
+            
+            {hasSeatCountWarning && (
+              <div className="smp-section">
                 <div className="smp-warning">
                   <AlertTriangle size={14} />
                   Showing {seats.length} of {selInstanceObj.total_capacity} seats — check seat generation logic, capacity may have changed.
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {showMap && seats.length > 0 && (
               <div className="smp-section" style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>

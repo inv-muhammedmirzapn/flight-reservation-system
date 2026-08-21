@@ -9,9 +9,10 @@ from apps.flights.models import (
     Seat, CabinClass, SeatPosition, SeatStatus,
     Fare, RefundType
 )
+from apps.flights.services import generate_seats_for_instance
 
 class Command(BaseCommand):
-    help = "Seeds flights from New Delhi (DEL) to Hamburg (HAM) starting from Aug 5th, 2026 onwards."
+    help = "Seeds flights from New Delhi (DEL) to Hamburg (HAM) starting from today onwards."
 
     def handle(self, *args, **options):
         self.stdout.write("Starting Hamburg flights seeding...")
@@ -130,9 +131,9 @@ class Command(BaseCommand):
                 }
             )
 
-        # 6. Generate Flight Instances starting Aug 5, 2026 up to Aug 18, 2026 (14 days)
-        start_date = date(2026, 8, 5)
-        num_days = 14
+        # 6. Generate Flight Instances starting from today for 7 days
+        start_date = timezone.now().date()
+        num_days = 7
 
         count_created = 0
         zero_seat_count = 0
@@ -227,7 +228,6 @@ class Command(BaseCommand):
 
                 # Seats
                 if inst.seats.count() == 0:
-                    from apps.flights.services import generate_seats_for_instance
                     generate_seats_for_instance(inst)
                     
                     if is_full:
@@ -241,5 +241,5 @@ class Command(BaseCommand):
                             Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
 
         self.stdout.write(self.style.SUCCESS(
-            f"Successfully seeded {count_created} flights from DEL to HAM starting from Aug 5th, 2026 ({zero_seat_count} flights fully booked with 0 seats)."
+            f"Successfully seeded {count_created} flights from DEL to HAM starting from today ({zero_seat_count} flights fully booked with 0 seats)."
         ))
