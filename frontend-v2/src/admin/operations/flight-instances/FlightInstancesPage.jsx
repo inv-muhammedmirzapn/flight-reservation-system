@@ -427,7 +427,7 @@ export default function FlightInstancesPage() {
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
                 <thead>
-                  <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th className="text-right">Actions</th></tr>
+                  <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
                 </thead>
                 <tbody>
                   {instances.map((inst) => {
@@ -447,13 +447,13 @@ export default function FlightInstancesPage() {
                         <td className="text-right whitespace-nowrap">
                           <div className="fi-actions-wrap" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                             <div className="fi-quick-links" style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
                                 <Banknote size={13} /><span className="fi-action-label"> Fares</span>
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
                                 <Armchair size={13} /><span className="fi-action-label"> Seats</span>
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&inFlow=1`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
                                 <Utensils size={13} /><span className="fi-action-label"> Meals</span>
                               </Link>
                             </div>
@@ -545,17 +545,19 @@ export default function FlightInstancesPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
+              {/* Row 1: Flight Route + Aircraft */}
+              <div className="admin-form-grid" style={{ marginBottom: 16 }}>
                 <Select id="fi_flight" label="Flight Route" options={routeOptions} value={form.flight}
                   onChange={(e) => { handleFlightChange(e.target.value); clearError('flight'); }} error={localErrors.flight} />
                 <Select id="fi_aircraft" label="Aircraft (filtered by airline)" options={aircraftOptions}
                   value={form.aircraft} onChange={(e) => { setForm((f) => ({ ...f, aircraft: e.target.value })); clearError('aircraft'); }}
                   error={localErrors.aircraft} />
-                <Select id="fi_status" label="Status" options={STATUS_OPTIONS} value={form.status}
-                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} />
               </div>
 
-              <div className="admin-form-grid mb-5">
+              {/* Row 2: Status + Scheduled Departure + Scheduled Arrival */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+                <Select id="fi_status" label="Status" options={STATUS_OPTIONS} value={form.status}
+                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} />
                 <div>
                   <label className="text-[11px] font-bold tracking-[.06em] uppercase text-[#5e5e5e] block mb-1.5">Scheduled Departure</label>
                   <DateTimePicker value={form.scheduled_departure} error={localErrors.scheduled_departure} onChange={(e) => {
@@ -582,6 +584,10 @@ export default function FlightInstancesPage() {
                   }} />
                   {localErrors.scheduled_arrival && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>{localErrors.scheduled_arrival}</p>}
                 </div>
+              </div>
+
+              {/* Row 3: Boarding Gate + Departure Terminal + Arrival Terminal */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
                 <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12"
                   value={form.boarding_gate} options={gateOptions}
                   onChange={(e) => { setForm((f) => ({ ...f, boarding_gate: e.target.value })); if (e.target.value) clearError('boarding_gate'); }}

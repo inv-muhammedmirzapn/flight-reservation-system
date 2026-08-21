@@ -715,7 +715,8 @@ class SeatViewSet(AdminModelViewSet):
 class FareViewSet(AdminModelViewSet):
     queryset = Fare.objects.select_related("flight_instance").all()
     serializer_class = FareSerializer
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["fare_code", "cabin_class", "flight_instance__flight__flight_no"]
     ordering_fields = ["cabin_class", "price"]
 
     def get_queryset(self):

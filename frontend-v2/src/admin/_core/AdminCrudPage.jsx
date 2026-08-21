@@ -258,54 +258,58 @@ export default function AdminCrudPage({
         </div>
 
         {/* Toolbar */}
-        <div className="admin-toolbar">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="admin-toolbar-search" style={{ position: 'relative' }}>
-              <Search size={14} className="search-icon" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onFocus={() => setSearchFocus(true)}
-                onBlur={() => setSearchFocus(false)}
-                placeholder={`Search ${title.toLowerCase()}…`}
-              />
-              {search && (
-                <button
-                  type="button"
-                  className="clear-search-btn"
-                  onClick={() => { setSearch(''); setActiveSearch(''); setPage(1); }}
-                  title="Clear search"
-                >
-                  <X size={13} />
-                </button>
-              )}
-              {searchFocus && searchSuggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
-                  {searchSuggestions.map((sug, idx) => (
-                    <div
-                      key={idx}
-                      onMouseDown={(e) => {
-                        e.preventDefault(); // Prevent blur
-                        setSearch(sug.value);
-                        setActiveSearch(sug.value);
-                        setPage(1);
-                        setSearchFocus(false);
-                      }}
-                      style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        {(!config.hideSearch || filterBar) && (
+          <div className="admin-toolbar">
+            {!config.hideSearch && (
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <div className="admin-toolbar-search" style={{ position: 'relative' }}>
+                  <Search size={14} className="search-icon" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setSearchFocus(true)}
+                    onBlur={() => setSearchFocus(false)}
+                    placeholder={`Search ${title.toLowerCase()}…`}
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      className="clear-search-btn"
+                      onClick={() => { setSearch(''); setActiveSearch(''); setPage(1); }}
+                      title="Clear search"
                     >
-                      <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
-                      <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                      <X size={13} />
+                    </button>
+                  )}
+                  {searchFocus && searchSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                      {searchSuggestions.map((sug, idx) => (
+                        <div
+                          key={idx}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent blur
+                            setSearch(sug.value);
+                            setActiveSearch(sug.value);
+                            setPage(1);
+                            setSearchFocus(false);
+                          }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                          <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
-            <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
-          </form>
-          {filterBar}
-        </div>
+                <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
+              </form>
+            )}
+            {filterBar}
+          </div>
+        )}
 
         {/* Table Card */}
         <div className="admin-card admin-table-wrap">
@@ -501,21 +505,24 @@ export default function AdminCrudPage({
                 })}
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 mt-8">
-                <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
-                <button type="submit" className="btn-secondary" disabled={actionLoading} onClick={(e) => handleSubmit(e, false)}>
-                  <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
-                </button>
-                {saveAndNextUrl && (
-                  <button
-                    type="button"
-                    disabled={actionLoading}
-                    onClick={(e) => handleSubmit(e, true)}
-                    className="px-4 py-2 rounded-xl bg-admin-accent-dark hover:bg-admin-accent-darker text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
-                  >
-                    Save & Next <ChevronRight size={14} />
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-slate-200 mt-8">
+                <button type="button" className="btn-secondary" onClick={closeForm}><X size={14} /> Cancel</button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn-secondary" disabled={actionLoading} onClick={(e) => handleSubmit(e, false)}>
+                    <Save size={14} /> {actionLoading ? 'Saving…' : 'Save'}
                   </button>
-                )}
+                  {saveAndNextUrl && (
+                    <button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={(e) => handleSubmit(e, true)}
+                      className="px-4 py-2 rounded-xl bg-[#705d00] hover:bg-[#5a4b00] text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all border-none"
+                    >
+                      Save & Next <ChevronRight size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </div>

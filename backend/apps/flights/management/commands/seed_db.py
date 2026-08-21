@@ -21,7 +21,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Seeds database with real-world mock data, including DEL to HAM flights between Aug 6th and Aug 20th"
+    help = "Seeds database with real-world mock data, including DEL to HAM flights for the next 7 days"
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING("Wiping existing data..."))
@@ -379,15 +379,15 @@ class Command(BaseCommand):
                 }
             )
 
-        # 10. Generate Flight Instances (Aug 6th to Aug 20th for DEL -> HAM, plus past/future general flights)
-        self.stdout.write("Generating Flight Instances between Aug 6th and Aug 20th for DEL -> HAM...")
+        # 10. Generate Flight Instances (Next 7 days for DEL -> HAM, plus past/future general flights)
+        self.stdout.write("Generating Flight Instances for the next 7 days for DEL -> HAM...")
 
         flight_instances_created = []
         flight_counter = 5000
 
-        # Target range: Aug 6, 2026 to Aug 20, 2026 (15 days)
-        start_aug = date(2026, 8, 6)
-        end_aug = date(2026, 8, 20)
+        # Target range: Today to 1 week from today (7 days)
+        start_aug = timezone.now().date()
+        end_aug = start_aug + timedelta(days=7)
         
         all_del_ham_keys = list(del_ham_route_objs.keys())
 
@@ -588,7 +588,7 @@ class Command(BaseCommand):
                 
                 # Seats
                 if inst.seats.count() == 0:
-                    from apps.flights.services import generate_seats_for_instance
+
                     generate_seats_for_instance(inst)
                     
                     is_fully_booked = (inst.id % 7 == 0)
@@ -633,5 +633,5 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             "Successfully seeded database with comprehensive data! "
-            "Created DEL to HAM flights for every day between August 6th and August 20th, 2026."
+            "Created DEL to HAM flights for the next 7 days."
         ))
