@@ -749,11 +749,18 @@ class SeatPriceTemplateSerializer(serializers.ModelSerializer):
 
 
 class RouteFareClassSerializer(serializers.ModelSerializer):
+    flight_no = serializers.CharField(source="route.flight_no", read_only=True)
+    airline_name = serializers.CharField(source="route.airline.airline_name", read_only=True)
+    airline_code = serializers.CharField(source="route.airline.iata_airline_code", read_only=True)
+
     class Meta:
         model = RouteFareClass
         fields = [
             "id",
             "route",
+            "flight_no",
+            "airline_name",
+            "airline_code",
             "cabin_class",
             "fare_code",
             "base_price",
@@ -764,6 +771,7 @@ class RouteFareClassSerializer(serializers.ModelSerializer):
             "baggage_weight_allowed_kg",
             "extra_baggage_price_per_kg",
         ]
+    
 
 
 class FarePriceChangeLogSerializer(serializers.ModelSerializer):

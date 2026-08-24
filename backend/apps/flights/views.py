@@ -782,17 +782,20 @@ class RouteFareClassViewSet(AdminModelViewSet):
     from .models import RouteFareClass
     from .serializers import RouteFareClassSerializer
 
-    queryset = RouteFareClass.objects.select_related("route").all()
+    queryset = RouteFareClass.objects.select_related("route", "route__airline").all()
     serializer_class = RouteFareClassSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["fare_code", "cabin_class"]
-    ordering_fields = ["base_price", "cabin_class"]
+    search_fields = ["fare_code", "cabin_class", "route__flight_no", "route__airline__airline_name"]
+    ordering_fields = ["base_price", "cabin_class", "route__flight_no"]
 
     def get_queryset(self):
         qs = super().get_queryset()
-        route_id = self.request.query_params.get("route")
+        route_id = self.request.query_params.get("route") or self.request.query_params.get("flight_route")
         if route_id:
             qs = qs.filter(route_id=route_id)
+        cabin = self.request.query_params.get("cabin_class")
+        if cabin:
+            qs = qs.filter(cabin_class=cabin)
         return qs
 
     @action(detail=True, methods=["post"], url_path="update-price")

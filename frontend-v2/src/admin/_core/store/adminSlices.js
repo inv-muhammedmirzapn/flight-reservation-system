@@ -237,3 +237,40 @@ export const {
   remove: removeFlightMeal,
 } = flightMealSliceDef.thunks;
 export const flightMealReducer = flightMealSliceDef.slice.reducer;
+
+// ─── RouteFareClass ───────────────────────────────────────────────────────────
+const routeFareClassSliceDef = createCrudSlice('routeFareClass', '/flights/v2/route-fare-classes');
+export const routeFareClassActions = routeFareClassSliceDef.actions;
+export const {
+  fetchList: fetchRouteFareClasses,
+  fetchDetail: fetchRouteFareClassDetail,
+  add: addRouteFareClass,
+  update: updateRouteFareClass,
+  remove: removeRouteFareClass,
+} = routeFareClassSliceDef.thunks;
+export const routeFareClassReducer = routeFareClassSliceDef.slice.reducer;
+
+// Custom: update base price and reprice future unsold instances atomically
+export const updateRouteFareClassPrice = createAsyncThunk(
+  'routeFareClass/updatePrice',
+  async ({ id, newBasePrice }, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth(`/flights/v2/route-fare-classes/${id}/update-price/`, {
+        method: 'POST',
+        body: JSON.stringify({ new_base_price: newBasePrice }),
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to update route fare price');
+    }
+  }
+);
+
+// ─── FarePriceChangeLog ───────────────────────────────────────────────────────
+const farePriceLogSliceDef = createCrudSlice('farePriceLog', '/flights/v2/fare-price-logs');
+export const farePriceLogActions = farePriceLogSliceDef.actions;
+export const {
+  fetchList: fetchFarePriceLogs,
+  fetchDetail: fetchFarePriceLogDetail,
+} = farePriceLogSliceDef.thunks;
+export const farePriceLogReducer = farePriceLogSliceDef.slice.reducer;
+

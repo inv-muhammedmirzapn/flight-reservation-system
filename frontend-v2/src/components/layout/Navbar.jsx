@@ -29,9 +29,11 @@ const ADMIN_NAVIGATION = {
       label: "Operations",
       links: [
         { label: "Flight Routes", href: "/admin/operations/flight-routes" },
+        { label: "Route Fare Templates", href: "/admin/operations/route-fare-classes" },
+        { label: "Price Audit Logs", href: "/admin/operations/fare-price-logs" },
         { label: "Instances", href: "/admin/operations/flight-instances" },
         { label: "Seat Map", href: "/admin/operations/seat-map" },
-        { label: "Fares", href: "/admin/operations/fares" },
+        { label: "Fares (Instance)", href: "/admin/operations/fares" },
         { label: "Meals", href: "/admin/operations/meals" },
       ],
     },

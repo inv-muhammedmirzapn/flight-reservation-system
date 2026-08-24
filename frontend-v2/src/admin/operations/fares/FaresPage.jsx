@@ -140,8 +140,40 @@ export default function FaresPage() {
     </div>
   ) : null;
 
+  const templateNoticeBanner = (
+    <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 text-xs text-blue-900 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+          ℹ️
+        </div>
+        <div>
+          <div className="font-extrabold uppercase tracking-wider text-blue-700">
+            Template-Driven Pricing Enabled
+          </div>
+          <div>
+            Instance fares are auto-generated from <strong>Route Fare Templates</strong>. To change base prices across all future flight dates atomically, use the Route Fare Templates manager.
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate('/admin/operations/route-fare-classes')}
+        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition-all border-none shadow-sm whitespace-nowrap"
+      >
+        Manage Route Fare Templates
+      </button>
+    </div>
+  );
+
+  const combinedBanner = (
+    <>
+      {templateNoticeBanner}
+      {flowBanner}
+    </>
+  );
+
   const CONFIG = {
-    title: 'Fares',
+    title: 'Fares (Instance Level)',
     breadcrumb,
     entityName: 'fare',
     hideSearch: !!instanceParam,
@@ -166,7 +198,7 @@ export default function FaresPage() {
     <>
       <AdminCrudPage
         config={CONFIG}
-        banner={flowBanner}
+        banner={combinedBanner}
         saveAndNextUrl={instanceParam && inFlow ? `/admin/operations/seat-map?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
       />
     </>
