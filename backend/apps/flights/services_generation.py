@@ -1,0 +1,120 @@
+import logging
+from datetime import date, timedelta
+
+from django.db import transaction
+from django.utils import timezone
+
+from .models import FlightRoute, FlightInstance, InstanceStatus, Aircraft
+from .services import generate_seats_for_instance
+from .services_pricing import generate_fares_for_instance, PricingStrategy
+
+logger = logging.getLogger(__name__)
+
+
+def generate_upcoming_instances(
+    today: date | None = None,
+    horizon_days: int = 90,
+    strategy: PricingStrategy | None = None,
+) -> dict:
+    """
+    Rolling 3-month horizon generator: creates upcoming FlightInstance records
+    for all active routes based on operates_on_days and validity window.
+
+    Idempotent: uses get_or_create to skip instances that already exist.
+
+    Returns:
+        {
+            "created_instances_count": int,
+            "created_seats_count": int,
+            "created_fares_count": int,
+            "skipped_instances_count": int,
+        }
+    """
+    if today is None:
+        today = timezone.now().date()
+
+    end_date = today + timedelta(days=horizon_days)
+
+    active_routes = FlightRoute.objects.filter(is_active=True).prefetch_related("fare_classes")
+    if not active_routes.exists():
+        logger.info("No active flight routes found for instance generation.")
+        return {
+            "created_instances_count": 0,
+            "created_seats_count": 0,
+            "created_fares_count": 0,
+            "skipped_instances_count": 0,
+        }
+
+    default_aircraft = Aircraft.objects.first()
+
+    created_instances = 0
+    skipped_instances = 0
+    created_seats = 0
+    created_fares = 0
+
+    for route in active_routes:
+        r_valid_from = route.valid_from
+        r_valid_until = route.valid_until
+
+        if route.operates_on_days:
+            operating_days = {
+                int(d.strip()) for d in route.operates_on_days.split(",") if d.strip().isdigit()
+            }
+        else:
+            operating_days = {1, 2, 3, 4, 5, 6, 7}
+
+        curr_date = today
+        while curr_date <= end_date:
+            if curr_date.isoweekday() in operating_days:
+                if r_valid_from and curr_date < r_valid_from:
+                    curr_date += timedelta(days=1)
+                    continue
+                if r_valid_until and curr_date > r_valid_until:
+                    curr_date += timedelta(days=1)
+                    continue
+
+                first_leg = route.legs.order_by("leg_order").first()
+                from datetime import datetime, time
+                dep_time = first_leg.scheduled_departure.time() if (first_leg and first_leg.scheduled_departure) else time(8, 0)
+                total_duration = sum((l.flight_duration_minutes or 0) + (l.layover_duration_minutes or 0) for l in route.legs.all()) or 120
+
+                naive_dep = datetime.combine(curr_date, dep_time)
+                naive_arr = naive_dep + timedelta(minutes=total_duration)
+
+                sch_dep = timezone.make_aware(naive_dep) if timezone.is_naive(naive_dep) else naive_dep
+                sch_arr = timezone.make_aware(naive_arr) if timezone.is_naive(naive_arr) else naive_arr
+
+                with transaction.atomic():
+                    instance, created = FlightInstance.objects.get_or_create(
+                        flight=route,
+                        date=curr_date,
+                        defaults={
+                            "aircraft": default_aircraft,
+                            "scheduled_departure": sch_dep,
+                            "scheduled_arrival": sch_arr,
+                            "status": InstanceStatus.SCHEDULED,
+                        },
+                    )
+
+                    if created:
+                        created_instances += 1
+                        s_count = generate_seats_for_instance(instance)
+                        created_seats += s_count
+                        f_list = generate_fares_for_instance(instance, strategy=strategy)
+                        created_fares += len(f_list)
+                    else:
+                        skipped_instances += 1
+
+            curr_date += timedelta(days=1)
+
+    logger.info(
+        f"Rolling instance generation finished: created {created_instances} instances, "
+        f"{created_seats} seats, {created_fares} fares. Skipped {skipped_instances} existing instances."
+    )
+
+    return {
+        "created_instances_count": created_instances,
+        "created_seats_count": created_seats,
+        "created_fares_count": created_fares,
+        "skipped_instances_count": skipped_instances,
+    }

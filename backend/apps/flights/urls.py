@@ -7,7 +7,7 @@ from .views import (
     FlightRouteViewSet, FlightInstanceViewSet,
     SeatViewSet, FareViewSet,
     FoodItemViewSet, FlightMealViewSet,
-    SeatPriceTemplateViewSet,
+    SeatPriceTemplateViewSet, RouteFareClassViewSet, FarePriceChangeLogViewSet,
 )
 from .views_calendar import FlightFaresCalendarView, FlightFareBoundsView
 from .views_meals import FlightMealsView
@@ -28,6 +28,8 @@ router.register(r"v2/fares", FareViewSet, basename="fare")
 router.register(r"v2/food-items", FoodItemViewSet, basename="food-item")
 router.register(r"v2/flight-meals", FlightMealViewSet, basename="flight-meal")
 router.register(r"v2/seat-price-templates", SeatPriceTemplateViewSet, basename="seat-price-template")
+router.register(r"v2/route-fare-classes", RouteFareClassViewSet, basename="route-fare-class")
+router.register(r"v2/fare-price-logs", FarePriceChangeLogViewSet, basename="fare-price-log")
 
 urlpatterns = [
     # ── Legacy endpoints (unchanged) ─────────────────────────────────────────

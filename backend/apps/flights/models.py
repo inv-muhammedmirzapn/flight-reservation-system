@@ -2,6 +2,8 @@ import logging
 import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +151,12 @@ class FlightRoute(models.Model):
         max_digits=8, decimal_places=2, default=500.00
     )
     extra_baggage_currency = models.CharField(max_length=3, default="INR")
+    operates_on_days = models.CharField(
+        max_length=13, default="1,2,3,4,5,6,7", help_text="Comma-separated ISO weekdays, e.g. '1,2,3,4,5'"
+    )
+    valid_from = models.DateField(default=timezone.now)
+    valid_until = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -363,6 +371,43 @@ class RefundType(models.TextChoices):
     PARTIAL = "PARTIAL", "Partial"
 
 
+class RouteFareClass(models.Model):
+    """
+    Defines which cabin classes a route sells and their BASE price template.
+    One row per cabin/fare_code per route.
+    """
+    route = models.ForeignKey("FlightRoute", related_name="fare_classes", on_delete=models.CASCADE)
+    cabin_class = models.CharField(max_length=10, choices=CabinClass.choices)
+    fare_code = models.CharField(max_length=20)
+    base_price = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default="INR")
+    refund_type = models.CharField(max_length=20, choices=RefundType.choices, default=RefundType.NON_REFUNDABLE)
+    change_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    meal_included = models.BooleanField(default=False)
+    baggage_weight_allowed_kg = models.PositiveIntegerField(default=15)
+    extra_baggage_price_per_kg = models.DecimalField(max_digits=8, decimal_places=2, default=500.00)
+
+    class Meta:
+        ordering = ["route", "cabin_class", "fare_code"]
+        unique_together = [["route", "cabin_class", "fare_code"]]
+
+    def clean(self):
+        errors = {}
+        if self.base_price is not None and self.base_price < 0:
+            errors["base_price"] = "Base price cannot be negative."
+        if self.change_fee is not None and self.change_fee < 0:
+            errors["change_fee"] = "Change fee cannot be negative."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.fare_code} ({self.cabin_class}) – Route {self.route.flight_no}"
+
+
 class Fare(models.Model):
     flight_instance = models.ForeignKey(
         FlightInstance, on_delete=models.CASCADE, related_name="fares"
@@ -430,6 +475,25 @@ class Fare(models.Model):
 
     def __str__(self):
         return f"{self.fare_code} ({self.cabin_class}) – {self.flight_instance}"
+
+
+class FarePriceChangeLog(models.Model):
+    """
+    Audit log for tracking base price and per-instance fare price changes.
+    """
+    fare = models.ForeignKey(Fare, related_name="price_changes", on_delete=models.CASCADE)
+    old_price = models.DecimalField(max_digits=10, decimal_places=2)
+    new_price = models.DecimalField(max_digits=10, decimal_places=2)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
+
+    def __str__(self):
+        return f"Fare #{self.fare_id}: {self.old_price} -> {self.new_price} at {self.changed_at}"
 
 
 class FoodItem(models.Model):

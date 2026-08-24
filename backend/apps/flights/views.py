@@ -773,3 +773,73 @@ class SeatPriceTemplateViewSet(AdminModelViewSet):
         if aircraft_model_id:
             qs = qs.filter(aircraft_model_id=aircraft_model_id)
         return qs
+
+
+class RouteFareClassViewSet(AdminModelViewSet):
+    """
+    CRUD and price updating for RouteFareClass templates.
+    """
+    from .models import RouteFareClass
+    from .serializers import RouteFareClassSerializer
+
+    queryset = RouteFareClass.objects.select_related("route").all()
+    serializer_class = RouteFareClassSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["fare_code", "cabin_class"]
+    ordering_fields = ["base_price", "cabin_class"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        route_id = self.request.query_params.get("route")
+        if route_id:
+            qs = qs.filter(route_id=route_id)
+        return qs
+
+    @action(detail=True, methods=["post"], url_path="update-price")
+    def update_price(self, request, pk=None):
+        from decimal import Decimal, InvalidOperation
+        from .services_pricing import update_route_fare_price
+
+        route_fare = self.get_object()
+        new_price_raw = request.data.get("new_base_price")
+        if not new_price_raw:
+            return Response({"error": "new_base_price is required."}, status=400)
+
+        try:
+            new_price = Decimal(str(new_price_raw))
+            if new_price < 0:
+                return Response({"error": "Price cannot be negative."}, status=400)
+        except (InvalidOperation, ValueError, TypeError):
+            return Response({"error": "Invalid decimal value for new_base_price."}, status=400)
+
+        count = update_route_fare_price(
+            route_fare=route_fare,
+            new_base_price=new_price,
+            changed_by=request.user if request.user.is_authenticated else None,
+        )
+
+        return Response({
+            "message": f"Updated base price to {new_price}.",
+            "updated_future_fares_count": count,
+        })
+
+
+class FarePriceChangeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Audit log ViewSet for inspecting base price changes across flight instances.
+    """
+    from .models import FarePriceChangeLog
+    from .serializers import FarePriceChangeLogSerializer
+
+    queryset = FarePriceChangeLog.objects.select_related("fare", "changed_by").all()
+    serializer_class = FarePriceChangeLogSerializer
+    permission_classes = [IsAdminOrSuperuser]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["changed_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        fare_id = self.request.query_params.get("fare")
+        if fare_id:
+            qs = qs.filter(fare_id=fare_id)
+        return qs

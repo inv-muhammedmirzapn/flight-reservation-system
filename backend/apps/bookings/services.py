@@ -6,7 +6,7 @@ from django.utils import timezone
 
 BOOKING_CUTOFF_HOURS = 3  # bookings close this many hours before scheduled departure
 
-from .models import Booking, BookingStatus, Passenger, SeatHold, SEAT_HOLD_MINUTES
+from .models import Booking, BookingStatus, Passenger, SeatHold, SEAT_HOLD_MINUTES, Ticket
 from apps.flights.models import FlightInstance, InstanceStatus, Fare, Seat, SeatStatus
 
 logger = logging.getLogger(__name__)
@@ -380,6 +380,25 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                 extra_baggage_kg=p_extra_kg,
                 extra_baggage_cost=p_extra_cost,
             )
+
+            # Immutable ticket price snapshot
+            seat_obj = None
+            if seat_num:
+                seat_obj = flight_instance.seats.filter(seat_number=seat_num).first()
+
+            if seat_obj and fare_obj:
+                Ticket.objects.create(
+                    booking=booking,
+                    flight_instance=flight_instance,
+                    fare=fare_obj,
+                    passenger=passenger_obj,
+                    seat=seat_obj,
+                    price_paid=price_per_pax + seat_obj.seat_fee,
+                    currency=booking_curr,
+                    fare_code=fare_obj.fare_code,
+                    cabin_class=cabin_class or fare_obj.cabin_class,
+                    refund_type=fare_obj.refund_type,
+                )
 
             complimentary_waived = False
             selected_meals_data = p_data.get('selected_meals', []) or []

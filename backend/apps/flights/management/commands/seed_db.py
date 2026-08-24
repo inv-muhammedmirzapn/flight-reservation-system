@@ -1,5 +1,4 @@
 from decimal import Decimal
-import random
 from datetime import datetime, date, time, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
@@ -9,19 +8,17 @@ from apps.users.models import Profile
 from apps.flights.models import (
     Country, Airport, Airline, AircraftModel, Aircraft,
     FlightRoute, FlightLeg, FlightInstance, InstanceStatus,
-    Seat, CabinClass, SeatPosition, SeatStatus,
-    Fare, RefundType, FoodItem, FlightMeal, FlightMealItem,
+    Seat, CabinClass, RefundType, RouteFareClass, FoodItem,
 )
-from apps.flights.services import generate_seats_for_instance
-from apps.bookings.models import Booking, BookingStatus, Passenger
-from apps.waitlist.models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
-from apps.notifications.models import Notification, NotificationType
+from apps.bookings.models import Booking, Passenger, Ticket
+from apps.waitlist.models import WaitlistEntry, WaitlistPassenger
+from apps.notifications.models import Notification
 
 User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Seeds database with real-world mock data, including DEL to HAM flights for the next 7 days"
+    help = "Seeds database with static data (Airports, Airlines, Aircraft, Routes, RouteFareClasses, Users), leaving FlightInstances to be created via generate_instances."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING("Wiping existing data..."))
@@ -29,16 +26,15 @@ class Command(BaseCommand):
         Notification.objects.all().delete()
         WaitlistPassenger.objects.all().delete()
         WaitlistEntry.objects.all().delete()
+        Ticket.objects.all().delete()
         Passenger.objects.all().delete()
         Booking.objects.all().delete()
-        FlightMealItem.objects.all().delete()
-        FlightMeal.objects.all().delete()
-        FoodItem.objects.all().delete()
-        Fare.objects.all().delete()
         Seat.objects.all().delete()
         FlightInstance.objects.all().delete()
+        RouteFareClass.objects.all().delete()
         FlightLeg.objects.all().delete()
         FlightRoute.objects.all().delete()
+        FoodItem.objects.all().delete()
         Aircraft.objects.all().delete()
         AircraftModel.objects.all().delete()
         Airline.objects.all().delete()
@@ -46,7 +42,7 @@ class Command(BaseCommand):
         Country.objects.all().delete()
         Profile.objects.all().delete()
         User.objects.exclude(is_superuser=True).delete()
-        
+
         self.stdout.write(self.style.SUCCESS("Database wiped successfully. Starting seed..."))
 
         # 1. Users & Profiles (1 Admin, 1 Customer)
@@ -61,10 +57,9 @@ class Command(BaseCommand):
                 "is_superuser": True,
             }
         )
-        if not admin_user.check_password("admin123"):
-            admin_user.set_password("admin123")
-            admin_user.save()
-        
+        admin_user.set_password("admin123")
+        admin_user.save()
+
         admin_profile, _ = Profile.objects.get_or_create(user=admin_user)
         admin_profile.role = Profile.Role.ADMIN
         admin_profile.phone_number = "+1 555-0199"
@@ -146,17 +141,33 @@ class Command(BaseCommand):
             )
             airports_dict[iata] = ap
 
-        # 4. Airlines
+        # 4. Airlines with logos
         self.stdout.write("Seeding Airlines...")
         airlines_data = [
-            ("EK", "Emirates"), ("BA", "British Airways"), ("AA", "American Airlines"),
-            ("AI", "Air India"), ("SQ", "Singapore Airlines"), ("JL", "Japan Airlines"),
-            ("LH", "Lufthansa"), ("AF", "Air France"), ("QF", "Qantas Airways"),
-            ("6E", "IndiGo Airlines"), ("QR", "Qatar Airways"), ("TK", "Turkish Airlines")
+            ("EK", "Emirates", "airlines/ek_logo.png"),
+            ("BA", "British Airways", "airlines/ba_logo.png"),
+            ("AA", "American Airlines", "airlines/aa_logo.png"),
+            ("AI", "Air India", "airlines/ai_logo.jpg"),
+            ("SQ", "Singapore Airlines", "airlines/sq_logo.png"),
+            ("JL", "Japan Airlines", "airlines/jl_logo.png"),
+            ("LH", "Lufthansa", "airlines/lh_logo.png"),
+            ("AF", "Air France", "airlines/af_logo.png"),
+            ("QF", "Qantas Airways", "airlines/qf_logo.png"),
+            ("6E", "IndiGo Airlines", "airlines/6e_logo.png"),
+            ("QR", "Qatar Airways", "airlines/qr_logo.png"),
+            ("TK", "Turkish Airlines", "airlines/tk_logo.png"),
         ]
         airlines_dict = {}
-        for code, name in airlines_data:
-            al, _ = Airline.objects.get_or_create(iata_airline_code=code, defaults={"airline_name": name})
+        for code, name, logo_path in airlines_data:
+            al, _ = Airline.objects.get_or_create(
+                iata_airline_code=code,
+                defaults={
+                    "airline_name": name,
+                    "logo": logo_path,
+                }
+            )
+            al.logo = logo_path
+            al.save()
             airlines_dict[code] = al
 
         # 5. Aircraft Models
@@ -202,7 +213,7 @@ class Command(BaseCommand):
             )
             aircraft_dict[reg] = ac
 
-        # 7. Food Items (In INR)
+        # 7. Food Items
         self.stdout.write("Seeding Food Items...")
         food_items_data = [
             ("EK", "Mediterranean Hummus & Pita Wrap", 450.00, True, True, True),
@@ -214,9 +225,8 @@ class Command(BaseCommand):
             ("LH", "Artisanal Cheese & Fresh Fruit Platter", 800.00, True, False, False),
             ("6E", "Hyderabadi Chicken Biryani", 400.00, False, True, False),
         ]
-        food_items_list = []
         for al_code, name, price, is_v, is_h, is_vg in food_items_data:
-            fi, _ = FoodItem.objects.get_or_create(
+            FoodItem.objects.get_or_create(
                 airline=airlines_dict[al_code],
                 name=name,
                 defaults={
@@ -227,39 +237,37 @@ class Command(BaseCommand):
                     "is_vegan": is_vg,
                 }
             )
-            food_items_list.append(fi)
 
-        # 8. Define DEL -> HAM Routes (Direct & Connecting)
-        self.stdout.write("Seeding DEL -> HAM Routes (Direct & Connecting)...")
-        
-        # Direct DEL -> HAM Routes
+        # 8. Flight Routes, Flight Legs & RouteFareClasses
+        self.stdout.write("Seeding Flight Routes, Legs & RouteFareClasses...")
+
+        today = date.today()
+        valid_from_date = today - timedelta(days=30)
+
+        # DEL -> HAM Direct Routes
         direct_del_ham_routes = [
-            ("LH761", "LH", "D-ABPA", 9, 30, 45000, time(2, 30)),   # Lufthansa Morning
-            ("AI121", "AI", "VT-ALN", 10, 15, 38000, time(6, 15)),  # Air India Early Morning
-            ("EK061", "EK", "A6-EEO", 9, 45, 52000, time(14, 0)),   # Emirates Afternoon
-            ("6E191", "6E", "VT-IZI", 10, 0, 32000, time(23, 45)),  # IndiGo Night
+            ("LH761", "LH", "D-ABPA", 9, 30, Decimal("45000.00"), time(2, 30)),
+            ("AI121", "AI", "VT-ALN", 10, 15, Decimal("38000.00"), time(6, 15)),
+            ("EK061", "EK", "A6-EEO", 9, 45, Decimal("52000.00"), time(14, 0)),
+            ("6E191", "6E", "VT-IZI", 10, 0, Decimal("32000.00"), time(23, 45)),
         ]
 
-        del_ham_route_objs = {}
         for fno, al_code, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_del_ham_routes:
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
+                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "valid_from": valid_from_date,
+                    "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 8,
                 }
             )
-            del_ham_route_objs[fno] = {
-                "route": fr,
-                "aircraft": aircraft_dict[ac_reg],
-                "dur_hrs": dur_hrs,
-                "dur_mins": dur_mins,
-                "base_fare": base_fare,
-                "dep_time": dep_t,
-                "is_connecting": False,
-            }
+            scheduled_dep = datetime.combine(today, dep_t)
+            scheduled_arr = scheduled_dep + timedelta(hours=dur_hrs, minutes=dur_mins)
+
             FlightLeg.objects.get_or_create(
                 flight=fr,
                 leg_order=1,
@@ -268,30 +276,72 @@ class Command(BaseCommand):
                     "arrival_airport": airports_dict["HAM"],
                     "flight_duration_minutes": dur_hrs * 60 + dur_mins,
                     "layover_duration_minutes": 0,
+                    "scheduled_departure": timezone.make_aware(scheduled_dep),
+                    "scheduled_arrival": timezone.make_aware(scheduled_arr),
                 }
             )
 
+            # RouteFareClasses
+            RouteFareClass.objects.get_or_create(
+                route=fr,
+                cabin_class=CabinClass.ECONOMY,
+                fare_code="ECO_STD",
+                defaults={
+                    "base_price": base_fare,
+                    "currency": "INR",
+                    "refund_type": RefundType.PARTIAL,
+                    "change_fee": Decimal("3500.00"),
+                    "meal_included": True,
+                    "baggage_weight_allowed_kg": 30,
+                }
+            )
+            ac = aircraft_dict[ac_reg]
+            if ac.business_capacity > 0:
+                RouteFareClass.objects.get_or_create(
+                    route=fr,
+                    cabin_class=CabinClass.BUSINESS,
+                    fare_code="BIZ_STD",
+                    defaults={
+                        "base_price": (base_fare * Decimal("2.5")).quantize(Decimal("0.01")),
+                        "currency": "INR",
+                        "refund_type": RefundType.REFUNDABLE,
+                        "change_fee": Decimal("0.00"),
+                        "meal_included": True,
+                        "baggage_weight_allowed_kg": 40,
+                    }
+                )
+            if ac.first_class_capacity > 0:
+                RouteFareClass.objects.get_or_create(
+                    route=fr,
+                    cabin_class=CabinClass.FIRST,
+                    fare_code="FST_STD",
+                    defaults={
+                        "base_price": (base_fare * Decimal("4.5")).quantize(Decimal("0.01")),
+                        "currency": "INR",
+                        "refund_type": RefundType.REFUNDABLE,
+                        "change_fee": Decimal("0.00"),
+                        "meal_included": True,
+                        "baggage_weight_allowed_kg": 50,
+                    }
+                )
+
         # 1-Stop Connecting Routes (DEL -> Layover -> HAM)
         connecting_del_ham_routes = [
-            # LH763 via FRA
-            ("LH763-C", "LH", "D-AIXA", 42000, time(3, 15), [
-                ("DEL", "FRA", 510, 0),
-                ("FRA", "HAM", 70, 105), # 1h45m layover
+            ("LH763-C", "LH", "D-AIXA", Decimal("42000.00"), time(3, 15), [
+                ("DEL", "FRA", 510, 0, time(3, 15)),
+                ("FRA", "HAM", 70, 105, time(13, 30)),
             ]),
-            # EK505 via DXB
-            ("EK505-C", "EK", "A6-EEO", 48000, time(10, 30), [
-                ("DEL", "DXB", 225, 0),
-                ("DXB", "HAM", 390, 135), # 2h15m layover
+            ("EK505-C", "EK", "A6-EEO", Decimal("48000.00"), time(10, 30), [
+                ("DEL", "DXB", 225, 0, time(10, 30)),
+                ("DXB", "HAM", 390, 135, time(16, 30)),
             ]),
-            # BA143 via LHR
-            ("BA143-C", "BA", "G-ZBLB", 46000, time(11, 45), [
-                ("DEL", "LHR", 555, 0),
-                ("LHR", "HAM", 100, 120), # 2h layover
+            ("BA143-C", "BA", "G-ZBLB", Decimal("46000.00"), time(11, 45), [
+                ("DEL", "LHR", 555, 0, time(11, 45)),
+                ("LHR", "HAM", 100, 120, time(23, 0)),
             ]),
-            # TK717 via IST
-            ("TK717-C", "TK", "TC-JNA", 41000, time(18, 20), [
-                ("DEL", "IST", 420, 0),
-                ("IST", "HAM", 195, 90), # 1h30m layover
+            ("TK717-C", "TK", "TC-JNA", Decimal("41000.00"), time(18, 20), [
+                ("DEL", "IST", 420, 0, time(18, 20)),
+                ("IST", "HAM", 195, 90, time(3, 30)),
             ]),
         ]
 
@@ -300,22 +350,17 @@ class Command(BaseCommand):
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
+                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "valid_from": valid_from_date,
+                    "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 7,
                 }
             )
-            total_dur = sum(l[2] + l[3] for l in legs_info)
-            del_ham_route_objs[fno] = {
-                "route": fr,
-                "aircraft": aircraft_dict[ac_reg],
-                "dur_hrs": total_dur // 60,
-                "dur_mins": total_dur % 60,
-                "base_fare": base_fare,
-                "dep_time": dep_t,
-                "is_connecting": True,
-            }
-            for idx, (dep_ap, arr_ap, dur_m, lay_m) in enumerate(legs_info, start=1):
+            for idx, (dep_ap, arr_ap, dur_m, lay_m, leg_dep_t) in enumerate(legs_info, start=1):
+                sch_dep = timezone.make_aware(datetime.combine(today, leg_dep_t))
+                sch_arr = sch_dep + timedelta(minutes=dur_m)
                 FlightLeg.objects.get_or_create(
                     flight=fr,
                     leg_order=idx,
@@ -324,50 +369,74 @@ class Command(BaseCommand):
                         "arrival_airport": airports_dict[arr_ap],
                         "flight_duration_minutes": dur_m,
                         "layover_duration_minutes": lay_m,
+                        "scheduled_departure": sch_dep,
+                        "scheduled_arrival": sch_arr,
                     }
                 )
 
-        # 9. Other International Route Templates
+            RouteFareClass.objects.get_or_create(
+                route=fr,
+                cabin_class=CabinClass.ECONOMY,
+                fare_code="ECO_STD",
+                defaults={
+                    "base_price": base_fare,
+                    "currency": "INR",
+                    "refund_type": RefundType.PARTIAL,
+                    "change_fee": Decimal("3000.00"),
+                    "meal_included": True,
+                    "baggage_weight_allowed_kg": 30,
+                }
+            )
+            ac = aircraft_dict[ac_reg]
+            if ac.business_capacity > 0:
+                RouteFareClass.objects.get_or_create(
+                    route=fr,
+                    cabin_class=CabinClass.BUSINESS,
+                    fare_code="BIZ_STD",
+                    defaults={
+                        "base_price": (base_fare * Decimal("2.5")).quantize(Decimal("0.01")),
+                        "currency": "INR",
+                        "refund_type": RefundType.REFUNDABLE,
+                        "change_fee": Decimal("0.00"),
+                        "meal_included": True,
+                        "baggage_weight_allowed_kg": 40,
+                    }
+                )
+
+        # Other Global Routes
         other_route_templates = [
-            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO"),
-            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB"),
-            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN"),
-            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA"),
-            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A"),
-            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA"),
-            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA"),
-            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA"),
-            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA"),
-            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI"),
-            ("QR001", "QR", "DOH", "LHR", 7, 15, "A7-BBA"),
-            ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA"),
-            ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN"),
-            ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO"),
-            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA"),
-            ("QF009", "QF", "SYD", "DXB", 14, 30, "VH-ZNA"),
-            ("JL041", "JL", "HND", "LHR", 14, 10, "JA873A"),
-            ("AF218", "AF", "CDG", "BOM", 8, 30, "F-HTYA"),
-            ("LH764", "LH", "FRA", "BOM", 8, 10, "D-ABPA"),
-            ("QR015", "QR", "DOH", "JFK", 14, 15, "A7-BBA"),
-            ("6E112", "6E", "DEL", "SIN", 5, 50, "VT-IZI"),
-            ("AA050", "AA", "JFK", "CDG", 7, 15, "N777AA"),
-            ("BA011", "BA", "LHR", "SIN", 12, 50, "G-ZBLB"),
-            ("TK720", "TK", "IST", "BOM", 6, 30, "TC-JNA"),
-            ("EK007", "EK", "DXB", "LHR", 7, 30, "A6-EEO"),
+            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30)),
+            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0)),
+            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45)),
+            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA", Decimal("95000.00"), time(23, 50)),
+            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A", Decimal("88000.00"), time(11, 0)),
+            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA", Decimal("58000.00"), time(10, 45)),
+            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA", Decimal("60000.00"), time(14, 10)),
+            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30)),
+            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0)),
+            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15)),
+            ("QR001", "QR", "DOH", "LHR", 7, 15, "A7-BBA", Decimal("65000.00"), time(6, 45)),
+            ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA", Decimal("59000.00"), time(13, 30)),
+            ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN", Decimal("48000.00"), time(7, 0)),
+            ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO", Decimal("22000.00"), time(22, 30)),
+            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55)),
         ]
 
-        other_routes_dict = {}
-        for fno, al_code, dep_code, arr_code, hrs, mins, _ in other_route_templates:
+        for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
+                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "valid_from": valid_from_date,
+                    "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 7,
                 }
             )
-            other_routes_dict[fno] = fr
+            sch_dep = timezone.make_aware(datetime.combine(today, dep_t))
+            sch_arr = sch_dep + timedelta(hours=hrs, minutes=mins)
             FlightLeg.objects.get_or_create(
                 flight=fr,
                 leg_order=1,
@@ -376,262 +445,42 @@ class Command(BaseCommand):
                     "arrival_airport": airports_dict[arr_code],
                     "flight_duration_minutes": hrs * 60 + mins,
                     "layover_duration_minutes": 0,
+                    "scheduled_departure": sch_dep,
+                    "scheduled_arrival": sch_arr,
                 }
             )
 
-        # 10. Generate Flight Instances (Next 7 days for DEL -> HAM, plus past/future general flights)
-        self.stdout.write("Generating Flight Instances for the next 7 days for DEL -> HAM...")
-
-        flight_instances_created = []
-        flight_counter = 5000
-
-        # Target range: Today to 1 week from today (7 days)
-        start_aug = timezone.now().date()
-        end_aug = start_aug + timedelta(days=7)
-        
-        all_del_ham_keys = list(del_ham_route_objs.keys())
-
-        # For every date between Aug 6 and Aug 20, create multiple DEL -> HAM flight instances
-        curr_d = start_aug
-        while curr_d <= end_aug:
-            # Pick 4 to 6 different DEL -> HAM flights per day
-            daily_keys = random.sample(all_del_ham_keys, k=random.randint(4, 6))
-            
-            for key in daily_keys:
-                flight_counter += 1
-                r_data = del_ham_route_objs[key]
-                fr = r_data["route"]
-                ac = r_data["aircraft"]
-                base_fare = r_data["base_fare"]
-                t_dep = r_data["dep_time"]
-
-                dep_dt = datetime.combine(curr_d, t_dep)
-                if timezone.is_naive(dep_dt):
-                    dep_dt = timezone.make_aware(dep_dt)
-                
-                arr_dt = dep_dt + timedelta(hours=r_data["dur_hrs"], minutes=r_data["dur_mins"])
-
-                inst, _ = FlightInstance.objects.get_or_create(
-                    flight=fr,
-                    date=curr_d,
-                    scheduled_departure=dep_dt,
-                    defaults={
-                        "aircraft": ac,
-                        "status": InstanceStatus.SCHEDULED,
-                        "scheduled_arrival": arr_dt,
-                        "checkin_open": dep_dt - timedelta(hours=24),
-                        "boarding_time": dep_dt - timedelta(minutes=45),
-                        "boarding_gate": f"G{random.randint(1, 25)}",
-                        "departure_terminal": "T3",
-                        "arrival_terminal": "T1",
-                    }
-                )
-                flight_instances_created.append(inst)
-
-                # Determine seat availability (randomize so some have 0 seats to test waitlist)
-                is_fully_booked = (curr_d.day + flight_counter) % 5 == 0
-                econ_avail = 0 if is_fully_booked else random.randint(12, 110)
-                biz_avail = 0 if is_fully_booked else random.randint(4, 22)
-                fst_avail = 0 if is_fully_booked else random.randint(1, 6)
-
-                # Fares
-                Fare.objects.update_or_create(
-                    flight_instance=inst,
-                    cabin_class=CabinClass.ECONOMY,
-                    defaults={
-                        "fare_code": f"ECO-{inst.id}",
-                        "price": Decimal(str(base_fare)),
-                        "currency": "INR",
-                        "available_seats": 0, # Will be auto-calculated by seats
-                        "refund_type": RefundType.PARTIAL,
-                        "change_fee": Decimal("3500.00"),
-                        "meal_included": True,
-                        "baggage_allowance": Decimal("30.0"),
-                    }
-                )
-                if ac.business_capacity > 0:
-                    Fare.objects.update_or_create(
-                        flight_instance=inst,
-                        cabin_class=CabinClass.BUSINESS,
-                        defaults={
-                            "fare_code": f"BIZ-{inst.id}",
-                            "price": Decimal(str(int(base_fare * 2.6))),
-                            "currency": "INR",
-                            "available_seats": 0,
-                            "refund_type": RefundType.REFUNDABLE,
-                            "change_fee": Decimal("0.00"),
-                            "meal_included": True,
-                            "baggage_allowance": Decimal("40.0"),
-                        }
-                    )
-                if ac.first_class_capacity > 0:
-                    Fare.objects.update_or_create(
-                        flight_instance=inst,
-                        cabin_class=CabinClass.FIRST,
-                        defaults={
-                            "fare_code": f"FST-{inst.id}",
-                            "price": Decimal(str(int(base_fare * 5.0))),
-                            "currency": "INR",
-                            "available_seats": 0,
-                            "refund_type": RefundType.REFUNDABLE,
-                            "change_fee": Decimal("0.00"),
-                            "meal_included": True,
-                            "baggage_allowance": Decimal("50.0"),
-                        }
-                    )
-
-                # Seats — use the shared service so all cabin classes are generated correctly
-                if inst.seats.count() == 0:
-                    generate_seats_for_instance(inst)
-                    
-                    if is_fully_booked:
-                        inst.seats.update(status=SeatStatus.BOOKED)
-                    else:
-                        # Randomly book some seats (e.g. 20-50%)
-                        seats_list = list(inst.seats.all())
-                        if seats_list:
-                            booked_count = int(len(seats_list) * random.uniform(0.2, 0.6))
-                            booked_seats = random.sample(seats_list, booked_count)
-                            seat_ids = [s.id for s in booked_seats]
-                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
-
-                # Meal
-                fm, _ = FlightMeal.objects.get_or_create(
-                    flight_instance=inst,
-                    name=f"Menu - {fr.flight_no}",
-                )
-                if food_items_list:
-                    FlightMealItem.objects.get_or_create(
-                        flight_meal=fm,
-                        food_item=random.choice(food_items_list),
-                        defaults={"quantity": 2}
-                    )
-
-            curr_d += timedelta(days=1)
-
-        # 11. Historical and General Other Flights (past 30 days & future 14 days)
-        now_dt = timezone.now()
-        dates_to_gen = [now_dt - timedelta(days=i) for i in range(30, 0, -3)] + [now_dt + timedelta(days=i) for i in range(15)]
-        
-        for d in dates_to_gen:
-            sample_routes = random.sample(other_route_templates, 3)
-            for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg in sample_routes:
-                flight_counter += 1
-                dep_dt = d.replace(hour=random.randint(1, 22), minute=random.choice([0, 15, 30, 45]), second=0, microsecond=0)
-                arr_dt = dep_dt + timedelta(hours=hrs, minutes=mins)
-                inst, _ = FlightInstance.objects.get_or_create(
-                    flight=other_routes_dict[fno],
-                    date=dep_dt.date(),
-                    scheduled_departure=dep_dt,
-                    defaults={
-                        "aircraft": aircraft_dict[ac_reg],
-                        "status": InstanceStatus.DEPARTED if dep_dt < now_dt else InstanceStatus.SCHEDULED,
-                        "scheduled_arrival": arr_dt,
-                        "checkin_open": dep_dt - timedelta(hours=24),
-                        "boarding_time": dep_dt - timedelta(minutes=45),
-                        "boarding_gate": f"A{random.randint(1, 15)}",
-                        "departure_terminal": "T1",
-                        "arrival_terminal": "T2",
-                    }
-                )
-                flight_instances_created.append(inst)
-                generate_seats_for_instance(inst)
-
-                # Generate random base fare depending on route length
-                base_fare = Decimal(str(hrs * 3500 + 4000))
-
-                Fare.objects.get_or_create(
-                    flight_instance=inst,
-                    cabin_class=CabinClass.ECONOMY,
-                    defaults={
-                        "fare_code": f"ECO-O-{inst.id}",
-                        "price": base_fare,
-                        "currency": "INR",
-                        "available_seats": 0,
-                        "refund_type": RefundType.PARTIAL,
-                        "change_fee": Decimal("2500.00"),
-                        "meal_included": True,
-                        "baggage_allowance": Decimal("25.0"),
-                    }
-                )
-                ac = aircraft_dict[ac_reg]
-                if ac.business_capacity > 0:
-                    Fare.objects.get_or_create(
-                        flight_instance=inst,
-                        cabin_class=CabinClass.BUSINESS,
-                        defaults={
-                            "fare_code": f"BIZ-O-{inst.id}",
-                            "price": base_fare * Decimal("2.5"),
-                            "currency": "INR",
-                            "available_seats": 0,
-                            "refund_type": RefundType.REFUNDABLE,
-                            "change_fee": Decimal("0.00"),
-                            "meal_included": True,
-                            "baggage_allowance": Decimal("40.0"),
-                        }
-                    )
-                if ac.first_class_capacity > 0:
-                    Fare.objects.get_or_create(
-                        flight_instance=inst,
-                        cabin_class=CabinClass.FIRST,
-                        defaults={
-                            "fare_code": f"FST-O-{inst.id}",
-                            "price": base_fare * Decimal("4.5"),
-                            "currency": "INR",
-                            "available_seats": 0,
-                            "refund_type": RefundType.REFUNDABLE,
-                            "change_fee": Decimal("0.00"),
-                            "meal_included": True,
-                            "baggage_allowance": Decimal("50.0"),
-                        }
-                    )
-                
-                # Seats
-                if inst.seats.count() == 0:
-
-                    generate_seats_for_instance(inst)
-                    
-                    is_fully_booked = (inst.id % 7 == 0)
-                    if is_fully_booked:
-                        inst.seats.update(status=SeatStatus.BOOKED)
-                    else:
-                        seats_list = list(inst.seats.all())
-                        if seats_list:
-                            booked_count = int(len(seats_list) * random.uniform(0.1, 0.7))
-                            booked_seats = random.sample(seats_list, booked_count)
-                            seat_ids = [s.id for s in booked_seats]
-                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
-
-        # 12. Bookings & Passengers
-        self.stdout.write("Seeding Bookings & Passengers...")
-        for i in range(20):
-            flight_inst = random.choice(flight_instances_created)
-            user_obj = customer_user if i % 2 == 0 else admin_user
-            
-            fare = Fare.objects.filter(flight_instance=flight_inst, cabin_class=CabinClass.ECONOMY).first()
-            mock_price = fare.price if fare else Decimal("35000.00")
-            
-            b, _ = Booking.objects.get_or_create(
-                id=f"10000000-0000-0000-0000-0000000000{i:02d}",
+            RouteFareClass.objects.get_or_create(
+                route=fr,
+                cabin_class=CabinClass.ECONOMY,
+                fare_code="ECO_STD",
                 defaults={
-                    "user": user_obj,
-                    "flight": flight_inst,
-                    "status": BookingStatus.CONFIRMED,
-                    "seat_count": 1,
-                    "total_price": mock_price,
+                    "base_price": base_fare,
+                    "currency": "INR",
+                    "refund_type": RefundType.PARTIAL,
+                    "change_fee": Decimal("3000.00"),
+                    "meal_included": True,
+                    "baggage_weight_allowed_kg": 30,
                 }
             )
-            Passenger.objects.get_or_create(
-                booking=b,
-                name=f"Passenger {i+1}",
-                defaults={
-                    "age": 25 + (i % 25),
-                    "gender": "M" if i % 2 == 0 else "F",
-                    "phone_number": f"+91 98765432{i%10}{i%10}",
-                }
-            )
+            ac = aircraft_dict[ac_reg]
+            if ac.business_capacity > 0:
+                RouteFareClass.objects.get_or_create(
+                    route=fr,
+                    cabin_class=CabinClass.BUSINESS,
+                    fare_code="BIZ_STD",
+                    defaults={
+                        "base_price": (base_fare * Decimal("2.5")).quantize(Decimal("0.01")),
+                        "currency": "INR",
+                        "refund_type": RefundType.REFUNDABLE,
+                        "change_fee": Decimal("0.00"),
+                        "meal_included": True,
+                        "baggage_weight_allowed_kg": 40,
+                    }
+                )
 
         self.stdout.write(self.style.SUCCESS(
-            "Successfully seeded database with comprehensive data! "
-            "Created DEL to HAM flights for the next 7 days."
+            "Successfully seeded template database! "
+            "Created Users, Countries, Airports, Airlines (with logos), Aircraft, FoodItems, "
+            "FlightRoutes, FlightLegs, and RouteFareClasses. FlightInstance table was intentionally left empty."
         ))

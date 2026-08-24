@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from apps.flights.models import FlightInstance, CabinClass, FoodItem, FlightMeal, FlightLeg, Seat
+from apps.flights.models import FlightInstance, CabinClass, FoodItem, FlightMeal, FlightLeg, Seat, Fare, RefundType
 
 
 class BookingStatus(models.TextChoices):
@@ -157,3 +157,29 @@ class SeatHold(models.Model):
 
     def __str__(self):
         return f"Hold({self.seat.seat_number} / {self.flight_instance} / {self.user})"
+
+
+class Ticket(models.Model):
+    """
+    Immutable ticket price snapshot at booking time.
+    Preserves what the customer paid regardless of later changes to base/instance fare prices.
+    """
+    booking = models.ForeignKey(Booking, related_name="tickets", on_delete=models.CASCADE)
+    flight_instance = models.ForeignKey(FlightInstance, on_delete=models.PROTECT, related_name="tickets")
+    fare = models.ForeignKey(Fare, on_delete=models.PROTECT, related_name="tickets")
+    passenger = models.ForeignKey(Passenger, on_delete=models.CASCADE, related_name="tickets", null=True, blank=True)
+    seat = models.ForeignKey(Seat, on_delete=models.PROTECT, related_name="tickets")
+
+    price_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default="INR")
+    fare_code = models.CharField(max_length=20)
+    cabin_class = models.CharField(max_length=10, choices=CabinClass.choices)
+    refund_type = models.CharField(max_length=20, choices=RefundType.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["booking", "created_at"]
+
+    def __str__(self):
+        p_name = self.passenger.name if self.passenger else f"Booking {self.booking_id}"
+        return f"Ticket {self.id} for {p_name} – {self.currency} {self.price_paid}"
