@@ -128,6 +128,10 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
   }
 
   const data = await getResponseData(response);
-  if (!response.ok) throw new Error(parseApiError(data));
+  if (!response.ok) {
+    const errorObj = new Error(parseApiError(data));
+    errorObj.data = data;
+    throw errorObj;
+  }
   return data;
 };

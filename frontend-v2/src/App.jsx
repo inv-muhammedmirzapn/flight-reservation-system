@@ -37,6 +37,8 @@ const AircraftPage            = lazy(() => import("@/admin/master/aircraft/Aircr
 const FoodItemsPage           = lazy(() => import("@/admin/master/food-items/FoodItemsPage"));
 // Operations
 const FlightRoutesPage        = lazy(() => import("@/admin/operations/flight-routes/FlightRoutesPage"));
+const RouteFareClassesPage    = lazy(() => import("@/admin/operations/route-fare-classes/RouteFareClassesPage"));
+const FarePriceLogsPage       = lazy(() => import("@/admin/operations/fare-price-logs/FarePriceLogsPage"));
 const FlightInstancesPage     = lazy(() => import("@/admin/operations/flight-instances/FlightInstancesPage"));
 const FlightOverviewPage      = lazy(() => import("@/admin/operations/flight-overview/FlightOverviewPage"));
 const SeatMapPage             = lazy(() => import("@/admin/operations/seat-map/SeatMapPage"));
@@ -214,6 +216,8 @@ function AppContent() {
 
             {/* Operations */}
             <Route path="/admin/operations/flight-routes" element={<AdminRoute><FlightRoutesPage /></AdminRoute>} />
+            <Route path="/admin/operations/route-fare-classes" element={<AdminRoute><RouteFareClassesPage /></AdminRoute>} />
+            <Route path="/admin/operations/fare-price-logs" element={<AdminRoute><FarePriceLogsPage /></AdminRoute>} />
             <Route path="/admin/operations/flight-instances" element={<AdminRoute><FlightInstancesPage /></AdminRoute>} />
             <Route path="/admin/operations/seat-map" element={<AdminRoute><SeatMapPage /></AdminRoute>} />
             <Route path="/admin/operations/fares" element={<AdminRoute><FaresPage /></AdminRoute>} />

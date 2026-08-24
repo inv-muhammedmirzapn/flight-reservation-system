@@ -19,7 +19,7 @@ import {
 import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronRight,
-  Search, PlusCircle, MinusCircle, MapPin,
+  Search, PlusCircle, MinusCircle, MapPin, Tag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
@@ -116,7 +116,7 @@ export default function FlightRoutesPage() {
       flight_no: numericFlightNo,
       airline: route.airline || '',
       baggage_weight_allowed_per_person: route.baggage_weight_allowed_per_person || '20',
-      baggage_number_allowed_per_person: route.baggage_number_allowed_per_person || '',
+      baggage_number_allowed_per_person: route.baggage_number_allowed_per_person ?? '',
       handbag_weight_allowed_per_person: route.handbag_weight_allowed_per_person || '7',
       legs: (route.legs || []).map((leg) => ({
         departure_airport: leg.departure_airport,
@@ -188,6 +188,9 @@ export default function FlightRoutesPage() {
     const payload = {
       ...form,
       flight_no: fullFlightNo,
+      baggage_weight_allowed_per_person: form.baggage_weight_allowed_per_person ? Number(form.baggage_weight_allowed_per_person) : 20,
+      baggage_number_allowed_per_person: form.baggage_number_allowed_per_person ? Number(form.baggage_number_allowed_per_person) : null,
+      handbag_weight_allowed_per_person: form.handbag_weight_allowed_per_person ? Number(form.handbag_weight_allowed_per_person) : 7,
       legs: form.legs.map((leg, i) => ({
         ...leg,
         leg_order: i + 1,
@@ -209,7 +212,7 @@ export default function FlightRoutesPage() {
       closeForm();
       const routeId = res?.id || editId;
       if (goNext && routeId) {
-        navigate(`/admin/operations/flight-instances?route=${routeId}&autoCreate=1`);
+        navigate(`/admin/operations/route-fare-classes?route=${routeId}`);
       } else {
         load(activeSearch, page);
       }
@@ -338,10 +341,18 @@ export default function FlightRoutesPage() {
                     <td>{r.handbag_weight_allowed_per_person}</td>
                     <td className="text-right whitespace-nowrap">
                       <div className="flex gap-1.5 items-center justify-end">
+                        <button
+                          className="btn-secondary"
+                          title="Route Fare Templates"
+                          onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}`)}
+                          style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Tag size={12} className="text-[#705d00]" /> Fares
+                        </button>
                         <button className="btn-secondary" title="Edit" onClick={() => openEdit(r)} style={{ padding: '6px 8px' }}>
                           <Pencil size={14} />
                         </button>
-                         <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
+                        <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
                           <Trash2 size={14} />
                         </button>
                       </div>
