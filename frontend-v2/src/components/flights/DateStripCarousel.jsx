@@ -27,9 +27,23 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
     async function loadCalendarPrices() {
       try {
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const startStr = today.toISOString().split("T")[0];
+
+        let horizonDays = 90;
+        if (activeDate) {
+          const activeObj = new Date(activeDate);
+          if (!isNaN(activeObj.getTime())) {
+            const diffTime = activeObj.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays + 30 > horizonDays) {
+              horizonDays = diffDays + 30;
+            }
+          }
+        }
+
         const endDateObj = new Date(today);
-        endDateObj.setDate(today.getDate() + 60);
+        endDateObj.setDate(today.getDate() + horizonDays);
         const endStr = endDateObj.toISOString().split("T")[0];
 
         const calendarParams = {
@@ -81,14 +95,26 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
       loadCalendarPrices();
     }
     return () => { isMounted = false; };
-  }, [from, to, cabinClass, filtersJson]);
+  }, [from, to, cabinClass, filtersJson, activeDate]);
 
   useEffect(() => {
     const list = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 60; i++) {
+    let totalDays = 90;
+    if (activeDate) {
+      const activeObj = new Date(activeDate);
+      if (!isNaN(activeObj.getTime())) {
+        const diffTime = activeObj.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays + 30 > totalDays) {
+          totalDays = diffDays + 30;
+        }
+      }
+    }
+
+    for (let i = 0; i < totalDays; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       
@@ -108,7 +134,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
       });
     }
     setDates(list);
-  }, []);
+  }, [activeDate]);
 
   // Compute reference price (selected date's price or average of available prices)
   const activeDatePriceRaw = priceMap[activeDate];
@@ -127,11 +153,14 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
   // Smooth centering behavior whenever activeDate changes
   useEffect(() => {
     if (selectedItemRef.current && scrollRef.current) {
-      selectedItemRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center"
-      });
+      const timer = setTimeout(() => {
+        selectedItemRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center"
+        });
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [activeDate, dates]);
 
