@@ -481,7 +481,12 @@ class FarePriceChangeLog(models.Model):
     """
     Audit log for tracking base price and per-instance fare price changes.
     """
-    fare = models.ForeignKey(Fare, related_name="price_changes", on_delete=models.CASCADE)
+    route_fare = models.ForeignKey(
+        RouteFareClass, related_name="price_changes", on_delete=models.CASCADE, null=True, blank=True
+    )
+    fare = models.ForeignKey(
+        Fare, related_name="price_changes", on_delete=models.CASCADE, null=True, blank=True
+    )
     old_price = models.DecimalField(max_digits=10, decimal_places=2)
     new_price = models.DecimalField(max_digits=10, decimal_places=2)
     changed_by = models.ForeignKey(
@@ -493,7 +498,8 @@ class FarePriceChangeLog(models.Model):
         ordering = ["-changed_at"]
 
     def __str__(self):
-        return f"Fare #{self.fare_id}: {self.old_price} -> {self.new_price} at {self.changed_at}"
+        target = f"RouteFare #{self.route_fare_id}" if self.route_fare_id else f"Fare #{self.fare_id}"
+        return f"{target}: {self.old_price} -> {self.new_price} at {self.changed_at}"
 
 
 class FoodItem(models.Model):

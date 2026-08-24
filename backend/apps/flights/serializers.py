@@ -752,6 +752,7 @@ class RouteFareClassSerializer(serializers.ModelSerializer):
     flight_no = serializers.CharField(source="route.flight_no", read_only=True)
     airline_name = serializers.CharField(source="route.airline.airline_name", read_only=True)
     airline_code = serializers.CharField(source="route.airline.iata_airline_code", read_only=True)
+    fare_code = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = RouteFareClass
@@ -771,20 +772,95 @@ class RouteFareClassSerializer(serializers.ModelSerializer):
             "baggage_weight_allowed_kg",
             "extra_baggage_price_per_kg",
         ]
+
+    def validate(self, attrs):
+        route = attrs.get("route") or (self.instance.route if self.instance else None)
+        cabin_class = attrs.get("cabin_class") or (self.instance.cabin_class if self.instance else None)
+        baggage_weight = attrs.get("baggage_weight_allowed_kg")
+
+        if not attrs.get("fare_code") and cabin_class:
+            attrs["fare_code"] = cabin_class
+
+        if not self.instance and route and cabin_class:
+            if RouteFareClass.objects.filter(route=route, cabin_class=cabin_class).exists():
+                raise serializers.ValidationError({
+                    "cabin_class": f"A fare template for {cabin_class} already exists on this flight route."
+                })
+
+        if baggage_weight is not None and route and route.baggage_weight_allowed_per_person is not None:
+            if baggage_weight < route.baggage_weight_allowed_per_person:
+                raise serializers.ValidationError({
+                    "baggage_weight_allowed_kg": f"Baggage allowance cannot be less than the route default ({route.baggage_weight_allowed_per_person} kg)."
+                })
+
+        return attrs
     
 
 
 class FarePriceChangeLogSerializer(serializers.ModelSerializer):
     changed_by_email = serializers.ReadOnlyField(source="changed_by.email")
+    flight_no = serializers.SerializerMethodField()
+    airline_name = serializers.SerializerMethodField()
+    cabin_class = serializers.SerializerMethodField()
+    fare_code = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
+    flight_date = serializers.SerializerMethodField()
 
     class Meta:
         model = FarePriceChangeLog
         fields = [
             "id",
+            "route_fare",
             "fare",
             "old_price",
             "new_price",
             "changed_by",
             "changed_by_email",
             "changed_at",
+            "fare_code",
+            "cabin_class",
+            "currency",
+            "flight_no",
+            "airline_name",
+            "flight_date",
         ]
+
+    def get_flight_no(self, obj):
+        if obj.fare:
+            return obj.fare.flight_instance.flight.flight_no
+        if obj.route_fare:
+            return obj.route_fare.route.flight_no
+        return None
+
+    def get_airline_name(self, obj):
+        if obj.fare and obj.fare.flight_instance.flight.airline:
+            return obj.fare.flight_instance.flight.airline.airline_name
+        if obj.route_fare and obj.route_fare.route.airline:
+            return obj.route_fare.route.airline.airline_name
+        return None
+
+    def get_cabin_class(self, obj):
+        if obj.fare:
+            return obj.fare.cabin_class
+        if obj.route_fare:
+            return obj.route_fare.cabin_class
+        return None
+
+    def get_fare_code(self, obj):
+        if obj.fare:
+            return obj.fare.fare_code
+        if obj.route_fare:
+            return obj.route_fare.fare_code
+        return "TEMPLATE"
+
+    def get_currency(self, obj):
+        if obj.fare:
+            return obj.fare.currency
+        if obj.route_fare:
+            return obj.route_fare.currency
+        return "INR"
+
+    def get_flight_date(self, obj):
+        if obj.fare:
+            return str(obj.fare.flight_instance.date)
+        return "Template Baseline"

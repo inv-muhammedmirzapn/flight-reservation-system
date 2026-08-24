@@ -798,6 +798,22 @@ class RouteFareClassViewSet(AdminModelViewSet):
             qs = qs.filter(cabin_class=cabin)
         return qs
 
+    def perform_update(self, serializer):
+        from .services_pricing import update_route_fare_price
+
+        instance = serializer.instance
+        old_price = instance.base_price
+        updated_instance = serializer.save()
+
+        if "base_price" in serializer.validated_data:
+            new_price = serializer.validated_data["base_price"]
+            if new_price != old_price:
+                update_route_fare_price(
+                    route_fare=updated_instance,
+                    new_base_price=new_price,
+                    changed_by=self.request.user if self.request.user.is_authenticated else None,
+                )
+
     @action(detail=True, methods=["post"], url_path="update-price")
     def update_price(self, request, pk=None):
         from decimal import Decimal, InvalidOperation
@@ -834,10 +850,23 @@ class FarePriceChangeLogViewSet(viewsets.ReadOnlyModelViewSet):
     from .models import FarePriceChangeLog
     from .serializers import FarePriceChangeLogSerializer
 
-    queryset = FarePriceChangeLog.objects.select_related("fare", "changed_by").all()
+    queryset = FarePriceChangeLog.objects.select_related(
+        "fare", "fare__flight_instance", "fare__flight_instance__flight",
+        "fare__flight_instance__flight__airline", "route_fare", "route_fare__route",
+        "route_fare__route__airline", "changed_by"
+    ).all()
     serializer_class = FarePriceChangeLogSerializer
     permission_classes = [IsAdminOrSuperuser]
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "fare__fare_code", "fare__cabin_class",
+        "fare__flight_instance__flight__flight_no",
+        "fare__flight_instance__flight__airline__airline_name",
+        "route_fare__fare_code", "route_fare__cabin_class",
+        "route_fare__route__flight_no",
+        "route_fare__route__airline__airline_name",
+        "changed_by__email",
+    ]
     ordering_fields = ["changed_at"]
 
     def get_queryset(self):

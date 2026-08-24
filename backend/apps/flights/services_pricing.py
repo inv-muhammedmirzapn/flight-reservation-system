@@ -78,8 +78,17 @@ def update_route_fare_price(
         strategy = FlatPricingStrategy()
 
     new_base_price = Decimal(str(new_base_price)).quantize(Decimal("0.01"))
+    old_base_price = route_fare.base_price
 
     with transaction.atomic():
+        if old_base_price != new_base_price:
+            FarePriceChangeLog.objects.create(
+                route_fare=route_fare,
+                old_price=old_base_price,
+                new_price=new_base_price,
+                changed_by=changed_by,
+            )
+
         route_fare.base_price = new_base_price
         route_fare.save(update_fields=["base_price"])
 
@@ -91,7 +100,6 @@ def update_route_fare_price(
                 flight_instance__date__gte=today,
                 flight_instance__status=InstanceStatus.SCHEDULED,
                 cabin_class=route_fare.cabin_class,
-                fare_code=route_fare.fare_code,
             )
         )
 
@@ -101,6 +109,7 @@ def update_route_fare_price(
             if fare.price != new_instance_price:
                 FarePriceChangeLog.objects.create(
                     fare=fare,
+                    route_fare=route_fare,
                     old_price=fare.price,
                     new_price=new_instance_price,
                     changed_by=changed_by,

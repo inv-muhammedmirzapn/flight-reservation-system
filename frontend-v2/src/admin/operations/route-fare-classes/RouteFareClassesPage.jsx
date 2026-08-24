@@ -1,8 +1,8 @@
 /**
  * RouteFareClassesPage — Manage RouteFareClass base templates per Flight Route.
- * Supports CRUD operations, route filtering, and atomic repricing trigger.
+ * Supports 1 base fare template per cabin class per route.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { fetchWithAuth } from '@/services/apiClient';
@@ -18,14 +18,14 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, Search,
-  RefreshCw, DollarSign, Tag, Check, Filter,
+  RefreshCw, DollarSign, Tag, Check, Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
 import { parseApiError } from '@/utils/errorUtils';
 
-const CABIN_OPTIONS = [
+const ALL_CABIN_OPTIONS = [
   { value: 'ECONOMY', label: 'Economy' },
   { value: 'BUSINESS', label: 'Business' },
   { value: 'FIRST', label: 'First' },
@@ -39,7 +39,6 @@ const REFUND_OPTIONS = [
 
 const EMPTY_FORM = {
   route: '',
-  fare_code: '',
   cabin_class: 'ECONOMY',
   base_price: '',
   currency: 'INR',
@@ -108,14 +107,46 @@ export default function RouteFareClassesPage() {
 
   const filterCabinOptions = [
     { value: '', label: 'All Cabins' },
-    ...CABIN_OPTIONS,
+    ...ALL_CABIN_OPTIONS,
   ];
+
+  // Selected route object for route default calculations
+  const selectedRouteObj = useMemo(() => {
+    return routes.find((r) => String(r.id) === String(form.route));
+  }, [routes, form.route]);
+
+  const minBaggageAllowed = selectedRouteObj?.baggage_weight_allowed_per_person
+    ? Number(selectedRouteObj.baggage_weight_allowed_per_person)
+    : 0;
+
+  // Calculate existing cabin classes for the selected route in form
+  const availableCabinOptions = useMemo(() => {
+    if (!form.route) return ALL_CABIN_OPTIONS;
+
+    const existingCabinsForRoute = templates
+      .filter((t) => String(t.route) === String(form.route) && t.id !== editId)
+      .map((t) => t.cabin_class);
+
+    const filtered = ALL_CABIN_OPTIONS.filter((opt) => !existingCabinsForRoute.includes(opt.value));
+    return filtered.length > 0 ? filtered : ALL_CABIN_OPTIONS;
+  }, [form.route, templates, editId]);
 
   const openCreate = () => {
     loadRoutes();
     dispatch(routeFareClassActions.clearErrors());
     setEditId(null);
-    setForm({ ...EMPTY_FORM, route: selectedRouteFilter || '' });
+    const initialRoute = selectedRouteFilter || (routeOptions[0]?.value || '');
+    const matchedRoute = routes.find((r) => String(r.id) === String(initialRoute));
+    const initialBaggage = matchedRoute?.baggage_weight_allowed_per_person
+      ? String(matchedRoute.baggage_weight_allowed_per_person)
+      : '15';
+
+    setForm({
+      ...EMPTY_FORM,
+      route: initialRoute,
+      cabin_class: 'ECONOMY',
+      baggage_weight_allowed_kg: initialBaggage,
+    });
     setLocalErrors({});
     setShowForm(true);
   };
@@ -126,7 +157,6 @@ export default function RouteFareClassesPage() {
     setEditId(tmpl.id);
     setForm({
       route: tmpl.route ? String(tmpl.route) : '',
-      fare_code: tmpl.fare_code || '',
       cabin_class: tmpl.cabin_class || 'ECONOMY',
       base_price: tmpl.base_price !== undefined ? String(tmpl.base_price) : '',
       currency: tmpl.currency || 'INR',
@@ -149,11 +179,27 @@ export default function RouteFareClassesPage() {
   const validateForm = () => {
     const e = {};
     if (!form.route) e.route = 'Flight route is required.';
-    if (!form.fare_code || form.fare_code.trim().length < 2) e.fare_code = 'Fare code must be at least 2 characters.';
     if (!form.cabin_class) e.cabin_class = 'Cabin class is required.';
-    if (form.base_price === '' || Number(form.base_price) < 0) e.base_price = 'Base price must be a non-negative number.';
-    if (form.change_fee === '' || Number(form.change_fee) < 0) e.change_fee = 'Change fee must be a non-negative number.';
-    if (form.baggage_weight_allowed_kg !== '' && Number(form.baggage_weight_allowed_kg) < 0) e.baggage_weight_allowed_kg = 'Baggage allowance cannot be negative.';
+    if (form.base_price === '' || Number(form.base_price) < 0) {
+      e.base_price = 'Base price must be a non-negative number.';
+    }
+    if (form.change_fee === '' || Number(form.change_fee) < 0) {
+      e.change_fee = 'Change fee must be 0 or a positive number.';
+    }
+    if (form.baggage_weight_allowed_kg !== '' && Number(form.baggage_weight_allowed_kg) < minBaggageAllowed) {
+      e.baggage_weight_allowed_kg = `Baggage allowance cannot be less than the route default (${minBaggageAllowed} kg).`;
+    }
+
+    // Check duplicate locally
+    if (!editId && form.route && form.cabin_class) {
+      const exists = templates.some(
+        (t) => String(t.route) === String(form.route) && t.cabin_class === form.cabin_class
+      );
+      if (exists) {
+        e.cabin_class = `A fare template for ${form.cabin_class} already exists on this route.`;
+      }
+    }
+
     setLocalErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -161,16 +207,17 @@ export default function RouteFareClassesPage() {
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!validateForm()) {
-      toast.error('Fix validation errors.');
+      toast.error('Please fix validation errors in the form.');
       return;
     }
 
     const payload = {
       ...form,
       route: Number(form.route),
+      fare_code: form.cabin_class,
       base_price: Number(form.base_price),
       change_fee: Number(form.change_fee),
-      baggage_weight_allowed_kg: Number(form.baggage_weight_allowed_kg || 15),
+      baggage_weight_allowed_kg: Number(form.baggage_weight_allowed_kg || minBaggageAllowed),
       extra_baggage_price_per_kg: Number(form.extra_baggage_price_per_kg || 500),
     };
 
@@ -187,7 +234,7 @@ export default function RouteFareClassesPage() {
       closeForm();
       load(activeSearch, page, selectedRouteFilter, selectedCabinFilter);
     } catch (err) {
-      toast.error(parseApiError(err, 'Failed to save fare template.'));
+      toast.error(parseApiError(err, 'Failed to save fare template. Check if cabin class already exists or baggage is below route default.'));
     }
   };
 
@@ -241,7 +288,7 @@ export default function RouteFareClassesPage() {
           <div>
             <h1 className="admin-page-title">Route Fare Templates</h1>
             <p className="admin-page-subtitle">
-              {count} base fare class templates across flight routes
+              {count} base cabin class fare templates across flight routes
             </p>
           </div>
           <button className="btn-primary" onClick={openCreate} id="add-fare-template-btn">
@@ -264,7 +311,7 @@ export default function RouteFareClassesPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search fare code, flight no, airline..."
+                placeholder="Search flight no, airline, cabin..."
               />
             </div>
             <button type="submit" className="btn-primary">Search</button>
@@ -323,10 +370,9 @@ export default function RouteFareClassesPage() {
               <thead>
                 <tr>
                   <th>Flight Route</th>
-                  <th>Fare Code</th>
                   <th>Cabin Class</th>
                   <th>Base Price</th>
-                  <th>Baggage</th>
+                  <th>Included Baggage</th>
                   <th>Refund Type</th>
                   <th>Change Fee</th>
                   <th>Meal</th>
@@ -349,12 +395,7 @@ export default function RouteFareClassesPage() {
                       </div>
                     </td>
                     <td>
-                      <span className="font-mono text-xs px-2.5 py-1 rounded bg-slate-100 border border-slate-200 font-bold text-slate-800 tracking-wide">
-                        {t.fare_code}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         t.cabin_class === 'FIRST' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                         t.cabin_class === 'BUSINESS' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
                         'bg-blue-100 text-blue-800 border border-blue-300'
@@ -442,12 +483,19 @@ export default function RouteFareClassesPage() {
       {/* Template Form Modal */}
       {showForm && (
         <div className="admin-modal-overlay" onClick={closeForm}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="admin-modal-header">
               <h2 className="admin-modal-title">
                 {editId ? 'Edit Fare Template' : 'Add Route Fare Template'}
               </h2>
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-900 flex gap-2">
+              <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                Each flight route supports <strong>strictly 1 fare template per cabin class</strong> (Economy, Business, First). Included baggage cannot be lower than the route baseline default (<strong>{minBaggageAllowed} kg</strong>).
+              </div>
             </div>
 
             {validationErrors && (
@@ -475,42 +523,54 @@ export default function RouteFareClassesPage() {
                   options={routeOptions}
                   value={form.route}
                   disabled={!!editId}
-                  onChange={(e) => setForm((f) => ({ ...f, route: e.target.value }))}
+                  onChange={(e) => {
+                    const newRouteId = e.target.value;
+                    const rObj = routes.find((r) => String(r.id) === String(newRouteId));
+                    const routeBaggage = rObj?.baggage_weight_allowed_per_person
+                      ? String(rObj.baggage_weight_allowed_per_person)
+                      : '15';
+
+                    setForm((f) => ({
+                      ...f,
+                      route: newRouteId,
+                      baggage_weight_allowed_kg: Number(f.baggage_weight_allowed_kg) < Number(routeBaggage)
+                        ? routeBaggage
+                        : f.baggage_weight_allowed_kg,
+                    }));
+                  }}
                   error={localErrors.route}
                 />
 
-                <Input
-                  id="fare_code"
-                  label="Fare Code"
-                  placeholder="e.g. ECO_STD, BIZ_FLEX"
-                  value={form.fare_code}
-                  onChange={(e) => setForm((f) => ({ ...f, fare_code: e.target.value.toUpperCase() }))}
-                  error={localErrors.fare_code}
-                />
-              </div>
-
-              <div className="admin-form-grid" style={{ marginBottom: 14 }}>
                 <Select
                   id="cabin_class"
                   label="Cabin Class"
-                  options={CABIN_OPTIONS}
+                  options={availableCabinOptions}
                   value={form.cabin_class}
+                  disabled={!!editId}
                   onChange={(e) => setForm((f) => ({ ...f, cabin_class: e.target.value }))}
                   error={localErrors.cabin_class}
-                />
-
-                <Input
-                  id="base_price"
-                  label="Base Price"
-                  type="number"
-                  placeholder="e.g. 12000"
-                  value={form.base_price}
-                  onChange={(e) => setForm((f) => ({ ...f, base_price: e.target.value }))}
-                  error={localErrors.base_price}
                 />
               </div>
 
               <div className="admin-form-grid" style={{ marginBottom: 14 }}>
+                <div>
+                  <Input
+                    id="base_price"
+                    label="Base Price (INR)"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 12000"
+                    value={form.base_price}
+                    onChange={(e) => setForm((f) => ({ ...f, base_price: e.target.value }))}
+                    error={localErrors.base_price}
+                  />
+                  {editId && (
+                    <span className="text-[11px] text-amber-700 font-medium block mt-1">
+                      Updating price automatically reprices future unsold flight fares.
+                    </span>
+                  )}
+                </div>
+
                 <Select
                   id="refund_type"
                   label="Refund Type"
@@ -519,41 +579,53 @@ export default function RouteFareClassesPage() {
                   onChange={(e) => setForm((f) => ({ ...f, refund_type: e.target.value }))}
                   error={localErrors.refund_type}
                 />
-
-                <Input
-                  id="change_fee"
-                  label="Change Fee"
-                  type="number"
-                  placeholder="0"
-                  value={form.change_fee}
-                  onChange={(e) => setForm((f) => ({ ...f, change_fee: e.target.value }))}
-                  error={localErrors.change_fee}
-                />
               </div>
 
-              <div className="admin-form-grid" style={{ marginBottom: 20 }}>
-                <Input
-                  id="baggage_weight_allowed_kg"
-                  label="Baggage Allowance (kg)"
-                  type="number"
-                  placeholder="e.g. 15"
-                  value={form.baggage_weight_allowed_kg}
-                  onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_kg: e.target.value }))}
-                  error={localErrors.baggage_weight_allowed_kg}
-                />
-
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="meal_included"
-                    checked={form.meal_included}
-                    onChange={(e) => setForm((f) => ({ ...f, meal_included: e.target.checked }))}
-                    className="w-4 h-4 rounded text-[#705d00] focus:ring-[#705d00]"
+              <div className="admin-form-grid" style={{ marginBottom: 14 }}>
+                <div>
+                  <Input
+                    id="change_fee"
+                    label="Ticket Change Fee (INR)"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.change_fee}
+                    onChange={(e) => setForm((f) => ({ ...f, change_fee: e.target.value }))}
+                    error={localErrors.change_fee}
                   />
-                  <label htmlFor="meal_included" className="text-sm font-semibold text-slate-700 cursor-pointer">
-                    Complimentary Meal Included
-                  </label>
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Fee charged for changing flight date (0 for free date changes).
+                  </span>
                 </div>
+
+                <div>
+                  <Input
+                    id="baggage_weight_allowed_kg"
+                    label="Included Checked Baggage (kg)"
+                    type="number"
+                    min={minBaggageAllowed}
+                    placeholder={`Min ${minBaggageAllowed} kg`}
+                    value={form.baggage_weight_allowed_kg}
+                    onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_kg: e.target.value }))}
+                    error={localErrors.baggage_weight_allowed_kg}
+                  />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Minimum allowed: <strong>{minBaggageAllowed} kg</strong> (Route default limit).
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mb-5 pt-2">
+                <input
+                  type="checkbox"
+                  id="meal_included"
+                  checked={form.meal_included}
+                  onChange={(e) => setForm((f) => ({ ...f, meal_included: e.target.checked }))}
+                  className="w-4 h-4 rounded text-[#705d00] focus:ring-[#705d00]"
+                />
+                <label htmlFor="meal_included" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                  Complimentary Meal Included
+                </label>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200">
@@ -582,7 +654,7 @@ export default function RouteFareClassesPage() {
 
             <form onSubmit={handleRepriceSubmit}>
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-xs text-amber-900 leading-relaxed">
-                <strong>Important Notice:</strong> Updating this base price template will update the master route price and automatically reprice all future <strong>unsold instance fares</strong> for <strong>{repriceItem.flight_no ? `Flight ${repriceItem.flight_no}` : `Route #${repriceItem.route}`} ({repriceItem.fare_code} - {repriceItem.cabin_class})</strong>.
+                <strong>Important Notice:</strong> Updating this base price template will update the master route price and automatically reprice all future <strong>unsold instance fares</strong> for <strong>{repriceItem.flight_no ? `Flight ${repriceItem.flight_no}` : `Route #${repriceItem.route}`} ({repriceItem.cabin_class})</strong>.
                 Booked passenger tickets will remain completely unchanged.
               </div>
 
@@ -598,6 +670,7 @@ export default function RouteFareClassesPage() {
                   id="new_base_price"
                   label="New Base Price"
                   type="number"
+                  min="0"
                   placeholder="Enter new price..."
                   value={newBasePrice}
                   onChange={(e) => setNewBasePrice(e.target.value)}
@@ -636,8 +709,7 @@ export default function RouteFareClassesPage() {
         message="Are you sure you want to delete this route fare template?"
         details={deleteItem ? {
           'FLIGHT ROUTE': deleteItem.flight_no ? `Flight ${deleteItem.flight_no}` : `Route #${deleteItem.route}`,
-          'FARE CODE': deleteItem.fare_code,
-          'CABIN': deleteItem.cabin_class,
+          'CABIN CLASS': deleteItem.cabin_class,
           'BASE PRICE': `${deleteItem.currency || 'INR'} ${deleteItem.base_price}`,
         } : null}
         onClose={() => setDeleteItem(null)}

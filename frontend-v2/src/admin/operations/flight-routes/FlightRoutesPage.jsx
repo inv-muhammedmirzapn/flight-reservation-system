@@ -501,16 +501,32 @@ export default function FlightRoutesPage() {
               </div>
 
               {/* Row 2: Baggage Allowance + Baggage Count + Handbag Allowance */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
-                <Input id="baggage_weight" label="Baggage Allowance (kg)" type="number"
-                  value={form.baggage_weight_allowed_per_person}
-                  onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_per_person: e.target.value }))} />
-                <Input id="baggage_number" label="Baggage Count (optional)" type="number"
-                  value={form.baggage_number_allowed_per_person}
-                  onChange={(e) => setForm((f) => ({ ...f, baggage_number_allowed_per_person: e.target.value }))} />
-                <Input id="handbag_weight" label="Handbag Allowance (kg)" type="number"
-                  value={form.handbag_weight_allowed_per_person}
-                  onChange={(e) => setForm((f) => ({ ...f, handbag_weight_allowed_per_person: e.target.value }))} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'start' }}>
+                <div>
+                  <Input id="baggage_weight" label="Default Checked Baggage (kg)" type="number"
+                    value={form.baggage_weight_allowed_per_person}
+                    onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_per_person: e.target.value }))} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Route default checked baggage limit (e.g. 20 kg).
+                  </span>
+                </div>
+                <div>
+                  <Input id="baggage_number" label="Max Checked Pieces (optional)" type="number"
+                    value={form.baggage_number_allowed_per_person}
+                    placeholder="e.g. 1 or 2"
+                    onChange={(e) => setForm((f) => ({ ...f, baggage_number_allowed_per_person: e.target.value }))} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Maximum number of bags per passenger.
+                  </span>
+                </div>
+                <div>
+                  <Input id="handbag_weight" label="Cabin Carry-on Allowance (kg)" type="number"
+                    value={form.handbag_weight_allowed_per_person}
+                    onChange={(e) => setForm((f) => ({ ...f, handbag_weight_allowed_per_person: e.target.value }))} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Hand luggage limit per passenger (e.g. 7 kg).
+                  </span>
+                </div>
               </div>
 
               {/* Legs */}

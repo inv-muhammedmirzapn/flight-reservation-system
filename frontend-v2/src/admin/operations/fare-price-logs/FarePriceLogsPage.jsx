@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Pagination } from '@/components/ui/Pagination';
 import '@/admin/_core/styles/admin.css';
 import { fetchFarePriceLogs, ADMIN_PAGE_SIZE } from '@/admin/_core/store/adminSlices';
-import { History, Search, ArrowRight, User, AlertCircle, Clock } from 'lucide-react';
+import { History, Search, User, AlertCircle, Clock, Plane } from 'lucide-react';
 import { SpinnerLoader } from '@/components/ui/Loaders';
 
 export default function FarePriceLogsPage() {
@@ -68,7 +68,7 @@ export default function FarePriceLogsPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by route, user, or fare code..."
+              placeholder="Search by flight, airline, user, or fare code..."
             />
           </div>
           <button type="submit" className="btn-primary">Search</button>
@@ -89,7 +89,7 @@ export default function FarePriceLogsPage() {
             <div className="admin-empty">
               <div className="admin-empty-icon"><History size={28} /></div>
               <h3>No price changes logged</h3>
-              <p>When route fare templates are repriced, audit history will appear here.</p>
+              <p>When route fare templates or instance fares are repriced, audit history will appear here.</p>
             </div>
           ) : (
             <table className="admin-table">
@@ -107,10 +107,11 @@ export default function FarePriceLogsPage() {
               </thead>
               <tbody>
                 {logs.map((log) => {
-                  const oldPrice = Number(log.old_base_price);
-                  const newPrice = Number(log.new_base_price);
+                  const oldPrice = Number(log.old_price || 0);
+                  const newPrice = Number(log.new_price || 0);
                   const diff = newPrice - oldPrice;
                   const isIncrease = diff > 0;
+                  const curr = log.currency || 'INR';
 
                   return (
                     <tr key={log.id} className="admin-row">
@@ -121,21 +122,29 @@ export default function FarePriceLogsPage() {
                       <td>
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                           <User size={13} className="text-slate-400" />
-                          <span>{log.changed_by_email || log.changed_by || 'System Admin'}</span>
+                          <span>{log.changed_by_email || (log.changed_by ? `User #${log.changed_by}` : 'System Admin')}</span>
                         </div>
                       </td>
                       <td>
-                        <strong className="text-xs text-slate-800">
-                          {log.flight_no || log.route_info || `Route #${log.route_fare_class}`}
-                        </strong>
+                        <div className="flex flex-col">
+                          <strong className="text-xs text-slate-900 font-bold flex items-center gap-1">
+                            <Plane size={12} className="text-slate-400" />
+                            {log.flight_no ? `Flight ${log.flight_no}` : (log.fare ? `Fare #${log.fare}` : '—')}
+                          </strong>
+                          {log.airline_name && (
+                            <span className="text-[11px] text-slate-500 font-medium pl-4">
+                              {log.airline_name} {log.flight_date ? `(${log.flight_date})` : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
-                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-semibold">
+                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-bold text-slate-800">
                           {log.fare_code || '—'}
                         </span>
                       </td>
                       <td>
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                           log.cabin_class === 'FIRST' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                           log.cabin_class === 'BUSINESS' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
                           'bg-blue-100 text-blue-800 border border-blue-300'
@@ -144,10 +153,10 @@ export default function FarePriceLogsPage() {
                         </span>
                       </td>
                       <td className="font-mono text-xs text-slate-500">
-                        INR {oldPrice.toLocaleString('en-IN')}
+                        {curr} {oldPrice.toLocaleString('en-IN')}
                       </td>
                       <td className="font-mono text-xs font-bold text-slate-900">
-                        INR {newPrice.toLocaleString('en-IN')}
+                        {curr} {newPrice.toLocaleString('en-IN')}
                       </td>
                       <td>
                         <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md ${
@@ -155,7 +164,7 @@ export default function FarePriceLogsPage() {
                           isIncrease ? 'bg-rose-50 text-rose-700 border border-rose-200' :
                           'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}>
-                          {isIncrease ? `+INR ${diff.toLocaleString('en-IN')}` : diff < 0 ? `-INR ${Math.abs(diff).toLocaleString('en-IN')}` : 'No Change'}
+                          {isIncrease ? `+${curr} ${diff.toLocaleString('en-IN')}` : diff < 0 ? `-${curr} ${Math.abs(diff).toLocaleString('en-IN')}` : 'No Change'}
                         </span>
                       </td>
                     </tr>
