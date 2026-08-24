@@ -5,7 +5,7 @@ from .models import (
     Country, Airport, Airline, AircraftModel, Aircraft,
     FlightRoute, FlightLeg, FlightInstance,
     Seat, Fare, FoodItem, FlightMeal, FlightMealItem,
-    CabinClass,
+    CabinClass, RouteFareClass, FarePriceChangeLog,
 )
 
 
@@ -746,3 +746,37 @@ class SeatPriceTemplateSerializer(serializers.ModelSerializer):
             "name", "rules", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class RouteFareClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RouteFareClass
+        fields = [
+            "id",
+            "route",
+            "cabin_class",
+            "fare_code",
+            "base_price",
+            "currency",
+            "refund_type",
+            "change_fee",
+            "meal_included",
+            "baggage_weight_allowed_kg",
+            "extra_baggage_price_per_kg",
+        ]
+
+
+class FarePriceChangeLogSerializer(serializers.ModelSerializer):
+    changed_by_email = serializers.ReadOnlyField(source="changed_by.email")
+
+    class Meta:
+        model = FarePriceChangeLog
+        fields = [
+            "id",
+            "fare",
+            "old_price",
+            "new_price",
+            "changed_by",
+            "changed_by_email",
+            "changed_at",
+        ]
