@@ -28,6 +28,8 @@ class BookingViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         user = self.request.user
+        if not user or user.is_anonymous:
+            return Booking.objects.none()
         qs = Booking.objects.all() if (user.is_staff or user.is_superuser) else Booking.objects.filter(user=user)
         pnr = self.request.query_params.get('pnr')
         status_param = self.request.query_params.get('status')
@@ -50,7 +52,23 @@ class BookingViewSet(mixins.CreateModelMixin,
                             'name': rf_serializers.CharField(),
                             'age': rf_serializers.IntegerField(),
                             'gender': rf_serializers.ChoiceField(choices=['M', 'F', 'O']),
-                            'phone_number': rf_serializers.CharField(required=False, allow_blank=True)
+                            'phone_number': rf_serializers.CharField(required=False, allow_blank=True),
+                            'seat_number': rf_serializers.CharField(required=False, allow_blank=True, allow_null=True),
+                            'extra_baggage_kg': rf_serializers.DecimalField(required=False, max_digits=6, decimal_places=2, allow_null=True),
+                            'meal_preference': rf_serializers.ChoiceField(choices=['VEG', 'NON_VEG', 'NONE'], required=False, allow_null=True),
+                            'selected_meals': rf_serializers.ListField(
+                                required=False,
+                                allow_null=True,
+                                child=inline_serializer(
+                                    name='BookingSelectedMealRequest',
+                                    fields={
+                                        'food_item_id': rf_serializers.IntegerField(required=False, allow_null=True),
+                                        'flight_meal_id': rf_serializers.IntegerField(required=False, allow_null=True),
+                                        'flight_leg_id': rf_serializers.IntegerField(required=False, allow_null=True),
+                                        'quantity': rf_serializers.IntegerField(required=False, default=1)
+                                    }
+                                )
+                            )
                         }
                     )
                 )
@@ -257,7 +275,10 @@ class SeatHoldViewSet(mixins.CreateModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return SeatHold.objects.filter(user=self.request.user)
+        user = self.request.user
+        if not user or user.is_anonymous:
+            return SeatHold.objects.none()
+        return SeatHold.objects.filter(user=user)
 
     def create(self, request, *args, **kwargs):
         """

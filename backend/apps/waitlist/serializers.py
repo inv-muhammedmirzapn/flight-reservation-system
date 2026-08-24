@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.core.validators import MinValueValidator, MaxValueValidator
+from drf_spectacular.utils import extend_schema_field
 from .models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 
 from apps.bookings.serializers import FlightInstanceSummarySerializer as FlightSummarySerializer
@@ -50,6 +51,7 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
     def get_queue_position(self, obj):
         if obj.status != WaitlistStatus.PENDING:
             return None
@@ -73,10 +75,12 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
     display_total_price = serializers.SerializerMethodField()
     display_currency = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.CharField())
     def get_display_currency(self, obj):
         request = self.context.get('request')
         return CurrencyService.get_user_currency(request.user if request else None)
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_total_price(self, obj):
         request = self.context.get('request')
         target_currency = CurrencyService.get_user_currency(request.user if request else None)

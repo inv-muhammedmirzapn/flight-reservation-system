@@ -4,12 +4,44 @@ from django.db.models import Count, Q, OuterRef, Subquery, IntegerField
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework import serializers
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
 from .models import FlightInstance, Fare, FlightLeg
 from .services_currency import CurrencyService
+
+class CalendarDayFareSerializer(serializers.Serializer):
+    min_fare = serializers.FloatField()
+    currency = serializers.CharField()
 
 class FlightFaresCalendarView(APIView):
     permission_classes = [AllowAny]
     
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="start_date", type=str, required=False, description="Start date of range (YYYY-MM-DD)"),
+            OpenApiParameter(name="end_date", type=str, required=False, description="End date of range (YYYY-MM-DD)"),
+            OpenApiParameter(name="source", type=str, required=False, description="Departure airport IATA code"),
+            OpenApiParameter(name="destination", type=str, required=False, description="Arrival airport IATA code"),
+            OpenApiParameter(name="cabin_class", type=str, required=False, description="Cabin class (Economy, Business, First)"),
+            OpenApiParameter(name="stops", type=str, required=False, description="Number of stops (0, 1, or 2+)"),
+            OpenApiParameter(name="airlines", type=str, required=False, description="Comma-separated airline names"),
+            OpenApiParameter(name="max_fare", type=str, required=False, description="Maximum fare price"),
+            OpenApiParameter(name="waitlist_mode", type=str, required=False, description="Waitlist mode (available_only or waitlisted_only)"),
+        ],
+        responses={
+            200: {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "min_fare": {"type": "number"},
+                        "currency": {"type": "string"},
+                    },
+                    "required": ["min_fare", "currency"]
+                }
+            }
+        }
+    )
     def get(self, request, *args, **kwargs) -> Response:
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
@@ -179,6 +211,26 @@ class FlightFaresCalendarView(APIView):
 class FlightFareBoundsView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="source", type=str, required=False, description="Departure airport IATA code"),
+            OpenApiParameter(name="destination", type=str, required=False, description="Arrival airport IATA code"),
+            OpenApiParameter(name="date", type=str, required=False, description="Date of the flight (YYYY-MM-DD)"),
+            OpenApiParameter(name="cabin_class", type=str, required=False, description="Cabin class (Economy, Business, First)"),
+            OpenApiParameter(name="stops", type=str, required=False, description="Number of stops (0, 1, or 2+)"),
+            OpenApiParameter(name="airlines", type=str, required=False, description="Comma-separated airline names"),
+        ],
+        responses={
+            200: inline_serializer(
+                name="FlightFareBoundsResponse",
+                fields={
+                    "min": serializers.FloatField(),
+                    "max": serializers.FloatField(),
+                    "currency": serializers.CharField(),
+                }
+            )
+        }
+    )
     def get(self, request, *args, **kwargs) -> Response:
         source = request.query_params.get("source", "").strip().upper()
         destination = request.query_params.get("destination", "").strip().upper()

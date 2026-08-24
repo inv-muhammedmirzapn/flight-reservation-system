@@ -1,5 +1,6 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from drf_spectacular.contrib.rest_framework_simplejwt import SimpleJWTScheme
 
 
 class CookieJWTAuthentication(JWTAuthentication):
@@ -24,3 +25,9 @@ class CookieJWTAuthentication(JWTAuthentication):
 
         # Fallback: standard Authorization: Bearer <token> header
         return super().authenticate(request)
+
+
+class CookieJWTScheme(SimpleJWTScheme):
+    target_class = CookieJWTAuthentication
+    name = 'cookieAuth'
+

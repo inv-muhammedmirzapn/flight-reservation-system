@@ -14,7 +14,10 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
+        user = self.request.user
+        if not user or user.is_anonymous:
+            return Notification.objects.none()
+        return Notification.objects.filter(user=user)
 
     @extend_schema(responses={200: NotificationSerializer}, tags=["Notifications"])
     @action(detail=True, methods=['patch'])

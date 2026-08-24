@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from .models import (
     Country, Airport, Airline, AircraftModel, Aircraft,
     FlightRoute, FlightLeg, FlightInstance,
@@ -293,6 +294,7 @@ class AirlineSerializer(serializers.ModelSerializer):
         model = Airline
         fields = ["id", "iata_airline_code", "airline_name", "logo", "logo_url"]
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_logo_url(self, obj):
         if obj.logo:
             request = self.context.get("request")
@@ -343,6 +345,7 @@ class AircraftSerializer(serializers.ModelSerializer):
             "economy_layout", "business_layout", "first_class_layout"
         ]
 
+    @extend_schema_field(serializers.CharField())
     def get_model_display(self, obj):
         return str(obj.aircraft_model)
         
@@ -502,11 +505,13 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    @extend_schema_field(serializers.IntegerField())
     def get_total_capacity(self, obj):
         if not obj.aircraft:
             return 0
         return (obj.aircraft.economy_capacity or 0) + (obj.aircraft.business_capacity or 0) + (obj.aircraft.first_class_capacity or 0)
 
+    @extend_schema_field(serializers.DictField(allow_null=True))
     def get_route(self, obj):
         legs = obj.flight.legs.order_by('leg_order')
         if not legs.exists():
@@ -580,15 +585,18 @@ class SeatSerializer(serializers.ModelSerializer):
         from .services_currency import CurrencyService
         return CurrencyService.get_user_currency(user)
 
+    @extend_schema_field(serializers.CharField())
     def get_display_seat_fee(self, obj):
         from .services_currency import CurrencyService
         target_currency = self._get_target_currency()
         display_price = CurrencyService.convert_amount(obj.seat_fee, obj.currency, target_currency)
         return str(display_price)
 
+    @extend_schema_field(serializers.CharField())
     def get_display_currency(self, obj):
         return self._get_target_currency()
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_attributes(self, obj):
         return obj.attributes
 
@@ -602,9 +610,9 @@ class SeatSerializer(serializers.ModelSerializer):
 
 class FareSerializer(serializers.ModelSerializer):
     available_seats = serializers.SerializerMethodField(read_only=True)
-    effective_baggage_allowance_kg = serializers.ReadOnlyField()
-    effective_handbag_allowance_kg = serializers.ReadOnlyField()
-    effective_baggage_pieces = serializers.ReadOnlyField()
+    effective_baggage_allowance_kg = serializers.FloatField(read_only=True)
+    effective_handbag_allowance_kg = serializers.FloatField(read_only=True)
+    effective_baggage_pieces = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Fare
@@ -620,6 +628,7 @@ class FareSerializer(serializers.ModelSerializer):
             "effective_baggage_allowance_kg", "effective_handbag_allowance_kg", "effective_baggage_pieces"
         ]
 
+    @extend_schema_field(serializers.IntegerField())
     def get_available_seats(self, obj):
         """Derive available seats from actual seat status (source of truth)."""
         return obj.flight_instance.seats.filter(
@@ -654,17 +663,20 @@ class FoodItemSerializer(serializers.ModelSerializer):
             "image", "image_url"
         ]
 
+    @extend_schema_field(serializers.CharField())
     def get_display_currency(self, obj):
         from .services_currency import CurrencyService
         request = self.context.get("request")
         return CurrencyService.get_user_currency(request=request)
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_price(self, obj):
         from .services_currency import CurrencyService
         request = self.context.get("request")
         target_currency = CurrencyService.get_user_currency(request=request)
         return float(CurrencyService.convert_amount(obj.price, obj.currency or "INR", target_currency))
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_image_url(self, obj):
         if obj.image:
             request = self.context.get("request")

@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
 
 from .models import FlightInstance, Fare, FoodItem, FlightMeal
 from .services_currency import CurrencyService
@@ -10,6 +12,90 @@ from .services_currency import CurrencyService
 class FlightMealsView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="cabin_class",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Cabin class (e.g., ECONOMY, BUSINESS, FIRST)",
+                required=False,
+                enum=["ECONOMY", "BUSINESS", "FIRST"],
+            )
+        ],
+        responses={
+            200: inline_serializer(
+                name="FlightMealsResponse",
+                fields={
+                    "flight_id": serializers.IntegerField(),
+                    "cabin_class": serializers.CharField(),
+                    "meal_included": serializers.BooleanField(),
+                    "target_currency": serializers.CharField(),
+                    "baggage_info": inline_serializer(
+                        name="FlightMealsBaggageInfo",
+                        fields={
+                            "cabin_baggage_kg": serializers.FloatField(),
+                            "handbag_kg": serializers.FloatField(),
+                            "max_extra_baggage_kg_per_person": serializers.FloatField(),
+                            "extra_baggage_price_per_kg": serializers.CharField(),
+                            "extra_baggage_currency": serializers.CharField(),
+                            "extra_baggage_display_price_per_kg": serializers.CharField(),
+                            "display_currency": serializers.CharField(),
+                        }
+                    ),
+                    "legs": inline_serializer(
+                        name="FlightMealsLeg",
+                        fields={
+                            "id": serializers.IntegerField(),
+                            "leg_order": serializers.IntegerField(),
+                            "departure_airport": serializers.CharField(),
+                            "departure_city": serializers.CharField(),
+                            "arrival_airport": serializers.CharField(),
+                            "arrival_city": serializers.CharField(),
+                        }
+                    , many=True),
+                    "food_items": inline_serializer(
+                        name="FlightMealsFoodItem",
+                        fields={
+                            "id": serializers.IntegerField(),
+                            "name": serializers.CharField(),
+                            "price": serializers.CharField(),
+                            "currency": serializers.CharField(),
+                            "display_price": serializers.CharField(),
+                            "display_currency": serializers.CharField(),
+                            "is_veg": serializers.BooleanField(),
+                            "is_halal": serializers.BooleanField(),
+                            "is_vegan": serializers.BooleanField(),
+                            "image": serializers.CharField(allow_null=True),
+                        }
+                    , many=True),
+                    "flight_meals": inline_serializer(
+                        name="FlightMealsMeal",
+                        fields={
+                            "id": serializers.IntegerField(),
+                            "name": serializers.CharField(),
+                            "price": serializers.CharField(),
+                            "display_price": serializers.CharField(),
+                            "display_currency": serializers.CharField(),
+                            "is_veg": serializers.BooleanField(),
+                            "is_halal": serializers.BooleanField(),
+                            "is_vegan": serializers.BooleanField(),
+                            "items": inline_serializer(
+                                name="FlightMealsMealItem",
+                                fields={
+                                    "name": serializers.CharField(),
+                                    "quantity": serializers.IntegerField(),
+                                    "is_veg": serializers.BooleanField(),
+                                    "is_halal": serializers.BooleanField(),
+                                    "is_vegan": serializers.BooleanField(),
+                                }
+                            , many=True)
+                        }
+                    , many=True)
+                }
+            )
+        }
+    )
     def get(self, request, instance_id, *args, **kwargs) -> Response:
         instance = get_object_or_404(FlightInstance, id=instance_id)
         cabin_class_param = request.query_params.get("cabin_class", "ECONOMY").strip().upper()

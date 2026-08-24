@@ -1,7 +1,9 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import Booking, Passenger, PassengerMeal, SeatHold
 from apps.flights.models import FlightInstance
 from apps.flights.services_currency import CurrencyService
+
 
 
 class FlightInstanceSummarySerializer(serializers.ModelSerializer):
@@ -26,6 +28,7 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
             'fares',
         ]
 
+    @extend_schema_field(serializers.DictField(allow_null=True))
     def get_fares(self, obj):
         fares = {}
         route = obj.flight
@@ -47,6 +50,7 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
             }
         return fares if fares else None
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_airline_logo(self, obj):
         if obj.flight and obj.flight.airline and obj.flight.airline.logo:
             request = self.context.get('request')
@@ -55,6 +59,7 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
             return obj.flight.airline.logo.url
         return None
 
+    @extend_schema_field(serializers.CharField())
     def get_aircraft(self, obj):
         if obj.aircraft and obj.aircraft.aircraft_model:
             model = obj.aircraft.aircraft_model
@@ -65,10 +70,12 @@ class FlightInstanceSummarySerializer(serializers.ModelSerializer):
             return f"{manufacturer} {model_name}".strip()
         return "Airbus A320"
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_source_airport(self, obj):
         first_leg = obj.flight.legs.order_by('leg_order').first()
         return first_leg.departure_airport.iata_code if first_leg else None
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_destination_airport(self, obj):
         last_leg = obj.flight.legs.order_by('leg_order').last()
         return last_leg.arrival_airport.iata_code if last_leg else None
@@ -89,11 +96,13 @@ class PassengerMealSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'unit_price', 'display_price', 'food_item_name', 'flight_meal_name', 'leg_info']
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_price(self, obj):
         request = self.context.get('request')
         target_currency = CurrencyService.get_user_currency(request.user if request else None)
         return float(CurrencyService.convert_amount(obj.unit_price, "INR", target_currency))
 
+    @extend_schema_field(serializers.DictField(allow_null=True))
     def get_leg_info(self, obj):
         if obj.flight_leg:
             return {
@@ -120,6 +129,7 @@ class PassengerSerializer(serializers.ModelSerializer):
             'selected_meals'
         ]
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_extra_baggage_cost(self, obj):
         request = self.context.get('request')
         target_currency = CurrencyService.get_user_currency(request.user if request else None)
@@ -158,21 +168,25 @@ class BookingSerializer(serializers.ModelSerializer):
             'created_at', 'flight_detail', 'passengers', 'user', 'user_email', 'user_full_name',
         ]
 
+    @extend_schema_field(serializers.CharField())
     def get_display_currency(self, obj):
         request = self.context.get('request')
         return CurrencyService.get_user_currency(request.user if request else None)
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_total_price(self, obj):
         request = self.context.get('request')
         target_currency = CurrencyService.get_user_currency(request.user if request else None)
         return float(CurrencyService.convert_amount(obj.total_price, "INR", target_currency))
 
+    @extend_schema_field(serializers.FloatField())
     def get_base_fare(self, obj):
         fare = obj.flight.fares.filter(cabin_class=obj.cabin_class).first()
         if fare:
             return fare.price * obj.seat_count
         return 0
 
+    @extend_schema_field(serializers.FloatField())
     def get_display_base_fare(self, obj):
         request = self.context.get('request')
         target_currency = CurrencyService.get_user_currency(request.user if request else None)
@@ -182,6 +196,7 @@ class BookingSerializer(serializers.ModelSerializer):
             return float(CurrencyService.convert_amount(raw_val, fare.currency, target_currency))
         return 0.0
 
+    @extend_schema_field(serializers.CharField())
     def get_user_full_name(self, obj):
         if obj.user:
             full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()

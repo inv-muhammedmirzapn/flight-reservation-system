@@ -122,6 +122,19 @@ SPECTACULAR_SETTINGS = {
         'operationsSorter': 'alpha',
         'docExpansion': 'none',
     },
+    'ENUM_NAME_OVERRIDES': {
+        'CabinClassEnum': [('ECONOMY', 'Economy'), ('BUSINESS', 'Business'), ('FIRST', 'First')],
+        'CabinClassSimpleEnum': ['ECONOMY', 'BUSINESS', 'FIRST'],
+        'ProfileGenderEnum': [('MALE', 'Male'), ('FEMALE', 'Female'), ('OTHER', 'Other')],
+        'PassengerGenderEnum': [('M', 'Male'), ('F', 'Female'), ('O', 'Other')],
+        'GenderSimpleEnum': ['M', 'F', 'O'],
+        'FlightInstanceStatusEnum': [('SCHEDULED', 'Scheduled'), ('DELAYED', 'Delayed'), ('CANCELLED', 'Cancelled'), ('BOARDING', 'Boarding'), ('DEPARTED', 'Departed'), ('ARRIVED', 'Arrived')],
+        'BookingStatusEnum': [('CONFIRMED', 'Confirmed'), ('CANCELLED', 'Cancelled')],
+        'WaitlistStatusEnum': [('PENDING', 'Pending'), ('CONFIRMED', 'Confirmed'), ('CANCELLED', 'Cancelled'), ('EXPIRED', 'Expired')],
+        'SeatStatusEnum': [('AVAILABLE', 'Available'), ('HELD', 'Held'), ('BOOKED', 'Booked'), ('BLOCKED', 'Blocked')],
+        'SeatPositionEnum': [('window', 'Window'), ('aisle', 'Aisle'), ('middle', 'Middle')],
+        'RefundTypeEnum': [('REFUNDABLE', 'Refundable'), ('NON_REFUNDABLE', 'Non-Refundable'), ('PARTIAL', 'Partial')],
+    },
 }
 
 AUTHENTICATION_BACKENDS = [

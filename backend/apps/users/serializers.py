@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 import re
 from .models import Profile
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from drf_spectacular.utils import extend_schema_field
+
 
 
 
@@ -98,6 +100,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "role", "has_usable_password", "created_at", "updated_at"]
 
+    @extend_schema_field(serializers.BooleanField())
     def get_has_usable_password(self, obj):
         return obj.user.has_usable_password()
 

@@ -23,11 +23,13 @@ Returns an import report:
 import logging
 import zipfile
 
+from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.flights.permissions import IsAdminOrSuperuser
 from .repositories import ENTITY_IMPORTERS
@@ -45,6 +47,30 @@ class BulkImportView(APIView):
     permission_classes = [IsAdminOrSuperuser]
     parser_classes = [MultiPartParser, FormParser]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="BulkImportRequest",
+            fields={
+                "entity": serializers.ChoiceField(choices=["all"] + list(ENTITY_IMPORTERS.keys())),
+                "file": serializers.FileField(),
+            }
+        ),
+        responses={
+            200: inline_serializer(
+                name="BulkImportResponse",
+                fields={
+                    "total": serializers.IntegerField(),
+                    "success": serializers.IntegerField(),
+                    "created": serializers.IntegerField(),
+                    "updated": serializers.IntegerField(),
+                    "failed": serializers.IntegerField(),
+                    "errors": serializers.ListField(
+                        child=serializers.DictField()
+                    ),
+                }
+            )
+        }
+    )
     def post(self, request, *args, **kwargs):
         entity        = request.data.get("entity", "").strip().lower()
         uploaded_file = request.FILES.get("file")

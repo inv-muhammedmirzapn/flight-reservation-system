@@ -217,6 +217,19 @@ class CookieTokenRefreshView(APIView):
     """
     permission_classes = (AllowAny,)
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name="CookieTokenRefreshResponse",
+                fields={"detail": rf_serializers.CharField()}
+            ),
+            401: inline_serializer(
+                name="CookieTokenRefreshError",
+                fields={"detail": rf_serializers.CharField()}
+            )
+        }
+    )
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh_token')
         if not refresh_token:
