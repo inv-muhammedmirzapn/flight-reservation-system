@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser, googleLoginUser } from "@/store/authSlice";
+import { loginUser, googleLoginUser, fetchProfile } from "@/store/authSlice";
 import { useGoogleLogin } from "@react-oauth/google";
 import toast from "react-hot-toast";
 
@@ -81,6 +81,9 @@ export default function LoginPage() {
       );
 
       if (loginUser.fulfilled.match(resultAction)) {
+        // Fetch the full profile so auth.profile has all fields (first_name, last_name,
+        // phone, DOB, etc.) before the user lands on any protected page.
+        await dispatch(fetchProfile());
         toast.success("Welcome back!");
         navigate(redirectUrl, { replace: true });
       } else {
@@ -98,6 +101,8 @@ export default function LoginPage() {
       try {
         const res = await dispatch(googleLoginUser({ token: tokenResponse.access_token }));
         if (googleLoginUser.fulfilled.match(res)) {
+          // Fetch the full profile so auth.profile has all fields before navigating.
+          await dispatch(fetchProfile());
           const p = res.payload?.profile;
           toast.success(`Welcome back, ${p?.first_name || p?.username || "there"}!`);
           navigate(redirectUrl, { replace: true });
