@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { profileAPI } from "@/services/profile-service/profileService";
-import { fetchProfile, updateProfileSuccess } from "@/store/authSlice";
+import { updateProfileSuccess } from "@/store/authSlice";
 import toast from "react-hot-toast";
 import { handleApiError, logError } from "@/utils/errorUtils";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -43,9 +43,10 @@ const extractLocalPhone = (fullPhoneStr, countryName) => {
 export default function UserProfilePage() {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state?.auth) || {};
+  const { profile: reduxProfile, isInitializing } = auth;
 
-  const [profile, setLocalProfile] = useState(auth.profile || null);
-  const [loading, setLoading] = useState(!profile);
+  const [profile, setLocalProfile] = useState(reduxProfile || null);
+  const [loading, setLoading] = useState(!reduxProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isDobModalOpen, setIsDobModalOpen] = useState(false);
@@ -65,25 +66,18 @@ export default function UserProfilePage() {
     country: "",
   });
 
+  // Sync local profile state from Redux whenever:
+  //  - fetchProfile resolves (initial page load / hard refresh)
+  //  - updateProfileSuccess fires (after a save — profile in Redux updates)
+  //  - isInitializing flips to false (ensures loading clears even if profile is null)
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadProfileData() {
-     // console.log("this is profile api");
-
-      try {
-        const actionResult = await dispatch(fetchProfile());
-        if (isMounted && fetchProfile.fulfilled.match(actionResult)) {
-          setLocalProfile(actionResult.payload);
-        }
-      } catch (err) {
-        logError('UserProfilePage/loadProfileData', err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+    if (reduxProfile) {
+      setLocalProfile(reduxProfile);
     }
-    loadProfileData();
-  }, [dispatch]);
+    if (!isInitializing) {
+      setLoading(false);
+    }
+  }, [reduxProfile, isInitializing]);
 
 
 
