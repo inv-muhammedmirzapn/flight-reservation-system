@@ -143,7 +143,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/20 backdrop-blur-md border-b border-white/10 shadow-sm transition-all duration-300 w-[90%] md:max-w-7xl rounded-b-2xl md:rounded-b-3xl mx-auto">
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/20 backdrop-blur-md border-b border-white/10 shadow-sm transition-all duration-300 w-[90%] md:max-w-7xl rounded-b-2xl md:rounded-b-3xl mx-auto admin-navbar">
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[68px] flex items-center justify-between relative">
 
           {/* Left: Hamburger Button — visible on mobile AND tablet portrait (< 1024px for admin) */}
@@ -232,16 +232,17 @@ export default function Navbar() {
                             {group.links.map((link) => {
                               const active = location.pathname === link.href;
                               return (
-                                <button
+                                <Link
                                   key={link.href}
-                                  onClick={() => { navigate(link.href); setOpenGroup(null); }}
-                                  className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors duration-150 cursor-pointer ${active
+                                  to={link.href}
+                                  onClick={() => setOpenGroup(null)}
+                                  className={`block w-full text-left px-5 py-2.5 text-[13px] transition-colors duration-150 cursor-pointer ${active
                                       ? "font-bold text-amber-700 bg-amber-50/80"
                                       : "font-medium text-slate-700 hover:bg-slate-100/80"
                                     }`}
                                 >
                                   {link.label}
-                                </button>
+                                </Link>
                               );
                             })}
                           </div>

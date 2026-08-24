@@ -130,9 +130,16 @@ export default function FlightInstancesPage() {
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
+      if (!searchParams.has('highlightInstance')) return;
+
       const tableContainer = document.querySelector('.admin-table-wrap');
       if (tableContainer && !tableContainer.contains(e.target)) {
-        const isInteractiveModal = e.target.closest('.admin-modal') || e.target.closest('.toast') || e.target.closest('.admin-sidebar') || e.target.closest('.admin-navbar');
+        const isInteractiveModal =
+          e.target.closest('.admin-modal') ||
+          e.target.closest('.toast') ||
+          e.target.closest('.admin-sidebar') ||
+          e.target.closest('.admin-navbar') ||
+          e.target.closest('nav');
         if (isInteractiveModal) return;
 
         setSearchParams((prev) => {
@@ -147,7 +154,7 @@ export default function FlightInstancesPage() {
     return () => {
       document.removeEventListener('click', handleOutsideClick);
     };
-  }, [setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   const handleRowClick = (e, instId) => {
     const tag = e.target.tagName.toLowerCase();
