@@ -10,6 +10,7 @@ class NotificationType(models.TextChoices):
     FLIGHT_BOARDING = 'FLIGHT_BOARDING', 'Flight Boarding'
     FLIGHT_DEPARTED = 'FLIGHT_DEPARTED', 'Flight Departed'
     FLIGHT_ARRIVED = 'FLIGHT_ARRIVED', 'Flight Arrived'
+    FLIGHT_INFO_UPDATED = 'FLIGHT_INFO_UPDATED', 'Flight Info Updated'
 
 class Notification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')

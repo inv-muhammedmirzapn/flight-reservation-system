@@ -522,12 +522,14 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             "source": {
                 "iata_code": first_leg.departure_airport.iata_code,
                 "city": first_leg.departure_airport.city,
-                "name": first_leg.departure_airport.airport_name
+                "name": first_leg.departure_airport.airport_name,
+                "terminals": first_leg.departure_airport.terminals or [],
             },
             "destination": {
                 "iata_code": last_leg.arrival_airport.iata_code,
                 "city": last_leg.arrival_airport.city,
-                "name": last_leg.arrival_airport.airport_name
+                "name": last_leg.arrival_airport.airport_name,
+                "terminals": last_leg.arrival_airport.terminals or [],
             },
             "airline": {
                 "name": obj.flight.airline.airline_name if obj.flight.airline else None

@@ -557,15 +557,21 @@ class FlightInstanceViewSet(AdminModelViewSet):
             )
 
     def perform_update(self, serializer):
-        """Fire delay/status notifications when a flight instance is updated."""
+        """Fire delay/status/gate/terminal notifications when a flight instance is updated."""
         old_instance = self.get_object()
         old_status = old_instance.status
         old_delay = old_instance.delay_minutes
+        old_gate = old_instance.boarding_gate
+        old_dep_term = old_instance.departure_terminal
+        old_arr_term = old_instance.arrival_terminal
 
         instance = serializer.save()
 
         new_status = instance.status
         new_delay = instance.delay_minutes
+        new_gate = instance.boarding_gate
+        new_dep_term = instance.departure_terminal
+        new_arr_term = instance.arrival_terminal
 
         try:
             from apps.notifications.services import NotificationService
@@ -579,8 +585,17 @@ class FlightInstanceViewSet(AdminModelViewSet):
                 NotificationService.send_flight_delay(instance, delayed_dep)
             elif old_status != new_status:
                 NotificationService.send_flight_status_notification(instance, old_status, new_status)
+            
+            # Check for gate/terminal changes (only if it wasn't a cancellation which sends its own email)
+            if new_status not in ['CANCELLED', 'ARRIVED'] and (
+                old_gate != new_gate or
+                old_dep_term != new_dep_term or
+                old_arr_term != new_arr_term
+            ):
+                NotificationService.send_flight_gate_terminal_change(instance)
+
         except Exception:
-            logger.exception("Failed to send flight status notification after update")
+            logger.exception("Failed to send flight status/info notification after update")
 
     def perform_create(self, serializer):
         """Auto-generate seats immediately after a new flight instance is saved."""

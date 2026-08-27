@@ -4,6 +4,7 @@ import { fetchFlightInstances, updateFlightInstance, ADMIN_PAGE_SIZE } from '@/a
 import { Select } from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
 import { Edit2, Plane, AlertCircle, Search, X, SlidersHorizontal, MapPin } from 'lucide-react';
+import { ComboInput } from '@/components/ui/ComboInput';
 import toast from 'react-hot-toast';
 import { parseApiError } from '@/utils/errorUtils';
 import { Pagination } from '@/components/ui/Pagination';
@@ -43,6 +44,9 @@ export default function FlightOverviewPage() {
     const [editStatus, setEditStatus] = useState('');
     const [editDelay, setEditDelay] = useState(0);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [editGate, setEditGate] = useState('');
+    const [editDepTerminal, setEditDepTerminal] = useState('');
+    const [editArrTerminal, setEditArrTerminal] = useState('');
 
     // Active filter/sort state
     const [activeSearch, setActiveSearch] = useState('');
@@ -270,7 +274,13 @@ export default function FlightOverviewPage() {
         try {
             await dispatch(updateFlightInstance({
                 id: editTarget.id,
-                data: { status: editStatus, delay_minutes: Number(editDelay) || 0 }
+                data: {
+                    status: editStatus,
+                    delay_minutes: Number(editDelay) || 0,
+                    boarding_gate: editGate,
+                    departure_terminal: editDepTerminal,
+                    arrival_terminal: editArrTerminal,
+                }
             })).unwrap();
 
             const delayMsg = editDelay > 0 ? ` — delayed by ${editDelay} min` : '';
@@ -451,7 +461,14 @@ export default function FlightOverviewPage() {
                                             <td className="overview-td-status" style={{ padding: '16px' }}><StatusBadge status={f.status} /></td>
                                             <td className="overview-td-actions" style={{ padding: '16px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <button className="act" onClick={() => { setEditTarget(f); setEditStatus(f.status); setEditDelay(f.delay_minutes || 0); }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
+                                                    <button className="act" onClick={() => { 
+                                                        setEditTarget(f); 
+                                                        setEditStatus(f.status); 
+                                                        setEditDelay(f.delay_minutes || 0); 
+                                                        setEditGate(f.boarding_gate || '');
+                                                        setEditDepTerminal(f.departure_terminal || '');
+                                                        setEditArrTerminal(f.arrival_terminal || '');
+                                                    }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -676,6 +693,44 @@ export default function FlightOverviewPage() {
                                     )}
                                 </div>
 
+                                {/* Gate & Terminal fields */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+                                    <ComboInput
+                                        id="ov_gate"
+                                        label="Boarding Gate"
+                                        placeholder="e.g. G12"
+                                        value={editGate}
+                                        options={['A1','A2','A3','A4','B1','B2','B3','B4','C1','C2','D1','D2','G1','G2','G3','G4','G5','G6','G10','G11','G12'].map(g => ({ value: g, label: g }))}
+                                        onChange={(e) => setEditGate(e.target.value)}
+                                    />
+                                    <ComboInput
+                                        id="ov_dep_terminal"
+                                        label="Departure Terminal"
+                                        placeholder="e.g. Terminal 1"
+                                        value={editDepTerminal}
+                                        options={[
+                                            ...new Set([
+                                                ...(editTarget?.route?.source?.terminals || []),
+                                                'Terminal 1','Terminal 2','Terminal 3','Terminal 4','Domestic','International'
+                                            ])
+                                        ].map(t => ({ value: t, label: t }))}
+                                        onChange={(e) => setEditDepTerminal(e.target.value)}
+                                    />
+                                    <ComboInput
+                                        id="ov_arr_terminal"
+                                        label="Arrival Terminal"
+                                        placeholder="e.g. Terminal 2"
+                                        value={editArrTerminal}
+                                        options={[
+                                            ...new Set([
+                                                ...(editTarget?.route?.destination?.terminals || []),
+                                                'Terminal 1','Terminal 2','Terminal 3','Terminal 4','Domestic','International'
+                                            ])
+                                        ].map(t => ({ value: t, label: t }))}
+                                        onChange={(e) => setEditArrTerminal(e.target.value)}
+                                    />
+                                </div>
+
                                 <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-4">
                                     <button
                                         onClick={() => setEditTarget(null)}
@@ -731,6 +786,20 @@ export default function FlightOverviewPage() {
                                             {editDelay > 0 ? `${editDelay} minutes` : 'No delay'}
                                         </span>
                                     </div>
+                                    {editGate && (
+                                        <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Gate</span>
+                                            <span style={{ fontWeight: 800, color: '#1a1c1d' }}>{editGate}</span>
+                                        </div>
+                                    )}
+                                    {(editDepTerminal || editArrTerminal) && (
+                                        <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: '#5e5e5e', fontWeight: 600 }}>Terminal</span>
+                                            <span style={{ fontWeight: 800, color: '#1a1c1d' }}>
+                                                {editDepTerminal || '–'} / {editArrTerminal || '–'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <p style={{ fontSize: 12, color: '#9e9488', margin: 0 }}>This will update the live flight record and notify affected passengers.</p>
                                 <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200 mt-4">

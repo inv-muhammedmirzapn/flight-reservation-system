@@ -1,24 +1,66 @@
 /**
  * ComboInput — free-text input + dropdown suggestions.
  * User can type any value OR pick from the suggestions list.
+ * The dropdown uses position:fixed + dynamic placement so it escapes
+ * any parent overflow:hidden or modal stacking context.
+ *
  * Props:
  *   id, label, placeholder, value, onChange, options (string[] | {value,label}[]), error, disabled
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export function ComboInput({ id, label, placeholder, value = '', onChange, options = [], error, disabled }) {
   const [open, setOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [inputVal, setInputVal] = useState(value);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const inputRef = useRef(null);
   const containerRef = useRef(null);
 
   // Keep inputVal in sync when parent changes value (e.g. edit form prefill)
   useEffect(() => { setInputVal(value ?? ''); }, [value]);
 
+  // Recalculate dropdown position whenever it opens or window scrolls/resizes
+  useLayoutEffect(() => {
+    if (!open || !inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownPos({
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      if (!inputRef.current) return;
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    };
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
   // Close on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+      if (
+        containerRef.current && !containerRef.current.contains(e.target) &&
+        !e.target.closest('[data-comboinput-dropdown]')
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -53,6 +95,53 @@ export function ComboInput({ id, label, placeholder, value = '', onChange, optio
     ? (isFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
     : (isFocused ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none');
 
+  const dropdown = open && filtered.length > 0 ? createPortal(
+    <ul
+      data-comboinput-dropdown
+      style={{
+        position: 'fixed',
+        top: dropdownPos.top,
+        left: dropdownPos.left,
+        width: dropdownPos.width,
+        zIndex: 99999,
+        background: '#fff',
+        border: '1.5px solid rgba(0,0,0,0.1)',
+        borderRadius: 10,
+        boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+        margin: 0,
+        padding: 4,
+        listStyle: 'none',
+        maxHeight: 200,
+        overflowY: 'auto',
+      }}
+    >
+      {filtered.map((opt) => (
+        <li
+          key={opt.value}
+          onMouseDown={(e) => { e.preventDefault(); handleSelect(opt.value); }}
+          style={{
+            padding: '9px 12px',
+            borderRadius: 7,
+            fontSize: 13,
+            fontWeight: String(opt.value) === String(inputVal) ? 700 : 500,
+            color: String(opt.value) === String(inputVal) ? '#705d00' : '#1a1c1d',
+            background: String(opt.value) === String(inputVal) ? 'rgba(255,215,0,0.12)' : 'transparent',
+            cursor: 'pointer',
+            transition: 'background 0.12s',
+            fontFamily: 'Inter, sans-serif',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,215,0,0.2)'; }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = String(opt.value) === String(inputVal) ? 'rgba(255,215,0,0.12)' : 'transparent';
+          }}
+        >
+          {opt.label}
+        </li>
+      ))}
+    </ul>,
+    document.body
+  ) : null;
+
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative' }}>
       {label && (
@@ -66,6 +155,7 @@ export function ComboInput({ id, label, placeholder, value = '', onChange, optio
 
       <div style={{ position: 'relative' }}>
         <input
+          ref={inputRef}
           id={id}
           type="text"
           autoComplete="off"
@@ -111,51 +201,7 @@ export function ComboInput({ id, label, placeholder, value = '', onChange, optio
         </span>
       </div>
 
-      {/* Suggestions dropdown */}
-      {open && filtered.length > 0 && (
-        <ul
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            background: '#fff',
-            border: '1.5px solid rgba(0,0,0,0.1)',
-            borderRadius: 10,
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-            margin: '4px 0 0',
-            padding: 4,
-            listStyle: 'none',
-            maxHeight: 200,
-            overflowY: 'auto',
-          }}
-        >
-          {filtered.map((opt) => (
-            <li
-              key={opt.value}
-              onMouseDown={(e) => { e.preventDefault(); handleSelect(opt.value); }}
-              style={{
-                padding: '9px 12px',
-                borderRadius: 7,
-                fontSize: 13,
-                fontWeight: String(opt.value) === String(inputVal) ? 700 : 500,
-                color: String(opt.value) === String(inputVal) ? '#705d00' : '#1a1c1d',
-                background: String(opt.value) === String(inputVal) ? 'rgba(255,215,0,0.12)' : 'transparent',
-                cursor: 'pointer',
-                transition: 'background 0.12s',
-                fontFamily: 'Inter, sans-serif',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,215,0,0.2)'; }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = String(opt.value) === String(inputVal) ? 'rgba(255,215,0,0.12)' : 'transparent';
-              }}
-            >
-              {opt.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      {dropdown}
 
       {error && (
         <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>{error}</p>
