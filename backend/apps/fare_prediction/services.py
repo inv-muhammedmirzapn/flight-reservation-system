@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from django.utils import timezone
 from apps.flights.models import FlightInstance,Fare,SeatStatus
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking,BookingStatus
 
 
 logger = logging.getLogger(__name__)

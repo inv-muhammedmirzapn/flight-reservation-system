@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-
+#overall dashboard summary
 class SummaryStatsSerializer(serializers.Serializer):
     total_bookings = serializers.IntegerField()
     confirmed_bookings = serializers.IntegerField()
