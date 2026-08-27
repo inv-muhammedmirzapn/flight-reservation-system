@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 from .services import FarePredictionService
 
@@ -20,6 +22,42 @@ class FarePredictionView(APIView):
     """
     permission_classes = [AllowAny]  # Public endpoint — no login required
 
+    @extend_schema(
+        summary="Predict fare direction for a flight instance",
+        description=(
+            "Returns a rule-based fare prediction (INCREASE / STABLE / DECREASE) "
+            "for the given flight instance and cabin class. "
+            "Read-only — does not modify any prices."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="cabin_class",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Cabin class to predict for. Defaults to ECONOMY.",
+                enum=["ECONOMY", "BUSINESS", "FIRST"],
+            ),
+        ],
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "flight_instance_id": {"type": "integer"},
+                    "cabin_class": {"type": "string"},
+                    "direction": {"type": "string", "enum": ["INCREASE", "STABLE", "DECREASE"]},
+                    "confidence": {"type": "integer"},
+                    "current_price": {"type": "number"},
+                    "currency": {"type": "string"},
+                    "occupancy_pct": {"type": "number"},
+                    "days_until_departure": {"type": "integer"},
+                    "factors": {"type": "array", "items": {"type": "string"}},
+                    "advice": {"type": "string"},
+                },
+            },
+            404: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def get(self, request, flight_instance_id):
         # Read cabin_class from query param, default to ECONOMY
         cabin_class = request.query_params.get("cabin_class", "ECONOMY").upper()
