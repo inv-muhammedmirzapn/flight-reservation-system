@@ -4,10 +4,12 @@ from django.db.models import Count, Q, OuterRef, Subquery, IntegerField
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from rest_framework import serializers
-from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
+from drf_spectacular.types import OpenApiTypes
 from .models import FlightInstance, Fare, FlightLeg
 from .services_currency import CurrencyService
+from rest_framework import serializers
+
 
 class CalendarDayFareSerializer(serializers.Serializer):
     min_fare = serializers.FloatField()
@@ -15,32 +17,21 @@ class CalendarDayFareSerializer(serializers.Serializer):
 
 class FlightFaresCalendarView(APIView):
     permission_classes = [AllowAny]
-    
+
     @extend_schema(
+        summary="Flight fare calendar",
+        description="Returns the minimum fare per date for a given route and cabin class, over a date range.",
         parameters=[
-            OpenApiParameter(name="start_date", type=str, required=False, description="Start date of range (YYYY-MM-DD)"),
-            OpenApiParameter(name="end_date", type=str, required=False, description="End date of range (YYYY-MM-DD)"),
-            OpenApiParameter(name="source", type=str, required=False, description="Departure airport IATA code"),
-            OpenApiParameter(name="destination", type=str, required=False, description="Arrival airport IATA code"),
-            OpenApiParameter(name="cabin_class", type=str, required=False, description="Cabin class (Economy, Business, First)"),
-            OpenApiParameter(name="stops", type=str, required=False, description="Number of stops (0, 1, or 2+)"),
-            OpenApiParameter(name="airlines", type=str, required=False, description="Comma-separated airline names"),
-            OpenApiParameter(name="max_fare", type=str, required=False, description="Maximum fare price"),
-            OpenApiParameter(name="waitlist_mode", type=str, required=False, description="Waitlist mode (available_only or waitlisted_only)"),
+            OpenApiParameter("source", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Departure airport IATA code (e.g. DEL)"),
+            OpenApiParameter("destination", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Arrival airport IATA code (e.g. BOM)"),
+            OpenApiParameter("start_date", OpenApiTypes.DATE, OpenApiParameter.QUERY, description="Start of date range (YYYY-MM-DD). Defaults to today."),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, OpenApiParameter.QUERY, description="End of date range (YYYY-MM-DD). Defaults to 90 days after start_date."),
+            OpenApiParameter("cabin_class", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Cabin class: Economy (default), Business, First"),
+            OpenApiParameter("stops", OpenApiTypes.INT, OpenApiParameter.QUERY, description="Number of stops: 0 = non-stop, 1 = one stop, 2 = two or more"),
+            OpenApiParameter("airlines", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Comma-separated airline names to filter (e.g. IndiGo,Air India)"),
+            OpenApiParameter("max_fare", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, description="Maximum fare price to include in results"),
+            OpenApiParameter("waitlist_mode", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Filter by seat availability: available_only or waitlisted_only"),
         ],
-        responses={
-            200: {
-                "type": "object",
-                "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                        "min_fare": {"type": "number"},
-                        "currency": {"type": "string"},
-                    },
-                    "required": ["min_fare", "currency"]
-                }
-            }
-        }
     )
     def get(self, request, *args, **kwargs) -> Response:
         start_date = request.query_params.get("start_date")
