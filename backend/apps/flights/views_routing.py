@@ -17,7 +17,8 @@ class ShortestDistanceRouteView(APIView):
             OpenApiParameter(name="source", description="Source Airport IATA Code", required=True, type=str),
             OpenApiParameter(name="destination", description="Destination Airport IATA Code", required=True, type=str),
         ],
-        responses={200: dict, 400: dict, 404: dict}
+        responses={200: dict, 400: dict, 404: dict},
+        tags=["[Customer] Route Optimization"]
     )
     def get(self, request, *args, **kwargs):
         source_iata = request.query_params.get("source")
@@ -48,7 +49,8 @@ class MinimumStopsRouteView(APIView):
             OpenApiParameter(name="source", description="Source Airport IATA Code", required=True, type=str),
             OpenApiParameter(name="destination", description="Destination Airport IATA Code", required=True, type=str),
         ],
-        responses={200: dict, 400: dict, 404: dict}
+        responses={200: dict, 400: dict, 404: dict},
+        tags=["[Customer] Route Optimization"]
     )
     def get(self, request, *args, **kwargs):
         source_iata = request.query_params.get("source")
@@ -79,7 +81,8 @@ class FastestRouteView(APIView):
             OpenApiParameter(name="source", description="Source Airport IATA Code", required=True, type=str),
             OpenApiParameter(name="destination", description="Destination Airport IATA Code", required=True, type=str),
         ],
-        responses={200: dict, 400: dict, 404: dict}
+        responses={200: dict, 400: dict, 404: dict},
+        tags=["[Customer] Route Optimization"]
     )
     def get(self, request, *args, **kwargs):
         source_iata = request.query_params.get("source")
@@ -111,7 +114,8 @@ class RecommendRoutesView(APIView):
             OpenApiParameter(name="source", description="Source Airport IATA Code", required=True, type=str),
             OpenApiParameter(name="destination", description="Destination Airport IATA Code", required=True, type=str),
         ],
-        responses={200: dict, 400: dict, 404: dict}
+        responses={200: dict, 400: dict, 404: dict},
+        tags=["[Customer] Route Optimization"]
     )
     def get(self, request, *args, **kwargs):
         source_iata = request.query_params.get("source")

@@ -58,6 +58,8 @@ def categorize_tags_hook(result, generator, request=None, public=True):
                 new_tags.append('[Customer] Waitlist')
             elif path.startswith('/api/flights/calendar/') or path.startswith('/api/flights/bounds/'):
                 new_tags.append('[Customer] Flight Fares & Calendar')
+            elif path.startswith('/api/flights/route-optimization/'):
+                new_tags.append('[Customer] Route Optimization')
             elif path.startswith('/api/flights/'):
                 new_tags.append('[Customer] Flight Search & Listings')
 
