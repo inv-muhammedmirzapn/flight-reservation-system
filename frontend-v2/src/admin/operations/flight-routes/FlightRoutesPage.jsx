@@ -19,18 +19,48 @@ import {
 import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronRight,
-  Search, PlusCircle, MinusCircle, MapPin, Tag,
+  Search, PlusCircle, MinusCircle, MapPin, Tag, Clock, Calendar,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
 import { SpinnerLoader } from '@/components/ui/Loaders';
 import { parseApiError } from '@/utils/errorUtils';
 
-// const ACCENT = '#705d00';
-const EMPTY_LEG = { departure_airport: '', arrival_airport: '', flight_duration_minutes: 120, layover_duration_minutes: 0 };
+const DAYS_OF_WEEK = [
+  { id: '1', short: 'Mon', label: 'Monday' },
+  { id: '2', short: 'Tue', label: 'Tuesday' },
+  { id: '3', short: 'Wed', label: 'Wednesday' },
+  { id: '4', short: 'Thu', label: 'Thursday' },
+  { id: '5', short: 'Fri', label: 'Friday' },
+  { id: '6', short: 'Sat', label: 'Saturday' },
+  { id: '7', short: 'Sun', label: 'Sunday' },
+];
+
+const formatDays = (daysStr) => {
+  if (!daysStr) return 'None';
+  const parts = daysStr.split(',').map((d) => d.trim()).filter(Boolean);
+  if (parts.length === 7) return 'Daily';
+  if (parts.length === 5 && !parts.includes('6') && !parts.includes('7')) return 'Weekdays';
+  if (parts.length === 2 && parts.includes('6') && parts.includes('7')) return 'Weekends';
+  const dayNames = { '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' };
+  return parts.map((d) => dayNames[d] || d).join(', ');
+};
+
+const EMPTY_LEG = {
+  departure_airport: '',
+  arrival_airport: '',
+  flight_duration_minutes: 120,
+  layover_duration_minutes: 0,
+  scheduled_departure_time: '08:00',
+  scheduled_arrival_time: '10:00',
+};
 
 const EMPTY_FORM = {
-  flight_no: '', airline: '',
+  flight_no: '',
+  airline: '',
+  operates_on_days: '1,2,3,4,5,6,7',
+  scheduled_departure_time: '08:00',
+  scheduled_arrival_time: '14:00',
   baggage_weight_allowed_per_person: '20',
   baggage_number_allowed_per_person: '',
   handbag_weight_allowed_per_person: '7',
@@ -178,6 +208,9 @@ export default function FlightRoutesPage() {
     setForm({
       flight_no: numericFlightNo,
       airline: route.airline || '',
+      operates_on_days: route.operates_on_days || '1,2,3,4,5,6,7',
+      scheduled_departure_time: route.scheduled_departure_time ? route.scheduled_departure_time.substring(0, 5) : '08:00',
+      scheduled_arrival_time: route.scheduled_arrival_time ? route.scheduled_arrival_time.substring(0, 5) : '14:00',
       baggage_weight_allowed_per_person: route.baggage_weight_allowed_per_person || '20',
       baggage_number_allowed_per_person: route.baggage_number_allowed_per_person ?? '',
       handbag_weight_allowed_per_person: route.handbag_weight_allowed_per_person || '7',
@@ -186,6 +219,8 @@ export default function FlightRoutesPage() {
         arrival_airport: leg.arrival_airport,
         flight_duration_minutes: leg.flight_duration_minutes || 120,
         layover_duration_minutes: leg.layover_duration_minutes || 0,
+        scheduled_departure_time: leg.scheduled_departure_time ? leg.scheduled_departure_time.substring(0, 5) : '08:00',
+        scheduled_arrival_time: leg.scheduled_arrival_time ? leg.scheduled_arrival_time.substring(0, 5) : '10:00',
       })),
     });
     setLocalErrors({});
@@ -201,9 +236,15 @@ export default function FlightRoutesPage() {
       const prevLeg = f.legs[f.legs.length - 1];
       newLeg.departure_airport = prevLeg.arrival_airport;
       newLeg.layover_duration_minutes = 60; // 1 hour default layover
+      newLeg.scheduled_departure_time = prevLeg.scheduled_arrival_time || '11:00';
+      newLeg.scheduled_arrival_time = f.scheduled_arrival_time || '14:00';
+    } else {
+      newLeg.scheduled_departure_time = f.scheduled_departure_time || '08:00';
+      newLeg.scheduled_arrival_time = f.scheduled_arrival_time || '14:00';
     }
     return { ...f, legs: [...f.legs, newLeg] };
   });
+
   const removeLeg = (i) => setForm((f) => ({ ...f, legs: f.legs.filter((_, idx) => idx !== i) }));
   const updateLeg = (i, key, val) =>
     setForm((f) => ({
@@ -218,9 +259,25 @@ export default function FlightRoutesPage() {
       e.flight_no = 'Flight number must be numeric (e.g., 202).';
     }
     if (!form.airline) e.airline = 'Airline is required.';
+    if (!form.operates_on_days) e.operates_on_days = 'Select at least one operating day.';
+    if (!form.scheduled_departure_time) e.scheduled_departure_time = 'Scheduled departure time is required.';
+    if (!form.scheduled_arrival_time) e.scheduled_arrival_time = 'Scheduled arrival time is required.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
     if (Number(form.handbag_weight_allowed_per_person) < 0) e.handbag_weight_allowed_per_person = 'Cannot be negative.';
+
+    if (form.legs.length > 0 && form.legs[0].scheduled_departure_time && form.scheduled_departure_time) {
+      if (form.legs[0].scheduled_departure_time !== form.scheduled_departure_time) {
+        e.leg_0_dep_time = `Leg 1 departure (${form.legs[0].scheduled_departure_time}) must match route departure (${form.scheduled_departure_time}).`;
+      }
+    }
+
+    if (form.legs.length > 0 && form.legs[form.legs.length - 1].scheduled_arrival_time && form.scheduled_arrival_time) {
+      const lastIdx = form.legs.length - 1;
+      if (form.legs[lastIdx].scheduled_arrival_time !== form.scheduled_arrival_time) {
+        e[`leg_${lastIdx}_arr_time`] = `Last leg arrival (${form.legs[lastIdx].scheduled_arrival_time}) must match route arrival (${form.scheduled_arrival_time}).`;
+      }
+    }
 
     form.legs.forEach((leg, i) => {
       if (!leg.departure_airport) e[`leg_${i}_dep_apt`] = 'Departure airport required.';
@@ -228,6 +285,8 @@ export default function FlightRoutesPage() {
       if (leg.departure_airport && leg.arrival_airport && leg.departure_airport === leg.arrival_airport) {
         e[`leg_${i}_arr_apt`] = 'Arrival must differ from departure.';
       }
+      if (!leg.scheduled_departure_time) e[`leg_${i}_dep_time`] = 'Leg departure time required.';
+      if (!leg.scheduled_arrival_time) e[`leg_${i}_arr_time`] = 'Leg arrival time required.';
       if (!leg.flight_duration_minutes || Number(leg.flight_duration_minutes) <= 0) {
         e[`leg_${i}_duration`] = 'Flight duration must be > 0 mins.';
       }
@@ -251,6 +310,8 @@ export default function FlightRoutesPage() {
     const payload = {
       ...form,
       flight_no: fullFlightNo,
+      scheduled_departure_time: form.scheduled_departure_time ? `${form.scheduled_departure_time}:00` : null,
+      scheduled_arrival_time: form.scheduled_arrival_time ? `${form.scheduled_arrival_time}:00` : null,
       baggage_weight_allowed_per_person: form.baggage_weight_allowed_per_person ? Number(form.baggage_weight_allowed_per_person) : 20,
       baggage_number_allowed_per_person: form.baggage_number_allowed_per_person ? Number(form.baggage_number_allowed_per_person) : null,
       handbag_weight_allowed_per_person: form.handbag_weight_allowed_per_person ? Number(form.handbag_weight_allowed_per_person) : 7,
@@ -259,6 +320,8 @@ export default function FlightRoutesPage() {
         leg_order: i + 1,
         flight_duration_minutes: Number(leg.flight_duration_minutes),
         layover_duration_minutes: i > 0 ? Number(leg.layover_duration_minutes) : 0,
+        scheduled_departure_time: leg.scheduled_departure_time ? `${leg.scheduled_departure_time}:00` : null,
+        scheduled_arrival_time: leg.scheduled_arrival_time ? `${leg.scheduled_arrival_time}:00` : null,
       })),
     };
 
@@ -371,8 +434,13 @@ export default function FlightRoutesPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Flight No</th><th>Airline</th><th>Legs &amp; Duration</th>
-                  <th>Baggage (kg)</th><th>Handbag (kg)</th><th className="text-right">Actions</th>
+                  <th>Flight No</th>
+                  <th>Airline</th>
+                  <th>Schedule &amp; Days</th>
+                  <th>Legs &amp; Duration</th>
+                  <th>Baggage (kg)</th>
+                  <th>Handbag (kg)</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,6 +454,17 @@ export default function FlightRoutesPage() {
                     >
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
+                    <td>
+                      <div className="flex flex-col text-xs font-semibold gap-0.5">
+                        <span className="text-[#1a1c1d] flex items-center gap-1">
+                          <Clock size={11} className="text-[#705d00]" />
+                          {r.scheduled_departure_time ? r.scheduled_departure_time.substring(0, 5) : '--:--'} – {r.scheduled_arrival_time ? r.scheduled_arrival_time.substring(0, 5) : '--:--'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {formatDays(r.operates_on_days)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="fr-legs-cell">
                       <div className="flex flex-col gap-1">
                         {(r.legs || []).map((leg, i) => (
@@ -400,7 +479,7 @@ export default function FlightRoutesPage() {
                             )}
                             <span className="fr-leg-badge text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold whitespace-nowrap w-max">
                               {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                              <span className="text-[#666] font-normal ml-1">({formatMins(leg.flight_duration_minutes)})</span>
+                              <span className="text-[#666] font-normal ml-1">({leg.scheduled_departure_time?.substring(0, 5)} - {leg.scheduled_arrival_time?.substring(0, 5)}, {formatMins(leg.flight_duration_minutes)})</span>
                             </span>
                           </div>
                         ))}
@@ -575,7 +654,90 @@ export default function FlightRoutesPage() {
                 </div>
               </div>
 
-              {/* Row 2: Baggage Allowance + Baggage Count + Handbag Allowance */}
+              {/* Row 2: Days selection */}
+              <div className="flex flex-col gap-1.5 mb-4">
+                <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e] flex items-center gap-1">
+                  <Calendar size={13} /> Operating Days
+                </label>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {DAYS_OF_WEEK.map((d) => {
+                    const selected = form.operates_on_days?.split(',').map((s) => s.trim()).includes(d.id);
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => {
+                          const current = form.operates_on_days ? form.operates_on_days.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                          let next;
+                          if (selected) {
+                            next = current.filter((x) => x !== d.id);
+                          } else {
+                            next = [...current, d.id].sort((a, b) => Number(a) - Number(b));
+                          }
+                          setForm((f) => ({ ...f, operates_on_days: next.join(',') }));
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          selected
+                            ? 'bg-[#705d00] text-white border-[#705d00] shadow-sm'
+                            : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {d.short}
+                      </button>
+                    );
+                  })}
+                  <div className="flex gap-1 ml-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, operates_on_days: '1,2,3,4,5,6,7' }))}
+                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                    >
+                      All
+                    </button>
+                    <span className="text-slate-400">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, operates_on_days: '1,2,3,4,5' }))}
+                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                    >
+                      Weekdays
+                    </button>
+                    <span className="text-slate-400">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, operates_on_days: '6,7' }))}
+                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                    >
+                      Weekends
+                    </button>
+                  </div>
+                </div>
+                {localErrors.operates_on_days && (
+                  <p className="text-xs text-[#b91c1c] mt-1">{localErrors.operates_on_days}</p>
+                )}
+              </div>
+
+              {/* Row 3: Overall Scheduled Departure & Arrival */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                <Input
+                  id="scheduled_dep_time"
+                  label="Scheduled Departure Time (Overall Route)"
+                  type="time"
+                  value={form.scheduled_departure_time}
+                  onChange={(e) => setForm((f) => ({ ...f, scheduled_departure_time: e.target.value }))}
+                  error={localErrors.scheduled_departure_time}
+                />
+                <Input
+                  id="scheduled_arr_time"
+                  label="Scheduled Arrival Time (Overall Route)"
+                  type="time"
+                  value={form.scheduled_arrival_time}
+                  onChange={(e) => setForm((f) => ({ ...f, scheduled_arrival_time: e.target.value }))}
+                  error={localErrors.scheduled_arrival_time}
+                />
+              </div>
+
+              {/* Row 4: Baggage Allowance + Baggage Count + Handbag Allowance */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'start' }}>
                 <div>
                   <Input id="baggage_weight" label="Default Checked Baggage (kg)" type="number"
@@ -617,7 +779,7 @@ export default function FlightRoutesPage() {
                 {localErrors.legs && <p className="text-xs text-[#b91c1c] mb-2">{localErrors.legs}</p>}
 
                 {form.legs.map((leg, i) => (
-                  <div key={i} className="leg-row">
+                  <div key={i} className="leg-row mb-3">
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs font-bold text-[#705d00]">Leg {i + 1}</span>
                       {form.legs.length > 1 && (
@@ -642,8 +804,28 @@ export default function FlightRoutesPage() {
                         error={localErrors[`leg_${i}_arr_apt`]} />
                     </div>
 
+                    {/* Schedule times for this Leg */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 12 }}>
+                      <Input
+                        id={`leg_dep_time_${i}`}
+                        label="Leg Departure Time"
+                        type="time"
+                        value={leg.scheduled_departure_time || ''}
+                        onChange={(e) => updateLeg(i, 'scheduled_departure_time', e.target.value)}
+                        error={localErrors[`leg_${i}_dep_time`]}
+                      />
+                      <Input
+                        id={`leg_arr_time_${i}`}
+                        label="Leg Arrival Time"
+                        type="time"
+                        value={leg.scheduled_arrival_time || ''}
+                        onChange={(e) => updateLeg(i, 'scheduled_arrival_time', e.target.value)}
+                        error={localErrors[`leg_${i}_arr_time`]}
+                      />
+                    </div>
+
                     {/* Duration + Layover row */}
-                    <div className="leg-details-row">
+                    <div className="leg-details-row mt-2">
                       <Input id={`duration_${i}`} label="Flight Duration (mins)" type="number"
                         placeholder="e.g. 150"
                         value={leg.flight_duration_minutes}

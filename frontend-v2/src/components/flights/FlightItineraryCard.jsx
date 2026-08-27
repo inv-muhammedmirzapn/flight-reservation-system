@@ -39,7 +39,7 @@ export default function FlightItineraryCard({
     if (fares[norm]) return fares[norm];
     if (norm.includes("BUSINESS") && fares["BUSINESS"]) return fares["BUSINESS"];
     if (norm.includes("FIRST") && fares["FIRST"]) return fares["FIRST"];
-    if (fares["ECONOMY"]) return fares["ECONOMY"];
+    if (norm.includes("ECONOMY") && fares["ECONOMY"]) return fares["ECONOMY"];
     return null;
   };
 

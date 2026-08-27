@@ -251,7 +251,7 @@ export default function BookingCheckoutPage() {
       ? [{ id: "free_meal", title: "Meals & Menu", subtitle: "In-Flight Selection" }]
       : []),
     { id: "baggage", title: "Baggage", subtitle: "Extra Luggage" },
-    { id: "review", title: "Payment", subtitle: "Confirm Booking" },
+    { id: "review", title: isWaitlisted ? "Waitlist" : "Payment", subtitle: isWaitlisted ? "Join Waitlist" : "Confirm Booking" },
   ];
 
   const currentStepObj = steps[currentStepIndex] || steps[0];
@@ -605,7 +605,7 @@ export default function BookingCheckoutPage() {
           Back to Flight Details
         </button>
         <h1 className="text-xl font-bold text-slate-950 mt-3">
-          Confirm Booking
+          {isWaitlisted ? "Join Waitlist" : "Confirm Booking"}
         </h1>
       </div>
 

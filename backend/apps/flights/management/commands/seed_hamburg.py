@@ -108,11 +108,20 @@ class Command(BaseCommand):
         ]
 
         created_routes = {}
-        for fno, airline, ac, duration_hrs, duration_mins, base_fare in routes_info:
+        today_dummy = date.today()
+        for idx, (fno, airline, ac, duration_hrs, duration_mins, base_fare) in enumerate(routes_info):
+            dep_h = [2, 6, 14][idx % 3]
+            dep_m = [30, 15, 0][idx % 3]
+            dep_t = time(dep_h, dep_m)
+            arr_t = (datetime.combine(today_dummy, dep_t) + timedelta(hours=duration_hrs, minutes=duration_mins)).time()
+
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airline,
+                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": arr_t,
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 8,
@@ -126,6 +135,8 @@ class Command(BaseCommand):
                 defaults={
                     "departure_airport": del_airport,
                     "arrival_airport": ham_airport,
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": arr_t,
                     "flight_duration_minutes": duration_hrs * 60 + duration_mins,
                     "layover_duration_minutes": 0,
                 }

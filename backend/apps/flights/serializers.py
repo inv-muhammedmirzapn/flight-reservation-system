@@ -395,10 +395,13 @@ class FlightLegSerializer(serializers.ModelSerializer):
             "departure_airport", "departure_airport_iata",
             "arrival_airport", "arrival_airport_iata",
             "flight_duration_minutes", "layover_duration_minutes",
+            "scheduled_departure_time", "scheduled_arrival_time",
             "scheduled_departure", "scheduled_arrival",
             "actual_departure", "actual_arrival"
         ]
         extra_kwargs = {
+            "scheduled_departure_time": {"required": False, "allow_null": True},
+            "scheduled_arrival_time": {"required": False, "allow_null": True},
             "scheduled_departure": {"required": False, "allow_null": True},
             "scheduled_arrival": {"required": False, "allow_null": True},
         }
@@ -420,6 +423,12 @@ class FlightLegSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"layover_duration_minutes": "Layover duration cannot be negative."}
             )
+        dep_time = attrs.get("scheduled_departure_time")
+        arr_time = attrs.get("scheduled_arrival_time")
+        if dep_time and arr_time and dep_time == arr_time:
+            raise serializers.ValidationError(
+                {"scheduled_arrival_time": "Leg departure and arrival times cannot be identical."}
+            )
         return attrs
 
 
@@ -431,18 +440,63 @@ class FlightRouteSerializer(serializers.ModelSerializer):
         model = FlightRoute
         fields = [
             "id", "flight_no", "airline", "airline_name",
+            "operates_on_days", "valid_from", "valid_until",
+            "scheduled_departure_time", "scheduled_arrival_time",
             "baggage_weight_allowed_per_person",
             "baggage_number_allowed_per_person",
             "handbag_weight_allowed_per_person",
+            "max_extra_baggage_kg_per_person",
+            "extra_baggage_price_per_kg",
+            "extra_baggage_currency",
+            "is_active",
             "legs",
             "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate_operates_on_days(self, value):
+        if not value:
+            return "1,2,3,4,5,6,7"
+        parts = [p.strip() for p in value.split(",") if p.strip()]
+        for p in parts:
+            if not p.isdigit() or int(p) < 1 or int(p) > 7:
+                raise serializers.ValidationError("operates_on_days must contain comma-separated integers between 1 (Mon) and 7 (Sun).")
+        # Unique & sorted
+        unique_days = sorted(list(set(int(p) for p in parts)))
+        return ",".join(str(d) for d in unique_days)
+
     def validate(self, attrs):
         legs_data = attrs.get("legs", [])
         if not legs_data and not self.instance:
             raise serializers.ValidationError({"legs": "At least one leg is required."})
+
+        route_dep_t = attrs.get("scheduled_departure_time", getattr(self.instance, "scheduled_departure_time", None))
+        route_arr_t = attrs.get("scheduled_arrival_time", getattr(self.instance, "scheduled_arrival_time", None))
+
+        if legs_data and route_dep_t and route_arr_t:
+            first_leg = legs_data[0]
+            last_leg = legs_data[-1]
+
+            leg1_dep = first_leg.get("scheduled_departure_time")
+            if leg1_dep and leg1_dep != route_dep_t:
+                raise serializers.ValidationError({
+                    "legs": f"Leg 1 departure time ({leg1_dep.strftime('%H:%M')}) must match the flight's overall departure time ({route_dep_t.strftime('%H:%M')})."
+                })
+
+            last_arr = last_leg.get("scheduled_arrival_time")
+            if last_arr and last_arr != route_arr_t:
+                raise serializers.ValidationError({
+                    "legs": f"Final leg arrival time ({last_arr.strftime('%H:%M')}) must match the flight's overall arrival time ({route_arr_t.strftime('%H:%M')})."
+                })
+
+            for idx in range(len(legs_data) - 1):
+                curr_arr = legs_data[idx].get("scheduled_arrival_time")
+                next_dep = legs_data[idx + 1].get("scheduled_departure_time")
+                if curr_arr and next_dep and next_dep < curr_arr:
+                    raise serializers.ValidationError({
+                        "legs": f"Leg {idx+2} departure ({next_dep.strftime('%H:%M')}) cannot be before Leg {idx+1} arrival ({curr_arr.strftime('%H:%M')})."
+                    })
+
         return attrs
 
     @transaction.atomic

@@ -107,8 +107,14 @@ class FlightFaresCalendarView(APIView):
         else:
             class_key = "ECONOMY"
 
+        from django.db.models import Exists, OuterRef
+        if class_key:
+            has_fare = Exists(
+                Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key)
+            )
+            qs = qs.filter(has_fare)
+
         if waitlist_mode in ["available_only", "waitlisted_only"]:
-            from django.db.models import Exists, OuterRef
             has_any_seats = Exists(Seat.objects.filter(flight_instance=OuterRef('pk')))
             
             if class_key:

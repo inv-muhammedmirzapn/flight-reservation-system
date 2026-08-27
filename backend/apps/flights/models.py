@@ -156,6 +156,8 @@ class FlightRoute(models.Model):
     )
     valid_from = models.DateField(default=timezone.now)
     valid_until = models.DateField(null=True, blank=True)
+    scheduled_departure_time = models.TimeField(null=True, blank=True, help_text="Daily departure time of the whole flight")
+    scheduled_arrival_time = models.TimeField(null=True, blank=True, help_text="Daily arrival time of the whole flight")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -164,14 +166,20 @@ class FlightRoute(models.Model):
         ordering = ["flight_no"]
 
     def clean(self):
+        errors = {}
         if self.baggage_weight_allowed_per_person is not None and self.baggage_weight_allowed_per_person < 0:
-            raise ValidationError({"baggage_weight_allowed_per_person": "Baggage weight cannot be negative."})
+            errors["baggage_weight_allowed_per_person"] = "Baggage weight cannot be negative."
         if self.handbag_weight_allowed_per_person is not None and self.handbag_weight_allowed_per_person < 0:
-            raise ValidationError({"handbag_weight_allowed_per_person": "Handbag weight cannot be negative."})
+            errors["handbag_weight_allowed_per_person"] = "Handbag weight cannot be negative."
         if self.max_extra_baggage_kg_per_person is not None and self.max_extra_baggage_kg_per_person < 0:
-            raise ValidationError({"max_extra_baggage_kg_per_person": "Max extra baggage weight cannot be negative."})
+            errors["max_extra_baggage_kg_per_person"] = "Max extra baggage weight cannot be negative."
         if self.extra_baggage_price_per_kg is not None and self.extra_baggage_price_per_kg < 0:
-            raise ValidationError({"extra_baggage_price_per_kg": "Extra baggage price per kg cannot be negative."})
+            errors["extra_baggage_price_per_kg"] = "Extra baggage price per kg cannot be negative."
+        if self.scheduled_departure_time and self.scheduled_arrival_time:
+            if self.scheduled_departure_time == self.scheduled_arrival_time:
+                errors["scheduled_arrival_time"] = "Scheduled arrival time must differ from departure time."
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -192,6 +200,8 @@ class FlightLeg(models.Model):
     )
     flight_duration_minutes = models.PositiveIntegerField(default=120, help_text="Duration of flight leg in minutes")
     layover_duration_minutes = models.PositiveIntegerField(default=0, help_text="Layover duration before this leg in minutes")
+    scheduled_departure_time = models.TimeField(null=True, blank=True, help_text="Leg scheduled departure time")
+    scheduled_arrival_time = models.TimeField(null=True, blank=True, help_text="Leg scheduled arrival time")
     scheduled_departure = models.DateTimeField(null=True, blank=True)
     scheduled_arrival = models.DateTimeField(null=True, blank=True)
     actual_departure = models.DateTimeField(null=True, blank=True)

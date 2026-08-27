@@ -200,9 +200,15 @@ class FlightListCreateView(APIView):
         else:
             class_key = None
 
+        from django.db.models import Exists, OuterRef
+        if class_key:
+            has_fare = Exists(
+                Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key)
+            )
+            qs = qs.filter(has_fare)
+
         waitlist_mode = request.query_params.get("waitlist_mode", request.query_params.get("waitlistMode", "")).strip()
         if waitlist_mode in ["available_only", "waitlisted_only"]:
-            from django.db.models import Exists, OuterRef
             has_any_seats = Exists(Seat.objects.filter(flight_instance=OuterRef('pk')))
             
             if class_key:
@@ -215,16 +221,13 @@ class FlightListCreateView(APIView):
                 fare_lte_zero = Exists(
                     Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key, available_seats__lte=0)
                 )
-                has_fare = Exists(
-                    Fare.objects.filter(flight_instance=OuterRef('pk'), cabin_class=class_key)
-                )
 
                 if waitlist_mode == "available_only":
                     avail_q = has_avail_class_seats | (~has_any_seats & fare_gt_zero)
-                    qs = qs.filter(has_fare & avail_q)
+                    qs = qs.filter(avail_q)
                 elif waitlist_mode == "waitlisted_only":
                     waitlist_q = (has_any_seats & ~has_avail_class_seats) | (~has_any_seats & fare_lte_zero)
-                    qs = qs.filter(has_fare & waitlist_q)
+                    qs = qs.filter(waitlist_q)
             else:
                 has_any_avail_seats = Exists(
                     Seat.objects.filter(flight_instance=OuterRef('pk'), status="AVAILABLE")
@@ -471,6 +474,16 @@ class FlightRouteViewSet(AdminModelViewSet):
         if airline_id:
             qs = qs.filter(airline_id=airline_id)
         return qs
+
+    def perform_create(self, serializer):
+        route = serializer.save()
+        from .services_generation import generate_upcoming_instances
+        generate_upcoming_instances(route_id=route.id)
+
+    def perform_update(self, serializer):
+        route = serializer.save()
+        from .services_generation import generate_upcoming_instances
+        generate_upcoming_instances(route_id=route.id)
 
     def destroy(self, request, *args, **kwargs):
         """Fast delete: bulk-wipe all seats under every instance before cascade."""

@@ -253,11 +253,15 @@ class Command(BaseCommand):
         ]
 
         for fno, al_code, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_del_ham_routes:
+            scheduled_dep = datetime.combine(today, dep_t)
+            scheduled_arr = scheduled_dep + timedelta(hours=dur_hrs, minutes=dur_mins)
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
                     "operates_on_days": "1,2,3,4,5,6,7",
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": scheduled_arr.time(),
                     "valid_from": valid_from_date,
                     "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
@@ -265,8 +269,6 @@ class Command(BaseCommand):
                     "handbag_weight_allowed_per_person": 8,
                 }
             )
-            scheduled_dep = datetime.combine(today, dep_t)
-            scheduled_arr = scheduled_dep + timedelta(hours=dur_hrs, minutes=dur_mins)
 
             FlightLeg.objects.get_or_create(
                 flight=fr,
@@ -276,6 +278,8 @@ class Command(BaseCommand):
                     "arrival_airport": airports_dict["HAM"],
                     "flight_duration_minutes": dur_hrs * 60 + dur_mins,
                     "layover_duration_minutes": 0,
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": scheduled_arr.time(),
                     "scheduled_departure": timezone.make_aware(scheduled_dep),
                     "scheduled_arrival": timezone.make_aware(scheduled_arr),
                 }
@@ -346,11 +350,16 @@ class Command(BaseCommand):
         ]
 
         for fno, al_code, ac_reg, base_fare, dep_t, legs_info in connecting_del_ham_routes:
+            last_leg_info = legs_info[-1]
+            last_sch_dep = datetime.combine(today, last_leg_info[4])
+            last_sch_arr = last_sch_dep + timedelta(minutes=last_leg_info[2])
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
                     "operates_on_days": "1,2,3,4,5,6,7",
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": last_sch_arr.time(),
                     "valid_from": valid_from_date,
                     "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
@@ -369,6 +378,8 @@ class Command(BaseCommand):
                         "arrival_airport": airports_dict[arr_ap],
                         "flight_duration_minutes": dur_m,
                         "layover_duration_minutes": lay_m,
+                        "scheduled_departure_time": leg_dep_t,
+                        "scheduled_arrival_time": sch_arr.time(),
                         "scheduled_departure": sch_dep,
                         "scheduled_arrival": sch_arr,
                     }
@@ -423,11 +434,15 @@ class Command(BaseCommand):
         ]
 
         for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:
+            sch_dep = datetime.combine(today, dep_t)
+            sch_arr = sch_dep + timedelta(hours=hrs, minutes=mins)
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
                     "operates_on_days": "1,2,3,4,5,6,7",
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": sch_arr.time(),
                     "valid_from": valid_from_date,
                     "is_active": True,
                     "baggage_weight_allowed_per_person": 30,
@@ -435,8 +450,6 @@ class Command(BaseCommand):
                     "handbag_weight_allowed_per_person": 7,
                 }
             )
-            sch_dep = timezone.make_aware(datetime.combine(today, dep_t))
-            sch_arr = sch_dep + timedelta(hours=hrs, minutes=mins)
             FlightLeg.objects.get_or_create(
                 flight=fr,
                 leg_order=1,
@@ -445,8 +458,10 @@ class Command(BaseCommand):
                     "arrival_airport": airports_dict[arr_code],
                     "flight_duration_minutes": hrs * 60 + mins,
                     "layover_duration_minutes": 0,
-                    "scheduled_departure": sch_dep,
-                    "scheduled_arrival": sch_arr,
+                    "scheduled_departure_time": dep_t,
+                    "scheduled_arrival_time": sch_arr.time(),
+                    "scheduled_departure": timezone.make_aware(sch_dep),
+                    "scheduled_arrival": timezone.make_aware(sch_arr),
                 }
             )
 

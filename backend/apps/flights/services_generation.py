@@ -15,10 +15,11 @@ def generate_upcoming_instances(
     today: date | None = None,
     horizon_days: int = 90,
     strategy: PricingStrategy | None = None,
+    route_id: int | None = None,
 ) -> dict:
     """
-    Rolling 3-month horizon generator: creates upcoming FlightInstance records
-    for all active routes based on operates_on_days and validity window.
+    Rolling horizon generator: creates upcoming FlightInstance records
+    for active routes based on operates_on_days and validity window.
 
     Idempotent: uses get_or_create to skip instances that already exist.
 
@@ -35,7 +36,10 @@ def generate_upcoming_instances(
 
     end_date = today + timedelta(days=horizon_days)
 
-    active_routes = FlightRoute.objects.filter(is_active=True).prefetch_related("fare_classes")
+    active_routes = FlightRoute.objects.filter(is_active=True).prefetch_related("fare_classes", "legs")
+    if route_id is not None:
+        active_routes = active_routes.filter(id=route_id)
+
     if not active_routes.exists():
         logger.info("No active flight routes found for instance generation.")
         return {
@@ -51,6 +55,8 @@ def generate_upcoming_instances(
     skipped_instances = 0
     created_seats = 0
     created_fares = 0
+
+    from datetime import datetime, time
 
     for route in active_routes:
         r_valid_from = route.valid_from
@@ -73,13 +79,27 @@ def generate_upcoming_instances(
                     curr_date += timedelta(days=1)
                     continue
 
-                first_leg = route.legs.order_by("leg_order").first()
-                from datetime import datetime, time
-                dep_time = first_leg.scheduled_departure.time() if (first_leg and first_leg.scheduled_departure) else time(8, 0)
-                total_duration = sum((l.flight_duration_minutes or 0) + (l.layover_duration_minutes or 0) for l in route.legs.all()) or 120
+                dep_time = route.scheduled_departure_time
+                if not dep_time:
+                    first_leg = route.legs.order_by("leg_order").first()
+                    if first_leg and first_leg.scheduled_departure_time:
+                        dep_time = first_leg.scheduled_departure_time
+                    elif first_leg and first_leg.scheduled_departure:
+                        dep_time = first_leg.scheduled_departure.time()
+                    else:
+                        dep_time = time(8, 0)
 
-                naive_dep = datetime.combine(curr_date, dep_time)
-                naive_arr = naive_dep + timedelta(minutes=total_duration)
+                arr_time = route.scheduled_arrival_time
+                if arr_time:
+                    naive_dep = datetime.combine(curr_date, dep_time)
+                    if arr_time < dep_time:
+                        naive_arr = datetime.combine(curr_date + timedelta(days=1), arr_time)
+                    else:
+                        naive_arr = datetime.combine(curr_date, arr_time)
+                else:
+                    total_duration = sum((l.flight_duration_minutes or 0) + (l.layover_duration_minutes or 0) for l in route.legs.all()) or 120
+                    naive_dep = datetime.combine(curr_date, dep_time)
+                    naive_arr = naive_dep + timedelta(minutes=total_duration)
 
                 sch_dep = timezone.make_aware(naive_dep) if timezone.is_naive(naive_dep) else naive_dep
                 sch_arr = timezone.make_aware(naive_arr) if timezone.is_naive(naive_arr) else naive_arr

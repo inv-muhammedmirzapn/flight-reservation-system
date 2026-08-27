@@ -31,11 +31,16 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
     if (fares[norm]) return fares[norm];
     if (norm.includes("BUSINESS") && fares["BUSINESS"]) return fares["BUSINESS"];
     if (norm.includes("FIRST") && fares["FIRST"]) return fares["FIRST"];
-    if (fares["ECONOMY"]) return fares["ECONOMY"];
+    if (norm.includes("ECONOMY") && fares["ECONOMY"]) return fares["ECONOMY"];
     return null;
   };
 
   const activeFare = getFareForCabin(selectedCabinClass);
+
+  if (!activeFare && fares && Object.keys(fares).length > 0) {
+    return null;
+  }
+
   const displayPrice = activeFare ? (activeFare.display_price || activeFare.price) : base_fare;
   const displayCurrency = activeFare?.display_currency || "INR";
   const activeSeats = activeFare ? activeFare.available_seats : available_seats;

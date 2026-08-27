@@ -35,6 +35,8 @@ export default function LandingPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarTab, setCalendarTab] = useState("dep");
 
+  const isAnyDropdownActive = isFromFocused || isToFocused;
+
   // Redirect admin if authenticated
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
@@ -125,11 +127,11 @@ export default function LandingPage() {
           <form onSubmit={handleSearch} className="w-full flex flex-col items-center">
 
             {/* Route Selection Card (From / Swap / To) */}
-            <div className="w-full max-w-2xl glass-card shadow hover:shadow rounded-2xl sm:rounded-3xl grid grid-cols-5 items-center relative z-20 p-1 sm:p-2 md:p-0">
+            <div className={`w-full max-w-2xl glass-card shadow hover:shadow rounded-2xl sm:rounded-3xl grid grid-cols-5 items-center relative p-1 sm:p-2 md:p-0 transition-all ${isAnyDropdownActive ? "z-50" : "z-20"}`}>
 
               {/* From Box */}
               <div
-                className="col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-left cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-l-3xl relative"
+                className={`col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-left cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-l-3xl relative ${isFromFocused ? "z-50" : "z-10"}`}
                 onClick={() => {
                   setIsFromFocused(true);
                   setTimeout(() => fromInputRef.current?.focus(), 50);
@@ -164,7 +166,7 @@ export default function LandingPage() {
 
                 {/* Autocomplete Dropdown */}
                 {isFromFocused && getSuggestions(fromSearch).length > 0 && (
-                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-2 sm:mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-60 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
                     {getSuggestions(fromSearch).map((airport) => (
                       <div
                         key={airport.code}
@@ -198,7 +200,7 @@ export default function LandingPage() {
 
               {/* To Box */}
               <div
-                className="col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-right cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-r-3xl relative"
+                className={`col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-right cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-r-3xl relative ${isToFocused ? "z-50" : "z-10"}`}
                 onClick={() => {
                   setIsToFocused(true);
                   setTimeout(() => toInputRef.current?.focus(), 50);
@@ -233,7 +235,7 @@ export default function LandingPage() {
 
                 {/* Autocomplete Dropdown */}
                 {isToFocused && getSuggestions(toSearch).length > 0 && (
-                  <div className="absolute left-2 right-2 md:left-6 md:right-6 mt-2 sm:mt-3 bg-white/95 backdrop-blur-xl border border-black/5 shadow-2xl rounded-2xl overflow-hidden z-30 max-h-60 overflow-y-auto divide-y divide-black/5">
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-60 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
                     {getSuggestions(toSearch).map((airport) => (
                       <div
                         key={airport.code}
@@ -257,7 +259,7 @@ export default function LandingPage() {
 
             {/* Date Display Bar */}
             <div
-              className="w-[90%] md:w-full md:max-w-lg glass-card shadow hover:shadow rounded-b-2xl sm:rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden"
+              className="w-[90%] md:w-full md:max-w-lg glass-card shadow hover:shadow rounded-b-2xl sm:rounded-b-3xl flex items-center divide-x divide-slate-100 overflow-hidden relative z-10"
             >
               {/* Departure Display */}
               <div
