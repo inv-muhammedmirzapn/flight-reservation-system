@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Input } from '@/components/ui/Input';
 import '@/admin/_core/styles/admin.css';
@@ -40,6 +40,8 @@ const EMPTY_FORM = {
 export default function FlightRoutesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightRoute = searchParams.get('highlightRoute');
   const { items: routes, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightRoute);
   const [airlines, setAirlines] = useState([]);
   const [airports, setAirports] = useState([]);
@@ -52,7 +54,9 @@ export default function FlightRoutesPage() {
   const [activeSearch, setActiveSearch] = useState('');
   const [searchFocus, setSearchFocus] = useState(false);
   const [isFlightNoFocused, setIsFlightNoFocused] = useState(false);
-  const [page, setPage] = useState(1);
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const initialPage = isNaN(pageParam) ? 1 : pageParam;
+  const [page, setPage] = useState(initialPage);
 
   const searchSuggestions = useMemo(() => {
     if (!search || search.trim().length < 2 || !routes) return [];
@@ -73,9 +77,68 @@ export default function FlightRoutesPage() {
     dispatch(fetchFlightRoutes({ search: s, page: p }));
   }, [dispatch]);
 
+  const pageStr = searchParams.get('page') || '1';
+
   useEffect(() => {
-    load(activeSearch, page);
-  }, [load, activeSearch, page]);
+    const p = parseInt(pageStr, 10);
+    const resolvedPage = isNaN(p) ? 1 : p;
+    setPage(resolvedPage);
+    load(activeSearch, resolvedPage);
+  }, [pageStr, activeSearch, load]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!searchParams.has('highlightRoute')) return;
+
+      const tableContainer = document.querySelector('.admin-table-wrap');
+      if (tableContainer && !tableContainer.contains(e.target)) {
+        const isInteractiveModal =
+          e.target.closest('.admin-modal') ||
+          e.target.closest('.toast') ||
+          e.target.closest('.admin-sidebar') ||
+          e.target.closest('.admin-navbar') ||
+          e.target.closest('nav');
+        if (isInteractiveModal) return;
+
+        setSearchParams((prev) => {
+          if (!prev.has('highlightRoute')) return prev;
+          const nextParams = new URLSearchParams(prev);
+          nextParams.delete('highlightRoute');
+          return nextParams;
+        });
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [searchParams, setSearchParams]);
+
+  const handleRowClick = (e, routeId) => {
+    const tag = e.target.tagName.toLowerCase();
+    if (
+      tag === 'button' ||
+      tag === 'a' ||
+      tag === 'input' ||
+      tag === 'svg' ||
+      tag === 'path' ||
+      e.target.closest('a') ||
+      e.target.closest('button') ||
+      e.target.closest('input')
+    ) {
+      return;
+    }
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      const currentHighlight = nextParams.get('highlightRoute');
+      if (currentHighlight === String(routeId)) {
+        nextParams.delete('highlightRoute');
+      } else {
+        nextParams.set('highlightRoute', String(routeId));
+      }
+      return nextParams;
+    });
+  };
 
   const loadLookups = () => {
     if (airlines.length === 0) {
@@ -212,7 +275,7 @@ export default function FlightRoutesPage() {
       closeForm();
       const routeId = res?.id || editId;
       if (goNext && routeId) {
-        navigate(`/admin/operations/route-fare-classes?route=${routeId}`);
+        navigate(`/admin/operations/route-fare-classes?route=${routeId}&autoOpen=true&fromPage=${page}`);
       } else {
         load(activeSearch, page);
       }
@@ -313,8 +376,14 @@ export default function FlightRoutesPage() {
                 </tr>
               </thead>
               <tbody>
-                {routes.map((r) => (
-                  <tr key={r.id} className="admin-row">
+                {routes.map((r) => {
+                  const isHighlighted = String(r.id) === String(highlightRoute);
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={(e) => handleRowClick(e, r.id)}
+                      className={`admin-row cursor-pointer ${isHighlighted ? 'admin-row-highlight' : ''}`}
+                    >
                     <td><strong>{r.flight_no}</strong></td>
                     <td>{r.airline_name || r.airline}</td>
                     <td className="fr-legs-cell">
@@ -344,7 +413,7 @@ export default function FlightRoutesPage() {
                         <button
                           className="btn-secondary"
                           title="Route Fare Templates"
-                          onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}`)}
+                          onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}&fromPage=${page}`)}
                           style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
                           <Tag size={12} className="text-[#705d00]" /> Fares
@@ -358,7 +427,7 @@ export default function FlightRoutesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           )}
@@ -369,7 +438,13 @@ export default function FlightRoutesPage() {
           totalPages={totalPages}
           totalCount={count || routes?.length || 0}
           pageSize={ADMIN_PAGE_SIZE}
-          onPageChange={(p) => { setPage(p); }}
+          onPageChange={(p) => {
+            setSearchParams((prev) => {
+              const nextParams = new URLSearchParams(prev);
+              nextParams.set('page', String(p));
+              return nextParams;
+            });
+          }}
           entityLabel="routes"
         />
       </div>
