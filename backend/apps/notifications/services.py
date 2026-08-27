@@ -239,10 +239,20 @@ class NotificationService:
 
     @classmethod
     def send_flight_delay(cls, flight_instance, new_departure_time):
-        new_time_str = new_departure_time.strftime('%d %b %Y, %H:%M')
         first_leg = flight_instance.flight.legs.order_by('leg_order').first()
         last_leg = flight_instance.flight.legs.order_by('leg_order').last()
         flight_number = flight_instance.flight.flight_no
+        
+        # Localize time to departure airport
+        tz_name = first_leg.departure_airport.timezone if first_leg and first_leg.departure_airport.timezone else 'UTC'
+        try:
+            import zoneinfo
+            tz = zoneinfo.ZoneInfo(tz_name)
+            local_time = new_departure_time.astimezone(tz)
+        except Exception:
+            local_time = new_departure_time
+        new_time_str = local_time.strftime('%d %b %Y, %H:%M')
+
         origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
         destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
         for booking in flight_instance.bookings.filter(status='CONFIRMED'):
@@ -299,7 +309,16 @@ class NotificationService:
         flight_number = flight_instance.flight.flight_no
         origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
         destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
-        departure_str = flight_instance.scheduled_departure.strftime('%d %b %Y, %H:%M')
+        
+        # Localize departure time to departure airport
+        tz_name = first_leg.departure_airport.timezone if first_leg and first_leg.departure_airport.timezone else 'UTC'
+        try:
+            import zoneinfo
+            tz = zoneinfo.ZoneInfo(tz_name)
+            local_time = flight_instance.scheduled_departure.astimezone(tz)
+        except Exception:
+            local_time = flight_instance.scheduled_departure
+        departure_str = local_time.strftime('%d %b %Y, %H:%M')
 
         # Map status → template function
         _template_map = {
@@ -345,6 +364,39 @@ class NotificationService:
                 link=f"/flights/{flight_instance.id}"
             )
             cls._send_email(email, subject, html)
+
+    @classmethod
+    def send_flight_gate_terminal_change(cls, flight_instance):
+        first_leg = flight_instance.flight.legs.order_by('leg_order').first()
+        last_leg = flight_instance.flight.legs.order_by('leg_order').last()
+        flight_number = flight_instance.flight.flight_no
+        origin = first_leg.departure_airport.iata_code if first_leg else "N/A"
+        destination = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        
+        boarding_gate = flight_instance.boarding_gate
+        departure_terminal = flight_instance.departure_terminal
+        arrival_terminal = flight_instance.arrival_terminal
+        
+        for booking in flight_instance.bookings.filter(status='CONFIRMED'):
+            user = booking.user
+            name = user.first_name or user.email
+            subject, html = tpl.flight_gate_terminal_updated(
+                user_name=name,
+                flight_number=flight_number,
+                origin=origin,
+                destination=destination,
+                boarding_gate=boarding_gate,
+                departure_terminal=departure_terminal,
+                arrival_terminal=arrival_terminal
+            )
+            cls._create_notification(
+                user, subject,
+                f"Flight {flight_number} gate/terminal updated.",
+                NotificationType.FLIGHT_INFO_UPDATED,
+                related_object_id=str(flight_instance.id),
+                link=f"/flights/{flight_instance.id}"
+            )
+            cls._send_email(user.email, subject, html)
 
     # ── User Account ────────────────────────────────────────────────────────
 

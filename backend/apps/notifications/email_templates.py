@@ -413,6 +413,44 @@ def flight_delayed(user_name: str, flight_number: str,
     return subject, html
 
 
+def flight_gate_terminal_updated(user_name: str, flight_number: str,
+                                 origin: str, destination: str,
+                                 boarding_gate: str, departure_terminal: str, arrival_terminal: str) -> tuple[str, str]:
+    subject = f"Gate/Terminal Update — Flight {flight_number}"
+    
+    gate_display = boarding_gate if boarding_gate else "Not assigned"
+    dep_term_display = departure_terminal if departure_terminal else "Not assigned"
+    arr_term_display = arrival_terminal if arrival_terminal else "Not assigned"
+    
+    extra = f"""
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Departure Terminal</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;" colspan="2">{dep_term_display}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Boarding Gate</td>
+            <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1c1d;" colspan="2">{gate_display}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 16px;color:#888888;">Arrival Terminal</td>
+            <td style="padding:12px 16px;font-weight:600;color:#1a1c1d;" colspan="2">{arr_term_display}</td>
+          </tr>"""
+          
+    html = _wrap(
+        _heading("Gate / Terminal Update",
+                 "Important updates to your boarding and arrival details.") +
+        _divider() +
+        _body_text(f"Dear <strong>{user_name}</strong>,<br><br>"
+                   "There has been an update to the boarding gate or terminal for your upcoming flight. "
+                   "Please review the new details below.") +
+        _flight_info_table(flight_number, origin, destination, extra) +
+        _body_text("We recommend checking the airport information screens upon arrival for any further last-minute changes.") +
+        _spacer(),
+        preview_text=f"Your gate/terminal information for flight {flight_number} has been updated."
+    )
+    return subject, html
+
+
 def flight_cancelled(user_name: str, flight_number: str,
                      origin: str, destination: str) -> tuple[str, str]:
     subject = f"Flight Cancelled — {flight_number}"
