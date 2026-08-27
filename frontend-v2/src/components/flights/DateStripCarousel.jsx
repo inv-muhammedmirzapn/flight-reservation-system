@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 
 export default function DateStripCarousel({ selectedDepDate, onSelectDate, filters }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const scrollRef = useRef(null);
   const selectedItemRef = useRef(null);
+
+  const bounds = useSelector((state) => state.flights.bounds);
 
   const from = searchParams.get("from") || "DEL";
   const to = searchParams.get("to") || "HAM";
@@ -58,7 +61,10 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           if (currentFilters.stops !== undefined && currentFilters.stops !== "") calendarParams.stops = currentFilters.stops;
           if (currentFilters.airlines && currentFilters.airlines.length > 0) calendarParams.airlines = currentFilters.airlines.join(",");
           if (currentFilters.waitlistMode && currentFilters.waitlistMode !== "all") calendarParams.waitlist_mode = currentFilters.waitlistMode;
-          if (currentFilters.maxFare && currentFilters.maxFare < 100000) calendarParams.max_fare = currentFilters.maxFare;
+          const boundMax = bounds?.max_price || bounds?.max;
+          if (currentFilters.maxFare && boundMax && currentFilters.maxFare < boundMax) {
+            calendarParams.max_fare = currentFilters.maxFare;
+          }
         }
 
         const res = await flightsAPI.getCalendar(calendarParams);

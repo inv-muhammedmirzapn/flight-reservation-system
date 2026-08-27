@@ -1,0 +1,6 @@
+okay so, the next thing i want to do is 'dynamic pricing' for flights. the feature is essentially:
+- price goes up on weekends or holidays (like christmas or eid or whatever)
+- price goes up when bookings for the the route exceeds a threshold, and from there it increases every time it passes another smaller threshold mark (say like. price goes up past 100 bookings, and then goes up every 10 or 5 bookings) (just an example)
+- instead of running the check to increase price every time a booking happens, you can run it every 4 hours or so? (just a thought, but for development we can run it every time a booking happens, because we need to see if it works, right?)
+- also, the count checked for bookings can't be from 'all time bookings' because suppose 99 bookings happened last year, or before a long time, and then a user booked one now, then it will reach 100 and price goes up. no. it should be within a certain time, like it can count the number of bookings starting from 7 days before to today (including today's bookings). sounds fair, unless you have better ideas.
+- an issue i'm wondering is: suppose it's the halloween in the US, or diwali in india, so only the flights traveling to or from those countries need to get their prices increased right? that sounds like something to think about.

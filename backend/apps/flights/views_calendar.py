@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
-from .models import FlightInstance, Fare, FlightLeg
+from .models import FlightInstance, Fare, FlightLeg, Seat
 from .services_currency import CurrencyService
 
 class CalendarDayFareSerializer(serializers.Serializer):
@@ -99,7 +99,7 @@ class FlightFaresCalendarView(APIView):
                     airline_q |= Q(flight__airline__airline_name__icontains=a)
                 qs = qs.filter(airline_q)
 
-        cabin_norm = (cabin_class or "ECONOMY").strip().upper()
+        cabin_norm = (cabin_class or "ECONOMY").strip().upper().replace(" ", "_")
         if "BUSINESS" in cabin_norm:
             class_key = "BUSINESS"
         elif "FIRST" in cabin_norm:
@@ -173,6 +173,7 @@ class FlightFaresCalendarView(APIView):
 
             date_str = str(instance.date)
             instance_fares = instance.fares.all()
+            instance_seats = instance.seats.all()
             
             matching_prices = []
             for f in instance_fares:
@@ -181,10 +182,10 @@ class FlightFaresCalendarView(APIView):
                 if max_fare_val is not None and float(f.price) > max_fare_val:
                     continue
                 
-                # Check seat table ONLY if seat records exist for this specific class_key
-                has_seats_for_class = instance.seats.filter(seat_class=class_key).exists()
-                if has_seats_for_class:
-                    is_avail = instance.seats.filter(seat_class=class_key, status="AVAILABLE").exists()
+                # Check seat table in-memory if seat records exist for this specific class_key
+                seats_for_class = [s for s in instance_seats if s.seat_class == class_key]
+                if seats_for_class:
+                    is_avail = any(s.status == "AVAILABLE" for s in seats_for_class)
                 else:
                     is_avail = f.available_seats > 0
 
