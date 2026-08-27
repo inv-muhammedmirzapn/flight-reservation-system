@@ -431,6 +431,9 @@ class Command(BaseCommand):
             ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN", Decimal("48000.00"), time(7, 0)),
             ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO", Decimal("22000.00"), time(22, 30)),
             ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55)),
+            # NEW: Added for testing route recommendations (SYD -> JFK has no direct flight, but 3 connecting paths)
+            ("EK413", "EK", "SYD", "DXB", 14, 30, "A6-EEO", Decimal("80000.00"), time(21, 45)),
+            ("SQ222", "SQ", "SYD", "SIN", 8, 5, "9V-SNA", Decimal("60000.00"), time(16, 10)),
         ]
 
         for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:

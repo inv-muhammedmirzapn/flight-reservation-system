@@ -11,6 +11,12 @@ from .views import (
 )
 from .views_calendar import FlightFaresCalendarView, FlightFareBoundsView
 from .views_meals import FlightMealsView
+from .views_routing import (
+    ShortestDistanceRouteView,
+    MinimumStopsRouteView,
+    FastestRouteView,
+    RecommendRoutesView,
+)
 
 app_name = "apps/flights"
 
@@ -39,6 +45,11 @@ urlpatterns = [
     path("<int:instance_id>/meals/", FlightMealsView.as_view(), name="flight-meals"),
     path("<int:id>/", FlightDetailView.as_view(), name="flight-detail"),
 
+    # ── Route Optimization endpoints ─────────────────────────────────────────
+    path("route-optimization/shortest-distance/", ShortestDistanceRouteView.as_view(), name="shortest-distance-route"),
+    path("route-optimization/minimum-stops/", MinimumStopsRouteView.as_view(), name="minimum-stops-route"),
+    path("route-optimization/fastest/", FastestRouteView.as_view(), name="fastest-route"),
+    path("route-optimization/recommend/", RecommendRoutesView.as_view(), name="recommend-routes"),
 
     # ── New entity endpoints ─────────────────────────────────────────────────
     path("", include(router.urls)),
