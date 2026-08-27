@@ -141,16 +141,16 @@ export default function FaresPage() {
   ) : null;
 
   const templateNoticeBanner = (
-    <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 text-xs text-blue-900 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
-          ℹ️
+    <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.18)', borderRadius: 16, padding: '14px 16px', marginBottom: 24, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--color-admin-accent-dark)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0, fontSize: 14 }}>
+          ℹ
         </div>
         <div>
-          <div className="font-extrabold uppercase tracking-wider text-blue-700">
+          <div style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-admin-accent-dark)', fontSize: 11, marginBottom: 2 }}>
             Template-Driven Pricing Enabled
           </div>
-          <div>
+          <div style={{ color: 'var(--color-admin-ink)', lineHeight: 1.5 }}>
             Instance fares are auto-generated from <strong>Route Fare Templates</strong>. To change base prices across all future flight dates atomically, use the Route Fare Templates manager.
           </div>
         </div>
@@ -158,7 +158,8 @@ export default function FaresPage() {
       <button
         type="button"
         onClick={() => navigate('/admin/operations/route-fare-classes')}
-        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition-all border-none shadow-sm whitespace-nowrap"
+        className="btn-primary"
+        style={{ fontSize: 12, padding: '7px 14px', whiteSpace: 'nowrap' }}
       >
         Manage Route Fare Templates
       </button>

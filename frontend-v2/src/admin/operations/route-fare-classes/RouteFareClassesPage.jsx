@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -18,7 +18,7 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, Search,
-  RefreshCw, DollarSign, Tag, Check, Info,
+  RefreshCw, DollarSign, Tag, Check, Info, ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
@@ -51,6 +51,7 @@ const EMPTY_FORM = {
 
 export default function RouteFareClassesPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const routeParam = searchParams.get('route');
 
@@ -150,6 +151,16 @@ export default function RouteFareClassesPage() {
     setLocalErrors({});
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('autoOpen') === 'true' && routes.length > 0) {
+      openCreate();
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('autoOpen');
+      setSearchParams(newParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, routes.length, setSearchParams]);
 
   const openEdit = (tmpl) => {
     loadRoutes();
@@ -284,68 +295,104 @@ export default function RouteFareClassesPage() {
   return (
     <div className="admin-page">
       <div className="admin-container">
-        <div className="flex justify-between items-center mb-7">
-          <div>
-            <h1 className="admin-page-title">Route Fare Templates</h1>
-            <p className="admin-page-subtitle">
-              {count} base cabin class fare templates across flight routes
-            </p>
+        {routeParam && (
+          <div className="admin-breadcrumb">
+            <span>
+              <Link to="/admin/operations/flight-routes">FLIGHT ROUTES</Link>
+              <span className="mx-2">/</span>
+            </span>
+            <span>
+              <span>FARES (ROUTE #{routeParam})</span>
+            </span>
           </div>
-          <button className="btn-primary" onClick={openCreate} id="add-fare-template-btn">
-            <Plus size={15} /> Add Template
-          </button>
+        )}
+
+        {/* Header */}
+        <div className="admin-page-header">
+          <div className="flex items-center gap-3">
+            {routeParam && (
+              <button
+                onClick={() => {
+                  const fromPage = searchParams.get('fromPage');
+                  if (fromPage) {
+                    navigate(`/admin/operations/flight-routes?page=${fromPage}&highlightRoute=${routeParam}`);
+                  } else {
+                    navigate(`/admin/operations/flight-routes?highlightRoute=${routeParam}`);
+                  }
+                }}
+                className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-[13px] py-[7px] text-[13px] font-semibold text-admin-muted cursor-pointer transition-colors duration-200 flex-shrink-0 hover:bg-black/10"
+              >
+                <ArrowLeft size={15} /> Back
+              </button>
+            )}
+            <div>
+              <h1 className="admin-page-title">Route Fare Templates</h1>
+              {routeParam ? (
+                <p className="admin-page-subtitle">{count} total records found</p>
+              ) : (
+                <p className="admin-page-subtitle">{count} base cabin class fare templates across flight routes</p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2.5 items-center">
+            <button className="btn-primary" onClick={openCreate} id="add-fare-template-btn">
+              <Plus size={15} /> Add New
+            </button>
+          </div>
         </div>
 
         {/* Filters & Search Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 mb-5">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setActiveSearch(search);
-              setPage(1);
-            }}
-            className="flex gap-2 flex-grow max-w-md"
-          >
-            <div className="admin-toolbar-search flex-grow">
-              <Search size={14} className="search-icon" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search flight no, airline, cabin..."
-              />
-            </div>
-            <button type="submit" className="btn-primary">Search</button>
-          </form>
+        {!routeParam && (
+          <div className="admin-toolbar">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setActiveSearch(search);
+                setPage(1);
+              }}
+              className="flex gap-2"
+            >
+              <div className="admin-toolbar-search relative w-[280px]">
+                <Search size={14} className="search-icon" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search flight no, airline, cabin..."
+                />
+              </div>
+              <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
+            </form>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-56">
-              <Select
-                id="filter-route"
-                options={filterRouteOptions}
-                value={selectedRouteFilter}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedRouteFilter(val);
-                  if (val) setSearchParams({ route: val });
-                  else setSearchParams({});
-                  setPage(1);
-                }}
-              />
-            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-56">
+                <Select
+                  id="filter-route"
+                  options={filterRouteOptions}
+                  value={selectedRouteFilter}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedRouteFilter(val);
+                    if (val) setSearchParams({ route: val });
+                    else setSearchParams({});
+                    setPage(1);
+                  }}
+                />
+              </div>
 
-            <div className="w-40">
-              <Select
-                id="filter-cabin"
-                options={filterCabinOptions}
-                value={selectedCabinFilter}
-                onChange={(e) => {
-                  setSelectedCabinFilter(e.target.value);
-                  setPage(1);
-                }}
-              />
+              <div className="w-40">
+                <Select
+                  id="filter-cabin"
+                  options={filterCabinOptions}
+                  value={selectedCabinFilter}
+                  onChange={(e) => {
+                    setSelectedCabinFilter(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {error && (
           <div className="admin-error">
@@ -384,52 +431,76 @@ export default function RouteFareClassesPage() {
                   <tr key={t.id} className="admin-row">
                     <td>
                       <div className="flex flex-col">
-                        <strong className="text-sm text-slate-900 font-bold">
+                        <strong style={{ fontSize: 13, color: 'var(--color-admin-ink)', fontWeight: 700 }}>
                           {t.flight_no ? `Flight ${t.flight_no}` : `Route #${t.route}`}
                         </strong>
                         {t.airline_name && (
-                          <span className="text-xs text-slate-500 font-medium">
+                          <span style={{ fontSize: 12, color: 'var(--color-admin-muted)', fontWeight: 500 }}>
                             {t.airline_name}
                           </span>
                         )}
                       </div>
                     </td>
                     <td>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                        t.cabin_class === 'FIRST' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        t.cabin_class === 'BUSINESS' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
-                        'bg-blue-100 text-blue-800 border border-blue-300'
-                      }`}>
+                      <span
+                        className="status-badge"
+                        style={{
+                          background:
+                            t.cabin_class === 'FIRST'  ? 'rgba(112,93,0,0.12)' :
+                            t.cabin_class === 'BUSINESS' ? 'var(--color-status-purple-bg)' :
+                            'var(--color-status-blue-bg)',
+                          color:
+                            t.cabin_class === 'FIRST'  ? 'var(--color-admin-accent-dark)' :
+                            t.cabin_class === 'BUSINESS' ? 'var(--color-status-purple)' :
+                            'var(--color-status-blue)',
+                        }}
+                      >
                         {t.cabin_class}
                       </span>
                     </td>
                     <td>
-                      <strong className="text-emerald-700 font-semibold text-sm">
+                      <strong style={{ color: 'var(--color-admin-accent-dark)', fontWeight: 700, fontSize: 13 }}>
                         {t.currency || 'INR'} {Number(t.base_price).toLocaleString('en-IN')}
                       </strong>
                     </td>
                     <td>
-                      <span className="text-xs text-slate-700 font-medium">
+                      <span style={{ fontSize: 12, color: 'var(--color-admin-ink)', fontWeight: 600 }}>
                         {t.baggage_weight_allowed_kg ?? 15} kg
                       </span>
                     </td>
                     <td>
-                      <span className="text-xs text-slate-600 font-medium capitalize">
-                        {t.refund_type?.replace('_', ' ').toLowerCase()}
+                      <span
+                        className="status-badge"
+                        style={{
+                          background:
+                            t.refund_type === 'REFUNDABLE'     ? 'var(--color-status-green-bg)' :
+                            t.refund_type === 'PARTIAL'         ? 'var(--color-status-amber-bg)' :
+                                                                  'var(--color-status-red-bg)',
+                          color:
+                            t.refund_type === 'REFUNDABLE'     ? 'var(--color-status-green)' :
+                            t.refund_type === 'PARTIAL'         ? 'var(--color-status-amber)' :
+                                                                  'var(--color-status-red)',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {t.refund_type?.replace(/_/g, ' ').toLowerCase()}
                       </span>
                     </td>
                     <td>
-                      <span className="text-xs text-slate-600 font-medium">
+                      <span style={{ fontSize: 12, color: 'var(--color-admin-ink)', fontWeight: 600 }}>
                         {t.currency || 'INR'} {Number(t.change_fee).toLocaleString('en-IN')}
                       </span>
                     </td>
                     <td>
                       {t.meal_included ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <Check size={13} /> Included
+                        <span
+                          className="status-badge"
+                          style={{ background: 'var(--color-status-green-bg)', color: 'var(--color-status-green)' }}
+                        >
+                          Included
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400 font-medium">—</span>
+                        <span style={{ fontSize: 13, color: 'var(--color-admin-muted)', fontWeight: 600 }}>—</span>
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
@@ -440,7 +511,7 @@ export default function RouteFareClassesPage() {
                           onClick={() => openRepriceModal(t)}
                           style={{ padding: '5px 9px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
-                          <RefreshCw size={12} className="text-amber-700" />
+                          <RefreshCw size={12} style={{ color: 'var(--color-admin-accent-dark)' }} />
                           <span>Reprice</span>
                         </button>
 
@@ -491,8 +562,8 @@ export default function RouteFareClassesPage() {
               <button className="btn-icon" onClick={closeForm}><X size={16} /></button>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-900 flex gap-2">
-              <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div style={{ background: 'rgba(112,93,0,0.06)', border: '1px solid rgba(112,93,0,0.18)', borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: 'var(--color-admin-ink)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <Info size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-admin-accent-dark)' }} />
               <div>
                 Each flight route supports <strong>strictly 1 fare template per cabin class</strong> (Economy, Business, First). Included baggage cannot be lower than the route baseline default (<strong>{minBaggageAllowed} kg</strong>).
               </div>
@@ -565,7 +636,7 @@ export default function RouteFareClassesPage() {
                     error={localErrors.base_price}
                   />
                   {editId && (
-                    <span className="text-[11px] text-amber-700 font-medium block mt-1">
+                    <span style={{ fontSize: 11, color: 'var(--color-admin-accent-dark)', fontWeight: 600, display: 'block', marginTop: 4 }}>
                       Updating price automatically reprices future unsold flight fares.
                     </span>
                   )}
@@ -593,7 +664,7 @@ export default function RouteFareClassesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, change_fee: e.target.value }))}
                     error={localErrors.change_fee}
                   />
-                  <span className="text-[11px] text-slate-500 block mt-1">
+                  <span style={{ fontSize: 11, color: 'var(--color-admin-muted)', display: 'block', marginTop: 4 }}>
                     Fee charged for changing flight date (0 for free date changes).
                   </span>
                 </div>
@@ -609,7 +680,7 @@ export default function RouteFareClassesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_kg: e.target.value }))}
                     error={localErrors.baggage_weight_allowed_kg}
                   />
-                  <span className="text-[11px] text-slate-500 block mt-1">
+                  <span style={{ fontSize: 11, color: 'var(--color-admin-muted)', display: 'block', marginTop: 4 }}>
                     Minimum allowed: <strong>{minBaggageAllowed} kg</strong> (Route default limit).
                   </span>
                 </div>
@@ -623,12 +694,12 @@ export default function RouteFareClassesPage() {
                   onChange={(e) => setForm((f) => ({ ...f, meal_included: e.target.checked }))}
                   className="w-4 h-4 rounded text-[#705d00] focus:ring-[#705d00]"
                 />
-                <label htmlFor="meal_included" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                <label htmlFor="meal_included" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-admin-ink)', cursor: 'pointer' }}>
                   Complimentary Meal Included
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.07)', marginTop: 4 }}>
                 <button type="button" className="btn-secondary" onClick={closeForm}>
                   <X size={14} /> Cancel
                 </button>
@@ -646,22 +717,22 @@ export default function RouteFareClassesPage() {
         <div className="admin-modal-overlay" onClick={() => setRepriceItem(null)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="admin-modal-header">
-              <h2 className="admin-modal-title flex items-center gap-2 text-amber-800">
+              <h2 className="admin-modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <RefreshCw size={18} /> Update Base Price & Bulk Reprice
               </h2>
               <button className="btn-icon" onClick={() => setRepriceItem(null)}><X size={16} /></button>
             </div>
 
             <form onSubmit={handleRepriceSubmit}>
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-xs text-amber-900 leading-relaxed">
+              <div style={{ background: 'rgba(112,93,0,0.07)', border: '1px solid rgba(112,93,0,0.2)', borderRadius: 14, padding: '14px 16px', marginBottom: 20, fontSize: 12, color: 'var(--color-admin-ink)', lineHeight: 1.6 }}>
                 <strong>Important Notice:</strong> Updating this base price template will update the master route price and automatically reprice all future <strong>unsold instance fares</strong> for <strong>{repriceItem.flight_no ? `Flight ${repriceItem.flight_no}` : `Route #${repriceItem.route}`} ({repriceItem.cabin_class})</strong>.
                 Booked passenger tickets will remain completely unchanged.
               </div>
 
               <div className="flex flex-col gap-4 mb-6">
-                <div className="flex items-center justify-between text-sm py-2 px-3 bg-slate-100 rounded-xl">
-                  <span className="text-slate-600 font-semibold">Current Base Price:</span>
-                  <strong className="text-slate-800 font-mono">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, padding: '8px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: 10 }}>
+                  <span style={{ color: 'var(--color-admin-muted)', fontWeight: 600 }}>Current Base Price:</span>
+                  <strong style={{ color: 'var(--color-admin-ink)', fontFamily: 'monospace' }}>
                     {repriceItem.currency || 'INR'} {Number(repriceItem.base_price).toLocaleString('en-IN')}
                   </strong>
                 </div>
@@ -678,7 +749,7 @@ export default function RouteFareClassesPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
                 <button
                   type="button"
                   className="btn-secondary"
@@ -689,7 +760,7 @@ export default function RouteFareClassesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary bg-amber-700 hover:bg-amber-800"
+                  className="btn-primary"
                   disabled={repriceLoading}
                 >
                   <DollarSign size={14} />
