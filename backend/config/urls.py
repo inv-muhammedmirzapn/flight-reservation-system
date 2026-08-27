@@ -13,6 +13,8 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/bulk-upload/', include('apps.bulk_upload.urls')),
+    path('api/fare-prediction/', include('apps.fare_prediction.urls')),
+
 
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
