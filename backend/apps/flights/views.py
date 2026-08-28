@@ -15,7 +15,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers as rf_serializers
 
 from .models import (
@@ -110,7 +111,30 @@ class FlightListCreateView(APIView):
             return [AllowAny()]
         return [IsAdminOrSuperuser()]
 
-    @extend_schema(responses=FlightInstanceSerializer(many=True))
+    @extend_schema(
+        summary="Search & list flights",
+        description=(
+            "Returns a paginated list of upcoming flight instances matching the given filters. "
+            "All parameters are optional — omitting them returns all upcoming flights."
+        ),
+        parameters=[
+            OpenApiParameter("source", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Departure airport IATA code (e.g. DEL)"),
+            OpenApiParameter("destination", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Arrival airport IATA code (e.g. BOM)"),
+            OpenApiParameter("date", OpenApiTypes.DATE, OpenApiParameter.QUERY, description="Travel date (YYYY-MM-DD)"),
+            OpenApiParameter("flight_number", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Flight number to search (partial match, e.g. 6E101)"),
+            OpenApiParameter("airline", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Comma-separated airline names to filter (e.g. IndiGo,Air India)"),
+            OpenApiParameter("cabin_class", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Cabin class: Economy, Business, First"),
+            OpenApiParameter("min_fare", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, description="Minimum fare price (in user's currency)"),
+            OpenApiParameter("max_fare", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, description="Maximum fare price (in user's currency)"),
+            OpenApiParameter("stops", OpenApiTypes.INT, OpenApiParameter.QUERY, description="Number of stops: 0 = non-stop, 1 = one stop, 2 = two or more"),
+            OpenApiParameter("waitlist_mode", OpenApiTypes.STR, OpenApiParameter.QUERY, description="available_only or waitlisted_only"),
+            OpenApiParameter("ordering", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Sort by: base_fare, -base_fare, departure_time, -departure_time, duration, -duration"),
+            OpenApiParameter("status", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Flight status filter (e.g. SCHEDULED, DELAYED, CANCELLED)"),
+            OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, description="Page number (default: 1)"),
+            OpenApiParameter("page_size", OpenApiTypes.INT, OpenApiParameter.QUERY, description="Results per page (default: 10, max: 2000)"),
+        ],
+        responses=FlightInstanceSerializer(many=True),
+    )
     def get(self, request, *args, **kwargs) -> Response:
         from django.utils import timezone
         qs = FlightInstance.objects.select_related('flight', 'flight__airline', 'aircraft').filter(
