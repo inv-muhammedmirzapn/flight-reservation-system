@@ -38,7 +38,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
   });
 
   // Calculate base fare
-  let baseFareTotal = Number(detailData?.base_fare) || 0;
+  let baseFareTotal = Number(detailData?.display_base_fare ?? detailData?.base_fare) || 0;
   if (!baseFareTotal) {
       const fareObj = flight?.fares?.[cabinClass] || (flight?.fares ? Object.values(flight.fares)[0] : null);
       const baseFarePerPax = fareObj ? Number(fareObj.display_price || fareObj.price) : Number(flight?.base_fare || 0);
@@ -56,7 +56,8 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
       extraBaggageTotal = 0;
   }
 
-  const taxesCalc = grandTotal - subTotal;
+  const itemizedSubtotal = baseFareTotal + seatTotal + mealTotal + extraBaggageTotal;
+  const taxesCalc = grandTotal > 0 ? Math.max(0, grandTotal - itemizedSubtotal) : 0;
   const ticketStatus = (detailData?.status || "CONFIRMED").toUpperCase();
 
   const getTicketStatusBadge = () => {
