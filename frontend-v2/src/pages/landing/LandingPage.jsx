@@ -323,6 +323,8 @@ export default function LandingPage() {
         initialArrDate={arrDate}
         onSelectDates={handleSelectDates}
         initialTab={calendarTab}
+        source={from}
+        destination={to}
       />
 
       {/* Popular Destinations Section */}

@@ -274,3 +274,62 @@ export const {
 } = farePriceLogSliceDef.thunks;
 export const farePriceLogReducer = farePriceLogSliceDef.slice.reducer;
 
+// ─── DynamicPricingConfig ─────────────────────────────────────────────────────
+const dynamicPricingConfigSliceDef = createCrudSlice('dynamicPricingConfig', '/pricing/dynamic-pricing-config');
+export const dynamicPricingConfigActions = dynamicPricingConfigSliceDef.actions;
+export const {
+  fetchList: fetchDynamicPricingConfigs,
+  fetchDetail: fetchDynamicPricingConfigDetail,
+  update: updateDynamicPricingConfig,
+} = dynamicPricingConfigSliceDef.thunks;
+export const dynamicPricingConfigReducer = dynamicPricingConfigSliceDef.slice.reducer;
+
+export const evaluateAllDynamicPricing = createAsyncThunk(
+  'dynamicPricingConfig/evaluateAll',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth('/pricing/dynamic-pricing-config/evaluate-all/', {
+        method: 'POST',
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Failed to trigger dynamic re-evaluation');
+    }
+  }
+);
+
+export const simulateDynamicPricing = createAsyncThunk(
+  'dynamicPricingConfig/simulate',
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await fetchWithAuth('/pricing/dynamic-pricing-config/simulate/', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      return rejectWithValue(err.message || 'Simulation request failed');
+    }
+  }
+);
+
+// ─── HolidayEvent ─────────────────────────────────────────────────────────────
+const holidayEventSliceDef = createCrudSlice('holidayEvent', '/pricing/holiday-events');
+export const holidayEventActions = holidayEventSliceDef.actions;
+export const {
+  fetchList: fetchHolidayEvents,
+  fetchDetail: fetchHolidayEventDetail,
+  add: addHolidayEvent,
+  update: updateHolidayEvent,
+  remove: removeHolidayEvent,
+} = holidayEventSliceDef.thunks;
+export const holidayEventReducer = holidayEventSliceDef.slice.reducer;
+
+// ─── DynamicPriceLog ──────────────────────────────────────────────────────────
+const dynamicPriceLogSliceDef = createCrudSlice('dynamicPriceLog', '/pricing/dynamic-price-logs');
+export const dynamicPriceLogActions = dynamicPriceLogSliceDef.actions;
+export const {
+  fetchList: fetchDynamicPriceLogs,
+  fetchDetail: fetchDynamicPriceLogDetail,
+} = dynamicPriceLogSliceDef.thunks;
+export const dynamicPriceLogReducer = dynamicPriceLogSliceDef.slice.reducer;
+
+

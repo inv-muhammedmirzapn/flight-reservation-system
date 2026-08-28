@@ -505,6 +505,12 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
         except Exception:
             logger.exception("Failed to send booking confirmation notification")
 
+        try:
+            from apps.flights.services_pricing import reevaluate_route_fares_dynamically
+            reevaluate_route_fares_dynamically(route_id=flight_instance.flight_id)
+        except Exception:
+            logger.exception("Failed to reevaluate dynamic pricing after booking creation")
+
         return booking
 
 

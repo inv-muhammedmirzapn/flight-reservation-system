@@ -30,6 +30,7 @@ const ADMIN_NAVIGATION = {
       links: [
         { label: "Flight Routes", href: "/admin/operations/flight-routes" },
         { label: "Route Fare Templates", href: "/admin/operations/route-fare-classes" },
+        { label: "Dynamic Pricing", href: "/admin/operations/dynamic-pricing" },
         { label: "Price Audit Logs", href: "/admin/operations/fare-price-logs" },
         { label: "Instances", href: "/admin/operations/flight-instances" },
         { label: "Seat Map", href: "/admin/operations/seat-map" },

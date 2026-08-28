@@ -6,6 +6,7 @@ from .models import (
     FlightRoute, FlightLeg, FlightInstance,
     Seat, Fare, FoodItem, FlightMeal, FlightMealItem,
     CabinClass, RouteFareClass, FarePriceChangeLog,
+    DynamicPricingConfig, HolidayEvent, DynamicPriceLog,
 )
 
 
@@ -920,3 +921,10 @@ class FarePriceChangeLogSerializer(serializers.ModelSerializer):
         if obj.fare:
             return str(obj.fare.flight_instance.date)
         return "Template Baseline"
+
+
+from apps.pricing.serializers import (
+    DynamicPricingConfigSerializer,
+    HolidayEventSerializer,
+    DynamicPriceLogSerializer,
+)

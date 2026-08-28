@@ -26,6 +26,7 @@ export const formatCurrency = (amount, currencyCode = 'INR') => {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: curr,
+      currencyDisplay: 'narrowSymbol',
       maximumFractionDigits: curr === 'JPY' || curr === 'INR' ? (num % 1 === 0 ? 0 : 2) : 2,
     }).format(num);
   } catch {

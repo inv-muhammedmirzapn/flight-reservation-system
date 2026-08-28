@@ -33,19 +33,19 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
   };
 
   const btnBase = {
-    minWidth: 36,
-    height: 36,
-    borderRadius: '0.5rem',
-    border: '1.5px solid rgba(0,0,0,0.08)',
+    minWidth: 28,
+    height: 28,
+    borderRadius: '0.375rem',
+    border: '1px solid rgba(0,0,0,0.08)',
     background: 'rgba(255,255,255,0.7)',
     color: '#374151',
     fontWeight: 600,
-    fontSize: '0.875rem',
+    fontSize: '0.75rem',
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0 10px',
+    padding: '0 6px',
     transition: 'background 0.15s, border-color 0.15s, transform 0.1s',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
@@ -57,7 +57,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
     background: '#1a1c1d',
     color: '#ffd700',
     borderColor: '#1a1c1d',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
   };
 
   const disabledStyle = {
@@ -73,12 +73,12 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
       justifyContent: 'space-between',
       flexWrap: 'wrap',
       gap: '0.75rem',
-      padding: '1rem 0.25rem 0.25rem',
+      padding: '0.75rem 0.25rem 0.25rem',
     }}>
       {/* Left — results summary */}
       <p style={{
         margin: 0,
-        fontSize: '0.82rem',
+        fontSize: '0.75rem',
         color: '#6b7280',
         fontWeight: 500,
       }}>
@@ -87,7 +87,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
       </p>
 
       {/* Right — page buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
         {/* Prev */}
         <button
           id="pagination-prev"
@@ -97,7 +97,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
           onMouseEnter={(e) => { if (currentPage !== 1) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.18)'; } }}
           onMouseLeave={(e) => { if (currentPage !== 1) { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; } }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
@@ -105,7 +105,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
         {/* Page numbers */}
         {getPages().map((pg, i) =>
           pg === '...' ? (
-            <span key={`ellipsis-${i}`} style={{ padding: '0 4px', color: '#9ca3af', fontSize: '0.875rem', lineHeight: '36px' }}>…</span>
+            <span key={`ellipsis-${i}`} style={{ padding: '0 3px', color: '#9ca3af', fontSize: '0.75rem', lineHeight: '28px' }}>…</span>
           ) : (
             <button
               key={pg}
@@ -129,7 +129,7 @@ export function Pagination({ currentPage, totalPages, totalCount, pageSize = 10,
           onMouseEnter={(e) => { if (currentPage !== totalPages) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.18)'; } }}
           onMouseLeave={(e) => { if (currentPage !== totalPages) { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; } }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
