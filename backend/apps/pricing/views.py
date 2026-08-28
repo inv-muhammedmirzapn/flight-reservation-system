@@ -94,6 +94,18 @@ class DynamicPricingConfigViewSet(viewsets.ModelViewSet):
             mock_booking_count=mock_count
         )
 
+        currency = getattr(route_fare, "currency", "INR") if route_fare else "INR"
+        w_m = float(breakdown.get("weekend_multiplier", 1.0))
+        h_m = float(breakdown.get("holiday_multiplier", 1.0))
+        d_p = float(breakdown.get("demand_surge_percent", 0.0))
+        combined = round(w_m * h_m * (1.0 + (d_p / 100.0)), 2)
+
+        breakdown["currency"] = currency
+        breakdown["final_calculated_price"] = str(breakdown["final_price"])
+        breakdown["combined_multiplier"] = combined
+        breakdown["holiday_applied"] = breakdown.get("holiday_name", "")
+        breakdown["is_weekend"] = flight_date.isoweekday() in [6, 7]
+
         return Response(breakdown)
 
 

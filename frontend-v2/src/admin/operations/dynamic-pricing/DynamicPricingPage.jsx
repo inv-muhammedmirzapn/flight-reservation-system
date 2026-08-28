@@ -307,7 +307,7 @@ export default function DynamicPricingPage() {
                 <form onSubmit={handleSaveConfig} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">
                         Weekend Multiplier
                       </label>
                       <input
@@ -323,7 +323,7 @@ export default function DynamicPricingPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">
                         Holiday Multiplier
                       </label>
                       <input
@@ -341,7 +341,7 @@ export default function DynamicPricingPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">
                         Surge / Booking
                       </label>
                       <input
@@ -359,7 +359,7 @@ export default function DynamicPricingPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">
                         Max Surge Cap
                       </label>
                       <input
@@ -376,7 +376,7 @@ export default function DynamicPricingPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-xs font-bold text-slate-600 mb-1">
                       Demand Velocity Window (Days)
                     </label>
                     <input
@@ -414,7 +414,7 @@ export default function DynamicPricingPage() {
 
               <form onSubmit={handleRunSimulation} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Route Fare Template</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Route Fare Template</label>
                   <select
                     value={simForm.route_fare_id}
                     onChange={(e) => setSimForm({ ...simForm, route_fare_id: e.target.value })}
@@ -431,7 +431,7 @@ export default function DynamicPricingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Target Flight Date</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Target Flight Date</label>
                   <input
                     type="date"
                     value={simForm.flight_date}
@@ -442,7 +442,7 @@ export default function DynamicPricingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Hypothetical Bookings</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Hypothetical Bookings</label>
                   <input
                     type="number"
                     min="0"
@@ -472,37 +472,41 @@ export default function DynamicPricingPage() {
                     <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                       Simulation Breakdown
                     </span>
-                    <span className="font-mono text-sm font-black text-amber-700">
-                      Final: {simResult.currency || 'INR'} {Number(simResult.final_calculated_price).toLocaleString('en-IN')}
+                    <span className="text-sm font-black text-amber-700 tabular-nums">
+                      Final: {simResult.currency || 'INR'} {Number(simResult.final_calculated_price ?? simResult.final_price ?? 0).toLocaleString('en-IN')}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Base Fare</span>
-                      <strong className="font-mono text-slate-800">
-                        {simResult.currency || 'INR'} {Number(simResult.base_price).toLocaleString('en-IN')}
+                      <strong className="text-slate-800 font-bold tabular-nums">
+                        {simResult.currency || 'INR'} {Number(simResult.base_price || 0).toLocaleString('en-IN')}
                       </strong>
                     </div>
 
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Weekend Surge</span>
                       <strong className="text-slate-800">
-                        {simResult.is_weekend ? `${simResult.weekend_multiplier}x` : '1.00x'}
+                        {simResult.weekend_multiplier ? `${simResult.weekend_multiplier}x` : '1.00x'}
                       </strong>
                     </div>
 
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Holiday Surge</span>
                       <strong className="text-slate-800">
-                        {simResult.holiday_applied ? `${simResult.holiday_multiplier}x (${simResult.holiday_applied})` : '1.00x'}
+                        {simResult.holiday_name ? `${simResult.holiday_multiplier}x (${simResult.holiday_name})` : (simResult.holiday_applied ? `${simResult.holiday_multiplier}x (${simResult.holiday_applied})` : '1.00x')}
                       </strong>
                     </div>
 
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Total Surge Cap</span>
                       <strong className="text-slate-800">
-                        {simResult.combined_multiplier}x
+                        {simResult.combined_multiplier !== undefined && simResult.combined_multiplier !== null
+                          ? `${simResult.combined_multiplier}x`
+                          : (Number(simResult.base_price) > 0
+                              ? `${(Number(simResult.final_price ?? simResult.final_calculated_price ?? 0) / Number(simResult.base_price)).toFixed(2)}x`
+                              : '1.00x')}
                       </strong>
                     </div>
                   </div>
@@ -562,10 +566,10 @@ export default function DynamicPricingPage() {
                           {h.country_name || (h.country ? `Country #${h.country}` : 'Global (All Countries)')}
                         </span>
                       </td>
-                      <td className="text-xs font-mono text-slate-600">{h.start_date}</td>
-                      <td className="text-xs font-mono text-slate-600">{h.end_date}</td>
+                      <td className="text-xs font-medium text-slate-600 tabular-nums">{h.start_date}</td>
+                      <td className="text-xs font-medium text-slate-600 tabular-nums">{h.end_date}</td>
                       <td>
-                        <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 tabular-nums">
                           {h.multiplier}x
                         </span>
                       </td>
@@ -618,11 +622,9 @@ export default function DynamicPricingPage() {
                   <tr>
                     <th>Timestamp</th>
                     <th>Flight Instance</th>
-                    <th>Fare Code</th>
                     <th>Cabin Class</th>
                     <th>Old Price</th>
                     <th>Calculated New Price</th>
-                    <th>Multiplier Applied</th>
                     <th>Trigger Reason</th>
                   </tr>
                 </thead>
@@ -652,11 +654,6 @@ export default function DynamicPricingPage() {
                           </div>
                         </td>
                         <td>
-                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-bold text-slate-800">
-                            {log.fare || '—'}
-                          </span>
-                        </td>
-                        <td>
                           <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                             log.cabin_class === 'FIRST' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                             log.cabin_class === 'BUSINESS' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
@@ -665,16 +662,11 @@ export default function DynamicPricingPage() {
                             {log.cabin_class || 'ECONOMY'}
                           </span>
                         </td>
-                        <td className="font-mono text-xs text-slate-500">
+                        <td className="text-xs font-semibold text-slate-500 tabular-nums">
                           {curr} {oldP.toLocaleString('en-IN')}
                         </td>
-                        <td className="font-mono text-xs font-bold text-slate-900">
+                        <td className="text-xs font-bold text-slate-900 tabular-nums">
                           {curr} {newP.toLocaleString('en-IN')}
-                        </td>
-                        <td>
-                          <span className="font-mono text-xs font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                            {log.multiplier_applied}x
-                          </span>
                         </td>
                         <td className="text-xs text-slate-600 font-medium">
                           {log.trigger_reason || 'Periodic Evaluation'}
