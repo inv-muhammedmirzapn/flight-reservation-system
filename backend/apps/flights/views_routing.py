@@ -137,3 +137,33 @@ class RecommendRoutesView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
+class CheapestRouteView(APIView):
+    """
+    API endpoint to find the least expensive route using Dijkstra's algorithm based on ticket price.
+    """
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="source", description="Source Airport IATA Code", required=True, type=str),
+            OpenApiParameter(name="destination", description="Destination Airport IATA Code", required=True, type=str),
+        ],
+        responses={200: dict, 400: dict, 404: dict},
+        tags=["[Customer] Route Optimization"]
+    )
+    def get(self, request, *args, **kwargs):
+        source_iata = request.query_params.get("source")
+        dest_iata = request.query_params.get("destination")
+
+        if not source_iata or not dest_iata:
+            return Response(
+                {"error": "Both 'source' and 'destination' query parameters are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        optimizer = RouteOptimizer()
+        result = optimizer.cheapest_route_dijkstra(source_iata, dest_iata)
+
+        if "error" in result:
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(result, status=status.HTTP_200_OK)

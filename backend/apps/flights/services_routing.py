@@ -51,10 +51,10 @@ class FlightGraph:
 
         # Load active flight legs
         active_routes = FlightRoute.objects.filter(is_active=True)
-        # Select related to avoid N+1 problem
+        # Select related to avoid N+1 problem and prefetch fare_classes for pricing algorithms
         legs = FlightLeg.objects.filter(flight__in=active_routes).select_related(
             "departure_airport", "arrival_airport", "flight"
-        )
+        ).prefetch_related("flight__fare_classes")
 
         for leg in legs:
             dep_code = leg.departure_airport.iata_code
@@ -266,6 +266,81 @@ class RouteOptimizer:
                         }
                     )
                     heapq.heappush(pq, (new_time, neighbor, new_path))
+
+        return {"error": f"No active route found between {source_iata} and {dest_iata}."}
+
+    def cheapest_route_dijkstra(self, source_iata: str, dest_iata: str) -> Dict[str, Any]:
+        """
+        Find the route with the minimum total ticket price using Dijkstra's algorithm.
+        """
+        source_iata = source_iata.upper()
+        dest_iata = dest_iata.upper()
+
+        if source_iata not in self.graph.adj_list or dest_iata not in self.graph.adj_list:
+            return {"error": "Source or destination airport not found in the active network."}
+
+        # min-heap priority queue
+        # stores tuples of (total_price, current_airport, path_taken)
+        pq = [(0, source_iata, [])]
+
+        # Keep track of cheapest prices
+        cheapest_prices = {airport: float("inf") for airport in self.graph.adj_list}
+        cheapest_prices[source_iata] = 0
+
+        while pq:
+            current_price, current_node, path = heapq.heappop(pq)
+
+            if current_node == dest_iata:
+                formatted_path = []
+                for hop in path:
+                    leg = hop["leg"]
+                    formatted_path.append(
+                        {
+                            "flight_no": leg.flight.flight_no,
+                            "departure_airport": leg.departure_airport.iata_code,
+                            "arrival_airport": leg.arrival_airport.iata_code,
+                            "price": float(hop["price"]),
+                        }
+                    )
+
+                return {
+                    "source": source_iata,
+                    "destination": dest_iata,
+                    "total_price": float(current_price),
+                    "route": formatted_path,
+                }
+
+            if current_price > cheapest_prices[current_node]:
+                continue
+
+            for neighbor, data in self.graph.adj_list[current_node].items():
+                # We need to find the leg with the minimum price
+                best_leg = None
+                min_price = float('inf')
+                
+                for leg in data["legs"]:
+                    # Find economy base price
+                    fare_class = next((fc for fc in leg.flight.fare_classes.all() if fc.cabin_class == "ECONOMY"), None)
+                    price = float(fare_class.base_price) if fare_class else float('inf')
+                    if price < min_price:
+                        min_price = price
+                        best_leg = leg
+                
+                if not best_leg or min_price == float('inf'):
+                    continue
+
+                new_price = current_price + min_price
+
+                if new_price < cheapest_prices[neighbor]:
+                    cheapest_prices[neighbor] = new_price
+                    new_path = list(path)
+                    new_path.append(
+                        {
+                            "leg": best_leg,
+                            "price": min_price,
+                        }
+                    )
+                    heapq.heappush(pq, (new_price, neighbor, new_path))
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 

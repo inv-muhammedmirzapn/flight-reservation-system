@@ -17,6 +17,7 @@ from .views_routing import (
     MinimumStopsRouteView,
     FastestRouteView,
     RecommendRoutesView,
+    CheapestRouteView,
 )
 
 app_name = "apps/flights"
@@ -54,6 +55,7 @@ urlpatterns = [
     path("route-optimization/shortest-distance/", ShortestDistanceRouteView.as_view(), name="shortest-distance-route"),
     path("route-optimization/minimum-stops/", MinimumStopsRouteView.as_view(), name="minimum-stops-route"),
     path("route-optimization/fastest/", FastestRouteView.as_view(), name="fastest-route"),
+    path("route-optimization/cheapest/", CheapestRouteView.as_view(), name="cheapest-route"),
     path("route-optimization/recommend/", RecommendRoutesView.as_view(), name="recommend-routes"),
 
     # ── New entity endpoints ─────────────────────────────────────────────────
