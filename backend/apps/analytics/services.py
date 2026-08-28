@@ -9,8 +9,9 @@ from apps.bookings.models import Booking, BookingStatus
 from apps.flights.models import FlightInstance, InstanceStatus
 
 
-# ─── Shared filter helpers ───────────────────────────────────────────────────
+# ─── Shared filter helpers
 
+#The filtered QuerySet is returned.
 def _apply_booking_filters(qs, start_date=None, end_date=None,
                            airline_id=None, aircraft_id=None):
     """Apply optional date/airline/aircraft filters to a Booking queryset."""
@@ -39,7 +40,6 @@ def _apply_instance_filters(qs, start_date=None, end_date=None,
     return qs
 
 
-# ─── Summary Stats ────────────────────────────────────────────────────────────
 
 def get_summary_stats(start_date=None, end_date=None,
                       airline_id=None, aircraft_id=None) -> dict:
@@ -54,6 +54,8 @@ def get_summary_stats(start_date=None, end_date=None,
       - scheduled_flights  (FlightInstances with SCHEDULED status)
     Supports optional filtering by date range, airline, aircraft.
     """
+
+    #Base booking QuerySet is created using the _apply_booking_filters helper
     base_qs = _apply_booking_filters(
         Booking.objects.all(), start_date, end_date, airline_id, aircraft_id
     )
@@ -63,11 +65,13 @@ def get_summary_stats(start_date=None, end_date=None,
     cancelled = base_qs.filter(status=BookingStatus.CANCELLED).count()
     cancellation_rate = round((cancelled / total * 100), 2) if total > 0 else 0.0
 
+    #Total revenue from confirmed bookings is calculated by filtering for confirmed bookings and summing their total_price
     revenue_result = (
         base_qs
         .filter(status=BookingStatus.CONFIRMED)
         .aggregate(total=Sum("total_price"))
     )
+    #Convert revenue to float and handels the case where there is no revenue
     total_revenue = float(revenue_result["total"] or 0)
 
     # Fleet stats from FlightInstance
@@ -77,6 +81,7 @@ def get_summary_stats(start_date=None, end_date=None,
     total_flights = fi_qs.count()
     scheduled_flights = fi_qs.filter(status=InstanceStatus.SCHEDULED).count()
 
+    #Return a dictionary
     return {
         "total_bookings": total,
         "confirmed_bookings": confirmed,
@@ -106,15 +111,23 @@ def get_monthly_revenue(months: int = 12, start_date=None, end_date=None,
 
     # Initialize a dict to ensure all months in the window are present
     revenue_map = {}
+    # Starts at the first month.
     curr = cutoff
     end_curr = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
+    # strftime("%Y-%m") converts a date into: 
+    #Year(4 digits)-Month(2 digits)
+    # E.g. 2025-06
+    #This ensures months with zero revenue are still returned
     while curr <= end_curr:
         revenue_map[curr.strftime("%Y-%m")] = 0.0
         curr += relativedelta(months=1)
 
+
     qs = Booking.objects.filter(status=BookingStatus.CONFIRMED, created_at__gte=cutoff)
     qs = _apply_booking_filters(qs, start_date, end_date, airline_id, aircraft_id)
+
+    # calculates revenue for each month.
     qs = (
         qs
         .annotate(month=TruncMonth("created_at"))
@@ -122,11 +135,13 @@ def get_monthly_revenue(months: int = 12, start_date=None, end_date=None,
         .annotate(revenue=Sum("total_price"))
         .order_by("month")
     )
-
+    
+    # Loop through the database results
     for item in qs:
         month_str = item["month"].strftime("%Y-%m")
         revenue_map[month_str] = float(item["revenue"] or 0)
 
+    #Convert the final result into a list of dicts
     return [
         {"month": m, "revenue": revenue_map[m]}
         for m in sorted(revenue_map.keys())
@@ -148,30 +163,43 @@ def get_popular_routes(top_n: int = 10, start_date=None, end_date=None,
     qs = (
         qs
         .values(flight_route=F("flight__flight__flight_no"))
-        .annotate(bookings=Count("id"))
+        .annotate(bookings=Count("id")) #Counts bookings for each flight route.
         .order_by("-bookings")[:top_n * 2]  # fetch extra to allow for leg resolution
     )
 
+    #An empty list where final routes will go.
     results = []
+    #A set to keep track of flight routes already processed
     seen_routes = set()
+
+    #loop through the database results
     for item in qs:
+        #get the flight_no from the item
         flight_no = item["flight_route"]
+
+        #if the flight_no is already in the set, skip it
         if flight_no in seen_routes:
             continue
         seen_routes.add(flight_no)
 
+
         # Resolve source/destination from FlightLeg
         from apps.flights.models import FlightRoute, FlightLeg
         try:
+            # Find the FlightRoute matching the flight number.
             fr = FlightRoute.objects.get(flight_no=flight_no)
+            # Get the first and last leg of the flight route.
             first_leg = fr.legs.order_by('leg_order').first()
             last_leg = fr.legs.order_by('leg_order').last()
+            # Get the source and destination airport IATA codes.
             src = first_leg.departure_airport.iata_code if first_leg else "N/A"
             dst = last_leg.arrival_airport.iata_code if last_leg else "N/A"
+        
         except FlightRoute.DoesNotExist:
             src = "N/A"
             dst = "N/A"
 
+        #Append the results to the list.
         results.append({
             "source": src,
             "destination": dst,
@@ -197,7 +225,11 @@ def get_flight_occupancy(top_n: int = 15, start_date=None, end_date=None,
     """
     pool = top_n * 4
 
+    #selects the FlightInstance table with related flight and airline data.
+    #select_related acts like a join in sql query.
     instances_qs = FlightInstance.objects.select_related('flight', 'flight__airline')
+    
+    #distinct=True helps prevent duplicate counting caused by joins across related tables.
     instances_qs = _apply_instance_filters(instances_qs, start_date, end_date, airline_id, aircraft_id)
     
     # Aggregate across all instances of the same flight route

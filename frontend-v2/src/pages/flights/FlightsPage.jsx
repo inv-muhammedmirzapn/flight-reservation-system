@@ -42,15 +42,24 @@ export default function FlightsPage() {
     stops: "",
     airlines: [],
     waitlistMode: "all",
-    maxFare: bounds?.max_price || bounds?.max || 100000
+    maxFare: 100000
   });
+
+  // Reset maxFare when core search parameters change (route or cabin class)
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      maxFare: 100000
+    }));
+  }, [from, to, cabinClassParam]);
 
   // Sync draft maxFare when bounds load
   useEffect(() => {
     if (bounds && (bounds.max_price || bounds.max)) {
+      const boundMax = bounds.max_price || bounds.max;
       setFilters(prev => ({
         ...prev,
-        maxFare: prev.maxFare === 100000 ? (bounds.max_price || bounds.max) : prev.maxFare
+        maxFare: prev.maxFare === 100000 ? boundMax : prev.maxFare
       }));
     }
   }, [bounds]);

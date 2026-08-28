@@ -432,9 +432,9 @@ export default function FlightInstancesPage() {
             <div className="admin-empty"><p>No instances. Create one above.</p></div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="admin-table">
+              <table className="admin-table fi-table">
                 <thead>
-                  <tr><th>Flight No</th><th>Date</th><th>Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
+                  <tr><th>Flight No</th><th>Date</th><th className="fi-aircraft-col">Aircraft</th><th>Status</th><th>Departure</th><th>Arrival</th><th style={{ textAlign: 'center' }}>Actions</th></tr>
                 </thead>
                 <tbody>
                   {instances.map((inst) => {

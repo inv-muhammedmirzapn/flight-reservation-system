@@ -1,3 +1,5 @@
+import { Loader2 } from 'lucide-react';
+
 export function TableSkeletonLoader({ rows = 5 }) {
   return (
     <div className="p-4">
@@ -12,7 +14,11 @@ export function TableSkeletonLoader({ rows = 5 }) {
   );
 }
 
-export function SpinnerLoader() {
+export function SpinnerLoader({ size, className = '' }) {
+  if (size) {
+    return <Loader2 size={size} className={`animate-spin shrink-0 ${className}`} />;
+  }
+
   return (
     <div className="admin-spinner-wrap">
       <div className="admin-spinner" />

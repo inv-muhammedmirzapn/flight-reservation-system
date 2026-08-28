@@ -1,5 +1,6 @@
 import logging
 import uuid
+from decimal import Decimal
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -184,6 +185,16 @@ class FlightRoute(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+    @property
+    def origin_airport(self):
+        first_leg = self.legs.order_by("leg_order").first()
+        return first_leg.departure_airport if first_leg else None
+
+    @property
+    def destination_airport(self):
+        last_leg = self.legs.order_by("leg_order").last()
+        return last_leg.arrival_airport if last_leg else None
 
     def __str__(self):
         return f"{self.flight_no} ({self.airline.iata_airline_code})"
@@ -566,3 +577,6 @@ class FlightMealItem(models.Model):
 
     def __str__(self):
         return f"{self.food_item.name} x{self.quantity} in {self.flight_meal}"
+
+
+from apps.pricing.models import DynamicPricingConfig, HolidayEvent, DynamicPriceLog
