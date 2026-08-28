@@ -225,6 +225,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
             return new Intl.NumberFormat('en-IN', {
               style: 'currency',
               currency: itemCurrency,
+              currencyDisplay: 'narrowSymbol',
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             }).format(amount);

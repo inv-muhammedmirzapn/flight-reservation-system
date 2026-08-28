@@ -672,6 +672,9 @@ export default function FlightSearchHeader({ onSearchChange }) {
         initialArrDate={arrDate}
         onSelectDates={handleSelectDates}
         initialTab={calendarTab}
+        source={from}
+        destination={to}
+        cabinClass={cabinClass}
       />
     </div>
   );
