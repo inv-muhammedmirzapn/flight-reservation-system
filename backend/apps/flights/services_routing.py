@@ -2,6 +2,7 @@ import math
 import heapq
 from collections import deque
 from typing import Dict, Any, List
+from datetime import timedelta
 
 from apps.flights.models import Airport, FlightLeg, FlightRoute
 
@@ -325,9 +326,29 @@ class RouteOptimizer:
             formatted_path = []
             total_duration = 0
             
+            # Keep track of the arrival time of the previous leg to ensure valid connections
+            previous_arrival_time = None
+            is_valid_time_route = True
+            
             for hop in route_path:
-                # Pick the leg with the minimum duration for the recommendation
-                best_leg = min(hop["legs"], key=lambda l: l.flight_duration_minutes + l.layover_duration_minutes)
+                valid_legs = hop["legs"]
+                
+                # Filter legs: the next flight must depart at least 1 hour after we land
+                if previous_arrival_time:
+                    min_departure_time = previous_arrival_time + timedelta(hours=1)
+                    valid_legs = [l for l in valid_legs if l.scheduled_departure and l.scheduled_departure >= min_departure_time]
+                
+                if not valid_legs:
+                    # If no flights are leaving after we land, this route is physically impossible
+                    is_valid_time_route = False
+                    break
+                
+                # Pick the leg with the minimum duration from the physically VALID legs
+                best_leg = min(valid_legs, key=lambda l: l.flight_duration_minutes + l.layover_duration_minutes)
+                
+                # Update our arrival time for the next hop's calculation
+                previous_arrival_time = best_leg.scheduled_arrival
+                
                 formatted_path.append(
                     {
                         "flight_no": best_leg.flight.flight_no,
@@ -338,11 +359,13 @@ class RouteOptimizer:
                 )
                 total_duration += best_leg.flight_duration_minutes + best_leg.layover_duration_minutes
 
-            formatted_routes.append({
-                "route": formatted_path,
-                "total_stops": len(formatted_path) - 1,
-                "total_duration_minutes": total_duration
-            })
+            # Only add this route to our final list if ALL connecting flights had valid timings
+            if is_valid_time_route:
+                formatted_routes.append({
+                    "route": formatted_path,
+                    "total_stops": len(formatted_path) - 1,
+                    "total_duration_minutes": total_duration
+                })
 
         # Sort by fewest stops, then by shortest duration
         formatted_routes.sort(key=lambda x: (x["total_stops"], x["total_duration_minutes"]))

@@ -416,28 +416,30 @@ class Command(BaseCommand):
 
         # Other Global Routes
         other_route_templates = [
-            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30)),
-            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0)),
-            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45)),
-            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA", Decimal("95000.00"), time(23, 50)),
-            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A", Decimal("88000.00"), time(11, 0)),
-            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA", Decimal("58000.00"), time(10, 45)),
-            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA", Decimal("60000.00"), time(14, 10)),
-            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30)),
-            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0)),
-            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15)),
-            ("QR001", "QR", "DOH", "LHR", 7, 15, "A7-BBA", Decimal("65000.00"), time(6, 45)),
-            ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA", Decimal("59000.00"), time(13, 30)),
-            ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN", Decimal("48000.00"), time(7, 0)),
-            ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO", Decimal("22000.00"), time(22, 30)),
-            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55)),
+            # fno, al, dep, arr, hrs, mins, ac_reg, base_fare, dep_t, day_offset
+            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30), 2),
+            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0), 2),
+            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45), 0),
+            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA", Decimal("95000.00"), time(23, 50), 1),
+            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A", Decimal("88000.00"), time(11, 0), 0),
+            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA", Decimal("58000.00"), time(10, 45), 0),
+            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA", Decimal("60000.00"), time(14, 10), 0),
+            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30), 0),
+            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0), 0),
+            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15), 0),
+            ("QR001", "QR", "DOH", "LHR", 7, 15, "A7-BBA", Decimal("65000.00"), time(6, 45), 0),
+            ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA", Decimal("59000.00"), time(13, 30), 0),
+            ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN", Decimal("48000.00"), time(7, 0), 0),
+            ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO", Decimal("22000.00"), time(22, 30), 0),
+            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55), 0),
             # NEW: Added for testing route recommendations (SYD -> JFK has no direct flight, but 3 connecting paths)
-            ("EK413", "EK", "SYD", "DXB", 14, 30, "A6-EEO", Decimal("80000.00"), time(21, 45)),
-            ("SQ222", "SQ", "SYD", "SIN", 8, 5, "9V-SNA", Decimal("60000.00"), time(16, 10)),
+            ("EK413", "EK", "SYD", "DXB", 14, 30, "A6-EEO", Decimal("80000.00"), time(21, 45), 0),
+            ("SQ222", "SQ", "SYD", "SIN", 8, 5, "9V-SNA", Decimal("60000.00"), time(16, 10), 0),
         ]
 
-        for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:
-            sch_dep = datetime.combine(today, dep_t)
+        for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t, day_offset in other_route_templates:
+            adjusted_date = today + timedelta(days=day_offset)
+            sch_dep = datetime.combine(adjusted_date, dep_t)
             sch_arr = sch_dep + timedelta(hours=hrs, minutes=mins)
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
