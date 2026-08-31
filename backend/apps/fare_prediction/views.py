@@ -45,12 +45,22 @@ class FarePredictionView(APIView):
                 "properties": {
                     "flight_instance_id": {"type": "integer"},
                     "cabin_class": {"type": "string"},
-                    "direction": {"type": "string", "enum": ["INCREASE", "STABLE", "DECREASE"]},
+                    "direction": {
+                        "type": "string",
+                        "enum": ["INCREASE", "STABLE", "DECREASE", "DEPARTED"],
+                        "description": (
+                            "DEPARTED means the flight has already left. "
+                            "days_until_departure will be a negative number indicating how many days ago it departed."
+                        ),
+                    },
                     "confidence": {"type": "integer"},
                     "current_price": {"type": "number"},
                     "currency": {"type": "string"},
                     "occupancy_pct": {"type": "number"},
-                    "days_until_departure": {"type": "integer"},
+                    "days_until_departure": {
+                        "type": "integer",
+                        "description": "Positive = days remaining. Negative = days since departure (DEPARTED flights).",
+                    },
                     "factors": {"type": "array", "items": {"type": "string"}},
                     "advice": {"type": "string"},
                 },

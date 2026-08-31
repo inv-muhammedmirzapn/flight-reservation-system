@@ -121,4 +121,10 @@ export const flightsAPI = {
     const qs = new URLSearchParams(params);
     return fetchWithAuth(`/flights/route-optimization/recommend/?${qs.toString()}`);
   },
+
+  // Fare prediction
+  getFarePrediction: async (flightInstanceId, cabinClass = 'ECONOMY') => {
+    return fetchWithAuth(`/fare-prediction/${flightInstanceId}/?cabin_class=${cabinClass}`);
+  },
+
 };

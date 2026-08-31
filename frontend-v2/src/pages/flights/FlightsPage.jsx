@@ -14,7 +14,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
   const hops = route.hops || (route.route ? route.route.map((leg) => ({ options: [leg] })) : []);
 
   // State for selected option index per hop: { [hopIndex]: optionIndex }
-  const [selectedIndices, setSelectedIndices] = useState({});
+  const [selectedIndices, _setSelectedIndices] = useState({});
 
   // Active leg for each hop based on selection
   const activeLegs = hops.map((hop, hIdx) => {
@@ -126,7 +126,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
       {/* Hops/Legs */}
       <div className="flex flex-col gap-3">
         {hops.map((hop, hopIdx) => {
-          const sIdx = selectedIndices[hopIdx] || 0;
+          // const sIdx = selectedIndices[hopIdx] || 0;
           const leg = activeLegs[hopIdx] || {};
 
           const depTime = fmtTime(leg.departure_time);
@@ -295,11 +295,11 @@ export default function FlightsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 10;
-  
+
   const dispatch = useDispatch();
   const { bounds } = useSelector((state) => state.flights);
-  const user = useSelector((state) => state.auth.user);
-  
+  // const user = useSelector((state) => state.auth.user);
+
   useEffect(() => {
     dispatch(fetchFlightBounds({
       source: from,
@@ -321,20 +321,24 @@ export default function FlightsPage() {
 
   // Reset maxFare when core search parameters change (route or cabin class)
   useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      maxFare: 100000
-    }));
+    setFilters(prev => {
+      if (prev.maxFare === 100000) return prev; // already reset, skip to avoid extra re-render
+      return { ...prev, maxFare: 100000 };
+    });
   }, [from, to, cabinClassParam]);
 
   // Sync draft maxFare when bounds load
   useEffect(() => {
     if (bounds && (bounds.max_price || bounds.max)) {
       const boundMax = bounds.max_price || bounds.max;
-      setFilters(prev => ({
-        ...prev,
-        maxFare: prev.maxFare === 100000 ? boundMax : prev.maxFare
-      }));
+      setFilters(prev => {
+        const newMax = prev.maxFare === 100000 ? boundMax : prev.maxFare;
+        if (prev.maxFare === newMax) return prev;
+        return {
+          ...prev,
+          maxFare: newMax
+        };
+      });
     }
   }, [bounds]);
 
@@ -564,7 +568,7 @@ export default function FlightsPage() {
               // Compute algorithm optimization badges across all displayed flights
               const normCab = (cabinClassParam || "Economy").toUpperCase().includes("BUSINESS")
                 ? "BUSINESS" : (cabinClassParam || "Economy").toUpperCase().includes("FIRST")
-                ? "FIRST" : "ECONOMY";
+                  ? "FIRST" : "ECONOMY";
 
               const getFare = (f) => {
                 const fares = f.fares;
