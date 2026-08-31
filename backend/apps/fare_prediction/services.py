@@ -88,7 +88,26 @@ class FarePredictionService:
 
         # Check if the departure is on a weekend
         is_weekend = departure.weekday() in [4, 5, 6]  # Fri, Sat, Sun
-        
+
+        # Check if departure falls on or near a major Indian public holiday
+        INDIAN_HOLIDAYS = {
+            (1, 1):   "New Year's Day",
+            (1, 26):  "Republic Day",
+            (3, 25):  "Holi",
+            (4, 14):  "Ambedkar Jayanti",
+            (8, 15):  "Independence Day",
+            (10, 2):  "Gandhi Jayanti",
+            (10, 24): "Dussehra",
+            (11, 1):  "Diwali",
+            (12, 25): "Christmas",
+        }
+        dep_month_day = (departure.month, departure.day)
+        is_holiday = dep_month_day in INDIAN_HOLIDAYS
+        holiday_name = INDIAN_HOLIDAYS.get(dep_month_day, None)
+
+        # Peak season: April-June (summer), Oct-Nov (festive), Dec-Jan (winter)
+        is_peak_season = departure.month in [4, 5, 6, 10, 11, 12, 1]
+
         # Calculate booking velocity over the last 48 hours
         cutoff_48h = now - timedelta(hours=48)
         booking_velocity = Booking.objects.filter(
@@ -136,6 +155,14 @@ class FarePredictionService:
         elif booking_velocity >= 5:
             score += 1
             factors.append("Booking activity has increased over the last 48 hours.")
+
+        # Seasonal / holiday scoring
+        if is_holiday:
+            score += 2
+            factors.append(f"Departure is on {holiday_name} — demand surges on public holidays.")
+        elif is_peak_season:
+            score += 1
+            factors.append("Departure is during peak travel season — higher demand expected.")
             
         # 5. Determine direction
         if score >= 3:

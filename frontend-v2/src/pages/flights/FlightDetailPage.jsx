@@ -5,6 +5,7 @@ import { flightsAPI } from "@/services/flight-service/flightService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
 import CabinClassSelector from "@/components/flights/CabinClassSelector";
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
+import FarePredictionBadge from "@/components/flights/FarePredictionBadge"; 
 import toast from "react-hot-toast";
 
 export default function FlightDetailPage() {
@@ -145,6 +146,14 @@ export default function FlightDetailPage() {
 
         {/* Right Panel (Sticky Fare Details & Proceed Action) */}
         <div className="w-full lg:w-80 xl:w-96 lg:sticky lg:top-24 flex-shrink-0 space-y-4">
+
+          {/* Fare Prediction Badge */}
+          <FarePredictionBadge
+            flightInstanceId={id}
+            cabinClass={selectedCabin}
+          />
+          
+          {/* Fare Details Card */}
           <FareDetailsCard
             flight={flight}
             selectedCabin={selectedCabin}
