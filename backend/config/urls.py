@@ -15,7 +15,7 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/bulk-upload/', include('apps.bulk_upload.urls')),
     path('api/fare-prediction/', include('apps.fare_prediction.urls')),
-
+    path('api/comparison/', include('apps.comparison.urls')),
 
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
