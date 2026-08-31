@@ -98,7 +98,9 @@ class FarePredictionService:
         else:
             direction = "STABLE"
 
-        # 6. Confidence: 50% base + 10% per point of score magnitude, never exceed 95%
+        # 6. Confidence: 50% base + 10% per point of score magnitude, never exceed 95%.
+        # abs() is correct here — confidence measures certainty in the direction (INCREASE or DECREASE),
+        # so a strong negative score (e.g. very low occupancy) should still yield high confidence.
         confidence = min(95, 50 + abs(score) * 10)
 
         # 7. Advice text

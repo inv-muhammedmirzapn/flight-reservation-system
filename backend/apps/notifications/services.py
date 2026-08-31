@@ -9,10 +9,13 @@ from . import email_templates as tpl
 logger = logging.getLogger(__name__)
 
 
-
+#central service responsible for notifications and emails.
 class NotificationService:
+    # A static method doesn't need the class or object instance.
     @staticmethod
+
     def _create_notification(user, title, message, notification_type, related_object_id=None, link=None):
+       #  Create and save a new notification record in the database.
         return Notification.objects.create(
             user=user,
             title=title,
@@ -31,6 +34,8 @@ class NotificationService:
         if not user_email:
             return
 
+        # `re` handles HTML replacement, `os` handles file paths,
+        # and MIMEImage embeds the logo inside the email.
         import re
         import os
         from email.mime.image import MIMEImage
@@ -38,9 +43,10 @@ class NotificationService:
         from_email = getattr(settings, 'EMAIL_HOST_USER', 'noreply@flightreservation.com')
 
         # Replace base64 src with CID reference
+        # so the logo can be embedded as an email attachment.
         html_with_cid = re.sub(r'src="data:image/[^"]*"', 'src="cid:passenger_logo"', html_body)
 
-        # Strip tags for plain-text fallback
+       # Convert HTML email content into plain text for email clients
         plain_text = re.sub(r'<[^>]+>', ' ', html_body)
         plain_text = re.sub(r'\s+', ' ', plain_text).strip()
 
@@ -51,15 +57,17 @@ class NotificationService:
                 from_email=from_email,
                 to=[user_email],
             )
+            # Attach the HTML version of the email alongside the plain-text version.
             msg.attach_alternative(html_with_cid, "text/html")
 
-            # Attach logo as inline CID image
+             # Build the filesystem path to the frontend logo image.
             logo_path = os.path.normpath(
                 os.path.join(str(settings.BASE_DIR), '..', 'frontend', 'public', 'updated logo.png')
             )
             if os.path.isfile(logo_path):
                 with open(logo_path, 'rb') as f:
                     img = MIMEImage(f.read(), _subtype='png')
+                # Give the embedded image a Content-ID matching the CID used in the HTML.
                 img.add_header('Content-ID', '<passenger_logo>')
                 img.add_header('Content-Disposition', 'inline')
                 msg.attach(img)
@@ -67,8 +75,9 @@ class NotificationService:
             # Attach PDF ticket if provided
             if pdf_attachment and pdf_filename:
                 msg.attach(pdf_filename, pdf_attachment, 'application/pdf')
-
+            #fail_silently=False means: If sending fails, don't silently ignore the error.
             msg.send(fail_silently=False)
+
         except Exception:
             logger.exception(f"FAILED TO SEND EMAIL TO {user_email}")
 
@@ -78,6 +87,8 @@ class NotificationService:
         if 'test' in sys.argv or getattr(settings, 'TESTING', False):
             NotificationService._send_email_task(user_email, subject, html_body, pdf_attachment, pdf_filename)
         else:
+            # Run email sending in a separate thread so the main request
+            # doesn't have to wait for the email operation.
             thread = threading.Thread(
                 target=NotificationService._send_email_task,
                 args=(user_email, subject, html_body, pdf_attachment, pdf_filename)
