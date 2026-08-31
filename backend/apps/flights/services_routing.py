@@ -54,7 +54,7 @@ class FlightGraph:
         # Select related to avoid N+1 problem and prefetch fare_classes for pricing algorithms
         legs = FlightLeg.objects.filter(flight__in=active_routes).select_related(
             "departure_airport", "arrival_airport", "flight"
-        ).prefetch_related("flight__fare_classes")
+        ).prefetch_related("flight__fare_classes", "flight__legs")
 
         for leg in legs:
             dep_code = leg.departure_airport.iata_code
@@ -427,7 +427,14 @@ class RouteOptimizer:
             previous_earliest_arrival = None
 
             for hop_idx, hop in enumerate(route_path):
-                candidate_legs = hop["legs"]
+                # Filter out legs that belong to multi-leg flights.
+                # We only want direct flights (stops=0) for recommendations to avoid pricing/booking issues.
+                candidate_legs = [leg for leg in hop["legs"] if len(leg.flight.legs.all()) == 1]
+                
+                if not candidate_legs:
+                    is_valid_route = False
+                    break
+                    
                 from_iata = candidate_legs[0].departure_airport.iata_code if candidate_legs else "?"
                 to_iata = hop["dest"]
 

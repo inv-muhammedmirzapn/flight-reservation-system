@@ -434,7 +434,15 @@ class Command(BaseCommand):
             ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55), 0),
             # NEW: Added for testing route recommendations (SYD -> JFK has no direct flight, but 3 connecting paths)
             ("EK413", "EK", "SYD", "DXB", 14, 30, "A6-EEO", Decimal("80000.00"), time(21, 45), 0),
+            ("EK505", "EK", "DXB", "HAM", 6, 30, "A6-EEO", Decimal("48000.00"), time(14, 15), 0), # Added to complete SYD -> DXB -> HAM direct flight connections
             ("SQ222", "SQ", "SYD", "SIN", 8, 5, "9V-SNA", Decimal("60000.00"), time(16, 10), 0),
+            ("SQ333", "SQ", "SIN", "HAM", 13, 15, "9V-SNA", Decimal("65000.00"), time(3, 0), 0), # Added to complete SYD -> SIN -> HAM
+            ("BA888", "BA", "LHR", "HAM", 1, 45, "G-ZBLB", Decimal("15000.00"), time(17, 0), 0), # Added to complete SYD -> LHR -> HAM
+            
+            # NEW: 2-stop route testing (SYD -> BKK -> IST -> HAM) with increased rates
+            ("QF111", "QF", "SYD", "BKK", 9, 0, "VH-ZNA", Decimal("58000.00"), time(8, 0), 0),
+            ("TK222", "TK", "BKK", "IST", 10, 0, "TC-JNA", Decimal("62000.00"), time(20, 0), 0),
+            ("TK333", "TK", "IST", "HAM", 3, 30, "TC-JNA", Decimal("38000.00"), time(9, 0), 0),
         ]
 
         for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t, day_offset in other_route_templates:
