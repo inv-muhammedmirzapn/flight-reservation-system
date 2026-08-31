@@ -124,11 +124,21 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             {!isDelayed && isWaitlisted && (
               <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">Waitlist</span>
             )}
-            {optimizationBadge && (
-              <span className="text-[9px] font-bold text-white bg-slate-800 px-2 py-0.5 rounded-full tracking-wide">
-                {optimizationBadge}
-              </span>
-            )}
+            {optimizationBadge && (() => {
+              const badgeIcon = {
+                "Cheapest": "sell",
+                "Fastest": "bolt",
+                "Direct": "flight_takeoff",
+                "Fewest Stops": "commit",
+                "Shortest": "route",
+              }[optimizationBadge] || "star";
+              return (
+                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-slate-900 bg-white border border-slate-200 px-2 py-1 rounded-lg tracking-wide shadow-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: "11px", lineHeight: 1, fontVariationSettings: "'FILL' 1" }}>{badgeIcon}</span>
+                  {optimizationBadge}
+                </span>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2">
             {logoSrc && (
@@ -232,11 +242,21 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-bold text-slate-900 truncate">{airline}</span>
               <span className="text-[10px] font-semibold text-slate-500">{flight_number}</span>
-              {optimizationBadge && (
-                <span className="text-[8px] font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded-full mt-0.5 self-start tracking-wide">
-                  {optimizationBadge}
-                </span>
-              )}
+              {optimizationBadge && (() => {
+                const badgeIcon = {
+                  "Cheapest": "sell",
+                  "Fastest": "bolt",
+                  "Direct": "flight_takeoff",
+                  "Fewest Stops": "commit",
+                  "Shortest": "route",
+                }[optimizationBadge] || "star";
+                return (
+                  <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md mt-1 self-start tracking-wide shadow-sm">
+                    <span className="material-symbols-outlined" style={{ fontSize: "9px", lineHeight: 1, fontVariationSettings: "'FILL' 1" }}>{badgeIcon}</span>
+                    {optimizationBadge}
+                  </span>
+                );
+              })()}
             </div>
           </div>
 

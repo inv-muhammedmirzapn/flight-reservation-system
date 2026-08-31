@@ -244,12 +244,12 @@ class Command(BaseCommand):
         today = date.today()
         valid_from_date = today - timedelta(days=30)
 
-        # DEL -> HAM Direct Routes
+        # DEL -> HAM Direct & Connecting Routes for Optimization Demonstration
         direct_del_ham_routes = [
-            ("LH761", "LH", "D-ABPA", 9, 30, Decimal("45000.00"), time(2, 30)),
-            ("AI121", "AI", "VT-ALN", 10, 15, Decimal("38000.00"), time(6, 15)),
-            ("EK061", "EK", "A6-EEO", 9, 45, Decimal("52000.00"), time(14, 0)),
-            ("6E191", "6E", "VT-IZI", 10, 0, Decimal("32000.00"), time(23, 45)),
+            ("AI121", "AI", "VT-ALN", 7, 45, Decimal("38000.00"), time(6, 15)),  # Fastest (7h 45m)
+            ("LH761", "LH", "D-ABPA", 8, 30, Decimal("42000.00"), time(2, 30)),  # Fewest Stops (Direct)
+            ("EK061", "EK", "A6-EEO", 8, 0, Decimal("46000.00"), time(14, 0)),   # Shortest Distance (8h 00m)
+            ("6E191", "6E", "VT-IZI", 13, 30, Decimal("24000.00"), time(23, 45)), # Cheapest (₹24,000)
         ]
 
         for fno, al_code, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_del_ham_routes:

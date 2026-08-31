@@ -292,6 +292,9 @@ export default function FlightsPage() {
   const [error, setError] = useState(null);
   const [isFilteredResult, setIsFilteredResult] = useState(true);
   const [showNoDirectModal, setShowNoDirectModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 10;
   
   const dispatch = useDispatch();
   const { bounds } = useSelector((state) => state.flights);
@@ -336,6 +339,7 @@ export default function FlightsPage() {
   }, [bounds]);
 
   const handleApplyFilters = (newFilters) => {
+    setCurrentPage(1);
     setFilters(newFilters);
   };
 
@@ -349,7 +353,7 @@ export default function FlightsPage() {
     });
   };
 
-  // Fetch flights from database whenever search parameters or applied filters change
+  // Fetch flights from database whenever search parameters, applied filters, or page changes
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -363,7 +367,7 @@ export default function FlightsPage() {
           destination: to,
           date: depDate,
           cabin_class: cabinClassParam,
-          page_size: 20
+          page_size: PAGE_SIZE
         };
 
         if (filters.ordering) queryParams.ordering = filters.ordering;
@@ -372,8 +376,10 @@ export default function FlightsPage() {
         if (filters.airlines && filters.airlines.length > 0) queryParams.airlines = filters.airlines.join(",");
         if (filters.waitlistMode && filters.waitlistMode !== "all") queryParams.waitlist_mode = filters.waitlistMode;
 
-        const response = await flightsAPI.list(1, queryParams);
+        const response = await flightsAPI.list(currentPage, queryParams);
         let results = response.results || response || [];
+        const apiTotal = typeof response.count === "number" ? response.count : results.length;
+        if (isMounted) setTotalCount(apiTotal);
 
         // 0. Exclude departed flights (status DEPARTED/ARRIVED or departure_time in past)
         const now = new Date();
@@ -473,7 +479,14 @@ export default function FlightsPage() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, depDate, cabinClassParam, filters]);
+  }, [from, to, depDate, cabinClassParam, filters, currentPage]);
+
+  // Reset to page 1 when route/cabin changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [from, to, depDate, cabinClassParam]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const handleViewDetails = (flight) => {
     if (flight && flight.id) {
@@ -547,14 +560,161 @@ export default function FlightsPage() {
         {/* Flight Cards List */}
         {!loading && !error && flights.length > 0 && (
           <div className="flex flex-col">
-            {flights.map((flight) => (
-              <FlightCard
-                key={flight.id}
-                flight={flight}
-                selectedCabinClass={cabinClassParam}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
+            {(() => {
+              // Compute algorithm optimization badges across all displayed flights
+              const normCab = (cabinClassParam || "Economy").toUpperCase().includes("BUSINESS")
+                ? "BUSINESS" : (cabinClassParam || "Economy").toUpperCase().includes("FIRST")
+                ? "FIRST" : "ECONOMY";
+
+              const getFare = (f) => {
+                const fares = f.fares;
+                if (!fares) return Number(f.base_fare || 0);
+                if (Array.isArray(fares)) {
+                  const active = fares.find((x) => x.cabin_class?.toUpperCase().includes(normCab)) || fares[0];
+                  return Number(active?.display_price || active?.price || 0);
+                }
+                if (typeof fares === "object") {
+                  const active = fares[normCab] || fares["ECONOMY"] || Object.values(fares)[0];
+                  return Number(active?.display_price || active?.price || 0);
+                }
+                return Number(f.base_fare || 0);
+              };
+
+              const getDuration = (f) => {
+                const depIso = f.departure_time || f.scheduled_departure;
+                const arrIso = f.arrival_time || f.scheduled_arrival;
+                if (depIso && arrIso) {
+                  const d = new Date(arrIso) - new Date(depIso);
+                  return isNaN(d) ? Infinity : d;
+                }
+                return Infinity;
+              };
+
+              const getStops = (f) => {
+                if (Array.isArray(f.stops)) return f.stops.length;
+                if (typeof f.stops === "number") return f.stops;
+                return 0;
+              };
+
+              const assignedBadges = new Map();
+              const fares = flights.map(f => ({
+                id: f.id,
+                fare: getFare(f),
+                dur: getDuration(f),
+                stops: getStops(f)
+              }));
+
+              // 1. Cheapest (Lowest Fare > 0)
+              const cheapest = [...fares].filter(x => x.fare > 0).sort((a, b) => a.fare - b.fare)[0];
+              if (cheapest) {
+                assignedBadges.set(cheapest.id, "Cheapest");
+              }
+
+              // 2. Fastest (Shortest Total Duration)
+              const fastest = [...fares].filter(x => x.dur !== Infinity).sort((a, b) => a.dur - b.dur)[0];
+              if (fastest && !assignedBadges.has(fastest.id)) {
+                assignedBadges.set(fastest.id, "Fastest");
+              } else if (fastest) {
+                const nextFastest = [...fares].filter(x => x.dur !== Infinity && !assignedBadges.has(x.id)).sort((a, b) => a.dur - b.dur)[0];
+                if (nextFastest) assignedBadges.set(nextFastest.id, "Fastest");
+              }
+
+              // 3. Stops Badge ("Direct" if 0 layovers, or "Fewest Stops" if layovers exist in list)
+              const minStopsCount = Math.min(...fares.map(x => x.stops));
+              if (minStopsCount === 0) {
+                const unbadgedDirect = fares.find(x => x.stops === 0 && !assignedBadges.has(x.id));
+                if (unbadgedDirect) {
+                  assignedBadges.set(unbadgedDirect.id, "Direct");
+                }
+              } else {
+                const unbadgedFewestStops = fares.find(x => x.stops === minStopsCount && !assignedBadges.has(x.id));
+                if (unbadgedFewestStops) {
+                  assignedBadges.set(unbadgedFewestStops.id, "Fewest Stops");
+                }
+              }
+
+              // 4. Shortest (Direct route minimum flight duration/distance proxy)
+              const nonStopUnbadged = fares.filter(x => x.stops === 0 && !assignedBadges.has(x.id)).sort((a, b) => a.dur - b.dur)[0];
+              if (nonStopUnbadged) {
+                assignedBadges.set(nonStopUnbadged.id, "Shortest");
+              }
+
+              // Fallback: Any remaining non-stop flights get "Direct"
+              fares.forEach(x => {
+                if (x.stops === 0 && !assignedBadges.has(x.id)) {
+                  assignedBadges.set(x.id, "Direct");
+                }
+              });
+
+              return flights.map((flight) => (
+                <FlightCard
+                  key={flight.id}
+                  flight={flight}
+                  selectedCabinClass={cabinClassParam}
+                  onViewDetails={handleViewDetails}
+                  optimizationBadge={assignedBadges.get(flight.id) || null}
+                />
+              ));
+            })()}
+          </div>
+        )}
+
+        {/* ── Pagination ───────────────────────────────────────────────── */}
+        {!loading && !error && totalPages > 1 && flights.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-6 mb-2 select-none">
+            {/* Prev */}
+            <button
+              id="pagination-prev"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all text-sm font-bold
+                ${currentPage === 1
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed bg-white"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-100 bg-white cursor-pointer active:scale-95"}`}
+              aria-label="Previous page"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>chevron_left</span>
+            </button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("ellipsis-" + p);
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item) =>
+                typeof item === "string" ? (
+                  <span key={item} className="w-9 text-center text-slate-400 text-sm">…</span>
+                ) : (
+                  <button
+                    id={`pagination-page-${item}`}
+                    key={item}
+                    onClick={() => setCurrentPage(item)}
+                    className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border text-sm font-bold transition-all active:scale-95
+                      ${item === currentPage
+                        ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer"}`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+
+            {/* Next */}
+            <button
+              id="pagination-next"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all text-sm font-bold
+                ${currentPage === totalPages
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed bg-white"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-100 bg-white cursor-pointer active:scale-95"}`}
+              aria-label="Next page"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>chevron_right</span>
+            </button>
           </div>
         )}
 
