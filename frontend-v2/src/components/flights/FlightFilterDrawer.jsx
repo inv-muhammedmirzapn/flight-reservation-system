@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
-export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFilters, onResetFilters, bounds }) {
+export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFilters, onResetFilters, bounds, routeOptimization, activePill, onPillChange }) {
   const minPrice = Math.floor(bounds?.min || bounds?.min_price || 0);
   const maxPrice = Math.ceil(bounds?.max || bounds?.max_price || 100000);
   const displayCurrency = bounds?.currency || "INR";
@@ -110,6 +110,62 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
 
         {/* Drawer Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-7">
+
+          {/* Route Insights — only shown when optimization data is available */}
+          {routeOptimization?.has_direct_flights === true && routeOptimization?.summary && (() => {
+            const s = routeOptimization.summary;
+            const insightPills = [
+              { id: "cheapest", icon: "sell", label: "Best Price",
+                sub: s.cheapest_price != null ? `\u20B9${Math.round(s.cheapest_price).toLocaleString()}` : null },
+              { id: "fastest", icon: "timer", label: "Fastest",
+                sub: s.fastest_duration_minutes != null
+                  ? `${Math.floor(s.fastest_duration_minutes / 60)}h ${s.fastest_duration_minutes % 60}m` : null },
+              { id: "min_stops", icon: "trip_origin", label: "Fewest Stops",
+                sub: s.min_stops_count != null
+                  ? `${s.min_stops_count} stop${s.min_stops_count !== 1 ? "s" : ""}` : null },
+              { id: "shortest", icon: "straighten", label: "Shortest",
+                sub: s.shortest_distance_km != null
+                  ? `${s.shortest_distance_km.toLocaleString()} km` : null },
+            ];
+            return (
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Route Insights</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {insightPills.map((pill) => {
+                    const isSelected = activePill === pill.id;
+                    return (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        onClick={() => onPillChange && onPillChange(isSelected ? null : pill.id)}
+                        className={`flex items-center gap-2 py-2 px-3 rounded-xl border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? "bg-slate-950 text-white border-slate-950 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100/70"
+                        }`}
+                      >
+                        <span className={`material-symbols-outlined text-[15px] shrink-0 ${
+                          isSelected ? "text-[#ffeb00]" : "text-slate-400"
+                        }`}>{pill.icon}</span>
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-semibold leading-tight truncate"
+                            style={{ color: isSelected ? "rgba(255,255,255,0.65)" : undefined }}>
+                            {pill.label}
+                          </div>
+                          {pill.sub && (
+                            <div className={`text-[11px] font-bold leading-tight truncate ${
+                              isSelected ? "text-white" : "text-slate-900"
+                            }`}>{pill.sub}</div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 1. Sort By */}
           <div>
             <h3 className="text-sm font-bold text-slate-900 mb-3">

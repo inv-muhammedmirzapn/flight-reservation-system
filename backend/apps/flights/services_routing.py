@@ -1,10 +1,10 @@
 import math
 import heapq
 from collections import deque
-from typing import Dict, Any, List
-from datetime import timedelta
+from typing import Dict, Any, List, Optional
+from datetime import timedelta, date as date_type
 
-from apps.flights.models import Airport, FlightLeg, FlightRoute
+from apps.flights.models import Airport, FlightLeg, FlightRoute, FlightInstance
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -344,10 +344,12 @@ class RouteOptimizer:
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3) -> Dict[str, Any]:
+    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3, travel_date: Optional[Any] = None) -> Dict[str, Any]:
         """
         Suggest the best connecting routes if a direct flight is unavailable.
         Returns the top `k` routes based on minimum stops and minimum time.
+        When `travel_date` is supplied, each leg is resolved against real FlightInstance
+        records so the frontend can navigate directly to booking.
         """
         source_iata = source_iata.upper()
         dest_iata = dest_iata.upper()
@@ -355,7 +357,35 @@ class RouteOptimizer:
         if source_iata not in self.graph.adj_list or dest_iata not in self.graph.adj_list:
             return {"error": "Source or destination airport not found in the active network."}
 
-        # BFS approach to collect paths up to a certain depth (e.g., max 4 hops)
+        # Resolve travel_date (default to today if None, parse if str)
+        if travel_date is None:
+            from django.utils import timezone
+            travel_date = timezone.now().date()
+        elif isinstance(travel_date, str):
+            from datetime import datetime as dt_class
+            try:
+                travel_date = dt_class.strptime(travel_date, "%Y-%m-%d").date()
+            except ValueError:
+                from django.utils import timezone
+                travel_date = timezone.now().date()
+
+        # Pre-fetch FlightInstance records for a date window — one DB hit
+        # We query up to +5 days to handle multi-day connecting routes
+        instance_map: Dict[str, list] = {}  # flight_no -> list[FlightInstance]
+        from datetime import timedelta as td
+        window_end = travel_date + td(days=5)
+        instances = FlightInstance.objects.filter(
+            date__gte=travel_date,
+            date__lte=window_end,
+            status__in=["SCHEDULED", "DELAYED", "BOARDING"]
+        ).select_related("flight", "flight__airline").prefetch_related("fares")
+        for inst in instances:
+            flight_no = inst.flight.flight_no
+            if flight_no not in instance_map:
+                instance_map[flight_no] = []
+            instance_map[flight_no].append(inst)
+
+        # BFS to collect candidate paths (up to max_hops deep)
         queue = deque([(source_iata, [])])
         valid_routes = []
         max_hops = 4
@@ -369,8 +399,6 @@ class RouteOptimizer:
             if current_node == dest_iata:
                 if len(path) > 0:
                     valid_routes.append(path)
-                    # Once we have enough candidate routes, we can stop searching.
-                    # 5 * k is an arbitrary buffer to ensure we have enough paths to sort for duration.
                     if len(valid_routes) >= k * 5:
                         break
                 continue
@@ -379,77 +407,194 @@ class RouteOptimizer:
                 if neighbor == source_iata:
                     continue
 
-                # Cycle detection: don't visit an airport already in the current path
-                already_visited = False
-                for hop in path:
-                    if hop.get("dest") == neighbor:
-                        already_visited = True
-                        break
-                
+                already_visited = any(hop.get("dest") == neighbor for hop in path)
                 if already_visited:
                     continue
 
                 new_path = list(path)
-                new_path.append({
-                    "dest": neighbor,
-                    "legs": data["legs"]
-                })
+                new_path.append({"dest": neighbor, "legs": data["legs"]})
                 queue.append((neighbor, new_path))
 
         formatted_routes = []
         for route_path in valid_routes:
-            formatted_path = []
+            hops = []           # list of {from, to, options[]}
             total_duration = 0
-            
-            # Keep track of the arrival time of the previous leg to ensure valid connections
-            previous_arrival_time = None
-            is_valid_time_route = True
-            
-            for hop in route_path:
-                valid_legs = hop["legs"]
-                
-                # Filter legs: the next flight must depart at least 1 hour after we land
-                if previous_arrival_time:
-                    min_departure_time = previous_arrival_time + timedelta(hours=1)
-                    valid_legs = [l for l in valid_legs if l.scheduled_departure and l.scheduled_departure >= min_departure_time]
-                
-                if not valid_legs:
-                    # If no flights are leaving after we land, this route is physically impossible
-                    is_valid_time_route = False
-                    break
-                
-                # Pick the leg with the minimum duration from the physically VALID legs
-                best_leg = min(valid_legs, key=lambda l: l.flight_duration_minutes + l.layover_duration_minutes)
-                
-                # Update our arrival time for the next hop's calculation
-                previous_arrival_time = best_leg.scheduled_arrival
-                
-                formatted_path.append(
-                    {
+            total_min_fare = 0.0
+            is_valid_route = True
+
+            # We iterate hops and track the EARLIEST possible arrival of the previous hop
+            # so we surface the widest set of valid next-hop options.
+            previous_earliest_arrival = None
+
+            for hop_idx, hop in enumerate(route_path):
+                candidate_legs = hop["legs"]
+                from_iata = candidate_legs[0].departure_airport.iata_code if candidate_legs else "?"
+                to_iata = hop["dest"]
+
+                options = []  # list of option dicts
+
+                if travel_date and instance_map:
+                    for leg in candidate_legs:
+                        flight_no = leg.flight.flight_no
+                        for inst in instance_map.get(flight_no, []):
+                            dep_dt = inst.scheduled_departure
+                            arr_dt = inst.scheduled_arrival
+
+                            # Hop 0 departure date filter vs subsequent leg layover window filter
+                            if previous_earliest_arrival is None:
+                                if dep_dt.date() != travel_date:
+                                    continue
+                            else:
+                                if dep_dt < previous_earliest_arrival + timedelta(hours=1):
+                                    continue
+
+                            airline = leg.flight.airline
+                            airline_name = airline.airline_name if airline else ""
+                            airline_code = airline.iata_airline_code if airline else ""
+                            airline_logo_url = airline.logo.url if (airline and airline.logo) else None
+
+                            # Min economy fare for this instance
+                            leg_min_fare = None
+                            try:
+                                inst_fares = inst.fares.all()
+                                economy_prices = [float(f.price) for f in inst_fares if f.cabin_class == "ECONOMY"]
+                                if economy_prices:
+                                    leg_min_fare = min(economy_prices)
+                            except Exception:
+                                pass
+
+                            duration = int((arr_dt - dep_dt).total_seconds() // 60)
+                            options.append({
+                                "flight_no": flight_no,
+                                "departure_airport": leg.departure_airport.iata_code,
+                                "arrival_airport": leg.arrival_airport.iata_code,
+                                "duration_minutes": duration,
+                                "instance_id": inst.id,
+                                "departure_time": dep_dt.isoformat(),
+                                "arrival_time": arr_dt.isoformat(),
+                                "airline_name": airline_name,
+                                "airline_code": airline_code,
+                                "airline_logo_url": airline_logo_url,
+                                "min_fare": leg_min_fare,
+                            })
+
+                    if not options:
+                        is_valid_route = False
+                        break
+
+                    # Deduplicate options by instance_id
+                    seen_insts = set()
+                    unique_options = []
+                    for opt in options:
+                        iid = opt.get("instance_id")
+                        if iid:
+                            if iid not in seen_insts:
+                                seen_insts.add(iid)
+                                unique_options.append(opt)
+                        else:
+                            unique_options.append(opt)
+                    options = unique_options
+
+                    # Sort options: cheapest first, then earliest
+                    options.sort(key=lambda o: (o["min_fare"] or float("inf"), o["departure_time"]))
+
+                    # Default selected = cheapest option
+                    selected = options[0]
+                    total_duration += selected["duration_minutes"]
+                    if selected["min_fare"] is not None:
+                        total_min_fare += selected["min_fare"]
+
+                    # For next hop's connection window, use the EARLIEST arriving option
+                    earliest_arriving = min(options, key=lambda o: o["arrival_time"])
+                    previous_earliest_arrival = earliest_arriving["arrival_time"]
+                    # Parse it back to datetime for timedelta comparison
+                    from datetime import datetime as dt_cls
+                    previous_earliest_arrival = dt_cls.fromisoformat(previous_earliest_arrival)
+
+                else:
+                    # Fallback: template timings, single option
+                    valid_legs = [
+                        l for l in candidate_legs
+                        if not previous_earliest_arrival or (
+                            l.scheduled_departure and
+                            l.scheduled_departure >= previous_earliest_arrival + timedelta(hours=1)
+                        )
+                    ]
+                    if not valid_legs:
+                        is_valid_route = False
+                        break
+
+                    best_leg = min(valid_legs, key=lambda l: l.flight_duration_minutes + l.layover_duration_minutes)
+                    previous_earliest_arrival = best_leg.scheduled_arrival
+                    duration = best_leg.flight_duration_minutes + best_leg.layover_duration_minutes
+                    total_duration += duration
+
+                    airline = best_leg.flight.airline
+                    option = {
                         "flight_no": best_leg.flight.flight_no,
                         "departure_airport": best_leg.departure_airport.iata_code,
                         "arrival_airport": best_leg.arrival_airport.iata_code,
-                        "duration_minutes": best_leg.flight_duration_minutes + best_leg.layover_duration_minutes
+                        "duration_minutes": duration,
+                        "instance_id": None,
+                        "departure_time": None,
+                        "arrival_time": None,
+                        "airline_name": airline.airline_name if airline else "",
+                        "airline_code": airline.iata_airline_code if airline else "",
+                        "airline_logo_url": airline.logo.url if (airline and airline.logo) else None,
+                        "min_fare": None,
                     }
-                )
-                total_duration += best_leg.flight_duration_minutes + best_leg.layover_duration_minutes
+                    options = [option]
+                    selected = option
 
-            # Only add this route to our final list if ALL connecting flights had valid timings
-            if is_valid_time_route:
-                formatted_routes.append({
-                    "route": formatted_path,
-                    "total_stops": len(formatted_path) - 1,
-                    "total_duration_minutes": total_duration
+                hops.append({
+                    "from": from_iata,
+                    "to": to_iata,
+                    "selected_index": 0,  # frontend default
+                    "options": options,
                 })
 
-        # Sort by fewest stops, then by shortest duration
-        formatted_routes.sort(key=lambda x: (x["total_stops"], x["total_duration_minutes"]))
+            if is_valid_route and hops:
+                # Calculate overall elapsed journey duration from first leg departure to last leg arrival
+                first_dep_str = hops[0]["options"][0].get("departure_time") if hops[0]["options"] else None
+                last_arr_str = hops[-1]["options"][0].get("arrival_time") if hops[-1]["options"] else None
+                overall_elapsed = total_duration
+                if first_dep_str and last_arr_str:
+                    try:
+                        from datetime import datetime as dt_cls
+                        dep_dt = dt_cls.fromisoformat(first_dep_str)
+                        arr_dt = dt_cls.fromisoformat(last_arr_str)
+                        if arr_dt > dep_dt:
+                            overall_elapsed = int((arr_dt - dep_dt).total_seconds() // 60)
+                    except Exception:
+                        pass
+
+                formatted_routes.append({
+                    "hops": hops,
+                    "total_stops": len(hops) - 1,
+                    "total_duration_minutes": overall_elapsed,
+                    "total_min_fare": round(total_min_fare, 2) if total_min_fare > 0 else None,
+                    "bookable": all(
+                        any(o.get("instance_id") for o in h["options"])
+                        for h in hops
+                    ),
+                })
+
+        # Sort: min cost first, then shortest overall journey duration, then fewest stops
+        formatted_routes.sort(
+            key=lambda x: (
+                x["total_min_fare"] if x["total_min_fare"] is not None else float("inf"),
+                x["total_duration_minutes"],
+                x["total_stops"],
+            )
+        )
 
         if not formatted_routes:
-             return {"error": f"No valid routes found between {source_iata} and {dest_iata}."}
+            return {"error": f"No valid routes found between {source_iata} and {dest_iata}."}
 
         return {
             "source": source_iata,
             "destination": dest_iata,
             "recommended_routes": formatted_routes[:k]
         }
+
+

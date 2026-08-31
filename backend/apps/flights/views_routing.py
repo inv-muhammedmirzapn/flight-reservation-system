@@ -1,12 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from apps.flights.services_routing import RouteOptimizer
 
 
 class ShortestDistanceRouteView(APIView):
+    permission_classes = [AllowAny]
     """
     API endpoint to find the shortest distance route between two airports
     using Dijkstra's algorithm.
@@ -40,6 +42,7 @@ class ShortestDistanceRouteView(APIView):
 
 
 class MinimumStopsRouteView(APIView):
+    permission_classes = [AllowAny]
     """
     API endpoint to find the route with the fewest flight connections using BFS.
     """
@@ -72,6 +75,7 @@ class MinimumStopsRouteView(APIView):
 
 
 class FastestRouteView(APIView):
+    permission_classes = [AllowAny]
     """
     API endpoint to find the route with the minimum travel time using Dijkstra.
     """
@@ -104,6 +108,7 @@ class FastestRouteView(APIView):
 
 
 class RecommendRoutesView(APIView):
+    permission_classes = [AllowAny]
     """
     API endpoint to suggest the top 3 best connecting routes if a direct flight
     is unavailable.
@@ -120,6 +125,7 @@ class RecommendRoutesView(APIView):
     def get(self, request, *args, **kwargs):
         source_iata = request.query_params.get("source")
         dest_iata = request.query_params.get("destination")
+        date_param = request.query_params.get("date") or request.query_params.get("depDate") or request.query_params.get("travel_date")
 
         if not source_iata or not dest_iata:
             return Response(
@@ -129,7 +135,7 @@ class RecommendRoutesView(APIView):
 
         optimizer = RouteOptimizer()
         # Default K is 3 as per requirements
-        result = optimizer.recommend_routes(source_iata, dest_iata, k=3)
+        result = optimizer.recommend_routes(source_iata, dest_iata, k=3, travel_date=date_param)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
@@ -138,6 +144,7 @@ class RecommendRoutesView(APIView):
 
 
 class CheapestRouteView(APIView):
+    permission_classes = [AllowAny]
     """
     API endpoint to find the least expensive route using Dijkstra's algorithm based on ticket price.
     """

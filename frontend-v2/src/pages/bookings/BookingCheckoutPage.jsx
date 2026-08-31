@@ -573,11 +573,21 @@ export default function BookingCheckoutPage() {
       if (isWaitlisted) {
         const response = await waitlistAPI.join(id, formattedPassengers, selectedCabin);
         toast.success(`Successfully joined waitlist (Position #${response.queue_position || 1})!`);
-        navigate(`/booking-confirmation/waitlist/${response.id}`);
+        navigate(`/booking-confirmation/waitlist/${response.id}`, {
+          state: {
+            ...location.state,
+            waitlist: response
+          }
+        });
       } else {
         const response = await bookingAPI.create(id, formattedPassengers, selectedCabin);
         toast.success("Flight booking confirmed successfully!");
-        navigate(`/booking-confirmation/${response.id}`);
+        navigate(`/booking-confirmation/${response.id}`, {
+          state: {
+            ...location.state,
+            booking: response
+          }
+        });
       }
     } catch (err) {
       console.error("Booking error:", err);

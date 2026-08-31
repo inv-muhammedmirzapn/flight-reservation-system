@@ -65,6 +65,28 @@ export default function BookingConfirmationPage() {
     );
   }
 
+  const nextLeg = location.state?.nextLeg || null;
+  const connectingJourney = location.state?.connectingJourney || null;
+
+  const handleContinueToNextLeg = () => {
+    if (!nextLeg) return;
+    const currLegs = connectingJourney?.legs || [];
+    const currIdx = (connectingJourney?.currentLegIndex ?? 0) + 1;
+    const subsequentLeg = currLegs[currIdx + 1] || null;
+
+    if (nextLeg.instance_id) {
+      navigate(`/flights/${nextLeg.instance_id}`, {
+        state: {
+          nextLeg: subsequentLeg,
+          connectingJourney: { legs: currLegs, currentLegIndex: currIdx }
+        }
+      });
+    } else {
+      const depDateStr = nextLeg.departure_time ? nextLeg.departure_time.split("T")[0] : "";
+      navigate(`/flights?from=${nextLeg.departure_airport}&to=${nextLeg.arrival_airport}${depDateStr ? `&depDate=${depDateStr}` : ""}`);
+    }
+  };
+
   return (
     <div className="flex-1 min-h-screen mt-16 pt-12 pb-16 px-4 sm:px-6 max-w-3xl mx-auto w-full flex flex-col items-center">
       {/* Top Circle Check Icon */}
@@ -84,7 +106,7 @@ export default function BookingConfirmationPage() {
         <button
           type="button"
           onClick={() => navigate("/my-bookings")}
-          className="btn-primary text-slate-950 px-6 py-2 rounded-xl text-sm font-bold shadow-2xs"
+          className="btn-primary text-slate-950 px-6 py-2 rounded-xl text-sm font-bold shadow-2xs cursor-pointer"
         >
           View Bookings
         </button>
@@ -96,6 +118,32 @@ export default function BookingConfirmationPage() {
           Back
         </button>
       </div>
+
+      {/* Connecting Flight Next Leg Callout Banner */}
+      {nextLeg && (
+        <div className="w-full bg-slate-900 text-white rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md border border-slate-800">
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+              <span className="material-symbols-outlined text-xl">connecting_airports</span>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-400">
+                Multi-leg Connecting Journey
+              </h3>
+              <p className="text-xs text-slate-300">
+                Next Leg: <strong>{nextLeg.departure_airport} &rarr; {nextLeg.arrival_airport}</strong> ({nextLeg.flight_no || nextLeg.airline_name || "Connecting Leg"})
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleContinueToNextLeg}
+            className="btn-primary text-slate-950 px-5 py-2 rounded-xl text-xs font-bold shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Book Next Flight &rarr;</span>
+          </button>
+        </div>
+      )}
 
       {/* Email Delivery Confirmation Banner */}
       <div className="px-5 text-sky-950 text-[10px] font-medium mb-8 text-center">

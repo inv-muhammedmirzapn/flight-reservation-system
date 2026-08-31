@@ -231,6 +231,8 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
             }).format(amount);
           };
 
+          const isConnecting = typeof rawVal === "object" ? !!rawVal?.is_connecting : false;
+          
           let priceColorClass;
           if (isSelected) {
             if (referencePrice && numPrice < referencePrice) priceColorClass = "text-emerald-950 font-black";
@@ -263,7 +265,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
               </span>
               {hasPrice ? (
                 <span className={`text-[10px] mt-0.5 ${priceColorClass}`}>
-                  {formatCurrency(numPrice)}
+                  {isConnecting ? "~" : ""}{formatCurrency(numPrice)}
                 </span>
               ) : (
                 <span className={`text-[9px] font-medium mt-0.5 ${isSelected ? "text-slate-800" : "text-slate-400"}`}>
