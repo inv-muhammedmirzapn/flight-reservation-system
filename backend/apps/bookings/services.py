@@ -430,14 +430,22 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                                 pk=int(food_item_id),
                                 airline=flight_instance.flight.airline
                             )
-                            base_price = food_item_obj.price
+                            base_price = CurrencyService.convert_amount(
+                                food_item_obj.price,
+                                getattr(food_item_obj, 'currency', None) or "INR",
+                                booking_curr
+                            )
                         except (FoodItem.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid food item ID: {food_item_id} for this flight's airline.")
 
                     if flight_meal_id:
                         try:
                             flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), flight_instance=flight_instance)
-                            base_price = flight_meal_obj.price
+                            base_price = CurrencyService.convert_amount(
+                                flight_meal_obj.price,
+                                getattr(flight_meal_obj, 'currency', None) or "INR",
+                                booking_curr
+                            )
                         except (FlightMeal.DoesNotExist, ValueError):
                             raise ValidationError(f"Invalid combo meal ID: {flight_meal_id}")
 
@@ -450,7 +458,9 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
                     from .models import PassengerMeal
                     unit_price = base_price
 
-                    if fare_obj and fare_obj.meal_included and not complimentary_waived:
+                    # Only waive complimentary fee for combo meals (FlightMeal), NOT for paid food items (FoodItem)
+                    is_complimentary_eligible = flight_meal_obj is not None
+                    if fare_obj and fare_obj.meal_included and not complimentary_waived and is_complimentary_eligible:
                         if qty == 1:
                             unit_price = 0
                             complimentary_waived = True
