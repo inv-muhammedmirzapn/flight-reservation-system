@@ -145,7 +145,10 @@ class FlightFaresCalendarView(APIView):
                 elif waitlist_mode == "waitlisted_only":
                     qs = qs.filter((has_any_seats & ~has_any_avail_seats) | (~has_any_seats & any_fare_lte_zero))
 
-        qs = qs.distinct().prefetch_related('fares', 'flight', 'seats')
+        prefetch_args = ['fares', 'flight']
+        if waitlist_mode in ["available_only", "waitlisted_only"]:
+            prefetch_args.append('seats')
+        qs = qs.distinct().prefetch_related(*prefetch_args)
 
         target_currency = CurrencyService.get_user_currency(request.user)
 
@@ -165,7 +168,7 @@ class FlightFaresCalendarView(APIView):
 
             date_str = str(instance.date)
             instance_fares = instance.fares.all()
-            instance_seats = instance.seats.all()
+            instance_seats = instance.seats.all() if waitlist_mode in ["available_only", "waitlisted_only"] else []
             
             matching_prices = []
             for f in instance_fares:
@@ -174,17 +177,18 @@ class FlightFaresCalendarView(APIView):
                 if max_fare_val is not None and float(f.price) > max_fare_val:
                     continue
                 
-                # Check seat table in-memory if seat records exist for this specific class_key
-                seats_for_class = [s for s in instance_seats if s.seat_class == class_key]
-                if seats_for_class:
-                    is_avail = any(s.status == "AVAILABLE" for s in seats_for_class)
-                else:
-                    is_avail = f.available_seats > 0
+                if waitlist_mode in ["available_only", "waitlisted_only"]:
+                    # Check seat table in-memory if seat records exist for this specific class_key
+                    seats_for_class = [s for s in instance_seats if s.seat_class == class_key]
+                    if seats_for_class:
+                        is_avail = any(s.status == "AVAILABLE" for s in seats_for_class)
+                    else:
+                        is_avail = f.available_seats > 0
 
-                if waitlist_mode == "available_only" and not is_avail:
-                    continue
-                elif waitlist_mode == "waitlisted_only" and is_avail:
-                    continue
+                    if waitlist_mode == "available_only" and not is_avail:
+                        continue
+                    elif waitlist_mode == "waitlisted_only" and is_avail:
+                        continue
                 
                 # Convert price to user currency
                 display_price = CurrencyService.convert_amount(f.price, f.currency, target_currency)

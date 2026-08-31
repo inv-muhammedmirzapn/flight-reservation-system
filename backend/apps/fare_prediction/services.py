@@ -1,8 +1,8 @@
 import logging
 from datetime import timedelta
 from django.utils import timezone
-from apps.flights.models import FlightInstance,Fare,SeatStatus
-from apps.bookings.models import Booking,BookingStatus
+from apps.flights.models import FlightInstance, Fare, SeatStatus
+from apps.bookings.models import Booking, BookingStatus
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,53 @@ class FarePredictionService:
         
         now = timezone.now()
         departure = fi.scheduled_departure
+
+        # ── Already-departed guard ──────────────────────────────────────────
+        # If the flight has already left, forward-looking scoring is meaningless.
+        # Instead, return a historical summary of final occupancy & bookings.
+        if departure < now:
+            fare = Fare.objects.filter(flight_instance=fi, cabin_class=cabin_class).first()
+            current_price = float(fare.price) if fare else 0.0
+            currency = fare.currency if fare else "INR"
+
+            total_seats = fi.seats.filter(seat_class=cabin_class).count()
+            booked_seats = fi.seats.filter(
+                seat_class=cabin_class, status=SeatStatus.BOOKED
+            ).count()
+            occupancy_pct = (booked_seats / total_seats * 100) if total_seats > 0 else 0
+
+            total_bookings = Booking.objects.filter(
+                flight=fi, status=BookingStatus.CONFIRMED
+            ).count()
+
+            days_ago = (now.date() - departure.date()).days
+
+            logger.info(
+                "FarePrediction | flight=%s cabin=%s direction=DEPARTED days_ago=%s",
+                flight_instance_id, cabin_class, days_ago
+            )
+
+            return {
+                "flight_instance_id": flight_instance_id,
+                "cabin_class": cabin_class,
+                "direction": "DEPARTED",
+                "confidence": 100,
+                "current_price": current_price,
+                "currency": currency,
+                "occupancy_pct": round(occupancy_pct, 1),
+                "days_until_departure": -days_ago,   # negative = departed N days ago
+                "factors": [
+                    f"This flight departed {days_ago} day{'s' if days_ago != 1 else ''} ago.",
+                    f"Final cabin occupancy was {occupancy_pct:.0f}% ({booked_seats}/{total_seats} seats).",
+                    f"Total confirmed bookings: {total_bookings}.",
+                ],
+                "advice": (
+                    "This flight has already departed. "
+                    "No fare prediction is available — booking is no longer possible."
+                ),
+            }
+        # ────────────────────────────────────────────────────────────────────
+
         # compute number of days until departure
         days_until_departure = max(0, (departure.date() - now.date()).days)
         # Calculate occupancy rate for the cabin class

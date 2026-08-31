@@ -22,6 +22,9 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
 
   const filtersJson = JSON.stringify(filters || null);
 
+  const fetchedHorizonRef = useRef(0);
+  const fetchedFiltersRef = useRef("");
+  
   // Fetch calendar prices for current route and applied filters
   useEffect(() => {
     let isMounted = true;
@@ -43,6 +46,12 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
               horizonDays = diffDays + 30;
             }
           }
+        }
+        
+        // Skip fetch if we already fetched for this exact route/filters and the horizon is sufficient
+        const filterKey = `${from}-${to}-${cabinClass}-${filtersJson}`;
+        if (fetchedFiltersRef.current === filterKey && horizonDays <= fetchedHorizonRef.current) {
+           return;
         }
 
         const endDateObj = new Date(today);
@@ -69,6 +78,15 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
 
         const res = await flightsAPI.getCalendar(calendarParams);
 
+        // Capture the prev key BEFORE updating — used below for merge decision
+        const prevFilterKey = fetchedFiltersRef.current;
+
+        // Update refs on successful fetch
+        if (isMounted) {
+          fetchedFiltersRef.current = filterKey;
+          fetchedHorizonRef.current = horizonDays;
+        }
+
         let dataObj = res;
         if (res && typeof res === "object" && res.data !== undefined) {
           dataObj = res.data;
@@ -92,7 +110,10 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
             });
           }
         }
-        if (isMounted) setPriceMap(map);
+        if (isMounted) {
+          // Merge only if same filter key (horizon expansion) — use prevFilterKey captured before update
+          setPriceMap(prev => prevFilterKey === filterKey ? { ...prev, ...map } : map);
+        }
       } catch (err) {
         console.warn("Failed to load calendar prices", err);
       }
@@ -101,7 +122,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
       loadCalendarPrices();
     }
     return () => { isMounted = false; };
-  }, [from, to, cabinClass, filtersJson, activeDate]);
+  }, [from, to, cabinClass, filtersJson, activeDate, bounds]);
 
   useEffect(() => {
     const list = [];
@@ -193,6 +214,17 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
     }
   };
 
+  // Shared currency formatter — accepts amount + currency so it works for any date item
+  const formatDateCurrency = (amount, currency) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency || 'INR',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   return (
     <div className="w-full mx-auto rounded-2xl shadow-xs flex items-center relative">
       {/* Scroll Left Arrow Button */}
@@ -219,17 +251,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           const priceVal = typeof rawVal === "object" ? rawVal?.min_fare : rawVal;
           const hasPrice = priceVal != null && !isNaN(priceVal) && Number(priceVal) > 0;
           const numPrice = Number(priceVal);
-          
           const itemCurrency = typeof rawVal === "object" ? (rawVal?.currency || "INR") : "INR";
-          const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-IN', {
-              style: 'currency',
-              currency: itemCurrency,
-              currencyDisplay: 'narrowSymbol',
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            }).format(amount);
-          };
 
           let priceColorClass;
           if (isSelected) {
@@ -263,7 +285,11 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
               </span>
               {hasPrice ? (
                 <span className={`text-[10px] mt-0.5 ${priceColorClass}`}>
+<<<<<<< Updated upstream
                   {formatCurrency(numPrice)}
+=======
+                  {isConnecting ? "~" : ""}{formatDateCurrency(numPrice, itemCurrency)}
+>>>>>>> Stashed changes
                 </span>
               ) : (
                 <span className={`text-[9px] font-medium mt-0.5 ${isSelected ? "text-slate-800" : "text-slate-400"}`}>
