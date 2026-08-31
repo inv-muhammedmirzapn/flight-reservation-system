@@ -204,7 +204,37 @@ class FlightFaresCalendarView(APIView):
                 "currency": target_currency
             } for date_str, price in fares_by_date.items()
         }
-                    
+
+        # If no direct fares or partial direct fares found, fill missing dates using connecting routes
+        if source and destination:
+            try:
+                from .services_routing import RouteOptimizer
+
+                start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                max_end = start_dt + datetime.timedelta(days=30)
+                if end_dt > max_end:
+                    end_dt = max_end
+
+                optimizer = RouteOptimizer()
+                current = start_dt
+                while current <= end_dt:
+                    date_key = str(current)
+                    if date_key not in fares_with_currency:
+                        result = optimizer.recommend_routes(source, destination, k=1, travel_date=current)
+                        routes = result.get("recommended_routes", [])
+                        if routes:
+                            total_fare = routes[0].get("total_min_fare")
+                            if total_fare is not None and total_fare > 0:
+                                fares_with_currency[date_key] = {
+                                    "min_fare": round(float(total_fare), 2),
+                                    "currency": target_currency or "INR",
+                                    "is_connecting": True,
+                                }
+                    current += datetime.timedelta(days=1)
+            except Exception as e:
+                pass  # Calendar fallback is non-critical
+
         return Response(fares_with_currency, status=200)
 
 class FlightFareBoundsView(APIView):

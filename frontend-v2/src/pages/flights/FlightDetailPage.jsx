@@ -69,6 +69,7 @@ export default function FlightDetailPage() {
 
     navigate(`/flights/${id}/checkout`, {
       state: {
+        ...location.state,
         selectedCabin,
         seatCount: passengerCount,
       },

@@ -311,7 +311,71 @@ class FlightListCreateView(APIView):
         page = paginator.paginate_queryset(qs, request)
         from .serializers import FrontendFlightInstanceSerializer
         serializer = FrontendFlightInstanceSerializer(page, many=True, context={'request': request})
-        return paginator.get_paginated_response(serializer.data)
+        paginated_response = paginator.get_paginated_response(serializer.data)
+
+        # ── Route Optimization Integration ────────────────────────────────────────
+        # Only run when both source and destination are provided (route-specific search)
+        if source and destination:
+            route_optimization = {}
+            try:
+                from .services_routing import RouteOptimizer
+                optimizer = RouteOptimizer()
+
+                direct_count = qs.count()
+
+                if direct_count > 0:
+                    # Direct flights found — run all 4 algorithms silently to generate badge hints
+                    cheapest = optimizer.cheapest_route_dijkstra(source, destination)
+                    fastest = optimizer.fastest_route_dijkstra(source, destination)
+                    min_stops = optimizer.minimum_stops_bfs(source, destination)
+                    shortest = optimizer.shortest_distance_dijkstra(source, destination)
+
+                    # Extract the top-level flight_no from each result for badge matching
+                    def first_flight_no(result):
+                        route = result.get("route", [])
+                        return route[0]["flight_no"] if route else None
+
+                    route_optimization = {
+                        "has_direct_flights": True,
+                        "badges": {
+                            "cheapest_flight_no": first_flight_no(cheapest) if "error" not in cheapest else None,
+                            "fastest_flight_no": first_flight_no(fastest) if "error" not in fastest else None,
+                            "min_stops_flight_no": first_flight_no(min_stops) if "error" not in min_stops else None,
+                            "shortest_distance_flight_no": first_flight_no(shortest) if "error" not in shortest else None,
+                        },
+                        "summary": {
+                            "cheapest_price": cheapest.get("total_price") if "error" not in cheapest else None,
+                            "fastest_duration_minutes": fastest.get("total_duration_minutes") if "error" not in fastest else None,
+                            "min_stops_count": min_stops.get("total_stops") if "error" not in min_stops else None,
+                            "shortest_distance_km": shortest.get("total_distance_km") if "error" not in shortest else None,
+                        }
+                    }
+                else:
+                    # No direct flights — trigger recommend_routes (connecting flights fallback)
+                    # Parse travel_date so recommend_routes resolves real FlightInstance IDs
+                    travel_date = None
+                    date_str = request.query_params.get("date") or request.query_params.get("departure_date")
+                    if date_str:
+                        try:
+                            from datetime import date as date_type
+                            travel_date = date_type.fromisoformat(date_str)
+                        except (ValueError, TypeError):
+                            travel_date = None
+
+                    recommendations = optimizer.recommend_routes(source, destination, k=3, travel_date=travel_date)
+                    route_optimization = {
+                        "has_direct_flights": False,
+                        "recommended_routes": recommendations.get("recommended_routes", []) if "error" not in recommendations else [],
+                        "recommendation_error": recommendations.get("error") if "error" in recommendations else None,
+                    }
+
+            except Exception as e:
+                logger.warning(f"Route optimization failed silently for {source} -> {destination}: {e}")
+                route_optimization = {"has_direct_flights": None, "error": "Optimization unavailable"}
+
+            paginated_response.data["route_optimization"] = route_optimization
+
+        return paginated_response
 
 
 class FlightDetailView(APIView):

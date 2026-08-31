@@ -113,4 +113,12 @@ export const flightsAPI = {
   stats: async () => {
     return fetchWithAuth('/flights/v2/stats/');
   },
+
+  // Route Optimization — explicit on-demand calls
+  fetchRecommendedRoutes: async (source, destination, date) => {
+    const params = { source, destination };
+    if (date) params.date = date;
+    const qs = new URLSearchParams(params);
+    return fetchWithAuth(`/flights/route-optimization/recommend/?${qs.toString()}`);
+  },
 };

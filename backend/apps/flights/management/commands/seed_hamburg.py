@@ -65,6 +65,10 @@ class Command(BaseCommand):
         if not emirates:
             emirates, _ = Airline.objects.get_or_create(iata_airline_code="EK", defaults={"airline_name": "Emirates"})
 
+        indigo = Airline.objects.filter(iata_airline_code="6E").first()
+        if not indigo:
+            indigo, _ = Airline.objects.get_or_create(iata_airline_code="6E", defaults={"airline_name": "IndiGo Airlines", "logo": "airlines/6e_logo.png"})
+
         aircraft_model, _ = AircraftModel.objects.get_or_create(manufacturer="Boeing", model_name="787-9 Dreamliner")
 
         aircraft_lh, _ = Aircraft.objects.get_or_create(
@@ -100,11 +104,23 @@ class Command(BaseCommand):
             }
         )
 
-        # 5. Define Routes DEL -> HAM
+        aircraft_6e, _ = Aircraft.objects.get_or_create(
+            registration="VT-IZI",
+            defaults={
+                "airline": indigo,
+                "aircraft_model": aircraft_model,
+                "economy_capacity": 180,
+                "business_capacity": 0,
+                "first_class_capacity": 0,
+            }
+        )
+
+        # 5. Define Routes DEL -> HAM representing the 4 Optimization Criteria
         routes_info = [
-            ("LH761", lufthansa, aircraft_lh, 9, 30, 45000),
-            ("AI121", air_india, aircraft_ai, 10, 15, 38000),
-            ("EK061", emirates, aircraft_ek, 11, 45, 52000),
+            ("6E191", indigo, aircraft_6e, 13, 30, 24000),   # Cheapest (₹24,000, 1-stop via BOM)
+            ("AI121", air_india, aircraft_ai, 7, 45, 38000),  # Fastest (7h 45m duration)
+            ("LH761", lufthansa, aircraft_lh, 8, 30, 42000),  # Fewest Stops (Direct non-stop)
+            ("EK061", emirates, aircraft_ek, 8, 0, 46000),   # Shortest Distance (8h 00m direct)
         ]
 
         created_routes = {}
@@ -179,17 +195,9 @@ class Command(BaseCommand):
                 )
                 count_created += 1
                 
-                # Make ~1 out of 3 flights fully booked (0 available seats)
-                is_full = (d_offset + idx) % 3 == 0
-                if is_full:
-                    zero_seat_count += 1
-                    econ_seats = 0
-                    biz_seats = 0
-                    fst_seats = 0
-                else:
-                    econ_seats = random.randint(15, 120)
-                    biz_seats = random.randint(5, 20)
-                    fst_seats = random.randint(1, 5)
+                econ_seats = random.randint(30, 120)
+                biz_seats = random.randint(5, 20)
+                fst_seats = random.randint(1, 5)
 
                 # Fares
                 Fare.objects.update_or_create(
@@ -199,7 +207,7 @@ class Command(BaseCommand):
                         "fare_code": f"ECO-{inst.id}",
                         "price": Decimal(str(int(base_fare))),
                         "currency": "INR",
-                        "available_seats": 0,
+                        "available_seats": econ_seats,
                         "refund_type": RefundType.PARTIAL,
                         "change_fee": Decimal("3500.00"),
                         "meal_included": True,
@@ -214,7 +222,7 @@ class Command(BaseCommand):
                         "fare_code": f"BIZ-{inst.id}",
                         "price": Decimal(str(int(base_fare * 2.8))),
                         "currency": "INR",
-                        "available_seats": 0,
+                        "available_seats": biz_seats,
                         "refund_type": RefundType.REFUNDABLE,
                         "change_fee": Decimal("0.00"),
                         "meal_included": True,
@@ -229,7 +237,7 @@ class Command(BaseCommand):
                         "fare_code": f"FST-{inst.id}",
                         "price": Decimal(str(int(base_fare * 5.2))),
                         "currency": "INR",
-                        "available_seats": 0,
+                        "available_seats": fst_seats,
                         "refund_type": RefundType.REFUNDABLE,
                         "change_fee": Decimal("0.00"),
                         "meal_included": True,
@@ -240,17 +248,13 @@ class Command(BaseCommand):
                 # Seats
                 if inst.seats.count() == 0:
                     generate_seats_for_instance(inst)
-                    
-                    if is_full:
-                        inst.seats.update(status=SeatStatus.BOOKED)
-                    else:
-                        seats_list = list(inst.seats.all())
-                        if seats_list:
-                            booked_count = int(len(seats_list) * random.uniform(0.15, 0.5))
-                            booked_seats = random.sample(seats_list, booked_count)
-                            seat_ids = [s.id for s in booked_seats]
-                            Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
+                    seats_list = list(inst.seats.all())
+                    if seats_list:
+                        booked_count = int(len(seats_list) * random.uniform(0.15, 0.5))
+                        booked_seats = random.sample(seats_list, booked_count)
+                        seat_ids = [s.id for s in booked_seats]
+                        Seat.objects.filter(id__in=seat_ids).update(status=SeatStatus.BOOKED)
 
         self.stdout.write(self.style.SUCCESS(
-            f"Successfully seeded {count_created} flights from DEL to HAM starting from today ({zero_seat_count} flights fully booked with 0 seats)."
+            f"Successfully seeded {count_created} flights from DEL to HAM starting from today."
         ))
