@@ -78,7 +78,8 @@ export default function BookingConfirmationPage() {
       navigate(`/flights/${nextLeg.instance_id}`, {
         state: {
           nextLeg: subsequentLeg,
-          connectingJourney: { legs: currLegs, currentLegIndex: currIdx }
+          connectingJourney: { legs: currLegs, currentLegIndex: currIdx },
+          passengers: location.state?.passengers
         }
       });
     } else {
