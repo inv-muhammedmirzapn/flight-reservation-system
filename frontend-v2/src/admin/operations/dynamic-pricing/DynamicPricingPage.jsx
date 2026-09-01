@@ -23,6 +23,8 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import { SpinnerLoader } from '@/components/ui/Loaders';
+import ConfirmModal from '@/components/common/ConfirmModal';
+import { parseApiError } from '@/utils/errorUtils';
 import '@/admin/_core/styles/admin.css';
 import {
   TrendingUp,
@@ -66,6 +68,8 @@ export default function DynamicPricingPage() {
   });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showEvaluateConfirmModal, setShowEvaluateConfirmModal] = useState(false);
+  const [deletingHolidayId, setDeletingHolidayId] = useState(null);
 
   // Simulator States
   const [simForm, setSimForm] = useState({
@@ -146,18 +150,16 @@ export default function DynamicPricingPage() {
   };
 
   // Handle Manual Global Re-evaluation
-  const handleEvaluateAll = async () => {
-    if (!window.confirm('Trigger manual re-evaluation of dynamic prices for all upcoming flight fares?')) {
-      return;
-    }
+  const executeEvaluateAll = async () => {
+    setShowEvaluateConfirmModal(false);
     setIsEvaluating(true);
     try {
       const res = await dispatch(evaluateAllDynamicPricing()).unwrap();
-      toast.success(res.message || 'Dynamic price re-evaluation completed!');
+      toast.success(res?.message || 'Dynamic price re-evaluation completed!');
       dispatch(fetchDynamicPriceLogs({ page: 1 }));
       setLogPage(1);
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Re-evaluation failed.');
+      toast.error(parseApiError(err, 'Re-evaluation failed.'));
     } finally {
       setIsEvaluating(false);
     }
@@ -218,14 +220,16 @@ export default function DynamicPricingPage() {
   };
 
   // Handle Remove Holiday Event
-  const handleRemoveHoliday = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this holiday event?')) return;
+  const executeRemoveHoliday = async () => {
+    if (!deletingHolidayId) return;
+    const id = deletingHolidayId;
+    setDeletingHolidayId(null);
     try {
       await dispatch(removeHolidayEvent(id)).unwrap();
       toast.success('Holiday event removed.');
       dispatch(fetchHolidayEvents());
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to delete holiday event.');
+      toast.error(parseApiError(err, 'Failed to delete holiday event.'));
     }
   };
 
@@ -259,7 +263,7 @@ export default function DynamicPricingPage() {
           </div>
 
           <button
-            onClick={handleEvaluateAll}
+            onClick={() => setShowEvaluateConfirmModal(true)}
             disabled={isEvaluating}
             className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
@@ -575,7 +579,7 @@ export default function DynamicPricingPage() {
                       </td>
                       <td className="text-right">
                         <button
-                          onClick={() => handleRemoveHoliday(h.id)}
+                          onClick={() => setDeletingHolidayId(h.id)}
                           className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
                           title="Delete Holiday"
                         >
@@ -785,6 +789,31 @@ export default function DynamicPricingPage() {
           </div>
         </div>
       )}
+      {/* Re-evaluate All Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showEvaluateConfirmModal}
+        title="Re-evaluate All Dynamic Prices?"
+        description="This will trigger an automated recalculation of fares for all scheduled upcoming flight instances based on current occupancy, booking proximity, weekend rules, and active holiday events."
+        variant="warning"
+        icon="bolt"
+        confirmText="Yes, Re-evaluate Fares"
+        cancelText="Cancel"
+        onConfirm={executeEvaluateAll}
+        onCancel={() => setShowEvaluateConfirmModal(false)}
+      />
+
+      {/* Delete Holiday Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deletingHolidayId}
+        title="Delete Holiday Event?"
+        description="Are you sure you want to remove this holiday event? Fares will no longer include this holiday multiplier during recalculations."
+        variant="danger"
+        icon="delete"
+        confirmText="Yes, Delete Event"
+        cancelText="Cancel"
+        onConfirm={executeRemoveHoliday}
+        onCancel={() => setDeletingHolidayId(null)}
+      />
     </div>
   );
 }

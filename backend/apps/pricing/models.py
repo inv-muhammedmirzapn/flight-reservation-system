@@ -37,10 +37,41 @@ class DynamicPricingConfig(models.Model):
         max_digits=5, decimal_places=2, default=Decimal("50.00"), help_text="Maximum allowed demand surge cap %"
     )
 
+    # Proximity + Occupancy Settings
+    proximity_pricing_enabled = models.BooleanField(
+        default=True, help_text="Enable proximity-occupancy pricing within the departure window"
+    )
+    proximity_window_days = models.PositiveIntegerField(
+        default=3, help_text="Days before departure to activate the proximity multiplier"
+    )
+    occupancy_threshold_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("60.00"),
+        help_text="Seat occupancy % threshold: above = premium surge, below = discount"
+    )
+    max_proximity_premium_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("30.00"),
+        help_text="Max price increase % at departure day when occupancy is high"
+    )
+    max_proximity_discount_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("20.00"),
+        help_text="Max price decrease % at departure day when occupancy is low"
+    )
+
+    # Global Floor / Ceiling Clamps
+    price_floor_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("80.00"),
+        help_text="Minimum combined price as % of base price (e.g. 80 = never below 80% of base)"
+    )
+    price_ceiling_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("150.00"),
+        help_text="Maximum combined price as % of base price (e.g. 150 = never above 150% of base)"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = 'flights'
         db_table = "flights_dynamicpricingconfig"
         ordering = ["-updated_at"]
 
@@ -54,6 +85,21 @@ class DynamicPricingConfig(models.Model):
             errors["step_surge_percent"] = "Step surge percentage cannot be negative."
         if self.max_demand_surge_percent is not None and self.max_demand_surge_percent < Decimal("0.00"):
             errors["max_demand_surge_percent"] = "Max demand surge percentage cannot be negative."
+        # Proximity + occupancy validations
+        if self.occupancy_threshold_percent is not None and not (Decimal("0") <= self.occupancy_threshold_percent <= Decimal("100")):
+            errors["occupancy_threshold_percent"] = "Occupancy threshold must be between 0 and 100."
+        if self.max_proximity_premium_percent is not None and self.max_proximity_premium_percent < Decimal("0"):
+            errors["max_proximity_premium_percent"] = "Max proximity premium percent cannot be negative."
+        if self.max_proximity_discount_percent is not None and self.max_proximity_discount_percent < Decimal("0"):
+            errors["max_proximity_discount_percent"] = "Max proximity discount percent cannot be negative."
+        if self.price_floor_percent is not None and self.price_floor_percent <= Decimal("0"):
+            errors["price_floor_percent"] = "Price floor percent must be greater than 0."
+        if (
+            self.price_floor_percent is not None
+            and self.price_ceiling_percent is not None
+            and self.price_ceiling_percent <= self.price_floor_percent
+        ):
+            errors["price_ceiling_percent"] = "Price ceiling must be greater than the price floor."
         if errors:
             raise ValidationError(errors)
 
@@ -84,6 +130,7 @@ class HolidayEvent(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = 'flights'
         db_table = "flights_holidayevent"
         ordering = ["start_date", "name"]
 
@@ -114,10 +161,18 @@ class DynamicPriceLog(models.Model):
     holiday_applied = models.CharField(max_length=100, blank=True, default="")
     demand_surge_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
     recent_booking_count = models.PositiveIntegerField(default=0)
+    # Proximity + Occupancy audit fields
+    occupancy_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        help_text="Cabin seat occupancy % at time of calculation")
+    days_until_departure = models.PositiveIntegerField(default=0,
+        help_text="Days from calculation time to departure")
+    proximity_multiplier = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("1.0000"),
+        help_text="Proximity-occupancy multiplier applied (1.0000 = no effect)")
     final_calculated_price = models.DecimalField(max_digits=10, decimal_places=2)
     calculated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        app_label = 'flights'
         db_table = "flights_dynamicpricelog"
         ordering = ["-calculated_at"]
 

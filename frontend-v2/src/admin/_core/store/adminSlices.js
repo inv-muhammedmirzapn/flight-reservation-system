@@ -6,6 +6,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { createCrudSlice } from './crudSliceFactory';
 import { fetchWithAuth } from '@/services/apiClient';
+import { parseApiError } from '@/utils/errorUtils';
 
 export const ADMIN_PAGE_SIZE = 10;
 
@@ -292,7 +293,7 @@ export const evaluateAllDynamicPricing = createAsyncThunk(
         method: 'POST',
       });
     } catch (err) {
-      return rejectWithValue(err.message || 'Failed to trigger dynamic re-evaluation');
+      return rejectWithValue(parseApiError(err, 'Failed to trigger dynamic re-evaluation'));
     }
   }
 );
@@ -306,7 +307,7 @@ export const simulateDynamicPricing = createAsyncThunk(
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      return rejectWithValue(err.message || 'Simulation request failed');
+      return rejectWithValue(parseApiError(err, 'Simulation request failed'));
     }
   }
 );

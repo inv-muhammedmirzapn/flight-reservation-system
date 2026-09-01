@@ -14,6 +14,7 @@ from rest_framework.exceptions import ValidationError
 from apps.flights.models import FlightInstance, CabinClass
 from apps.bookings.models import Booking, BookingStatus
 from .models import WaitlistEntry, WaitlistStatus
+from apps.flights.permissions import IsPassengerOnly
 from .permissions import IsAdminOrSuperuser, IsOwnerOrAdmin
 from .serializers import WaitlistEntrySerializer
 from .services import (
@@ -33,10 +34,10 @@ class WaitlistJoinView(APIView):
     """
     POST /api/waitlist/join/
     Joins the waitlist for a flight if it is full.
-    Permission: IsAuthenticated.
+    Permission: IsAuthenticated and IsPassengerOnly.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPassengerOnly]
 
     @extend_schema(
         request=inline_serializer(

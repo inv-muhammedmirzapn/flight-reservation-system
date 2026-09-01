@@ -147,10 +147,10 @@ function AppContent() {
         {/* Main Routing Container */}
         <main className="flex-1 flex flex-col">
           <Routes>
-            {/* ── Public Routes ──────────────────────────────────────────── */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/flights" element={<FlightsPage />} />
-            <Route path="/flights/:id" element={<FlightDetailPage />} />
+            {/* ── Public Routes (Passengers / Guests) ──────────────────────── */}
+            <Route path="/" element={<ProtectedRoute passengerOnly allowGuest><LandingPage /></ProtectedRoute>} />
+            <Route path="/flights" element={<ProtectedRoute passengerOnly allowGuest><FlightsPage /></ProtectedRoute>} />
+            <Route path="/flights/:id" element={<ProtectedRoute passengerOnly allowGuest><FlightDetailPage /></ProtectedRoute>} />
             <Route
               path="/login"
               element={
@@ -189,16 +189,16 @@ function AppContent() {
             />
 
             {/* ── Protected Passenger Routes ─────────────────────────────── */}
-            <Route path="/flights/:id/checkout" element={<ProtectedRoute><BookingCheckoutPage /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-            <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
-            <Route path="/booking-confirmation/:id" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
-            <Route path="/booking-confirmation/waitlist/:id" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
-            <Route path="/my-bookings/ticket/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
-            <Route path="/my-bookings/ticket/waitlist/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
-            <Route path="/my-bookings/cancel/:id" element={<ProtectedRoute><TicketCancellationPage /></ProtectedRoute>} />
-            <Route path="/my-bookings/cancel/waitlist/:id" element={<ProtectedRoute><TicketCancellationPage /></ProtectedRoute>} />
+            <Route path="/flights/:id/checkout" element={<ProtectedRoute passengerOnly><BookingCheckoutPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute passengerOnly><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute passengerOnly><UserProfilePage /></ProtectedRoute>} />
+            <Route path="/my-bookings" element={<ProtectedRoute passengerOnly><MyBookingsPage /></ProtectedRoute>} />
+            <Route path="/booking-confirmation/:id" element={<ProtectedRoute passengerOnly><BookingConfirmationPage /></ProtectedRoute>} />
+            <Route path="/booking-confirmation/waitlist/:id" element={<ProtectedRoute passengerOnly><BookingConfirmationPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/ticket/:id" element={<ProtectedRoute passengerOnly><TicketDetailPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/ticket/waitlist/:id" element={<ProtectedRoute passengerOnly><TicketDetailPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/cancel/:id" element={<ProtectedRoute passengerOnly><TicketCancellationPage /></ProtectedRoute>} />
+            <Route path="/my-bookings/cancel/waitlist/:id" element={<ProtectedRoute passengerOnly><TicketCancellationPage /></ProtectedRoute>} />
 
             {/* ── Admin Routes ───────────────────────────────────────────── */}
             {/* Redirect /admin/flights → /admin/overview (legacy compat) */}

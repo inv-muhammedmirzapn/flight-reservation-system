@@ -11,7 +11,7 @@ from rest_framework import serializers as rf_serializers
 from .models import Booking, Passenger, SeatHold
 from .serializers import BookingSerializer, PassengerSerializer, SeatHoldSerializer
 from .services import cancel_booking, create_booking, hold_seat, release_hold
-from apps.flights.permissions import IsAdminOrSuperuser
+from apps.flights.permissions import IsAdminOrSuperuser, IsPassengerOnly
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,11 @@ class BookingViewSet(mixins.CreateModelMixin,
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [IsAuthenticated(), IsPassengerOnly()]
+        return [permission() for permission in self.permission_classes]
 
     def get_queryset(self):
         user = self.request.user
@@ -272,7 +277,7 @@ class SeatHoldViewSet(mixins.CreateModelMixin,
       DELETE /api/bookings/holds/{id}/     — release a hold early (user deselected seat)
     """
     serializer_class = SeatHoldSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPassengerOnly]
 
     def get_queryset(self):
         user = self.request.user

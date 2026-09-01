@@ -27,3 +27,22 @@ class IsAdminOrSuperuser(BasePermission):
     def has_object_permission(self, request, view, obj):
         """Object-level: same admin/superuser requirement."""
         return self._is_admin(request.user)
+
+
+class IsPassengerOnly(BasePermission):
+    """
+    Grants access only to authenticated non-staff / non-admin users.
+    Administrators are blocked from performing passenger operations.
+    """
+
+    message = "Administrators are not permitted to perform passenger operations."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.is_staff:
+            return False
+        if hasattr(user, "profile") and user.profile.role == "ADMIN":
+            return False
+        return True

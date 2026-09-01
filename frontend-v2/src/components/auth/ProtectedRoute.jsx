@@ -1,7 +1,13 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-export default function ProtectedRoute({ children, adminOnly = false, guestOnly = false }) {
+export default function ProtectedRoute({
+  children,
+  adminOnly = false,
+  guestOnly = false,
+  passengerOnly = false,
+  allowGuest = false,
+}) {
   const location = useLocation();
   const auth = useSelector((state) => state?.auth) || {};
   const { isAuthenticated, isAdmin, isInitializing } = auth;
@@ -15,15 +21,20 @@ export default function ProtectedRoute({ children, adminOnly = false, guestOnly 
     );
   }
 
-  // Logged-in user trying to access guest-only pages (login/register)
+  // Logged-in user trying to access guest-only pages (login/register/admin-login)
   if (isAuthenticated && guestOnly) {
     return isAdmin
       ? <Navigate to="/admin/overview" replace />
       : <Navigate to="/" replace />;
   }
 
+  // Admin user trying to access passenger/client pages or any non-admin route
+  if (isAuthenticated && isAdmin && (!adminOnly || passengerOnly)) {
+    return <Navigate to="/admin/overview" replace />;
+  }
+
   // Unauthenticated user trying to access protected pages
-  if (!isAuthenticated && !guestOnly) {
+  if (!isAuthenticated && !guestOnly && !allowGuest) {
     return <Navigate to={adminOnly ? "/admin/login" : "/login"} state={{ from: location }} replace />;
   }
 

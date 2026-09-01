@@ -162,9 +162,8 @@ const authSlice = createSlice({
     updateProfileSuccess: (state, action) => {
       state.profile = action.payload;
       
-      //console.log("PROFILE: ", action.payload);
-      if (action.payload?.role) {
-        state.isAdmin = action.payload.role === 'ADMIN';
+      if (action.payload) {
+        state.isAdmin = action.payload.role === 'ADMIN' || action.payload.is_superuser === true || action.payload.is_staff === true;
       }
     },
   },
@@ -223,14 +222,13 @@ const authSlice = createSlice({
         state.isInitializing = false;
         state.profile = action.payload;
         state.isAuthenticated = true;
-        state.isAdmin = action.payload?.role === 'ADMIN';
+        state.isAdmin = action.payload?.role === 'ADMIN' || action.payload?.is_superuser === true || action.payload?.is_staff === true;
       })
       .addCase(fetchProfile.rejected, (state) => {
         state.isInitializing = false;
-        // Profile fetch failed (likely 401 — no valid cookie).
-        // Don't redirect here; ProtectedRoute handles routing.
         state.isAuthenticated = false;
         state.profile = null;
+        state.isAdmin = false;
       });
   },
 });

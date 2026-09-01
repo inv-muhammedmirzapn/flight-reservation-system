@@ -77,7 +77,15 @@ class ProfileSerializer(serializers.ModelSerializer):
         allow_blank=False
     )
 
-    has_usable_password = serializers.SerializerMethodField()
+    is_superuser = serializers.BooleanField(
+        source="user.is_superuser",
+        read_only=True
+    )
+
+    is_staff = serializers.BooleanField(
+        source="user.is_staff",
+        read_only=True
+    )
 
     class Meta:
         model = Profile
@@ -88,6 +96,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
+            "is_superuser",
+            "is_staff",
             "phone_number",
             "date_of_birth",
             "gender",
@@ -98,7 +108,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "role", "has_usable_password", "created_at", "updated_at"]
+        read_only_fields = ["id", "role", "is_superuser", "is_staff", "has_usable_password", "created_at", "updated_at"]
 
     @extend_schema_field(serializers.BooleanField())
     def get_has_usable_password(self, obj):
