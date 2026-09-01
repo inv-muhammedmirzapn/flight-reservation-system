@@ -127,4 +127,13 @@ export const flightsAPI = {
     return fetchWithAuth(`/fare-prediction/${flightInstanceId}/?cabin_class=${cabinClass}`);
   },
 
+  // Flight Comparison
+   compareFlights: async (flightInstanceIds) => {
+    return fetchWithAuth('/comparison/compare/', {
+      method: 'POST',
+      body: JSON.stringify({ flight_instance_ids: flightInstanceIds }),
+    });
+  },
+
+
 };
