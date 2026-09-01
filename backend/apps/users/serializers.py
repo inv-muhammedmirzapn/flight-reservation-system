@@ -87,6 +87,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    has_usable_password = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
         fields = [

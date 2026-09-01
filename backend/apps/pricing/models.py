@@ -77,27 +77,46 @@ class DynamicPricingConfig(models.Model):
 
     def clean(self):
         errors = {}
-        if self.weekend_multiplier is not None and self.weekend_multiplier < Decimal("1.00"):
+
+        def to_dec(val):
+            if val is None or val == "":
+                return None
+            try:
+                return Decimal(str(val))
+            except Exception:
+                return None
+
+        weekend_mult = to_dec(self.weekend_multiplier)
+        initial_surge = to_dec(self.initial_surge_percent)
+        step_surge = to_dec(self.step_surge_percent)
+        max_demand_surge = to_dec(self.max_demand_surge_percent)
+        occupancy_thresh = to_dec(self.occupancy_threshold_percent)
+        max_prox_prem = to_dec(self.max_proximity_premium_percent)
+        max_prox_disc = to_dec(self.max_proximity_discount_percent)
+        price_floor = to_dec(self.price_floor_percent)
+        price_ceiling = to_dec(self.price_ceiling_percent)
+
+        if weekend_mult is not None and weekend_mult < Decimal("1.00"):
             errors["weekend_multiplier"] = "Weekend multiplier cannot be less than 1.00."
-        if self.initial_surge_percent is not None and self.initial_surge_percent < Decimal("0.00"):
+        if initial_surge is not None and initial_surge < Decimal("0.00"):
             errors["initial_surge_percent"] = "Initial surge percentage cannot be negative."
-        if self.step_surge_percent is not None and self.step_surge_percent < Decimal("0.00"):
+        if step_surge is not None and step_surge < Decimal("0.00"):
             errors["step_surge_percent"] = "Step surge percentage cannot be negative."
-        if self.max_demand_surge_percent is not None and self.max_demand_surge_percent < Decimal("0.00"):
+        if max_demand_surge is not None and max_demand_surge < Decimal("0.00"):
             errors["max_demand_surge_percent"] = "Max demand surge percentage cannot be negative."
         # Proximity + occupancy validations
-        if self.occupancy_threshold_percent is not None and not (Decimal("0") <= self.occupancy_threshold_percent <= Decimal("100")):
+        if occupancy_thresh is not None and not (Decimal("0") <= occupancy_thresh <= Decimal("100")):
             errors["occupancy_threshold_percent"] = "Occupancy threshold must be between 0 and 100."
-        if self.max_proximity_premium_percent is not None and self.max_proximity_premium_percent < Decimal("0"):
+        if max_prox_prem is not None and max_prox_prem < Decimal("0"):
             errors["max_proximity_premium_percent"] = "Max proximity premium percent cannot be negative."
-        if self.max_proximity_discount_percent is not None and self.max_proximity_discount_percent < Decimal("0"):
+        if max_prox_disc is not None and max_prox_disc < Decimal("0"):
             errors["max_proximity_discount_percent"] = "Max proximity discount percent cannot be negative."
-        if self.price_floor_percent is not None and self.price_floor_percent <= Decimal("0"):
+        if price_floor is not None and price_floor <= Decimal("0"):
             errors["price_floor_percent"] = "Price floor percent must be greater than 0."
         if (
-            self.price_floor_percent is not None
-            and self.price_ceiling_percent is not None
-            and self.price_ceiling_percent <= self.price_floor_percent
+            price_floor is not None
+            and price_ceiling is not None
+            and price_ceiling <= price_floor
         ):
             errors["price_ceiling_percent"] = "Price ceiling must be greater than the price floor."
         if errors:

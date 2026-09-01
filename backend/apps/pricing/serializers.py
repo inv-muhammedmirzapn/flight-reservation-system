@@ -25,6 +25,9 @@ class DynamicPricingConfigSerializer(serializers.ModelSerializer):
 
 
 class HolidayEventSerializer(serializers.ModelSerializer):
+    multiplier = serializers.DecimalField(source='surge_multiplier', max_digits=5, decimal_places=2, read_only=True)
+    country_name = serializers.CharField(source='country.name', read_only=True, allow_null=True, default='')
+
     class Meta:
         model = HolidayEvent
         fields = "__all__"
