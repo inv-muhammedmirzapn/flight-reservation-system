@@ -73,6 +73,7 @@ export default function FlightDetailPage() {
         ...location.state,
         selectedCabin,
         seatCount: passengerCount,
+        passengers: location.state?.passengers
       },
     });
   };
@@ -102,10 +103,10 @@ export default function FlightDetailPage() {
           <p className="text-xs text-slate-500">{error || "Flight details are unavailable."}</p>
           <button
             type="button"
-            onClick={() => navigate("/flights")}
+            onClick={() => navigate(-1)}
             className="btn-primary px-5 py-2.5 rounded-xl text-xs"
           >
-            Back to Search Results
+            Go Back
           </button>
         </div>
       </div>
@@ -118,11 +119,11 @@ export default function FlightDetailPage() {
       <div className="mb-6 ml-4">
         <button
           type="button"
-          onClick={() => navigate("/flights", { state: { showPastBookings: location.state?.showPastBookings } })}
+          onClick={() => navigate(-1)}
           className="text-xs font-semibold text-slate-600 hover:text-slate-950 cursor-pointer transition-colors flex items-center gap-1.5"
         >
           <span className="material-symbols-outlined text-base">arrow_back</span>
-          Back to Flights List
+          Back
         </button>
         <h1 className="text-xl font-bold text-slate-950 mt-3">
           Flight Details & Selection

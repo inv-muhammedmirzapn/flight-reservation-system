@@ -458,7 +458,12 @@ export default function FlightsPage() {
                 const recData = recRes.data || recRes;
                 const routes = recData.recommended_routes || [];
                 setRecommendedRoutes(routes);
-                if (routes.length > 0) setShowNoDirectModal(true);
+                if (routes.length > 0) {
+                  const alreadySeen = sessionStorage.getItem('noDirectPopupSeen') === `${from}-${to}-${depDate}`;
+                  if (!alreadySeen) {
+                    setShowNoDirectModal(true);
+                  }
+                }
               }
             } catch (recErr) {
               console.warn("Failed to fetch recommended routes", recErr);
@@ -537,13 +542,13 @@ export default function FlightsPage() {
         {/* Section Title & Status Indicator */}
         <div className="flex items-center justify-between mb-6 px-1">
           <h2 className="text-xs font-medium text-slate-900 ml-2">
-            {isFilteredResult
+            {isFilteredResult && !loading && !showNoDirectModal
               && `Found ${flights.length} flights from ${from} to ${to}`}
           </h2>
         </div>
 
         {/* Loading Skeletons */}
-        {loading && (
+        {(loading || showNoDirectModal) && (
           <div className="space-y-4">
             {[1, 2, 3].map((n) => (
               <div
@@ -723,7 +728,7 @@ export default function FlightsPage() {
         )}
 
         {/* No Direct Flights — Connecting Routes Fallback */}
-        {!loading && !error && flights.length === 0 && (
+        {!loading && !error && flights.length === 0 && !showNoDirectModal && (
           <div>
             {recommendedRoutes.length > 0 ? (
               <div className="max-w-5xl mx-auto">
@@ -780,7 +785,7 @@ export default function FlightsPage() {
                 <span className="material-symbols-outlined text-amber-600 text-xl select-none">connecting_airports</span>
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-extrabold text-slate-900 leading-tight">No Direct Flight Available</h2>
+                <h2 className="text-base font-extrabold text-slate-900 leading-tight">Sorry!  No Direct Flight Available</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {from} &rarr; {to} &bull; We found <strong>{recommendedRoutes.length} connecting route{recommendedRoutes.length !== 1 ? "s" : ""}</strong> for you
                 </p>
@@ -848,7 +853,10 @@ export default function FlightsPage() {
             <div className="px-8 pb-6 pt-2">
               <button
                 type="button"
-                onClick={() => setShowNoDirectModal(false)}
+                onClick={() => {
+                  setShowNoDirectModal(false);
+                  sessionStorage.setItem('noDirectPopupSeen', `${from}-${to}-${depDate}`);
+                }}
                 className="w-full btn-primary text-slate-950 py-2.5 rounded-2xl text-sm font-extrabold flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-transform"
               >
                 <span>Next</span>

@@ -39,13 +39,21 @@ export default function BookingCheckoutPage() {
 
   // Passenger data state
   const [passengers, setPassengers] = useState(
-    Array.from({ length: initialSeatCount }, (_, i) => ({
-      id: Date.now() + i,
-      name: "",
-      age: "",
-      gender: "Male",
-      extra_baggage_kg: 0,
-    }))
+    location.state?.passengers && location.state.passengers.length > 0
+      ? location.state.passengers.map((p, i) => ({
+          id: Date.now() + i,
+          name: p.name || "",
+          age: p.age || "",
+          gender: p.gender === "M" ? "Male" : p.gender === "F" ? "Female" : p.gender === "O" ? "Other" : p.gender || "Male",
+          extra_baggage_kg: 0,
+        }))
+      : Array.from({ length: initialSeatCount }, (_, i) => ({
+          id: Date.now() + i,
+          name: "",
+          age: "",
+          gender: "Male",
+          extra_baggage_kg: 0,
+        }))
   );
 
   // Passenger validation errors mapping: { [paxIdx]: { name?: string, age?: string } }
@@ -576,7 +584,8 @@ export default function BookingCheckoutPage() {
         navigate(`/booking-confirmation/waitlist/${response.id}`, {
           state: {
             ...location.state,
-            waitlist: response
+            waitlist: response,
+            passengers: formattedPassengers
           }
         });
       } else {
@@ -585,7 +594,8 @@ export default function BookingCheckoutPage() {
         navigate(`/booking-confirmation/${response.id}`, {
           state: {
             ...location.state,
-            booking: response
+            booking: response,
+            passengers: formattedPassengers
           }
         });
       }

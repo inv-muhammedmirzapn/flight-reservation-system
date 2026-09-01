@@ -373,10 +373,16 @@ class RouteOptimizer:
         # We query up to +5 days to handle multi-day connecting routes
         instance_map: Dict[str, list] = {}  # flight_no -> list[FlightInstance]
         from datetime import timedelta as td
+        from django.utils import timezone
+        
+        now = timezone.now()
+        booking_cutoff = now + td(hours=3)
+        
         window_end = travel_date + td(days=5)
         instances = FlightInstance.objects.filter(
             date__gte=travel_date,
             date__lte=window_end,
+            scheduled_departure__gt=booking_cutoff,
             status__in=["SCHEDULED", "DELAYED", "BOARDING"]
         ).select_related("flight", "flight__airline").prefetch_related("fares")
         for inst in instances:
