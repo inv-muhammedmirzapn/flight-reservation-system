@@ -113,13 +113,20 @@ class NotificationService:
         
         cabin_class = booking.get_cabin_class_display() if booking.cabin_class else "N/A"
         
+        from apps.pricing.services_currency import CurrencyService
+        base_currency = booking.tickets.first().currency if booking.tickets.exists() else "INR"
+        currency = CurrencyService.get_user_currency(booking.user)
+        raw_total = float(booking.total_price)
+        converted_total = float(CurrencyService.convert_amount(raw_total, base_currency, currency))
+        
         return {
             "passenger_name": passenger_name,
             "seat_numbers": seat_numbers,
             "baggage_info": baggage_info,
             "cabin_class": cabin_class,
             "seat_count": booking.seat_count,
-            "total_price": float(booking.total_price),
+            "total_price": converted_total,
+            "currency": currency,
         }
 
     @classmethod
@@ -441,7 +448,7 @@ class NotificationService:
             message=(
                 f"Your waitlist entry for flight {flight_number} "
                 f"({origin} → {destination}) has been cancelled. "
-                f"A refund of ₹{refund_amount:.2f} will be processed (5% processing fee applied)."
+                f"A refund of INR {refund_amount:.2f} will be processed (5% processing fee applied)."
             ),
             notification_type=NotificationType.BOOKING_CANCELLED,
             related_object_id=str(flight_instance.id),
