@@ -5,6 +5,8 @@ import bookingsReducer from './bookingSlice';
 import waitlistReducer from './waitlistSlice';
 import notificationsReducer from './notificationsSlice';
 import systemReducer from './systemSlice';
+import comparisonReducer from './comparisonSlice';
+
 
 // Admin entity reducers
 import {
@@ -36,6 +38,7 @@ export const store = configureStore({
     waitlist: waitlistReducer,
     notifications: notificationsReducer,
     system: systemReducer,
+    comparison: comparisonReducer,  
 
     // Admin panel entities
     country: countryReducer,

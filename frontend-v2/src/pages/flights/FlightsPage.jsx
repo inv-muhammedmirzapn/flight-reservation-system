@@ -4,25 +4,23 @@ import FlightSearchHeader from "@/components/flights/FlightSearchHeader";
 import DateStripCarousel from "@/components/flights/DateStripCarousel";
 import FlightCard from "@/components/flights/FlightCard";
 import FlightFilterDrawer from "@/components/flights/FlightFilterDrawer";
+import CompareModal from "@/components/flights/CompareModal";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFlightBounds } from "@/store/flightSlice";
+import { clearComparison } from "@/store/comparisonSlice";
 import { formatCurrency } from "@/utils/formatters";
 
+
+// It receives four props
 function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
   // Extract hops from route (support both hops structure and legacy route structure)
   const hops = route.hops || (route.route ? route.route.map((leg) => ({ options: [leg] })) : []);
 
-  // State for selected option index per hop: { [hopIndex]: optionIndex }
-  const [selectedIndices, _setSelectedIndices] = useState({});
+  // Active leg for each hop based on selection (always defaults to first option as UI to select alternative legs is not implemented)
+  const activeLegs = hops.map((hop) => hop.options[0] || {});
 
-  // Active leg for each hop based on selection
-  const activeLegs = hops.map((hop, hIdx) => {
-    const sIdx = selectedIndices[hIdx] || 0;
-    return hop.options[sIdx] || hop.options[0] || {};
-  });
-
-  // Calculate dynamic totals
+  //This calculates total fare
   const totalFare = activeLegs.reduce((sum, leg) => sum + (leg.min_fare || 0), 0);
 
   // Time formatting helpers
@@ -31,13 +29,15 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
+
+  //this formats the date
   const fmtDate = (iso) => {
     if (!iso) return null;
     const d = new Date(iso);
     return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
   };
 
-  // Calculate overall duration from first departure to last arrival if dates available
+  //this calculates the total duration
   let totalDurationMins = route.total_duration_minutes;
   if (activeLegs.length > 0 && activeLegs[0].departure_time && activeLegs[activeLegs.length - 1].arrival_time) {
     const depMs = new Date(activeLegs[0].departure_time).getTime();
@@ -49,6 +49,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
   const totalHours = Math.floor(totalDurationMins / 60);
   const totalMins = totalDurationMins % 60;
 
+  //this gets the Airline logo url
   const getLogoUrl = (url) => {
     if (!url) return null;
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -56,6 +57,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
   };
 
   // Unique airlines among active legs
+  // The purpose is to avoid displaying the same airline twice.
   const uniqueAirlines = [];
   const seenCodes = new Set();
   activeLegs.forEach((leg) => {
@@ -65,6 +67,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
     }
   });
 
+  // This checks whether every leg has an instance_id
   const allLegsBookable = activeLegs.length > 0 && activeLegs.every((leg) => !!leg.instance_id);
 
   return (
@@ -126,7 +129,6 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
       {/* Hops/Legs */}
       <div className="flex flex-col gap-3">
         {hops.map((hop, hopIdx) => {
-          // const sIdx = selectedIndices[hopIdx] || 0;
           const leg = activeLegs[hopIdx] || {};
 
           const depTime = fmtTime(leg.departure_time);
@@ -290,15 +292,17 @@ export default function FlightsPage() {
   const [recommendedRoutes, setRecommendedRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isFilteredResult, setIsFilteredResult] = useState(true);
   const [showNoDirectModal, setShowNoDirectModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [compareMode, setCompareMode] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const PAGE_SIZE = 10;
 
   const dispatch = useDispatch();
   const { bounds } = useSelector((state) => state.flights);
-  // const user = useSelector((state) => state.auth.user);
+  const selectedIds = useSelector((state) => state.comparison.selectedIds);
+
 
   useEffect(() => {
     dispatch(fetchFlightBounds({
@@ -308,6 +312,12 @@ export default function FlightsPage() {
       cabin_class: cabinClassParam
     }));
   }, [dispatch, from, to, depDate, cabinClassParam]);
+
+  // Auto-exit compare mode and clear selections when search parameters change (e.g. changing dates)
+  useEffect(() => {
+    setCompareMode(false);
+    dispatch(clearComparison());
+  }, [depDate, from, to, cabinClassParam, dispatch]);
 
   // Filter drawer state
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -450,7 +460,6 @@ export default function FlightsPage() {
 
         if (isMounted) {
           setFlights(results);
-          setIsFilteredResult(true);
           if (results.length === 0 && from && to) {
             try {
               const recRes = await flightsAPI.fetchRecommendedRoutes(from, to, depDate);
@@ -542,9 +551,26 @@ export default function FlightsPage() {
         {/* Section Title & Status Indicator */}
         <div className="flex items-center justify-between mb-6 px-1">
           <h2 className="text-xs font-medium text-slate-900 ml-2">
-            {isFilteredResult && !loading && !showNoDirectModal
+            {!loading && !showNoDirectModal
               && `Found ${flights.length} flights from ${from} to ${to}`}
           </h2>
+          {!loading && !error && flights.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setCompareMode(prev => !prev);
+                if (compareMode) dispatch(clearComparison());
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer
+                ${compareMode
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:border-slate-900"
+                }`}
+            >
+              <span className="material-symbols-outlined text-sm select-none">compare_arrows</span>
+              {compareMode ? "Exit Compare" : "Compare"}
+            </button>
+          )}
         </div>
 
         {/* Loading Skeletons */}
@@ -662,6 +688,7 @@ export default function FlightsPage() {
                   selectedCabinClass={cabinClassParam}
                   onViewDetails={handleViewDetails}
                   optimizationBadge={assignedBadges.get(flight.id) || null}
+                  compareMode={compareMode}
                 />
               ));
             })()}
@@ -866,6 +893,36 @@ export default function FlightsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Floating Compare Bar ─────────────────────────────────────── */}
+      {compareMode && selectedIds.length >= 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700">
+          <span className="material-symbols-outlined text-[#ffeb00] text-lg select-none">compare_arrows</span>
+          <span className="text-sm font-bold">{selectedIds.length} flights selected</span>
+          <button
+            type="button"
+            onClick={() => setShowCompareModal(true)}
+            className="px-4 py-1.5 text-xs font-bold rounded-xl bg-[#ffeb00] text-slate-900 hover:bg-yellow-300 transition-all cursor-pointer"
+          >
+            Compare Now
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch(clearComparison())}
+            className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="Clear selection"
+          >
+            <span className="material-symbols-outlined text-base select-none">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Compare Modal ──────────────────────────────────────────────── */}
+      {showCompareModal && (
+        <CompareModal onClose={() => setShowCompareModal(false)} />
+      )}
+
     </div>
   );
 }
+

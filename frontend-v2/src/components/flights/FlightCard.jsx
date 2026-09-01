@@ -1,7 +1,14 @@
+import { useDispatch, useSelector } from "react-redux";
+import { addToComparison, removeFromComparison } from "@/store/comparisonSlice";
 import FlightBaggageMealIndicators from "./FlightBaggageMealIndicators";
 import { formatCurrency as fmtCurr } from "@/utils/formatters";
 
-export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails, optimizationBadge = null, isHighlighted = false }) {
+
+export default function FlightCard({ flight, selectedCabinClass = "Economy", onViewDetails, optimizationBadge = null, isHighlighted = false, compareMode = false }) {
+  const dispatch = useDispatch();
+  const selectedIds = useSelector((state) => state.comparison.selectedIds);
+  const isSelectedForCompare = selectedIds.includes(flight?.id);
+
   if (!flight) return null;
 
   const {
@@ -221,6 +228,30 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
               View Details
             </button>
           )}
+
+          {/* Compare Button — only visible in compare mode and if booking is open */}
+          {compareMode && !booking_cutoff_passed && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isSelectedForCompare) {
+                  dispatch(removeFromComparison(flight.id));
+                } else {
+                  dispatch(addToComparison(flight.id));
+                }
+              }}
+              disabled={!isSelectedForCompare && selectedIds.length >= 4}
+              className={`w-full px-3 py-1 text-[10px] rounded-xl font-bold transition-all cursor-pointer border mt-1
+                ${isSelectedForCompare
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : selectedIds.length >= 4
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border-slate-300 hover:border-slate-900 hover:bg-slate-50"
+                }`}
+            >
+              {isSelectedForCompare ? "✓ Added" : "+ Compare"}
+            </button>
+          )}
         </div>
 
       </div>
@@ -341,6 +372,30 @@ export default function FlightCard({ flight, selectedCabinClass = "Economy", onV
             </button>
           )}
         </div>
+
+        {/* Compare Button — mobile, only visible in compare mode and if booking is open */}
+        {compareMode && !booking_cutoff_passed && (
+          <button
+            type="button"
+            onClick={() => {
+              if (isSelectedForCompare) {
+                dispatch(removeFromComparison(flight.id));
+              } else {
+                dispatch(addToComparison(flight.id));
+              }
+            }}
+            disabled={!isSelectedForCompare && selectedIds.length >= 4}
+            className={`w-full px-3 py-1.5 text-[10px] rounded-xl font-bold transition-all cursor-pointer border
+              ${isSelectedForCompare
+                ? "bg-slate-900 text-white border-slate-900"
+                : selectedIds.length >= 4
+                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                  : "bg-white text-slate-700 border-slate-300 hover:border-slate-900 hover:bg-slate-50"
+              }`}
+          >
+            {isSelectedForCompare ? "✓ Added to Compare" : "+ Compare"}
+          </button>
+        )}
 
       </div>
 
