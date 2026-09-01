@@ -33,56 +33,27 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
   const overallDiff = finalPrice - basePrice;
   const overallPercentChange = basePrice > 0 ? Math.round(((finalPrice - basePrice) / basePrice) * 100) : 0;
 
-  // Construct active factors list
+  // Construct active factors list in logical evaluation hierarchy:
+  // 1. Macro Seasonal / Calendar Adjustments (Holiday Events & Weekend Travel)
+  // 2. Micro Real-time Yield Adjustments (Departure Proximity & Seat Occupancy)
+  // 3. High Demand Velocity Surges
   const factors = [];
-
-  // 1. Explicit Cabin Occupancy Factor (Always show if breakdown is present)
-  const isLowOccupancy = occupancyPercent < 60;
   const proxDiff = Math.round((proximityMultiplier - 1) * 100);
 
-  factors.push({
-    id: "occupancy",
-    icon: "airline_seat_recline_normal",
-    label: `Cabin Seat Occupancy (${occupancyPercent}%)`,
-    badgeText: proxDiff < 0 ? `${proxDiff}%` : proxDiff > 0 ? `+${proxDiff}% Surge` : `${occupancyPercent}% Booked`,
-    badgeColor: isLowOccupancy
-      ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-      : "bg-amber-100 text-amber-900 border-amber-300",
-    description: isLowOccupancy
-      ? `Occupancy < 60% capacity threshold → ${Math.abs(proxDiff)}% discount applied to boost sales`
-      : `Occupancy ≥ 60% capacity threshold → ${proxDiff}% high-demand surge applied`,
-  });
-
-  // 2. Proximity / Departure Window Factor
-  if (daysUntilDeparture > 0 || proximityMultiplier !== 1) {
+  // 1. Holiday Event Surge (Macro Seasonal Baseline)
+  if (holidayMultiplier > 1) {
+    const hPct = Math.round((holidayMultiplier - 1) * 100);
     factors.push({
-      id: "proximity",
-      icon: "schedule",
-      label: `Departure Window (${daysUntilDeparture}d remaining)`,
-      badgeText: `${daysUntilDeparture}d out`,
-      badgeColor: "bg-slate-100 text-slate-700 border-slate-200",
-      description:
-        proxDiff < 0
-          ? "Low occupancy at departure day yields a discount instead of a last-minute price hike"
-          : proxDiff > 0
-            ? "Last-minute booking window with high occupancy increases yield"
-            : "Standard departure window",
+      id: "holiday",
+      icon: "celebration",
+      label: holidayName ? `${holidayName} Event` : "Holiday Event Surge",
+      badgeText: `+${hPct}%`,
+      badgeColor: "bg-purple-100 text-purple-900 border-purple-300",
+      description: "Seasonal calendar peak demand surge",
     });
   }
 
-  // 3. Demand Velocity Surge
-  if (demandSurgePercent > 0) {
-    factors.push({
-      id: "demand",
-      icon: "trending_up",
-      label: "Demand Velocity Surge",
-      badgeText: `+${demandSurgePercent}%`,
-      badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
-      description: "High volume of recent bookings for this route",
-    });
-  }
-
-  // 4. Weekend Travel
+  // 2. Weekend Peak Travel (Macro Calendar Baseline)
   if (weekendMultiplier > 1) {
     const wPct = Math.round((weekendMultiplier - 1) * 100);
     factors.push({
@@ -91,20 +62,42 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
       label: "Weekend Peak Travel",
       badgeText: `+${wPct}%`,
       badgeColor: "bg-indigo-100 text-indigo-900 border-indigo-300",
-      description: "High demand travel day adjustment",
+      description: "High-demand travel day adjustment",
     });
   }
 
-  // 5. Holiday Event
-  if (holidayMultiplier > 1 || holidayName) {
-    const hPct = Math.round((holidayMultiplier - 1) * 100);
+  // 3. Proximity & Occupancy Yield Factor (Micro Load Factor Adjustment)
+  if (proxDiff !== 0) {
+    if (proxDiff < 0) {
+      factors.push({
+        id: "occupancy_discount",
+        icon: "airline_seat_recline_normal",
+        label: `Low Occupancy Discount (${occupancyPercent}% Booked)`,
+        badgeText: `${proxDiff}%`,
+        badgeColor: "bg-emerald-100 text-emerald-900 border-emerald-300",
+        description: `Occupancy < 60% within departure window (${daysUntilDeparture}d out) → ${Math.abs(proxDiff)}% yield discount applied on seasonal rate`,
+      });
+    } else {
+      factors.push({
+        id: "proximity_surge",
+        icon: "schedule",
+        label: `Proximity & High Demand Surge (${occupancyPercent}% Booked)`,
+        badgeText: `+${proxDiff}%`,
+        badgeColor: "bg-amber-100 text-amber-900 border-amber-300",
+        description: `Occupancy ≥ 60% within departure window (${daysUntilDeparture}d out) → ${proxDiff}% yield surge applied`,
+      });
+    }
+  }
+
+  // 4. Demand Velocity Surge (Recent Booking Velocity)
+  if (demandSurgePercent > 0) {
     factors.push({
-      id: "holiday",
-      icon: "celebration",
-      label: holidayName ? `${holidayName} Event` : "Holiday Event Surge",
-      badgeText: hPct > 0 ? `+${hPct}%` : "Holiday Active",
-      badgeColor: "bg-purple-100 text-purple-900 border-purple-300",
-      description: "Seasonal holiday surge pricing",
+      id: "demand",
+      icon: "trending_up",
+      label: "Demand Velocity Surge",
+      badgeText: `+${demandSurgePercent}%`,
+      badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+      description: "High volume of recent bookings for this route",
     });
   }
 
@@ -201,6 +194,13 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
             </span>
           </div>
         ))}
+
+        {factors.length === 0 && (
+          <div className="p-2.5 rounded-xl bg-slate-50/50 border border-slate-100/80 text-[11px] text-slate-500 italic flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm text-slate-400">check_circle</span>
+            No dynamic surcharges or discounts active for this flight date
+          </div>
+        )}
       </div>
 
       {/* Formula Footer */}
