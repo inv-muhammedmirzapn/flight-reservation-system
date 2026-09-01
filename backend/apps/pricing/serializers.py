@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.core.exceptions import ValidationError
 from apps.pricing.models import DynamicPricingConfig, HolidayEvent, DynamicPriceLog
 
 
@@ -6,6 +7,21 @@ class DynamicPricingConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = DynamicPricingConfig
         fields = "__all__"
+
+    def validate(self, attrs):
+        initial_data = self.to_representation(self.instance) if self.instance else {}
+        initial_data.update(attrs)
+        model_fields = {f.name for f in DynamicPricingConfig._meta.get_fields()}
+        clean_data = {k: v for k, v in initial_data.items() if k in model_fields}
+
+        instance = DynamicPricingConfig(**clean_data)
+        try:
+            instance.clean()
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            raise serializers.ValidationError(str(e))
+        return attrs
 
 
 class HolidayEventSerializer(serializers.ModelSerializer):
