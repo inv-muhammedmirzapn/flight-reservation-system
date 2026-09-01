@@ -38,8 +38,17 @@ export const getResponseData = async (res) => {
   if (!text) return null;
   try {
     const json = JSON.parse(text);
-    // Unwrap global API response envelope: { status: "success", data: ... }
+    // Unwrap global API response envelope: { status: "success", data: ..., message: ... }
     if (json && typeof json === 'object' && json.status === 'success') {
+      if (json.data !== undefined && json.data !== null) {
+        if (typeof json.data === 'object' && !Array.isArray(json.data) && json.message && !json.data.message) {
+          return { ...json.data, message: json.message };
+        }
+        return json.data;
+      }
+      if (json.message) {
+        return { message: json.message };
+      }
       return json.data !== undefined ? json.data : json;
     }
     return json;

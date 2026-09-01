@@ -14,4 +14,7 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
+        if instance.is_superuser or instance.is_staff:
+            if instance.profile.role != Profile.Role.ADMIN:
+                instance.profile.role = Profile.Role.ADMIN
         instance.profile.save()

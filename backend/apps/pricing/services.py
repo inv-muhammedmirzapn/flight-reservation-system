@@ -44,6 +44,8 @@ class DynamicPricingStrategy(PricingStrategy):
     1. Weekend Multiplier
     2. Location-aware Holiday Multiplier (Global or Country-specific origin/destination match)
     3. Demand Velocity Surge (Rolling N-day window booking count vs thresholds)
+    4. Proximity + Occupancy Multiplier (within departure window: high occupancy → premium, low → discount)
+    Final price is clamped between configurable floor/ceiling % of base price.
     """
     def __init__(self, config: DynamicPricingConfig | None = None):
         if config is None:
@@ -80,6 +82,9 @@ class DynamicPricingStrategy(PricingStrategy):
                 "holiday_name": "",
                 "demand_surge_percent": Decimal("0.00"),
                 "recent_booking_count": 0,
+                "proximity_multiplier": Decimal("1.0000"),
+                "occupancy_percent": Decimal("0.00"),
+                "days_until_departure": 0,
                 "final_price": base_price,
             }
 
@@ -98,8 +103,13 @@ class DynamicPricingStrategy(PricingStrategy):
 
         # 2. Location-aware Holiday Check
         route = route_fare.route if hasattr(route_fare, "route") else None
-        origin_country = route.origin_airport.country if route and route.origin_airport else ""
-        dest_country = route.destination_airport.country if route and route.destination_airport else ""
+        orig_country = route.origin_airport.country if route and route.origin_airport else None
+        dest_country = route.destination_airport.country if route and route.destination_airport else None
+
+        orig_name = orig_country.name.lower() if orig_country else ""
+        orig_iso = orig_country.iso_code.lower() if orig_country else ""
+        dest_name = dest_country.name.lower() if dest_country else ""
+        dest_iso = dest_country.iso_code.lower() if dest_country else ""
 
         active_holidays = HolidayEvent.objects.filter(
             is_active=True,
@@ -112,10 +122,15 @@ class DynamicPricingStrategy(PricingStrategy):
             if holiday.is_global:
                 applies = True
             else:
-                countries = [c.strip().lower() for c in (holiday.applicable_countries or [])]
-                if (origin_country and str(origin_country).lower() in countries) or (
-                    dest_country and str(dest_country).lower() in countries
-                ):
+                raw_countries = holiday.applicable_countries
+                if isinstance(raw_countries, str):
+                    countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]
+                elif isinstance(raw_countries, list):
+                    countries = [str(c).strip().lower() for c in raw_countries if str(c).strip()]
+                else:
+                    countries = []
+
+                if not countries or any(c in countries for c in [orig_name, orig_iso, dest_name, dest_iso] if c):
                     applies = True
 
             if applies:
@@ -151,7 +166,23 @@ class DynamicPricingStrategy(PricingStrategy):
                 d_percent = min(calc_surge, max_surge)
 
         d_mult = Decimal("1.00") + (d_percent / Decimal("100.00"))
-        final_price = (base_price * w_mult * h_mult * d_mult).quantize(Decimal("0.01"))
+
+        # 4. Proximity + Occupancy Multiplier
+        p_mult, occupancy_pct, days_out = self._compute_proximity_multiplier(
+            flight_instance=flight_instance,
+            cabin_class=route_fare.cabin_class,
+            flight_date=flight_date,
+        )
+
+        # Combine all multipliers
+        raw_price = base_price * w_mult * h_mult * d_mult * p_mult
+
+        # 5. Floor / Ceiling clamp relative to base_price
+        floor_pct = Decimal(str(self.config.price_floor_percent)) / Decimal("100")
+        ceil_pct = Decimal(str(self.config.price_ceiling_percent)) / Decimal("100")
+        floor_price = base_price * floor_pct
+        ceil_price = base_price * ceil_pct
+        final_price = max(floor_price, min(ceil_price, raw_price)).quantize(Decimal("0.01"))
 
         return {
             "base_price": base_price,
@@ -160,12 +191,89 @@ class DynamicPricingStrategy(PricingStrategy):
             "holiday_name": h_name,
             "demand_surge_percent": d_percent,
             "recent_booking_count": booking_count,
+            "proximity_multiplier": p_mult,
+            "occupancy_percent": occupancy_pct,
+            "days_until_departure": days_out,
             "final_price": final_price,
         }
 
     def calculate_price(self, route_fare: RouteFareClass, flight_date: date) -> Decimal:
         breakdown = self.calculate_price_breakdown(route_fare, flight_date)
         return breakdown["final_price"]
+
+    def _compute_proximity_multiplier(
+        self,
+        flight_instance: FlightInstance | None,
+        cabin_class: str,
+        flight_date: date,
+    ) -> tuple[Decimal, Decimal, int]:
+        """
+        Returns (proximity_multiplier, occupancy_percent, days_until_departure).
+
+        Rules:
+        - If feature disabled, or no flight_instance, or outside window → (1.0000, 0.00, days_out)
+        - Inside window:
+            - occupancy >= threshold → premium (multiplier > 1)
+            - occupancy < threshold  → discount (multiplier < 1)
+        - Magnitude scales linearly from 0% at the window edge to max_percent at departure day.
+        """
+        no_effect = (Decimal("1.0000"), Decimal("0.00"), 0)
+
+        if not self.config or not self.config.proximity_pricing_enabled:
+            return no_effect
+
+        if flight_instance is None:
+            return no_effect
+
+        today = timezone.now().date()
+        days_out = (flight_date - today).days
+        window = self.config.proximity_window_days or 3
+
+        # Outside the window — multiplier is always 1.00 regardless of occupancy
+        if days_out > window:
+            return (Decimal("1.0000"), Decimal("0.00"), days_out)
+
+        # Compute cabin occupancy from real seat data
+        aircraft = flight_instance.aircraft
+        cabin_upper = cabin_class.upper()
+        capacity_map = {
+            "ECONOMY": aircraft.economy_capacity,
+            "BUSINESS": aircraft.business_capacity,
+            "FIRST": aircraft.first_class_capacity,
+        }
+        total_seats = capacity_map.get(cabin_upper, 0)
+
+        if total_seats <= 0:
+            return (Decimal("1.0000"), Decimal("0.00"), days_out)
+
+        booked_seats = flight_instance.seats.filter(
+            seat_class=cabin_upper,
+            status="BOOKED",
+        ).count()
+        occupancy_pct = Decimal(str(round(booked_seats / total_seats * 100, 2)))
+
+        threshold = Decimal(str(self.config.occupancy_threshold_percent))
+
+        # Linear magnitude: full effect at day 0, zero effect at window boundary
+        # days_out is clamped to [0, window]; at window boundary → 0% magnitude
+        days_clamped = max(0, min(days_out, window))
+        if window > 0:
+            magnitude_ratio = Decimal(str(1 - days_clamped / window))
+        else:
+            magnitude_ratio = Decimal("1")
+
+        if occupancy_pct >= threshold:
+            # High occupancy → premium
+            max_pct = Decimal(str(self.config.max_proximity_premium_percent))
+            adj_pct = max_pct * magnitude_ratio
+            p_mult = (Decimal("1") + adj_pct / Decimal("100")).quantize(Decimal("0.0001"))
+        else:
+            # Low occupancy → discount
+            max_pct = Decimal(str(self.config.max_proximity_discount_percent))
+            adj_pct = max_pct * magnitude_ratio
+            p_mult = (Decimal("1") - adj_pct / Decimal("100")).quantize(Decimal("0.0001"))
+
+        return (p_mult, occupancy_pct, days_out)
 
 
 def generate_fares_for_instance(
@@ -333,6 +441,9 @@ def reevaluate_route_fares_dynamically(
                 holiday_applied=breakdown["holiday_name"],
                 demand_surge_percent=breakdown["demand_surge_percent"],
                 recent_booking_count=breakdown["recent_booking_count"],
+                occupancy_percent=breakdown["occupancy_percent"],
+                days_until_departure=breakdown["days_until_departure"],
+                proximity_multiplier=breakdown["proximity_multiplier"],
                 final_calculated_price=breakdown["final_price"],
             )
 

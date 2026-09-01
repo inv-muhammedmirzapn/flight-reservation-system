@@ -1,3 +1,5 @@
+import airportsData from "../../resources/airports.json";
+
 export const AIRPORT_MAP = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
   HAM: { city: "Hamburg", code: "HAM", name: "Fuhlsbuettel Airport", country: "Germany" },
@@ -17,16 +19,38 @@ export const AIRPORT_MAP = {
   SIN: { city: "Singapore", code: "SIN", name: "Changi Airport", country: "Singapore" }
 };
 
+const JSON_AIRPORT_MAP = {};
+if (Array.isArray(airportsData)) {
+  airportsData.forEach((item) => {
+    if (item && item.code) {
+      const codeUpper = String(item.code).trim().toUpperCase();
+      JSON_AIRPORT_MAP[codeUpper] = {
+        city: item.city || codeUpper,
+        code: codeUpper,
+        name: item.name || `${codeUpper} Airport`,
+        country: item.country || ""
+      };
+    }
+  });
+}
+
 export function getAirportInfo(input) {
   if (!input) return { city: "Unknown", code: "---", name: "Airport", country: "" };
   const upper = String(input).trim().toUpperCase();
   if (AIRPORT_MAP[upper]) return AIRPORT_MAP[upper];
+  if (JSON_AIRPORT_MAP[upper]) return JSON_AIRPORT_MAP[upper];
 
   // Search by city name or airport name match
-  const found = Object.values(AIRPORT_MAP).find(
-    (item) => item.city.toUpperCase() === upper || item.name.toUpperCase().includes(upper)
-  );
+  const found =
+    Object.values(AIRPORT_MAP).find(
+      (item) => item.city.toUpperCase() === upper || item.name.toUpperCase().includes(upper)
+    ) ||
+    Object.values(JSON_AIRPORT_MAP).find(
+      (item) => item.city.toUpperCase() === upper || item.name.toUpperCase().includes(upper)
+    );
+
   if (found) return found;
 
   return { city: upper, code: upper, name: `${upper} Airport`, country: "" };
 }
+

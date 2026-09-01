@@ -23,6 +23,8 @@ import {
 } from '@/admin/_core/store/adminSlices';
 import { Pagination } from '@/components/ui/Pagination';
 import { SpinnerLoader } from '@/components/ui/Loaders';
+import ConfirmModal from '@/components/common/ConfirmModal';
+import { parseApiError } from '@/utils/errorUtils';
 import '@/admin/_core/styles/admin.css';
 import {
   TrendingUp,
@@ -54,18 +56,59 @@ export default function DynamicPricingPage() {
   const { items: countries } = useSelector((s) => s.country || {});
 
   const currentConfig = configs && configs.length > 0 ? configs[0] : null;
+  // Multiplier (e.g. 1.15) -> Surge % (e.g. 15)
+  const multToPct = (mult, defaultPct = 0) => {
+    if (mult === undefined || mult === null || mult === '') return defaultPct;
+    const num = parseFloat(mult);
+    if (isNaN(num)) return defaultPct;
+    return num >= 1 ? Math.round((num - 1) * 100) : Math.round(num * 100);
+  };
+
+  // Direct Percentage (e.g. 2.00 or 50.00) -> Surge % (e.g. 2 or 50)
+  const rawPct = (pct, defaultPct = 0) => {
+    if (pct === undefined || pct === null || pct === '') return defaultPct;
+    const num = parseFloat(pct);
+    if (isNaN(num)) return defaultPct;
+    return Math.round(num);
+  };
+
+  // Input clamping helper to prevent typing values beyond min/max limits
+  const clampValue = (valStr, min, max) => {
+    if (valStr === '') return '';
+    let val = parseFloat(valStr);
+    if (isNaN(val)) return '';
+    if (val > max) return max.toString();
+    if (val < min) return min.toString();
+    return valStr;
+  };
+
+  const handleConfigChange = (field, valStr, min, max) => {
+    setConfigForm((prev) => ({
+      ...prev,
+      [field]: clampValue(valStr, min, max),
+    }));
+  };
+
+  const handleHolidayChange = (field, valStr, min, max) => {
+    setHolidayForm((prev) => ({
+      ...prev,
+      [field]: clampValue(valStr, min, max),
+    }));
+  };
 
   // Local Form States for Config
   const [configForm, setConfigForm] = useState({
     is_enabled: true,
-    weekend_multiplier: '1.15',
-    holiday_multiplier: '1.25',
-    demand_surge_per_booking: '0.05',
-    max_surge_cap: '1.80',
+    weekend_surge_pct: '15',
+    holiday_surge_pct: '25',
+    demand_surge_pct: '2',
+    max_surge_cap_pct: '50',
     demand_window_days: 7,
   });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showEvaluateConfirmModal, setShowEvaluateConfirmModal] = useState(false);
+  const [deletingHolidayId, setDeletingHolidayId] = useState(null);
 
   // Simulator States
   const [simForm, setSimForm] = useState({
@@ -83,7 +126,7 @@ export default function DynamicPricingPage() {
     country: '',
     start_date: '',
     end_date: '',
-    multiplier: '1.20',
+    surge_percent: '20',
   });
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
 
@@ -101,12 +144,12 @@ export default function DynamicPricingPage() {
   useEffect(() => {
     if (currentConfig) {
       setConfigForm({
-        is_enabled: currentConfig.is_enabled ?? true,
-        weekend_multiplier: currentConfig.weekend_multiplier || '1.15',
-        holiday_multiplier: currentConfig.holiday_multiplier || '1.25',
-        demand_surge_per_booking: currentConfig.demand_surge_per_booking || '0.05',
-        max_surge_cap: currentConfig.max_surge_cap || '1.80',
-        demand_window_days: currentConfig.demand_window_days || 7,
+        is_enabled: currentConfig.is_enabled ?? currentConfig.is_active ?? true,
+        weekend_surge_pct: multToPct(currentConfig.weekend_multiplier, 15).toString(),
+        holiday_surge_pct: multToPct(currentConfig.holiday_multiplier, 25).toString(),
+        demand_surge_pct: rawPct(currentConfig.step_surge_percent ?? currentConfig.demand_surge_per_booking, 2).toString(),
+        max_surge_cap_pct: rawPct(currentConfig.max_demand_surge_percent ?? currentConfig.max_surge_cap, 50).toString(),
+        demand_window_days: currentConfig.rolling_window_days ?? currentConfig.demand_window_days ?? 7,
       });
     }
   }, [currentConfig]);
@@ -131,10 +174,22 @@ export default function DynamicPricingPage() {
     }
     setIsSavingConfig(true);
     try {
+      const payload = {
+        is_enabled: configForm.is_enabled,
+        is_active: configForm.is_enabled,
+        weekend_multiplier: (1 + parseFloat(configForm.weekend_surge_pct || 0) / 100).toFixed(2),
+        holiday_multiplier: (1 + parseFloat(configForm.holiday_surge_pct || 0) / 100).toFixed(2),
+        step_surge_percent: parseFloat(configForm.demand_surge_pct || 0).toFixed(2),
+        demand_surge_per_booking: parseFloat(configForm.demand_surge_pct || 0).toFixed(2),
+        max_demand_surge_percent: parseFloat(configForm.max_surge_cap_pct || 0).toFixed(2),
+        max_surge_cap: (1 + parseFloat(configForm.max_surge_cap_pct || 0) / 100).toFixed(2),
+        demand_window_days: Number(configForm.demand_window_days),
+        rolling_window_days: Number(configForm.demand_window_days),
+      };
       await dispatch(
         updateDynamicPricingConfig({
           id: currentConfig.id,
-          data: configForm,
+          data: payload,
         })
       ).unwrap();
       toast.success('Dynamic pricing engine configuration saved.');
@@ -146,18 +201,16 @@ export default function DynamicPricingPage() {
   };
 
   // Handle Manual Global Re-evaluation
-  const handleEvaluateAll = async () => {
-    if (!window.confirm('Trigger manual re-evaluation of dynamic prices for all upcoming flight fares?')) {
-      return;
-    }
+  const executeEvaluateAll = async () => {
+    setShowEvaluateConfirmModal(false);
     setIsEvaluating(true);
     try {
       const res = await dispatch(evaluateAllDynamicPricing()).unwrap();
-      toast.success(res.message || 'Dynamic price re-evaluation completed!');
+      toast.success(res?.message || 'Dynamic price re-evaluation completed!');
       dispatch(fetchDynamicPriceLogs({ page: 1 }));
       setLogPage(1);
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Re-evaluation failed.');
+      toast.error(parseApiError(err, 'Re-evaluation failed.'));
     } finally {
       setIsEvaluating(false);
     }
@@ -197,18 +250,20 @@ export default function DynamicPricingPage() {
     }
     setIsAddingHoliday(true);
     try {
+      const multDecimal = (1 + parseFloat(holidayForm.surge_percent || 20) / 100).toFixed(2);
       await dispatch(
         addHolidayEvent({
           name: holidayForm.name,
           country: holidayForm.country || null,
           start_date: holidayForm.start_date,
           end_date: holidayForm.end_date,
-          multiplier: holidayForm.multiplier,
+          multiplier: multDecimal,
+          surge_multiplier: multDecimal,
         })
       ).unwrap();
       toast.success('Holiday event added successfully.');
       setShowHolidayModal(false);
-      setHolidayForm({ name: '', country: '', start_date: '', end_date: '', multiplier: '1.20' });
+      setHolidayForm({ name: '', country: '', start_date: '', end_date: '', surge_percent: '20' });
       dispatch(fetchHolidayEvents());
     } catch (err) {
       toast.error(typeof err === 'string' ? err : 'Failed to add holiday event.');
@@ -218,14 +273,16 @@ export default function DynamicPricingPage() {
   };
 
   // Handle Remove Holiday Event
-  const handleRemoveHoliday = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this holiday event?')) return;
+  const executeRemoveHoliday = async () => {
+    if (!deletingHolidayId) return;
+    const id = deletingHolidayId;
+    setDeletingHolidayId(null);
     try {
       await dispatch(removeHolidayEvent(id)).unwrap();
       toast.success('Holiday event removed.');
       dispatch(fetchHolidayEvents());
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to delete holiday event.');
+      toast.error(parseApiError(err, 'Failed to delete holiday event.'));
     }
   };
 
@@ -259,7 +316,7 @@ export default function DynamicPricingPage() {
           </div>
 
           <button
-            onClick={handleEvaluateAll}
+            onClick={() => setShowEvaluateConfirmModal(true)}
             disabled={isEvaluating}
             className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
@@ -307,87 +364,117 @@ export default function DynamicPricingPage() {
                 <form onSubmit={handleSaveConfig} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">
-                        Weekend Multiplier
+                      <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                        <span>Weekend Surge (%)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">(0 - 200%)</span>
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="1.00"
-                        max="3.00"
-                        value={configForm.weekend_multiplier}
-                        onChange={(e) => setConfigForm({ ...configForm, weekend_multiplier: e.target.value })}
-                        className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="200"
+                          value={configForm.weekend_surge_pct}
+                          onChange={(e) => handleConfigChange('weekend_surge_pct', e.target.value, 0, 200)}
+                          className="w-full pl-3 pr-7 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
+                          required
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-medium mt-1">
+                        Surge % added for weekend flights (e.g. 15 = +15% surge, making price 115% of base).
+                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">
-                        Holiday Multiplier
+                      <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                        <span>Holiday Surge (%)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">(0 - 200%)</span>
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="1.00"
-                        max="3.00"
-                        value={configForm.holiday_multiplier}
-                        onChange={(e) => setConfigForm({ ...configForm, holiday_multiplier: e.target.value })}
-                        className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="200"
+                          value={configForm.holiday_surge_pct}
+                          onChange={(e) => handleConfigChange('holiday_surge_pct', e.target.value, 0, 200)}
+                          className="w-full pl-3 pr-7 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
+                          required
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-medium mt-1">
+                        Default surge % during active holiday events (e.g. 25 = +25% surge, making price 125% of base).
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">
-                        Surge / Booking
+                      <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                        <span>Surge / Booking Step (%)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">(0 - 50%)</span>
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.00"
-                        max="0.50"
-                        value={configForm.demand_surge_per_booking}
-                        onChange={(e) =>
-                          setConfigForm({ ...configForm, demand_surge_per_booking: e.target.value })
-                        }
-                        className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="50"
+                          value={configForm.demand_surge_pct}
+                          onChange={(e) => handleConfigChange('demand_surge_pct', e.target.value, 0, 50)}
+                          className="w-full pl-3 pr-7 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
+                          required
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-medium mt-1">
+                        Surge % added per booking step beyond initial volume threshold (e.g. 2 = +2%).
+                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">
-                        Max Surge Cap
+                      <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                        <span>Max Surge Cap (%)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">(0 - 500%)</span>
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="1.00"
-                        max="5.00"
-                        value={configForm.max_surge_cap}
-                        onChange={(e) => setConfigForm({ ...configForm, max_surge_cap: e.target.value })}
-                        className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="500"
+                          value={configForm.max_surge_cap_pct}
+                          onChange={(e) => handleConfigChange('max_surge_cap_pct', e.target.value, 0, 500)}
+                          className="w-full pl-3 pr-7 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
+                          required
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-medium mt-1">
+                        Upper ceiling surge % to cap total demand surge (e.g. 50 = max +50% surge).
+                      </p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">
-                      Demand Velocity Window (Days)
+                    <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                      <span>Demand Velocity Window (Days)</span>
+                      <span className="text-[10px] text-slate-400 font-normal">(1 - 30 days)</span>
                     </label>
                     <input
                       type="number"
                       min="1"
                       max="30"
                       value={configForm.demand_window_days}
-                      onChange={(e) => setConfigForm({ ...configForm, demand_window_days: e.target.value })}
+                      onChange={(e) => handleConfigChange('demand_window_days', e.target.value, 1, 30)}
                       className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
                       required
                     />
+                    <p className="text-[10px] text-slate-600 font-medium mt-1">
+                      Lookback window in days used to count recent bookings for demand velocity.
+                    </p>
                   </div>
 
                   <div className="pt-2">
@@ -488,14 +575,14 @@ export default function DynamicPricingPage() {
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Weekend Surge</span>
                       <strong className="text-slate-800">
-                        {simResult.weekend_multiplier ? `${simResult.weekend_multiplier}x` : '1.00x'}
+                        {simResult.weekend_multiplier ? `+${multToPct(simResult.weekend_multiplier, 0)}%` : '+0%'}
                       </strong>
                     </div>
 
                     <div className="bg-white/80 p-2.5 rounded-xl border border-amber-200/60">
                       <span className="text-[10px] text-slate-500 block font-medium">Holiday Surge</span>
                       <strong className="text-slate-800">
-                        {simResult.holiday_name ? `${simResult.holiday_multiplier}x (${simResult.holiday_name})` : (simResult.holiday_applied ? `${simResult.holiday_multiplier}x (${simResult.holiday_applied})` : '1.00x')}
+                        {simResult.holiday_name ? `+${multToPct(simResult.holiday_multiplier, 0)}% (${simResult.holiday_name})` : (simResult.holiday_applied ? `+${multToPct(simResult.holiday_multiplier, 0)}% (${simResult.holiday_applied})` : '+0%')}
                       </strong>
                     </div>
 
@@ -553,7 +640,7 @@ export default function DynamicPricingPage() {
                     <th>Country Filter</th>
                     <th>Start Date</th>
                     <th>End Date</th>
-                    <th>Multiplier</th>
+                    <th>Surge (%)</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
@@ -569,13 +656,13 @@ export default function DynamicPricingPage() {
                       <td className="text-xs font-medium text-slate-600 tabular-nums">{h.start_date}</td>
                       <td className="text-xs font-medium text-slate-600 tabular-nums">{h.end_date}</td>
                       <td>
-                        <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 tabular-nums">
-                          {h.multiplier}x
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 tabular-nums">
+                          +{multToPct(h.surge_multiplier ?? h.multiplier, 0)}%
                         </span>
                       </td>
                       <td className="text-right">
                         <button
-                          onClick={() => handleRemoveHoliday(h.id)}
+                          onClick={() => setDeletingHolidayId(h.id)}
                           className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
                           title="Delete Holiday"
                         >
@@ -752,17 +839,26 @@ export default function DynamicPricingPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Holiday Multiplier</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="1.00"
-                  max="3.00"
-                  value={holidayForm.multiplier}
-                  onChange={(e) => setHolidayForm({ ...holidayForm, multiplier: e.target.value })}
-                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
-                  required
-                />
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Holiday Surge (%)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(0 - 200%)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="200"
+                    value={holidayForm.surge_percent}
+                    onChange={(e) => handleHolidayChange('surge_percent', e.target.value, 0, 200)}
+                    className="w-full pl-3 pr-7 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-medium mt-1">
+                  Surge percentage applied during this holiday event (e.g. 20 = +20%).
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -785,6 +881,31 @@ export default function DynamicPricingPage() {
           </div>
         </div>
       )}
+      {/* Re-evaluate All Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showEvaluateConfirmModal}
+        title="Re-evaluate All Dynamic Prices?"
+        description="This will trigger an automated recalculation of fares for all scheduled upcoming flight instances based on current occupancy, booking proximity, weekend rules, and active holiday events."
+        variant="warning"
+        icon="bolt"
+        confirmText="Yes, Re-evaluate Fares"
+        cancelText="Cancel"
+        onConfirm={executeEvaluateAll}
+        onCancel={() => setShowEvaluateConfirmModal(false)}
+      />
+
+      {/* Delete Holiday Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deletingHolidayId}
+        title="Delete Holiday Event?"
+        description="Are you sure you want to remove this holiday event? Fares will no longer include this holiday multiplier during recalculations."
+        variant="danger"
+        icon="delete"
+        confirmText="Yes, Delete Event"
+        cancelText="Cancel"
+        onConfirm={executeRemoveHoliday}
+        onCancel={() => setDeletingHolidayId(null)}
+      />
     </div>
   );
 }

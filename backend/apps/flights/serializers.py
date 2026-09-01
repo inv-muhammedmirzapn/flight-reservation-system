@@ -197,14 +197,19 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
         return stops
 
     def get_fares(self, obj):
+        from decimal import Decimal
         from .models import SeatStatus
         from .services_currency import CurrencyService
+        from apps.pricing.services import DynamicPricingStrategy
+
         request = self.context.get('request')
         user = request.user if request else None
         target_currency = CurrencyService.get_user_currency(user)
 
         has_seats = obj.seats.exists()
         fares = {}
+        strategy = DynamicPricingStrategy()
+
         for fare in obj.fares.all():
             if has_seats:
                 real_available = obj.seats.filter(
@@ -215,6 +220,27 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
                 real_available = fare.available_seats
 
             display_price = CurrencyService.convert_amount(fare.price, fare.currency, target_currency)
+
+            route_fare = obj.flight.fare_classes.filter(cabin_class=fare.cabin_class).first()
+            if route_fare:
+                breakdown = strategy.calculate_price_breakdown(
+                    route_fare, obj.date, flight_instance=obj
+                )
+            else:
+                breakdown = {
+                    "base_price": fare.price,
+                    "weekend_multiplier": Decimal("1.00"),
+                    "holiday_multiplier": Decimal("1.00"),
+                    "holiday_name": "",
+                    "demand_surge_percent": Decimal("0.00"),
+                    "recent_booking_count": 0,
+                    "proximity_multiplier": Decimal("1.0000"),
+                    "occupancy_percent": Decimal("0.00"),
+                    "days_until_departure": 0,
+                    "final_price": fare.price,
+                }
+
+            base_price_display = CurrencyService.convert_amount(breakdown["base_price"], fare.currency, target_currency)
 
             fares[fare.cabin_class] = {
                 'price': float(fare.price),
@@ -227,6 +253,20 @@ class FrontendFlightInstanceSerializer(serializers.ModelSerializer):
                 'change_fee': float(fare.change_fee),
                 'meal_included': fare.meal_included,
                 'baggage_allowance': float(fare.baggage_allowance) if fare.baggage_allowance else None,
+                'price_breakdown': {
+                    'base_price': float(breakdown['base_price']),
+                    'base_price_display': float(base_price_display),
+                    'weekend_multiplier': float(breakdown['weekend_multiplier']),
+                    'holiday_multiplier': float(breakdown['holiday_multiplier']),
+                    'holiday_name': breakdown['holiday_name'],
+                    'demand_surge_percent': float(breakdown['demand_surge_percent']),
+                    'recent_booking_count': breakdown['recent_booking_count'],
+                    'proximity_multiplier': float(breakdown['proximity_multiplier']),
+                    'occupancy_percent': float(breakdown['occupancy_percent']),
+                    'days_until_departure': breakdown['days_until_departure'],
+                    'final_price': float(breakdown['final_price']),
+                    'final_price_display': float(display_price),
+                }
             }
         return fares if fares else None
 

@@ -6,6 +6,7 @@ import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
 import CabinClassSelector from "@/components/flights/CabinClassSelector";
 import FareDetailsCard from "@/components/flights/FareDetailsCard";
 import FarePredictionBadge from "@/components/flights/FarePredictionBadge"; 
+import DynamicPriceBreakdownCard from "@/components/flights/DynamicPriceBreakdownCard";
 import toast from "react-hot-toast";
 
 export default function FlightDetailPage() {
@@ -161,6 +162,12 @@ export default function FlightDetailPage() {
             passengerCount={1}
             onBookingAction={handleProceedToCheckout}
             actionButtonText="Book Seats"
+          />
+
+          {/* Dynamic Price Breakdown Card */}
+          <DynamicPriceBreakdownCard
+            flight={flight}
+            selectedCabin={selectedCabin}
           />
         </div>
       </div>
