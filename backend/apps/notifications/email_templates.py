@@ -187,6 +187,7 @@ def _spacer(px: int = 32) -> str:
 def booking_confirmation(user_name: str, passenger_name: str,
                          flight_number: str, origin: str, destination: str,
                          seat_count: int, total_price: float,
+                         currency: str = "INR",
                          cabin_class: str = "N/A",
                          seat_numbers: str = "Unassigned",
                          baggage_info: str = "N/A") -> tuple[str, str]:
@@ -220,7 +221,7 @@ def booking_confirmation(user_name: str, passenger_name: str,
           <tr>
             <td style="padding:12px 16px;color:#888888;">Total Amount</td>
             <td style="padding:12px 16px;font-weight:700;color:#1a1c1d;font-size:15px;"
-                colspan="2">&#8377;{total_price:,.2f}</td>
+                colspan="2">{currency} {total_price:,.2f}</td>
           </tr>"""
     html = _wrap(
         _heading("Booking Confirmed",
@@ -258,6 +259,7 @@ def booking_cancellation(user_name: str, flight_number: str,
                           passenger_name: str = "",
                           seat_count: int = 0,
                           total_price: float = 0.0,
+                          currency: str = "INR",
                           cabin_class: str = "N/A",
                           seat_numbers: str = "Unassigned",
                           baggage_info: str = "N/A") -> tuple[str, str]:
@@ -287,7 +289,7 @@ def booking_cancellation(user_name: str, flight_number: str,
           <tr>
             <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Refund Amount</td>
             <td style="padding:12px 16px;font-weight:700;color:#1a1c1d;font-size:15px;"
-                colspan="2">&#8377;{total_price:,.2f}</td>
+                colspan="2">{currency} {total_price:,.2f}</td>
           </tr>"""
 
     html = _wrap(
@@ -311,6 +313,7 @@ def admin_booking_cancellation(user_name: str, flight_number: str,
                                passenger_name: str = "",
                                seat_count: int = 0,
                                total_price: float = 0.0,
+                               currency: str = "INR",
                                cabin_class: str = "N/A",
                                seat_numbers: str = "Unassigned",
                                baggage_info: str = "N/A") -> tuple[str, str]:
@@ -340,7 +343,7 @@ def admin_booking_cancellation(user_name: str, flight_number: str,
           <tr>
             <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;color:#888888;">Refund Amount</td>
             <td style="padding:12px 16px;font-weight:700;color:#1a1c1d;font-size:15px;"
-                colspan="2">&#8377;{total_price:,.2f}</td>
+                colspan="2">{currency} {total_price:,.2f}</td>
           </tr>"""
 
     html = _wrap(
