@@ -122,8 +122,15 @@ class DynamicPricingStrategy(PricingStrategy):
             if holiday.is_global:
                 applies = True
             else:
-                countries = [c.strip().lower() for c in (holiday.applicable_countries or [])]
-                if any(c in countries for c in [orig_name, orig_iso, dest_name, dest_iso] if c):
+                raw_countries = holiday.applicable_countries
+                if isinstance(raw_countries, str):
+                    countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]
+                elif isinstance(raw_countries, list):
+                    countries = [str(c).strip().lower() for c in raw_countries if str(c).strip()]
+                else:
+                    countries = []
+
+                if not countries or any(c in countries for c in [orig_name, orig_iso, dest_name, dest_iso] if c):
                     applies = True
 
             if applies:
