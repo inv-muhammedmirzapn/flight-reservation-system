@@ -1,3 +1,4 @@
+import random
 from decimal import Decimal
 from datetime import datetime, date, time, timedelta
 from django.core.management.base import BaseCommand
@@ -8,32 +9,54 @@ from apps.users.models import Profile
 from apps.flights.models import (
     Country, Airport, Airline, AircraftModel, Aircraft,
     FlightRoute, FlightLeg, FlightInstance, InstanceStatus,
-    Seat, CabinClass, RefundType, RouteFareClass, FoodItem,
+    Seat, CabinClass, SeatStatus, RefundType, RouteFareClass,
+    FoodItem, FlightMeal, FlightMealItem, Fare
 )
-from apps.bookings.models import Booking, Passenger, Ticket
-from apps.waitlist.models import WaitlistEntry, WaitlistPassenger
+from apps.bookings.models import Booking, BookingStatus, Passenger, PassengerMeal, Ticket, SeatHold
+from apps.waitlist.models import WaitlistEntry, WaitlistStatus, WaitlistPassenger
 from apps.notifications.models import Notification
+from apps.flights.services_generation import generate_upcoming_instances
+
+try:
+    from populate_airline_logos import populate_logos
+except ImportError:
+    populate_logos = None
 
 User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Seeds database with static data (Airports, Airlines, Aircraft, Routes, RouteFareClasses, Users), leaving FlightInstances to be created via generate_instances."
+    help = "Comprehensively seeds the database with static data, flight routes, meals, generated instances, sold-out flights for waitlist demo, and user bookings."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--days",
+            type=int,
+            default=30,
+            help="Number of days for rolling flight instance generation (default: 30).",
+        )
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.WARNING("Wiping existing data..."))
+        horizon_days = options["days"]
+        self.stdout.write(self.style.WARNING("Wiping existing database records..."))
 
+        # Wiping in order of foreign key dependency
         Notification.objects.all().delete()
         WaitlistPassenger.objects.all().delete()
         WaitlistEntry.objects.all().delete()
         Ticket.objects.all().delete()
+        PassengerMeal.objects.all().delete()
         Passenger.objects.all().delete()
         Booking.objects.all().delete()
+        SeatHold.objects.all().delete()
         Seat.objects.all().delete()
+        Fare.objects.all().delete()
         FlightInstance.objects.all().delete()
         RouteFareClass.objects.all().delete()
         FlightLeg.objects.all().delete()
         FlightRoute.objects.all().delete()
+        FlightMealItem.objects.all().delete()
+        FlightMeal.objects.all().delete()
         FoodItem.objects.all().delete()
         Aircraft.objects.all().delete()
         AircraftModel.objects.all().delete()
@@ -43,10 +66,12 @@ class Command(BaseCommand):
         Profile.objects.all().delete()
         User.objects.exclude(is_superuser=True).delete()
 
-        self.stdout.write(self.style.SUCCESS("Database wiped successfully. Starting seed..."))
+        self.stdout.write(self.style.SUCCESS("Database wiped successfully. Starting seeding process..."))
 
+        # -------------------------------------------------------------
         # 1. Users & Profiles (1 Admin, 1 Customer)
-        self.stdout.write("Seeding Users & Profiles...")
+        # -------------------------------------------------------------
+        self.stdout.write("1. Seeding Users & Profiles...")
         admin_user, _ = User.objects.get_or_create(
             username="admin",
             defaults={
@@ -93,8 +118,10 @@ class Command(BaseCommand):
         customer_profile.city = "London"
         customer_profile.save()
 
+        # -------------------------------------------------------------
         # 2. Countries
-        self.stdout.write("Seeding Countries...")
+        # -------------------------------------------------------------
+        self.stdout.write("2. Seeding Countries...")
         countries_data = [
             ("United States", "US"), ("India", "IN"), ("United Kingdom", "GB"),
             ("United Arab Emirates", "AE"), ("Japan", "JP"), ("Singapore", "SG"),
@@ -107,8 +134,10 @@ class Command(BaseCommand):
             c, _ = Country.objects.get_or_create(iso_code=iso, defaults={"name": name})
             countries_dict[iso] = c
 
+        # -------------------------------------------------------------
         # 3. Airports
-        self.stdout.write("Seeding Airports...")
+        # -------------------------------------------------------------
+        self.stdout.write("3. Seeding Airports...")
         airports_data = [
             ("JFK", "John F. Kennedy International Airport", "New York", "America/New_York", Decimal("40.641311"), Decimal("-73.778139"), "US", ["1", "4", "7", "8"]),
             ("LHR", "Heathrow Airport", "London", "Europe/London", Decimal("51.470020"), Decimal("-0.454295"), "GB", ["2", "3", "4", "5"]),
@@ -141,8 +170,10 @@ class Command(BaseCommand):
             )
             airports_dict[iata] = ap
 
-        # 4. Airlines with logos
-        self.stdout.write("Seeding Airlines...")
+        # -------------------------------------------------------------
+        # 4. Airlines
+        # -------------------------------------------------------------
+        self.stdout.write("4. Seeding Airlines...")
         airlines_data = [
             ("EK", "Emirates", "airlines/ek_logo.png"),
             ("BA", "British Airways", "airlines/ba_logo.png"),
@@ -170,8 +201,10 @@ class Command(BaseCommand):
             al.save()
             airlines_dict[code] = al
 
-        # 5. Aircraft Models
-        self.stdout.write("Seeding Aircraft Models...")
+        # -------------------------------------------------------------
+        # 5. Aircraft Models & Fleet
+        # -------------------------------------------------------------
+        self.stdout.write("5. Seeding Aircraft Models & Aircraft...")
         models_data = [
             ("Boeing", "777-300ER"), ("Boeing", "787-9 Dreamliner"),
             ("Airbus", "A380-800"), ("Airbus", "A350-900"),
@@ -182,8 +215,6 @@ class Command(BaseCommand):
             am, _ = AircraftModel.objects.get_or_create(manufacturer=mfg, model_name=mname)
             models_dict[f"{mfg} {mname}"] = am
 
-        # 6. Aircraft
-        self.stdout.write("Seeding Aircraft...")
         aircraft_data = [
             ("N777AA", "AA", "Boeing 777-300ER", 216, 52, 8),
             ("A6-EEO", "EK", "Airbus A380-800", 399, 76, 14),
@@ -213,20 +244,27 @@ class Command(BaseCommand):
             )
             aircraft_dict[reg] = ac
 
-        # 7. Food Items
-        self.stdout.write("Seeding Food Items...")
+        # -------------------------------------------------------------
+        # 6. Food Items & In-Flight Meals (Airline & Cabin Class Scoped)
+        # -------------------------------------------------------------
+        self.stdout.write("6. Seeding Food Items & In-Flight Meals...")
         food_items_data = [
-            ("EK", "Mediterranean Hummus & Pita Wrap", 450.00, True, True, True),
-            ("BA", "Grilled Atlantic Salmon with Asparagus", 1200.00, False, False, False),
-            ("AA", "Gourmet Beef Tenderloin with Red Wine Reduction", 1400.00, False, False, False),
-            ("AI", "Butter Chicken with Jeera Rice & Naan", 650.00, False, True, False),
-            ("SQ", "Vegan Thai Green Curry with Jasmine Rice", 750.00, True, True, True),
-            ("JL", "Traditional Japanese Bento Box", 1100.00, False, False, False),
-            ("LH", "Artisanal Cheese & Fresh Fruit Platter", 800.00, True, False, False),
-            ("6E", "Hyderabadi Chicken Biryani", 400.00, False, True, False),
+            ("EK", "Mediterranean Hummus & Pita Wrap", Decimal("450.00"), True, True, True),
+            ("EK", "Arabic Spiced Grill Chicken", Decimal("850.00"), False, True, False),
+            ("BA", "Grilled Atlantic Salmon with Asparagus", Decimal("1200.00"), False, False, False),
+            ("BA", "Traditional English Afternoon Tea Set", Decimal("600.00"), True, False, False),
+            ("AA", "Gourmet Beef Tenderloin with Red Wine Reduction", Decimal("1400.00"), False, False, False),
+            ("AI", "Butter Chicken with Jeera Rice & Naan", Decimal("650.00"), False, True, False),
+            ("AI", "Paneer Tikka Masala Thali", Decimal("500.00"), True, True, False),
+            ("SQ", "Vegan Thai Green Curry with Jasmine Rice", Decimal("750.00"), True, True, True),
+            ("JL", "Traditional Japanese Bento Box", Decimal("1100.00"), False, False, False),
+            ("LH", "Artisanal Cheese & Fresh Fruit Platter", Decimal("800.00"), True, False, False),
+            ("6E", "Hyderabadi Chicken Biryani", Decimal("400.00"), False, True, False),
+            ("6E", "Paneer Kathi Roll Combo", Decimal("300.00"), True, True, False),
         ]
+        food_items_dict = {}
         for al_code, name, price, is_v, is_h, is_vg in food_items_data:
-            FoodItem.objects.get_or_create(
+            fi, _ = FoodItem.objects.get_or_create(
                 airline=airlines_dict[al_code],
                 name=name,
                 defaults={
@@ -237,19 +275,45 @@ class Command(BaseCommand):
                     "is_vegan": is_vg,
                 }
             )
+            food_items_dict[f"{al_code}_{name}"] = fi
 
-        # 8. Flight Routes, Flight Legs & RouteFareClasses
-        self.stdout.write("Seeding Flight Routes, Legs & RouteFareClasses...")
+        # Create Scoped FlightMeals
+        flight_meals_data = [
+            ("AI", CabinClass.ECONOMY, "Indian Veg Thali Set", Decimal("450.00"), [("AI_Paneer Tikka Masala Thali", 1)]),
+            ("AI", CabinClass.ECONOMY, "Butter Chicken Special", Decimal("550.00"), [("AI_Butter Chicken with Jeera Rice & Naan", 1)]),
+            ("AI", CabinClass.BUSINESS, "Royal Maharaja Dining Platter", Decimal("1100.00"), [("AI_Paneer Tikka Masala Thali", 1), ("AI_Butter Chicken with Jeera Rice & Naan", 1)]),
+            ("EK", CabinClass.ECONOMY, "Arabic Mezze Wrap Set", Decimal("500.00"), [("EK_Mediterranean Hummus & Pita Wrap", 1)]),
+            ("EK", CabinClass.BUSINESS, "Emirates Gourmet Grill Feast", Decimal("1300.00"), [("EK_Arabic Spiced Grill Chicken", 1), ("EK_Mediterranean Hummus & Pita Wrap", 1)]),
+            ("6E", CabinClass.ECONOMY, "Biryani Express Combo", Decimal("400.00"), [("6E_Hyderabadi Chicken Biryani", 1)]),
+        ]
+        for al_code, cabin, meal_name, price, items in flight_meals_data:
+            fm, _ = FlightMeal.objects.get_or_create(
+                airline=airlines_dict[al_code],
+                cabin_class=cabin,
+                name=meal_name,
+                defaults={"price": price}
+            )
+            for fi_key, qty in items:
+                if fi_key in food_items_dict:
+                    FlightMealItem.objects.get_or_create(
+                        flight_meal=fm,
+                        food_item=food_items_dict[fi_key],
+                        defaults={"quantity": qty}
+                    )
 
+        # -------------------------------------------------------------
+        # 7. Flight Routes, Flight Legs & RouteFareClasses
+        # -------------------------------------------------------------
+        self.stdout.write("7. Seeding Flight Routes, Legs & RouteFareClasses...")
         today = date.today()
         valid_from_date = today - timedelta(days=30)
 
-        # DEL -> HAM Direct & Connecting Routes for Optimization Demonstration
+        # Direct Routes: DEL -> HAM
         direct_del_ham_routes = [
-            ("AI121", "AI", "VT-ALN", 7, 45, Decimal("38000.00"), time(6, 15)),  # Fastest (7h 45m)
-            ("LH761", "LH", "D-ABPA", 8, 30, Decimal("42000.00"), time(2, 30)),  # Fewest Stops (Direct)
-            ("EK061", "EK", "A6-EEO", 8, 0, Decimal("46000.00"), time(14, 0)),   # Shortest Distance (8h 00m)
-            ("6E191", "6E", "VT-IZI", 13, 30, Decimal("24000.00"), time(23, 45)), # Cheapest (₹24,000)
+            ("AI121", "AI", "VT-ALN", 7, 45, Decimal("38000.00"), time(6, 15)),
+            ("LH761", "LH", "D-ABPA", 8, 30, Decimal("42000.00"), time(2, 30)),
+            ("EK061", "EK", "A6-EEO", 8, 0, Decimal("46000.00"), time(14, 0)),
+            ("6E191", "6E", "VT-IZI", 13, 30, Decimal("24000.00"), time(23, 45)),
         ]
 
         for fno, al_code, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_del_ham_routes:
@@ -285,7 +349,6 @@ class Command(BaseCommand):
                 }
             )
 
-            # RouteFareClasses
             RouteFareClass.objects.get_or_create(
                 route=fr,
                 cabin_class=CabinClass.ECONOMY,
@@ -314,20 +377,6 @@ class Command(BaseCommand):
                         "baggage_weight_allowed_kg": 40,
                     }
                 )
-            if ac.first_class_capacity > 0:
-                RouteFareClass.objects.get_or_create(
-                    route=fr,
-                    cabin_class=CabinClass.FIRST,
-                    fare_code="FST_STD",
-                    defaults={
-                        "base_price": (base_fare * Decimal("4.5")).quantize(Decimal("0.01")),
-                        "currency": "INR",
-                        "refund_type": RefundType.REFUNDABLE,
-                        "change_fee": Decimal("0.00"),
-                        "meal_included": True,
-                        "baggage_weight_allowed_kg": 50,
-                    }
-                )
 
         # 1-Stop Connecting Routes (DEL -> Layover -> HAM)
         connecting_del_ham_routes = [
@@ -342,10 +391,6 @@ class Command(BaseCommand):
             ("BA143-C", "BA", "G-ZBLB", Decimal("46000.00"), time(11, 45), [
                 ("DEL", "LHR", 555, 0, time(11, 45)),
                 ("LHR", "HAM", 100, 120, time(23, 0)),
-            ]),
-            ("TK717-C", "TK", "TC-JNA", Decimal("41000.00"), time(18, 20), [
-                ("DEL", "IST", 420, 0, time(18, 20)),
-                ("IST", "HAM", 195, 90, time(3, 30)),
             ]),
         ]
 
@@ -398,56 +443,23 @@ class Command(BaseCommand):
                     "baggage_weight_allowed_kg": 30,
                 }
             )
-            ac = aircraft_dict[ac_reg]
-            if ac.business_capacity > 0:
-                RouteFareClass.objects.get_or_create(
-                    route=fr,
-                    cabin_class=CabinClass.BUSINESS,
-                    fare_code="BIZ_STD",
-                    defaults={
-                        "base_price": (base_fare * Decimal("2.5")).quantize(Decimal("0.01")),
-                        "currency": "INR",
-                        "refund_type": RefundType.REFUNDABLE,
-                        "change_fee": Decimal("0.00"),
-                        "meal_included": True,
-                        "baggage_weight_allowed_kg": 40,
-                    }
-                )
 
         # Other Global Routes
         other_route_templates = [
-            # fno, al, dep, arr, hrs, mins, ac_reg, base_fare, dep_t, day_offset
-            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30), 2),
-            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0), 2),
-            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45), 0),
-            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA", Decimal("95000.00"), time(23, 50), 1),
-            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A", Decimal("88000.00"), time(11, 0), 0),
-            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA", Decimal("58000.00"), time(10, 45), 0),
-            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA", Decimal("60000.00"), time(14, 10), 0),
-            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30), 0),
-            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0), 0),
-            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15), 0),
-            ("QR001", "QR", "DOH", "LHR", 7, 15, "A7-BBA", Decimal("65000.00"), time(6, 45), 0),
-            ("TK001", "TK", "IST", "JFK", 10, 45, "TC-JNA", Decimal("59000.00"), time(13, 30), 0),
-            ("AI202", "AI", "DEL", "LHR", 9, 30, "VT-ALN", Decimal("48000.00"), time(7, 0), 0),
-            ("EK501", "EK", "DXB", "BOM", 3, 15, "A6-EEO", Decimal("22000.00"), time(22, 30), 0),
-            ("SQ318", "SQ", "SIN", "LHR", 13, 15, "9V-SNA", Decimal("78000.00"), time(12, 55), 0),
-            # NEW: Added for testing route recommendations (SYD -> JFK has no direct flight, but 3 connecting paths)
-            ("EK413", "EK", "SYD", "DXB", 14, 30, "A6-EEO", Decimal("80000.00"), time(21, 45), 0),
-            ("EK505", "EK", "DXB", "HAM", 6, 30, "A6-EEO", Decimal("48000.00"), time(14, 15), 0), # Added to complete SYD -> DXB -> HAM direct flight connections
-            ("SQ222", "SQ", "SYD", "SIN", 8, 5, "9V-SNA", Decimal("60000.00"), time(16, 10), 0),
-            ("SQ333", "SQ", "SIN", "HAM", 13, 15, "9V-SNA", Decimal("65000.00"), time(3, 0), 0), # Added to complete SYD -> SIN -> HAM
-            ("BA888", "BA", "LHR", "HAM", 1, 45, "G-ZBLB", Decimal("15000.00"), time(17, 0), 0), # Added to complete SYD -> LHR -> HAM
-            
-            # NEW: 2-stop route testing (SYD -> BKK -> IST -> HAM) with increased rates
-            ("QF111", "QF", "SYD", "BKK", 9, 0, "VH-ZNA", Decimal("58000.00"), time(8, 0), 0),
-            ("TK222", "TK", "BKK", "IST", 10, 0, "TC-JNA", Decimal("62000.00"), time(20, 0), 0),
-            ("TK333", "TK", "IST", "HAM", 3, 30, "TC-JNA", Decimal("38000.00"), time(9, 0), 0),
+            ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30)),
+            ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0)),
+            ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45)),
+            ("SQ026", "SQ", "SIN", "JFK", 18, 0, "9V-SNA", Decimal("95000.00"), time(23, 50)),
+            ("JL006", "JL", "HND", "JFK", 13, 0, "JA873A", Decimal("88000.00"), time(11, 0)),
+            ("LH400", "LH", "FRA", "JFK", 8, 30, "D-AIXA", Decimal("58000.00"), time(10, 45)),
+            ("AF006", "AF", "CDG", "JFK", 8, 15, "F-HTYA", Decimal("60000.00"), time(14, 10)),
+            ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30)),
+            ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0)),
+            ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15)),
         ]
 
-        for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t, day_offset in other_route_templates:
-            adjusted_date = today + timedelta(days=day_offset)
-            sch_dep = datetime.combine(adjusted_date, dep_t)
+        for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:
+            sch_dep = datetime.combine(today, dep_t)
             sch_arr = sch_dep + timedelta(hours=hrs, minutes=mins)
             fr, _ = FlightRoute.objects.get_or_create(
                 flight_no=fno,
@@ -491,24 +503,143 @@ class Command(BaseCommand):
                     "baggage_weight_allowed_kg": 30,
                 }
             )
-            ac = aircraft_dict[ac_reg]
-            if ac.business_capacity > 0:
-                RouteFareClass.objects.get_or_create(
-                    route=fr,
-                    cabin_class=CabinClass.BUSINESS,
-                    fare_code="BIZ_STD",
+
+        # -------------------------------------------------------------
+        # 8. Generate Flight Instances over Rolling Horizon
+        # -------------------------------------------------------------
+        self.stdout.write(f"8. Generating Flight Instances for a {horizon_days}-day horizon...")
+        gen_result = generate_upcoming_instances(horizon_days=horizon_days)
+        self.stdout.write(
+            f"   Created {gen_result['created_instances_count']} instances, "
+            f"{gen_result['created_seats_count']} seats, {gen_result['created_fares_count']} fares."
+        )
+
+        # -------------------------------------------------------------
+        # 9. Configure Sold-Out Flight Instances for Waitlist Demo
+        # -------------------------------------------------------------
+        self.stdout.write("9. Setting up Sold-Out flights to demonstrate Waitlist feature...")
+        waitlist_instance = FlightInstance.objects.filter(
+            flight__flight_no="AI121",
+            date__gte=today
+        ).order_by("date").first()
+
+        if waitlist_instance:
+            # Set Economy fare available seats to 0
+            eco_fare = waitlist_instance.fares.filter(cabin_class=CabinClass.ECONOMY).first()
+            if eco_fare:
+                eco_fare.available_seats = 0
+                eco_fare.save()
+
+            # Mark Economy seats on this flight as BOOKED
+            waitlist_instance.seats.filter(seat_class=CabinClass.ECONOMY).update(status=SeatStatus.BOOKED)
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"   Configured flight {waitlist_instance.flight.flight_no} on {waitlist_instance.date} "
+                    f"as SOLD OUT for ECONOMY class (Waitlist ready)."
+                )
+            )
+
+            # Create a sample WaitlistEntry for Customer
+            waitlist_entry, _ = WaitlistEntry.objects.get_or_create(
+                user=customer_user,
+                flight=waitlist_instance,
+                cabin_class=CabinClass.ECONOMY,
+                defaults={
+                    "seat_count": 1,
+                    "price": eco_fare.price if eco_fare else Decimal("38000.00"),
+                    "status": WaitlistStatus.PENDING,
+                }
+            )
+            WaitlistPassenger.objects.get_or_create(
+                waitlist_entry=waitlist_entry,
+                name="John Doe",
+                defaults={"age": 30, "gender": "M", "phone_number": "+1 555-0123"}
+            )
+            self.stdout.write(f"   Created sample PENDING waitlist entry for customer on {waitlist_instance.flight.flight_no}.")
+
+        # -------------------------------------------------------------
+        # 10. Create Sample Confirmed User Bookings & Tickets
+        # -------------------------------------------------------------
+        self.stdout.write("10. Seeding Sample User Bookings & Tickets...")
+        sample_booking_instance = FlightInstance.objects.filter(
+            flight__flight_no="EK061",
+            date__gt=today
+        ).order_by("date").first()
+
+        if sample_booking_instance:
+            fare = sample_booking_instance.fares.filter(cabin_class=CabinClass.ECONOMY).first()
+            price = fare.price if fare else Decimal("46000.00")
+
+            booking, _ = Booking.objects.get_or_create(
+                user=customer_user,
+                flight=sample_booking_instance,
+                defaults={
+                    "status": BookingStatus.CONFIRMED,
+                    "cabin_class": CabinClass.ECONOMY,
+                    "seat_count": 1,
+                    "total_price": price,
+                }
+            )
+
+            passenger, _ = Passenger.objects.get_or_create(
+                booking=booking,
+                name="John Doe",
+                defaults={
+                    "age": 30,
+                    "gender": "M",
+                    "phone_number": "+1 555-0123",
+                    "meal_preference": "VEG",
+                    "seat_number": "12A",
+                    "free_baggage_allowance_kg": Decimal("30.00"),
+                }
+            )
+
+            seat = sample_booking_instance.seats.filter(seat_class=CabinClass.ECONOMY, seat_number="12A").first()
+            if seat:
+                seat.status = SeatStatus.BOOKED
+                seat.save()
+
+            if fare and seat:
+                Ticket.objects.get_or_create(
+                    booking=booking,
+                    flight_instance=sample_booking_instance,
+                    fare=fare,
+                    passenger=passenger,
+                    seat=seat,
                     defaults={
-                        "base_price": (base_fare * Decimal("2.5")).quantize(Decimal("0.01")),
+                        "price_paid": price,
                         "currency": "INR",
-                        "refund_type": RefundType.REFUNDABLE,
-                        "change_fee": Decimal("0.00"),
-                        "meal_included": True,
-                        "baggage_weight_allowed_kg": 40,
+                        "fare_code": fare.fare_code,
+                        "cabin_class": CabinClass.ECONOMY,
+                        "refund_type": fare.refund_type or RefundType.PARTIAL,
                     }
                 )
+            self.stdout.write(f"   Created sample CONFIRMED booking for customer on {sample_booking_instance.flight.flight_no}.")
+
+        # -------------------------------------------------------------
+        # 11. Populate Airline Logos (if script available)
+        # -------------------------------------------------------------
+        if populate_logos:
+            self.stdout.write("11. Populating Airline Logos...")
+            try:
+                populate_logos()
+            except Exception as ex:
+                self.stdout.write(self.style.WARNING(f"   Note: Logo populator warning: {ex}"))
 
         self.stdout.write(self.style.SUCCESS(
-            "Successfully seeded template database! "
-            "Created Users, Countries, Airports, Airlines (with logos), Aircraft, FoodItems, "
-            "FlightRoutes, FlightLegs, and RouteFareClasses. FlightInstance table was intentionally left empty."
+            "\n========================================================================\n"
+            "DATABASE SEEDING COMPLETE!\n"
+            "========================================================================\n"
+            "Credentials Created:\n"
+            "  Admin:    username: admin    / password: admin123\n"
+            "  Customer: username: customer / password: customer123\n"
+            "Included:\n"
+            "  - Airports, Airlines, Aircraft Models, Aircraft, Countries\n"
+            "  - Food Items & Flight Meals (Scoped by Airline & Cabin Class)\n"
+            "  - Flight Routes, Legs, RouteFareClasses\n"
+            f"  - Flight Instances ({horizon_days}-day rolling window) with Seats & Fares\n"
+            "  - Sold-out flight instance (available_seats=0) for Waitlist testing\n"
+            "  - Sample Customer Bookings & Waitlist Entries\n"
+            "========================================================================"
         ))

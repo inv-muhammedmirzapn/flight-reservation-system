@@ -440,7 +440,7 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
 
                     if flight_meal_id:
                         try:
-                            flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), flight_instance=flight_instance)
+                            flight_meal_obj = FlightMeal.objects.get(pk=int(flight_meal_id), airline=flight_instance.flight.airline)
                             base_price = CurrencyService.convert_amount(
                                 flight_meal_obj.price,
                                 getattr(flight_meal_obj, 'currency', None) or "INR",

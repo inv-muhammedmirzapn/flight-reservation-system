@@ -115,7 +115,7 @@ class FlightMealsView(APIView):
 
         airline = instance.flight.airline
         food_items_qs = FoodItem.objects.filter(airline=airline)
-        flight_meals_qs = instance.meals.all().prefetch_related('items__food_item')
+        flight_meals_qs = FlightMeal.objects.filter(airline=airline, cabin_class=cabin_class).prefetch_related('items__food_item')
         legs_qs = instance.flight.legs.all().order_by('leg_order')
 
         food_items_data = []

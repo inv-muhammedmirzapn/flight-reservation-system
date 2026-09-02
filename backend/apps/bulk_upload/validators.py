@@ -106,10 +106,11 @@ def validate_food_item_row(row: dict) -> dict:
 
 def validate_flight_meal_row(row: dict) -> dict:
     errors = {}
-    if not strip(row.get("flight_no") or row.get("flight_number")):
-        errors["flight_no"] = "Required."
-    if not strip(row.get("date")):
-        errors["date"] = "Required (YYYY-MM-DD)."
+    if not strip(row.get("airline_code") or row.get("airline")):
+        errors["airline_code"] = "Required (2-letter IATA code)."
+    cabin = strip(row.get("cabin_class") or row.get("class")).upper()
+    if cabin not in ("ECONOMY", "BUSINESS", "FIRST"):
+        errors["cabin_class"] = "Must be ECONOMY, BUSINESS, or FIRST."
     if not strip(row.get("meal_name") or row.get("name")):
         errors["meal_name"] = "Required."
     return errors

@@ -46,10 +46,10 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
     factors.push({
       id: "holiday",
       icon: "celebration",
-      label: holidayName ? `${holidayName} Event` : "Holiday Event Surge",
+      label: "Holiday surge",
       badgeText: `+${hPct}%`,
       badgeColor: "bg-purple-100 text-purple-900 border-purple-300",
-      description: "Seasonal calendar peak demand surge",
+      description: holidayName ? `Price hikes due to ${holidayName}` : "Active holiday events",
     });
   }
 

@@ -800,12 +800,24 @@ class FlightMealItemSerializer(serializers.ModelSerializer):
 
 class FlightMealSerializer(serializers.ModelSerializer):
     items = FlightMealItemSerializer(many=True)
-    flight_no = serializers.CharField(source="flight_instance.flight.flight_no", read_only=True)
-    date = serializers.DateField(source="flight_instance.date", read_only=True)
+    airline_name = serializers.CharField(source="airline.airline_name", read_only=True)
+    airline_code = serializers.CharField(source="airline.iata_airline_code", read_only=True)
 
     class Meta:
         model = FlightMeal
-        fields = ["id", "flight_instance", "flight_no", "date", "name", "items"]
+        fields = ["id", "airline", "airline_name", "airline_code", "cabin_class", "name", "price", "items"]
+
+    def validate(self, attrs):
+        airline = attrs.get("airline") or (self.instance.airline if self.instance else None)
+        items_data = attrs.get("items", [])
+        if airline:
+            for item in items_data:
+                food_item = item.get("food_item")
+                if food_item and food_item.airline != airline:
+                    raise serializers.ValidationError({
+                        "items": f"Food item '{food_item.name}' does not belong to airline '{airline.airline_name}'."
+                    })
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):

@@ -200,19 +200,17 @@ class FlightV2APITest(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['seat_number'], "1A")
 
-    def test_meals_instance_filtering(self):
-        """Test filtering meals by flight instance."""
+    def test_meals_airline_and_cabin_filtering(self):
+        """Test filtering meals by airline and cabin class."""
         url = '/api/flights/v2/flight-meals/'
         from apps.flights.models import FlightMeal
-        FlightMeal.objects.create(flight_instance=self.instance, name="Veg Meal")
+        airline2 = Airline.objects.create(airline_name="IndiGo", iata_airline_code="6E")
+
+        FlightMeal.objects.create(airline=self.airline, cabin_class="ECONOMY", name="Veg Meal")
+        FlightMeal.objects.create(airline=airline2, cabin_class="ECONOMY", name="Non-Veg Meal")
+        FlightMeal.objects.create(airline=self.airline, cabin_class="BUSINESS", name="Gourmet Meal")
         
-        instance2 = FlightInstance.objects.create(
-            flight=self.route, aircraft=self.aircraft, date=self.departure_time.date(),
-            scheduled_departure=self.departure_time, scheduled_arrival=self.arrival_time, status="SCHEDULED"
-        )
-        FlightMeal.objects.create(flight_instance=instance2, name="Non-Veg Meal")
-        
-        response = self.client.get(f"{url}?flight_instance={self.instance.id}")
+        response = self.client.get(f"{url}?airline={self.airline.id}&cabin_class=ECONOMY")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['name'], "Veg Meal")

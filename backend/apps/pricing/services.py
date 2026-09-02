@@ -117,6 +117,7 @@ class DynamicPricingStrategy(PricingStrategy):
             end_date__gte=flight_date,
         )
 
+        applied_holiday_names = []
         for holiday in active_holidays:
             applies = False
             if holiday.is_global:
@@ -134,10 +135,18 @@ class DynamicPricingStrategy(PricingStrategy):
                     applies = True
 
             if applies:
+                applied_holiday_names.append(holiday.name)
                 mult = Decimal(str(holiday.surge_multiplier))
                 if mult > h_mult:
                     h_mult = mult
-                    h_name = holiday.name
+                    
+        if applied_holiday_names:
+            if len(applied_holiday_names) == 1:
+                h_name = applied_holiday_names[0]
+            elif len(applied_holiday_names) == 2:
+                h_name = f"{applied_holiday_names[0]} and {applied_holiday_names[1]}"
+            else:
+                h_name = ", ".join(applied_holiday_names[:-1]) + f", and {applied_holiday_names[-1]}"
 
         # 3. Demand Velocity Surge (Rolling Window)
         booking_count = 0

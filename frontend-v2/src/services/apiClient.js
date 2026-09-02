@@ -20,10 +20,6 @@ const dispatchLogout = async () => {
   } catch (err) {
     console.error("Could not dispatch logout state:", err);
   }
-  if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
-    const isAdminPath = window.location.pathname.startsWith('/admin');
-    window.location.href = isAdminPath ? '/admin/login' : '/login';
-  }
 };
 
 export const getResponseData = async (res) => {
