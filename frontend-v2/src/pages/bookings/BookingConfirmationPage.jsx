@@ -20,6 +20,10 @@ export default function BookingConfirmationPage() {
   const [loading, setLoading] = useState(!detailData);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
       return;
