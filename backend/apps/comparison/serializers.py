@@ -37,4 +37,7 @@ class FlightComparisonSerializer(serializers.Serializer):
     seat_availability = serializers.DictField(
         child=serializers.DictField(child=serializers.IntegerField())
     )
+    
+    fare_prediction_direction = serializers.CharField(required=False, allow_null=True)
+    fare_prediction_confidence = serializers.IntegerField(required=False, allow_null=True)
 

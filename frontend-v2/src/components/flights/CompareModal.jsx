@@ -56,6 +56,7 @@ export default function CompareModal({ onClose }) {
     { label: "Arrival", icon: "flight_land" },
     { label: "Travel Time", icon: "schedule" },
     { label: "Stops", icon: "trip_origin" },
+    { label: "Price Prediction", icon: "monitoring" },
     { label: "Economy Price", icon: "sell" },
     { label: "Business Price", icon: "workspace_premium" },
     { label: "First Price", icon: "star" },
@@ -112,6 +113,43 @@ export default function CompareModal({ onClose }) {
             {flight.number_of_stops === 0 ? "Non-stop" : `${flight.number_of_stops} Stop${flight.number_of_stops > 1 ? "s" : ""}`}
           </span>
         );
+      case "Price Prediction": {
+        const direction = flight.fare_prediction_direction;
+        const confidence = flight.fare_prediction_confidence;
+        
+        if (!direction) {
+          return <span className="text-xs text-slate-400">N/A</span>;
+        }
+        
+        if (direction === "INCREASE") {
+          return (
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm border border-rose-200">
+                <span className="material-symbols-outlined text-[12px]">trending_up</span> Increase
+              </span>
+              <span className="text-[9px] font-semibold text-slate-500 mt-1">{confidence}% confidence</span>
+            </div>
+          );
+        } else if (direction === "DECREASE") {
+          return (
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm border border-emerald-200">
+                <span className="material-symbols-outlined text-[12px]">trending_down</span> Drop
+              </span>
+              <span className="text-[9px] font-semibold text-slate-500 mt-1">{confidence}% confidence</span>
+            </div>
+          );
+        } else {
+           return (
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm border border-slate-200">
+                <span className="material-symbols-outlined text-[12px]">trending_flat</span> Stable
+              </span>
+              <span className="text-[9px] font-semibold text-slate-500 mt-1">{confidence}% confidence</span>
+            </div>
+          );
+        }
+      }
       case "Economy Price":
         return economyFare
           ? <span className="text-base font-extrabold text-slate-900">{formatCurrency(Math.round(economyFare.price), economyFare.currency)}</span>
@@ -220,8 +258,8 @@ export default function CompareModal({ onClose }) {
                       <div className="flex flex-col items-center gap-1.5">
                         <span className="text-sm font-extrabold text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">{flight.flight_number}</span>
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${flight.status === "SCHEDULED" ? "bg-emerald-100 text-emerald-700" :
-                            flight.status === "DELAYED" ? "bg-amber-100 text-amber-700" :
-                              "bg-slate-100 text-slate-600"
+                          flight.status === "DELAYED" ? "bg-amber-100 text-amber-700" :
+                            "bg-slate-100 text-slate-600"
                           }`}>
                           {flight.status}
                         </span>

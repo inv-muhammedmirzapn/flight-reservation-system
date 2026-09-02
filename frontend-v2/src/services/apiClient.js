@@ -34,11 +34,15 @@ export const getResponseData = async (res) => {
     return await res.blob();
   }
 
+  // converts the JSON string into a JavaScript object.
   const text = await res.text();
   if (!text) return null;
   try {
     const json = JSON.parse(text);
+
+
     // Unwrap global API response envelope: { status: "success", data: ... }
+    // unwraps and give data of that response
     if (json && typeof json === 'object' && json.status === 'success') {
       return json.data !== undefined ? json.data : json;
     }
@@ -63,15 +67,17 @@ export const getResponseData = async (res) => {
  * access_token cookie on the retried request automatically.
  */
 export const fetchWithAuth = async (endpoint, options = {}) => {
+  // Check whether request contains FormData
   const isFormData = options.body instanceof FormData;
 
+  //Prepare headers
   const headers = {
-    // Don't set Content-Type for FormData — the browser sets it with the correct
-    // multipart boundary automatically. For everything else default to JSON.
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    ...options.headers,
+    ...options.headers, //If the caller provided custom headers, add/override them
   };
 
+
+  // Send the actual request
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${endpoint}`, {

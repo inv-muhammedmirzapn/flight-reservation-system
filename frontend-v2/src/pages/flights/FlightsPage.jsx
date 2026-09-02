@@ -313,11 +313,11 @@ export default function FlightsPage() {
     }));
   }, [dispatch, from, to, depDate, cabinClassParam]);
 
-  // Auto-exit compare mode and clear selections when search parameters change (e.g. changing dates)
+  // Auto-exit compare mode and clear selections when core search parameters change (excluding date, to allow cross-date comparison)
   useEffect(() => {
     setCompareMode(false);
     dispatch(clearComparison());
-  }, [depDate, from, to, cabinClassParam, dispatch]);
+  }, [from, to, cabinClassParam, dispatch]);
 
   // Filter drawer state
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
