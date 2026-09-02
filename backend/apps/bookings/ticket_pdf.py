@@ -311,6 +311,8 @@ def generate_booking_pdf(booking) -> bytes:
         dest        = arr_ap.iata_code if arr_ap else '—'
         origin_city = (dep_ap.city or dep_ap.iata_code) if dep_ap else '—'
         dest_city   = (arr_ap.city or arr_ap.iata_code) if arr_ap else '—'
+        origin_name = (dep_ap.airport_name or '') if dep_ap else ''
+        dest_name   = (arr_ap.airport_name or '') if arr_ap else ''
         dep_time    = fi.scheduled_departure
         arr_time    = fi.scheduled_arrival
         duration    = _diff_hm(dep_time, arr_time)
@@ -330,26 +332,53 @@ def generate_booking_pdf(booking) -> bytes:
         story.append(P(sector_sub, size=9, color=SUBTXT))
         story.append(sp(3))
 
-        # Route Card
+        # Route Card — redesigned to show airport names
+        GOLD_LINE = colors.HexColor('#d4a017')
         col3 = cw_total / 3
-        route_tbl = Table([[
-            [P(dep_t, size=28, bold=True, color=DARK), sp(3), P(origin, size=13, bold=True, color=DARK)],
-            [_icon_plane_arrow(), sp(3), P(duration, size=8, color=SUBTXT, align=1), P(stop_label, size=7, color=SUBTXT, align=1)],
-            [P(arr_t, size=28, bold=True, color=DARK, align=2), sp(3), P(dest, size=13, bold=True, color=DARK, align=2)],
-        ]], colWidths=[col3, col3, col3])
+
+        # Left cell: departure side
+        dep_cell = [
+            P(dep_t, size=30, bold=True, color=DARK),
+            sp(1),
+            P(origin, size=16, bold=True, color=ACCENT),
+            sp(1),
+            P(origin_name, size=7, color=SUBTXT),
+        ]
+
+        # Centre cell: plane icon + duration + stop label
+        ctr_cell = [
+            _icon_plane_arrow(),
+            sp(2),
+            P(duration, size=8, bold=True, color=DARK, align=1),
+            P(stop_label, size=7, color=SUBTXT, align=1),
+        ]
+
+        # Right cell: arrival side (right-aligned)
+        arr_cell = [
+            P(arr_t, size=30, bold=True, color=DARK, align=2),
+            sp(1),
+            P(dest, size=16, bold=True, color=ACCENT, align=2),
+            sp(1),
+            P(dest_name, size=7, color=SUBTXT, align=2),
+        ]
+
+        route_tbl = Table(
+            [[dep_cell, ctr_cell, arr_cell]],
+            colWidths=[col3, col3, col3]
+        )
         route_tbl.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), WHITE),
-            ('BOX', (0, 0), (-1, -1), 0.8, MID),
-            ('LINEABOVE', (0, 0), (-1, 0), 2.5, colors.HexColor('#d4a017')),
+            ('BACKGROUND',    (0, 0), (-1, -1), WHITE),
+            ('BOX',           (0, 0), (-1, -1), 0.8, MID),
+            ('LINEABOVE',     (0, 0), (-1, 0),  3.0, GOLD_LINE),
             ('ROUNDEDCORNERS', [3]),
-            ('LINEBEFORE', (1, 0), (1, -1), 0.4, MID),
-            ('LINEAFTER', (1, 0), (1, -1), 0.4, MID),
-            ('TOPPADDING', (0, 0), (-1, -1), 14),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 14),
-            ('LEFTPADDING', (0, 0), (0, 0), 16),
-            ('RIGHTPADDING', (2, 0), (2, 0), 16),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('LINEBEFORE',    (1, 0), (1, -1),  0.4, MID),
+            ('LINEAFTER',     (1, 0), (1, -1),  0.4, MID),
+            ('TOPPADDING',    (0, 0), (-1, -1), 16),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 16),
+            ('LEFTPADDING',   (0, 0), (0, 0),   18),
+            ('RIGHTPADDING',  (2, 0), (2, 0),   18),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN',         (1, 0), (1, 0),   'CENTER'),
         ]))
         story.append(route_tbl)
         story.append(sp(2))

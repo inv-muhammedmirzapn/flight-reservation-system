@@ -253,13 +253,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
                     disabled={!canBook}
                     onClick={() => {
                       if (!canBook) return;
-                      const nextLeg = activeLegs[hopIdx + 1] || null;
-                      navigate(`/flights/${leg.instance_id}?cabinClass=${encodeURIComponent(cabinClassParam)}`, {
-                        state: {
-                          nextLeg,
-                          connectingJourney: { legs: activeLegs, currentLegIndex: hopIdx }
-                        }
-                      });
+                      navigate(`/flights/${leg.instance_id}?cabinClass=${encodeURIComponent(cabinClassParam)}`);
                     }}
                     className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold transition-all
                       ${canBook
