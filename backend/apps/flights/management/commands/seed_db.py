@@ -531,7 +531,7 @@ class Command(BaseCommand):
                 eco_fare.save()
 
             # Mark Economy seats on this flight as BOOKED
-            waitlist_instance.seats.filter(cabin_class=CabinClass.ECONOMY).update(status=SeatStatus.BOOKED)
+            waitlist_instance.seats.filter(seat_class=CabinClass.ECONOMY).update(status=SeatStatus.BOOKED)
 
             self.stdout.write(
                 self.style.SUCCESS(
@@ -595,7 +595,7 @@ class Command(BaseCommand):
                 }
             )
 
-            seat = sample_booking_instance.seats.filter(cabin_class=CabinClass.ECONOMY, seat_number="12A").first()
+            seat = sample_booking_instance.seats.filter(seat_class=CabinClass.ECONOMY, seat_number="12A").first()
             if seat:
                 seat.status = SeatStatus.BOOKED
                 seat.save()
