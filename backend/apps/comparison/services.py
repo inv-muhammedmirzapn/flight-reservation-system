@@ -1,4 +1,5 @@
 from apps.flights.models import SeatStatus
+from apps.fare_prediction.services import FarePredictionService
 
 class ComparisonService:
     
@@ -61,7 +62,16 @@ class ComparisonService:
                 if seat.status == SeatStatus.AVAILABLE:
                     seat_availability[c_class]["available"] += 1
 
-            # 6. Build the final dictionary for this flight
+            # 6. Get Fare Prediction Direction
+            try:
+                prediction_data = FarePredictionService.predict_fare(instance.id, "ECONOMY")
+                prediction_direction = prediction_data.get("direction", "STABLE")
+                confidence_score = prediction_data.get("confidence", 0)
+            except Exception:
+                prediction_direction = "STABLE"
+                confidence_score = 0
+
+            # 7. Build the final dictionary for this flight
             comparison_data.append({
                 "flight_instance_id": instance.id,
                 "flight_number": flight.flight_no,
@@ -74,7 +84,9 @@ class ComparisonService:
                 "number_of_stops": number_of_stops,
                 "status": instance.status,
                 "fares": fares_data,
-                "seat_availability": seat_availability
+                "seat_availability": seat_availability,
+                "fare_prediction_direction": prediction_direction,
+                "fare_prediction_confidence": confidence_score
             })
             
         return comparison_data
