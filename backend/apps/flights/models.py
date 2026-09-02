@@ -549,17 +549,20 @@ class FoodItem(models.Model):
 
 
 class FlightMeal(models.Model):
-    flight_instance = models.ForeignKey(
-        FlightInstance, on_delete=models.CASCADE, related_name="meals"
+    airline = models.ForeignKey(
+        Airline, on_delete=models.CASCADE, related_name="meals"
+    )
+    cabin_class = models.CharField(
+        max_length=10, choices=CabinClass.choices, default=CabinClass.ECONOMY
     )
     name = models.CharField(max_length=200)
     price = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
 
     class Meta:
-        ordering = ["flight_instance", "name"]
+        ordering = ["airline", "cabin_class", "name"]
 
     def __str__(self):
-        return f"{self.name} – {self.flight_instance}"
+        return f"{self.name} – {self.airline.iata_airline_code} ({self.cabin_class})"
 
 
 class FlightMealItem(models.Model):

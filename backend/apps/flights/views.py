@@ -866,14 +866,17 @@ class FoodItemViewSet(AdminModelViewSet):
 
 
 class FlightMealViewSet(AdminModelViewSet):
-    queryset = FlightMeal.objects.select_related("flight_instance").prefetch_related("items__food_item").all()
+    queryset = FlightMeal.objects.select_related("airline").prefetch_related("items__food_item").all()
     serializer_class = FlightMealSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
-        instance_id = self.request.query_params.get("flight_instance")
-        if instance_id:
-            qs = qs.filter(flight_instance_id=instance_id)
+        airline_id = self.request.query_params.get("airline")
+        cabin_class = self.request.query_params.get("cabin_class")
+        if airline_id:
+            qs = qs.filter(airline_id=airline_id)
+        if cabin_class:
+            qs = qs.filter(cabin_class=cabin_class)
         return qs
 
 

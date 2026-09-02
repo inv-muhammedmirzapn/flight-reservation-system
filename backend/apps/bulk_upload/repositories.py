@@ -376,22 +376,18 @@ def import_flight_meals(rows: list[dict]) -> tuple:
         if row_errors:
             errors.append({"row": i, "data": row, "errors": row_errors})
             continue
-        flight_no  = strip(row.get("flight_no") or row.get("flight_number")).upper()
-        date_raw   = strip(row.get("date"))
-        meal_name  = strip(row.get("meal_name") or row.get("name"))
-        meal_price = _dec(row.get("price"), default=0)
+        airline_code = strip(row.get("airline_code") or row.get("airline")).upper()
+        cabin_class  = strip(row.get("cabin_class") or row.get("class")).upper()
+        meal_name   = strip(row.get("meal_name") or row.get("name"))
+        meal_price  = _dec(row.get("price"), default=0)
 
-        route = FlightRoute.objects.filter(flight_no=flight_no).first()
-        if not route:
+        airline_obj = Airline.objects.filter(iata_airline_code=airline_code).first()
+        if not airline_obj:
             errors.append({"row": i, "data": row, "errors": {
-                "flight_no": f"FlightRoute '{flight_no}' not found."}}); continue
-        fi = FlightInstance.objects.filter(flight=route, date=parse_date(date_raw)).first()
-        if not fi:
-            errors.append({"row": i, "data": row, "errors": {
-                "date": f"No FlightInstance for {flight_no} on {date_raw}."}}); continue
+                "airline_code": f"Airline '{airline_code}' not found."}}); continue
         try:
             _, created = FlightMeal.objects.update_or_create(
-                flight_instance=fi, name=meal_name,
+                airline=airline_obj, cabin_class=cabin_class, name=meal_name,
                 defaults={"price": meal_price}
             )
             if created:
