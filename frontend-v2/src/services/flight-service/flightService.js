@@ -1,8 +1,10 @@
 import { API_BASE_URL, fetchWithAuth, getResponseData } from '@/services/apiClient';
 
-export const flightsAPI = {
+export const flightsAPI = { 
+  // This function gets the flight list.
   list: async (page = 1, params = {}) => {
-    const qs = new URLSearchParams({ page: String(page) });
+    const qs = new URLSearchParams({ page: String(page) }); //URLSearchParams helps build query parameters.
+    // This is how your frontend sends filters to the backend.
     if (params.search)       qs.set('search', params.search);
     if (params.status)       qs.set('status', params.status);
     if (params.source)       qs.set('source', params.source);
@@ -18,9 +20,10 @@ export const flightsAPI = {
     if (params.cabin_class)   qs.set('cabin_class', params.cabin_class);
     if (params.passengers)   qs.set('passengers', params.passengers);
     if (params.page_size)    qs.set('page_size', params.page_size);
-    return fetchWithAuth(`/flights/?${qs.toString()}`);
+    return fetchWithAuth(`/flights/?${qs.toString()}`); // This is where flightService hands control to apiClient.
   },
 
+ // This gets fare/price bounds used by filtering UI.
   getBounds: async (params = {}) => {
     const qs = new URLSearchParams();
     if (params.source)       qs.set('source', params.source);
@@ -51,7 +54,7 @@ export const flightsAPI = {
   },
 
   retrieve: async (id) => {
-    return fetchWithAuth(`/flights/${id}/`);
+    return fetchWithAuth(`/flights/${id}/`); // This is a path parameter.
   },
 
   getMeals: async (instanceId, params = {}) => {
