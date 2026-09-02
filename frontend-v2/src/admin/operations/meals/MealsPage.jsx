@@ -50,7 +50,6 @@ export default function MealsPage() {
     airline: airlineParam,
     cabin_class: cabinParam || 'ECONOMY',
     name: '',
-    price: '0.00',
     items: [{ ...EMPTY_ITEM }],
   });
   const [localErrors, setLocalErrors] = useState({});
@@ -102,7 +101,6 @@ export default function MealsPage() {
       airline: filterAirline || airlineParam || '',
       cabin_class: filterCabin || cabinParam || 'ECONOMY',
       name: '',
-      price: '0.00',
       items: [{ ...EMPTY_ITEM }],
     });
     setLocalErrors({});
@@ -116,7 +114,6 @@ export default function MealsPage() {
       airline: meal.airline,
       cabin_class: meal.cabin_class || 'ECONOMY',
       name: meal.name,
-      price: meal.price || '0.00',
       items: (meal.items || []).map((i) => ({ food_item: i.food_item, quantity: i.quantity })),
     });
     setLocalErrors({});
@@ -150,7 +147,6 @@ export default function MealsPage() {
       airline: form.airline,
       cabin_class: form.cabin_class,
       name: form.name,
-      price: form.price || '0.00',
       items: form.items.map(i => ({ food_item: i.food_item, quantity: Number(i.quantity) })),
     };
     const promise = editId
@@ -366,7 +362,7 @@ export default function MealsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div style={{ marginBottom: 20 }}>
                 <Input
                   id="meal-name"
                   label="Meal Name"
@@ -374,17 +370,6 @@ export default function MealsPage() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   error={localErrors.name}
-                />
-                <Input
-                  id="meal-price"
-                  label="Price ($)"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                  error={localErrors.price}
                 />
               </div>
 
