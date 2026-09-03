@@ -242,10 +242,10 @@
         "occupancySub": "上位10フライト"
       },
       "charts": {
-        "monthlyRevenue": "📈 月間収益（過去12ヶ月）",
-        "popularRoutes": "🗺️ 人気のルート（予約数トップ10）",
-        "peakHours": "🕐 ピーク予約時間（UTC）",
-        "flightOccupancy": "✈️ フライト搭乗率（トップ10）"
+        "monthlyRevenue": "月間収益（過去12ヶ月）",
+        "popularRoutes": "人気のルート（予約数トップ10）",
+        "peakHours": "ピーク予約時間（UTC）",
+        "flightOccupancy": "フライト搭乗率（トップ10）"
       },
       "tooltip": {
         "revenue": "収益",

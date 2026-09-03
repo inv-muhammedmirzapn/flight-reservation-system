@@ -121,9 +121,9 @@ def generate_upcoming_instances(
                     instance, created = FlightInstance.objects.get_or_create(
                         flight=route,
                         date=curr_date,
+                        scheduled_departure=sch_dep,
                         defaults={
                             "aircraft": default_aircraft,
-                            "scheduled_departure": sch_dep,
                             "scheduled_arrival": sch_arr,
                             "status": InstanceStatus.SCHEDULED,
                             "boarding_gate": f"G{random.randint(1, 20)}",

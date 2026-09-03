@@ -242,10 +242,10 @@
         "occupancySub": "top 10 flights"
       },
       "charts": {
-        "monthlyRevenue": "📈 Monthly Revenue (last 12 months)",
-        "popularRoutes": "🗺️ Popular Routes (top 10 by bookings)",
-        "peakHours": "🕐 Peak Booking Hours (UTC)",
-        "flightOccupancy": "✈️ Flight Occupancy (top 10)"
+        "monthlyRevenue": "Monthly Revenue (last 12 months)",
+        "popularRoutes": "Popular Routes (top 10 by bookings)",
+        "peakHours": "Peak Booking Hours (UTC)",
+        "flightOccupancy": "Flight Occupancy (top 10)"
       },
       "tooltip": {
         "revenue": "Revenue",

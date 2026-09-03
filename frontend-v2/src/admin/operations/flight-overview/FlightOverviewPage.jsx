@@ -26,10 +26,11 @@ const getStatusOptions = (t) => [
     { value: 'ARRIVED', label: 'Arrived' },
 ];
 
+
+
 export default function FlightOverviewPage() {
     const { t } = useTranslation();
     const dispatch = useDispatch();
-  // const navigate = useNavigate();
 
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
@@ -210,46 +211,6 @@ export default function FlightOverviewPage() {
         setFilterOpen(false);
     };
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    const handleRemoveFilter = (filterKey) => {
-        let nextSearch = activeSearch;
-        let nextStatus = statusFilter;
-        let nextDate = dateFilter;
-        let nextArrivalDate = arrivalDateFilter;
-        let nextSource = sourceFilter;
-        let nextDest = destFilter;
-        let nextSortBy = sortBy;
-        let nextSortOrder = sortOrder;
-
-        if (filterKey === 'search') {
-            nextSearch = '';
-            setSearchInput('');
-            setActiveSearch('');
-        } else if (filterKey === 'status') {
-            nextStatus = '';
-            setStatusFilter('');
-        } else if (filterKey === 'date') {
-            nextDate = '';
-            setDateFilter('');
-        } else if (filterKey === 'arrivalDate') {
-            nextArrivalDate = '';
-            setArrivalDateFilter('');
-        } else if (filterKey === 'source') {
-            nextSource = '';
-            setSourceFilter('');
-        } else if (filterKey === 'dest') {
-            nextDest = '';
-            setDestFilter('');
-        } else if (filterKey === 'sort') {
-            nextSortBy = 'scheduled_departure';
-            nextSortOrder = 'desc';
-            setSortBy('scheduled_departure');
-            setSortOrder('desc');
-        }
-
-        setCurrentPage(1);
-        fetchFiltered(1, buildParams(nextSearch, nextStatus, nextDate, nextArrivalDate, nextSource, nextDest, nextSortBy, nextSortOrder));
-    };
 
     const hasActiveFilters = !!(
         activeSearch ||
@@ -304,86 +265,165 @@ export default function FlightOverviewPage() {
                     </div>
                 </div>
 
-                {/* Main Control & Search Bar */}
-                <div className="glass-card overview-controls" style={{ position: 'relative', zIndex: 50, borderRadius: 16, padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', overflow: 'visible' }}>
-                    {/* Quick Search */}
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            setActiveSearch(searchInput);
-                            setCurrentPage(1);
-                            fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 300px', maxWidth: 480 }}
-                    >
-                        <div className="admin-toolbar-search" style={{ position: 'relative' }}>
-                            <Search size={14} className="search-icon" />
-                            <input
-                                className="filter-input"
-                                type="text"
-                                placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
-                                value={searchInput}
-                                onChange={handleSearchChange}
-                                onFocus={() => setSearchFocus(true)}
-                                onBlur={() => setSearchFocus(false)}
-                            />
-                            {searchInput && (
-                                <button
-                                    type="button"
-                                    className="clear-search-btn"
-                                    onClick={() => {
-                                        setSearchInput('');
-                                        setActiveSearch('');
-                                        setCurrentPage(1);
-                                        fetchFiltered(1, buildParams('', statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                                    }}
-                                    title="Clear search"
-                                >
-                                    <X size={13} />
-                                </button>
-                            )}
-                            {searchFocus && searchSuggestions.length > 0 && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
-                                    {searchSuggestions.map((sug, idx) => (
-                                        <div
-                                            key={idx}
-                                            onMouseDown={(e) => {
-                                                e.preventDefault(); // Prevent blur
-                                                setSearchInput(sug.value);
-                                                setActiveSearch(sug.value);
-                                                setCurrentPage(1);
-                                                fetchFiltered(1, buildParams(sug.value, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                                                setSearchFocus(false);
-                                            }}
-                                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
-                                            <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            type="submit"
-                            className="btn-primary"
-                            style={{ padding: '7px 14px', fontSize: 13, flexShrink: 0 }}
-                        >
-                            {t("admin.search", { defaultValue: 'Search' })}
-                        </button>
-                    </form>
+                {/* Unified Search + Filter Control Bar */}
+                <div className="glass-card overview-controls" style={{ position: 'relative', zIndex: 50, borderRadius: 16, padding: '16px 20px', marginBottom: 12, overflow: 'visible' }}>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Row 1: Search + Action Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {/* Quick Search */}
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                setActiveSearch(searchInput);
+                                setCurrentPage(1);
+                                fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 260px', minWidth: 0 }}
+                        >
+                            <div className="admin-toolbar-search" style={{ position: 'relative', flex: 1 }}>
+                                <Search size={14} className="search-icon" />
+                                <input
+                                    className="filter-input"
+                                    type="text"
+                                    placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
+                                    value={searchInput}
+                                    onChange={handleSearchChange}
+                                    onFocus={() => setSearchFocus(true)}
+                                    onBlur={() => setSearchFocus(false)}
+                                />
+                                {searchInput && (
+                                    <button
+                                        type="button"
+                                        className="clear-search-btn"
+                                        onClick={() => {
+                                            setSearchInput('');
+                                            setActiveSearch('');
+                                            setCurrentPage(1);
+                                            fetchFiltered(1, buildParams('', statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                        }}
+                                        title="Clear search"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                )}
+                                {searchFocus && searchSuggestions.length > 0 && (
+                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+                                        {searchSuggestions.map((sug, idx) => (
+                                            <div
+                                                key={idx}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setSearchInput(sug.value);
+                                                    setActiveSearch(sug.value);
+                                                    setCurrentPage(1);
+                                                    fetchFiltered(1, buildParams(sug.value, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                                    setSearchFocus(false);
+                                                }}
+                                                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                                                <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn-primary"
+                                style={{ padding: '7px 14px', fontSize: 13, flexShrink: 0 }}
+                            >
+                                {t("admin.search", { defaultValue: 'Search' })}
+                            </button>
+                        </form>
+
+                        {/* Divider */}
+                        <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+
+                        {/* Quick Date Chips */}
+                        {(() => {
+                            const today = new Date();
+                            const fmt = (d) => d.toISOString().slice(0, 10);
+                            const todayStr = fmt(today);
+                            const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+
+                            const chips = [
+                                { label: 'Today', date: todayStr },
+                                { label: 'Tomorrow', date: tomorrowStr },
+                            ];
+
+                            return chips.map(chip => {
+                                const isActive = dateFilter === chip.date && !arrivalDateFilter;
+                                return (
+                                    <button
+                                        key={chip.label}
+                                        type="button"
+                                        onClick={() => {
+                                            if (isActive) {
+                                                setDateFilter('');
+                                                setArrivalDateFilter('');
+                                                setDraftDate('');
+                                                setDraftArrivalDate('');
+                                                setCurrentPage(1);
+                                                fetchFiltered(1, buildParams(activeSearch, statusFilter, '', '', sourceFilter, destFilter, sortBy, sortOrder));
+                                            } else {
+                                                setDateFilter(chip.date);
+                                                setArrivalDateFilter('');
+                                                setDraftDate(chip.date);
+                                                setDraftArrivalDate('');
+                                                setCurrentPage(1);
+                                                fetchFiltered(1, buildParams(activeSearch, statusFilter, chip.date, '', sourceFilter, destFilter, sortBy, sortOrder));
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '6px 13px',
+                                            borderRadius: 20,
+                                            fontSize: 12,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            flexShrink: 0,
+                                            transition: 'all 0.18s',
+                                            border: isActive ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
+                                            background: isActive ? '#705d00' : 'rgba(255,255,255,0.7)',
+                                            color: isActive ? '#fff' : '#5e5e5e',
+                                            boxShadow: isActive ? '0 2px 8px rgba(112,93,0,0.18)' : 'none',
+                                        }}
+                                    >
+                                        {chip.label}
+                                    </button>
+                                );
+                            });
+                        })()}
+
+                        {/* Inline Date Picker — reuses shared DatePicker component */}
+                        <div style={{ flexShrink: 0, width: 136 }}>
+                            <DatePicker
+                                placeholder="Pick date"
+                                value={dateFilter}
+                                onChange={(val) => {
+                                    setDateFilter(val);
+                                    setArrivalDateFilter('');
+                                    setDraftDate(val);
+                                    setDraftArrivalDate('');
+                                    setCurrentPage(1);
+                                    fetchFiltered(1, buildParams(activeSearch, statusFilter, val, '', sourceFilter, destFilter, sortBy, sortOrder));
+                                }}
+                            />
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+
                         {/* Filter & Sort Modal Button */}
                         <button
                             onClick={handleOpenFilters}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', flexShrink: 0 }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = 'rgba(112,93,0,0.2)'; }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}
                         >
-                            <SlidersHorizontal size={15} color="#705d00" />
+                            <SlidersHorizontal size={14} color="#705d00" />
                             <span>{t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}</span>
                             {hasActiveFilters && (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
@@ -399,11 +439,11 @@ export default function FlightOverviewPage() {
                             )}
                         </button>
 
-                        {/* Clear All quick button */}
+                        {/* Clear All */}
                         {hasActiveFilters && (
                             <button
                                 onClick={handleClearFilters}
-                                style={{ padding: '10px 16px', background: 'rgba(220,38,38,0.08)', border: '1.5px solid rgba(220,38,38,0.15)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#dc2626', cursor: 'pointer', transition: 'background 0.2s' }}
+                                style={{ padding: '8px 14px', background: 'rgba(220,38,38,0.08)', border: '1.5px solid rgba(220,38,38,0.15)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#dc2626', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
                                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
                             >
@@ -411,6 +451,8 @@ export default function FlightOverviewPage() {
                             </button>
                         )}
                     </div>
+
+
                 </div>
 
 

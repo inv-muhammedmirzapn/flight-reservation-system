@@ -658,7 +658,7 @@ export default function FlightsPage() {
                 if (nextFastest) assignedBadges.set(nextFastest.id, "Fastest");
               }
 
-              // 3. Stops Badge ("Direct" if 0 layovers, or "Fewest Stops" if layovers exist in list)
+              // 3. Stops / Distance Badge ("Direct" if 0 layovers, or "Shortest" if layovers exist)
               const minStopsCount = Math.min(...fares.map(x => x.stops));
               if (minStopsCount === 0) {
                 const unbadgedDirect = fares.find(x => x.stops === 0 && !assignedBadges.has(x.id));
@@ -666,19 +666,13 @@ export default function FlightsPage() {
                   assignedBadges.set(unbadgedDirect.id, "Direct");
                 }
               } else {
-                const unbadgedFewestStops = fares.find(x => x.stops === minStopsCount && !assignedBadges.has(x.id));
-                if (unbadgedFewestStops) {
-                  assignedBadges.set(unbadgedFewestStops.id, "Fewest Stops");
+                const unbadgedShortest = fares.find(x => x.stops === minStopsCount && !assignedBadges.has(x.id));
+                if (unbadgedShortest) {
+                  assignedBadges.set(unbadgedShortest.id, "Shortest");
                 }
               }
 
-              // 4. Shortest (Direct route minimum flight duration/distance proxy)
-              const nonStopUnbadged = fares.filter(x => x.stops === 0 && !assignedBadges.has(x.id)).sort((a, b) => a.dur - b.dur)[0];
-              if (nonStopUnbadged) {
-                assignedBadges.set(nonStopUnbadged.id, "Shortest");
-              }
-
-              // Fallback: Any remaining non-stop flights get "Direct"
+              // 4. Non-stop flights get "Direct" badge if not already badged as Cheapest or Fastest
               fares.forEach(x => {
                 if (x.stops === 0 && !assignedBadges.has(x.id)) {
                   assignedBadges.set(x.id, "Direct");
