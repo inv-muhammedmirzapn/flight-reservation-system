@@ -28,26 +28,26 @@ import PasswordRecoveryPage from "@/pages/auth/PasswordRecoveryPage";
 import AdminLoginPage from "@/pages/auth/AdminLoginPage";
 
 // ── Admin pages (lazy-loaded) ────────────────────────────────────────────────
-const AnalyticsDashboard      = lazy(() => import("@/admin/analytics/AnalyticsDashboard"));
+const AnalyticsDashboard = lazy(() => import("@/admin/analytics/AnalyticsDashboard"));
 // Master data
-const AirportsPage            = lazy(() => import("@/admin/master/airports/AirportsPage"));
-const AirlinesPage            = lazy(() => import("@/admin/master/airlines/AirlinesPage"));
-const AircraftModelsPage      = lazy(() => import("@/admin/master/aircraft/AircraftModelsPage"));
-const AircraftPage            = lazy(() => import("@/admin/master/aircraft/AircraftPage"));
-const FoodItemsPage           = lazy(() => import("@/admin/master/food-items/FoodItemsPage"));
+const AirportsPage = lazy(() => import("@/admin/master/airports/AirportsPage"));
+const AirlinesPage = lazy(() => import("@/admin/master/airlines/AirlinesPage"));
+const AircraftModelsPage = lazy(() => import("@/admin/master/aircraft/AircraftModelsPage"));
+const AircraftPage = lazy(() => import("@/admin/master/aircraft/AircraftPage"));
+const FoodItemsPage = lazy(() => import("@/admin/master/food-items/FoodItemsPage"));
 // Operations
-const FlightRoutesPage        = lazy(() => import("@/admin/operations/flight-routes/FlightRoutesPage"));
-const RouteFareClassesPage    = lazy(() => import("@/admin/operations/route-fare-classes/RouteFareClassesPage"));
-const DynamicPricingPage      = lazy(() => import("@/admin/operations/dynamic-pricing/DynamicPricingPage"));
-const FlightInstancesPage     = lazy(() => import("@/admin/operations/flight-instances/FlightInstancesPage"));
-const FlightOverviewPage      = lazy(() => import("@/admin/operations/flight-overview/FlightOverviewPage"));
-const SeatMapPage             = lazy(() => import("@/admin/operations/seat-map/SeatMapPage"));
-const FaresPage               = lazy(() => import("@/admin/operations/fares/FaresPage"));
-const MealsPage               = lazy(() => import("@/admin/operations/meals/MealsPage"));
+const FlightRoutesPage = lazy(() => import("@/admin/operations/flight-routes/FlightRoutesPage"));
+const RouteFareClassesPage = lazy(() => import("@/admin/operations/route-fare-classes/RouteFareClassesPage"));
+const DynamicPricingPage = lazy(() => import("@/admin/operations/dynamic-pricing/DynamicPricingPage"));
+const FlightInstancesPage = lazy(() => import("@/admin/operations/flight-instances/FlightInstancesPage"));
+const FlightOverviewPage = lazy(() => import("@/admin/operations/flight-overview/FlightOverviewPage"));
+const SeatMapPage = lazy(() => import("@/admin/operations/seat-map/SeatMapPage"));
+const FaresPage = lazy(() => import("@/admin/operations/fares/FaresPage"));
+const MealsPage = lazy(() => import("@/admin/operations/meals/MealsPage"));
 // Records
-const AdminBookingsPage       = lazy(() => import("@/admin/records/bookings/AdminBookingsPage"));
+const AdminBookingsPage = lazy(() => import("@/admin/records/bookings/AdminBookingsPage"));
 // System
-const DataManagementPage      = lazy(() => import("@/admin/system/data-management/DataManagementPage"));
+const DataManagementPage = lazy(() => import("@/admin/system/data-management/DataManagementPage"));
 
 // Spinner shown while lazy admin chunks load
 const AdminLoadingFallback = () => (
@@ -80,13 +80,32 @@ function AppContent() {
       <Toaster
         position={isAdminPanel ? "top-right" : "top-center"}
         reverseOrder={false}
-        containerClassName={isAdminPanel ? "!top-24 !right-6 transition-all duration-300" : "!top-4 transition-all duration-300"}
+        containerStyle={{
+          top: isAdminPanel ? 96 : 16,
+          right: isAdminPanel ? 24 : 16,
+          transition: "all 0.25s ease",
+        }}
         toastOptions={{
           duration: 3500,
-          className: "font-sans text-xs font-semibold rounded-2xl px-4 py-3 text-slate-900 bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xl",
+          style: {
+            fontFamily: "Inter, sans-serif",
+            fontSize: "12px",
+            fontWeight: "600",
+            borderRadius: "16px",
+            padding: "12px 18px",
+            color: "#0f172a",
+            background: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(226, 232, 240, 0.8)",
+            boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)",
+          },
           success: {
             duration: 3500,
-            className: "!bg-emerald-50 !text-emerald-900 !border-emerald-200",
+            style: {
+              background: "#f0fdf4",
+              color: "#064e3b",
+              border: "1px solid #a7f3d0",
+            },
             iconTheme: {
               primary: "#10b981",
               secondary: "#ffffff",
@@ -94,14 +113,22 @@ function AppContent() {
           },
           error: {
             duration: 4000,
-            className: "!bg-rose-50 !text-rose-900 !border-rose-200",
+            style: {
+              background: "#fff1f2",
+              color: "#881337",
+              border: "1px solid #fecdd3",
+            },
             iconTheme: {
               primary: "#f43f5e",
               secondary: "#ffffff",
             },
           },
           loading: {
-            className: "!bg-slate-900 !text-slate-50 !border-slate-700",
+            style: {
+              background: "#0f172a",
+              color: "#f8fafc",
+              border: "1px solid #334155",
+            },
             iconTheme: {
               primary: "#fbbf24",
               secondary: "#0f172a",
