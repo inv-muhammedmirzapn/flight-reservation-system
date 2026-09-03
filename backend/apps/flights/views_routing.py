@@ -133,9 +133,11 @@ class RecommendRoutesView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        from .services_currency import CurrencyService
+        target_currency = CurrencyService.get_user_currency(request.user)
         optimizer = RouteOptimizer()
         # Default K is 3 as per requirements
-        result = optimizer.recommend_routes(source_iata, dest_iata, k=3, travel_date=date_param)
+        result = optimizer.recommend_routes(source_iata, dest_iata, k=3, travel_date=date_param, target_currency=target_currency)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)

@@ -344,7 +344,7 @@ class RouteOptimizer:
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3, travel_date: Optional[Any] = None) -> Dict[str, Any]:
+    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3, travel_date: Optional[Any] = None, target_currency: str = "INR") -> Dict[str, Any]:
         """
         Suggest the best connecting routes if a direct flight is unavailable.
         Returns the top `k` routes based on minimum stops and minimum time.
@@ -403,7 +403,7 @@ class RouteOptimizer:
                 continue
 
             if current_node == dest_iata:
-                if len(path) > 0:
+                if len(path) > 1:
                     valid_routes.append(path)
                     if len(valid_routes) >= k * 5:
                         break
@@ -470,9 +470,11 @@ class RouteOptimizer:
                             leg_min_fare = None
                             try:
                                 inst_fares = inst.fares.all()
-                                economy_prices = [float(f.price) for f in inst_fares if f.cabin_class == "ECONOMY"]
-                                if economy_prices:
-                                    leg_min_fare = min(economy_prices)
+                                economy_fares = [f for f in inst_fares if f.cabin_class == "ECONOMY"]
+                                if economy_fares:
+                                    best_fare = min(economy_fares, key=lambda f: float(f.price))
+                                    from apps.flights.services_currency import CurrencyService
+                                    leg_min_fare = float(CurrencyService.convert_amount(best_fare.price, best_fare.currency, target_currency))
                             except Exception:
                                 pass
 
@@ -586,6 +588,7 @@ class RouteOptimizer:
                     "total_stops": len(hops) - 1,
                     "total_duration_minutes": overall_elapsed,
                     "total_min_fare": round(total_min_fare, 2) if total_min_fare > 0 else None,
+                    "currency": target_currency,
                     "bookable": all(
                         any(o.get("instance_id") for o in h["options"])
                         for h in hops

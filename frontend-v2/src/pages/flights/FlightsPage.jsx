@@ -89,7 +89,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
           <div className="flex flex-col items-end gap-1">
             {totalFare > 0 && (
               <span className="text-base font-extrabold text-slate-900">
-                {formatCurrency(Math.round(totalFare), "INR")}
+                {formatCurrency(Math.round(totalFare), route.currency || "INR")}
               </span>
             )}
             <div className="flex items-center gap-3">
@@ -245,7 +245,7 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
                 <div className="shrink-0 flex flex-col items-end gap-1">
                   {leg.min_fare != null && (
                     <span className="text-[10px] font-bold text-slate-600">
-                      {formatCurrency(Math.round(leg.min_fare), "INR")}
+                      {formatCurrency(Math.round(leg.min_fare), route.currency || "INR")}
                     </span>
                   )}
                   <button

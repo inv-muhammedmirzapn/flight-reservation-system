@@ -64,6 +64,9 @@ const EMPTY_FORM = {
   baggage_weight_allowed_per_person: '20',
   baggage_number_allowed_per_person: '',
   handbag_weight_allowed_per_person: '7',
+  max_extra_baggage_kg_per_person: '20',
+  extra_baggage_price_per_kg: '500',
+  extra_baggage_currency: 'INR',
   legs: [{ ...EMPTY_LEG }],
 };
 
@@ -214,6 +217,9 @@ export default function FlightRoutesPage() {
       baggage_weight_allowed_per_person: route.baggage_weight_allowed_per_person || '20',
       baggage_number_allowed_per_person: route.baggage_number_allowed_per_person ?? '',
       handbag_weight_allowed_per_person: route.handbag_weight_allowed_per_person || '7',
+      max_extra_baggage_kg_per_person: route.max_extra_baggage_kg_per_person ?? '20',
+      extra_baggage_price_per_kg: route.extra_baggage_price_per_kg ?? '500',
+      extra_baggage_currency: route.extra_baggage_currency || 'INR',
       legs: (route.legs || []).map((leg) => ({
         departure_airport: leg.departure_airport,
         arrival_airport: leg.arrival_airport,
@@ -265,6 +271,8 @@ export default function FlightRoutesPage() {
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
     if (Number(form.handbag_weight_allowed_per_person) < 0) e.handbag_weight_allowed_per_person = 'Cannot be negative.';
+    if (Number(form.max_extra_baggage_kg_per_person) < 0) e.max_extra_baggage_kg_per_person = 'Cannot be negative.';
+    if (Number(form.extra_baggage_price_per_kg) < 0) e.extra_baggage_price_per_kg = 'Cannot be negative.';
 
     if (form.legs.length > 0 && form.legs[0].scheduled_departure_time && form.scheduled_departure_time) {
       if (form.legs[0].scheduled_departure_time !== form.scheduled_departure_time) {
@@ -315,6 +323,9 @@ export default function FlightRoutesPage() {
       baggage_weight_allowed_per_person: form.baggage_weight_allowed_per_person ? Number(form.baggage_weight_allowed_per_person) : 20,
       baggage_number_allowed_per_person: form.baggage_number_allowed_per_person ? Number(form.baggage_number_allowed_per_person) : null,
       handbag_weight_allowed_per_person: form.handbag_weight_allowed_per_person ? Number(form.handbag_weight_allowed_per_person) : 7,
+      max_extra_baggage_kg_per_person: form.max_extra_baggage_kg_per_person ? Number(form.max_extra_baggage_kg_per_person) : 0,
+      extra_baggage_price_per_kg: form.extra_baggage_price_per_kg ? Number(form.extra_baggage_price_per_kg) : 0,
+      extra_baggage_currency: form.extra_baggage_currency || 'INR',
       legs: form.legs.map((leg, i) => ({
         ...leg,
         leg_order: i + 1,
@@ -762,6 +773,36 @@ export default function FlightRoutesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, handbag_weight_allowed_per_person: e.target.value }))} />
                   <span className="text-[11px] text-slate-500 block mt-1">
                     Hand luggage limit per passenger (e.g. 7 kg).
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 5: Extra Baggage Add-on Configuration */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'start' }}>
+                <div>
+                  <Input id="max_extra_baggage" label="Max Extra Baggage (kg)" type="number"
+                    value={form.max_extra_baggage_kg_per_person}
+                    onChange={(e) => setForm((f) => ({ ...f, max_extra_baggage_kg_per_person: e.target.value }))}
+                    error={localErrors.max_extra_baggage_kg_per_person} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Maximum add-on baggage a passenger can buy.
+                  </span>
+                </div>
+                <div>
+                  <Input id="extra_baggage_price" label="Price per extra kg" type="number" step="0.01"
+                    value={form.extra_baggage_price_per_kg}
+                    onChange={(e) => setForm((f) => ({ ...f, extra_baggage_price_per_kg: e.target.value }))}
+                    error={localErrors.extra_baggage_price_per_kg} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Amount to charge for each additional kg.
+                  </span>
+                </div>
+                <div>
+                  <Input id="extra_baggage_currency" label="Currency"
+                    value={form.extra_baggage_currency}
+                    onChange={(e) => setForm((f) => ({ ...f, extra_baggage_currency: e.target.value }))} />
+                  <span className="text-[11px] text-slate-500 block mt-1">
+                    Currency code (e.g., INR, USD).
                   </span>
                 </div>
               </div>

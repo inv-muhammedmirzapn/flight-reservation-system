@@ -225,7 +225,7 @@ class FlightFaresCalendarView(APIView):
                 while current <= end_dt:
                     date_key = str(current)
                     if date_key not in fares_with_currency:
-                        result = optimizer.recommend_routes(source, destination, k=1, travel_date=current)
+                        result = optimizer.recommend_routes(source, destination, k=1, travel_date=current, target_currency=target_currency)
                         routes = result.get("recommended_routes", [])
                         if routes:
                             total_fare = routes[0].get("total_min_fare")
