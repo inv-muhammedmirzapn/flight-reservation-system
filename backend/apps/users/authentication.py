@@ -1,5 +1,6 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework.exceptions import AuthenticationFailed
 from drf_spectacular.contrib.rest_framework_simplejwt import SimpleJWTScheme
 
 
@@ -19,14 +20,15 @@ class CookieJWTAuthentication(JWTAuthentication):
             try:
                 validated_token = self.get_validated_token(raw_token)
                 return self.get_user(validated_token), validated_token
-            except (InvalidToken, TokenError) as exc:
-                # Cookie token is invalid/expired — check if standard header token is provided
+            except (InvalidToken, TokenError, AuthenticationFailed):
+                # Cookie token is invalid/expired, OR the user was deleted from the database
+                # check if standard header token is provided
                 header_auth = super().authenticate(request)
                 if header_auth is not None:
                     return header_auth
-                # No valid header token provided — raise the exception so DRF returns 401,
-                # triggering frontend silent token refresh (fetchWithAuth).
-                raise exc
+                # No valid header token provided — return None to fall back to AnonymousUser.
+                # If the view requires authentication, DRF will reject it with a 401 later.
+                return None
 
         # Fallback: standard Authorization: Bearer <token> header
         return super().authenticate(request)
