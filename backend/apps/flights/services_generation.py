@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import FlightRoute, FlightInstance, InstanceStatus, Aircraft
-from .services import generate_seats_for_instance
+from .services import generate_seats_for_instance, apply_premium_pricing
 from .services_pricing import generate_fares_for_instance, PricingStrategy
 
 logger = logging.getLogger(__name__)
@@ -135,6 +135,7 @@ def generate_upcoming_instances(
                     if created:
                         created_instances += 1
                         s_count = generate_seats_for_instance(instance)
+                        apply_premium_pricing(instance, window_fee=1500, legroom_fee=2500)
                         created_seats += s_count
                         f_list = generate_fares_for_instance(instance, strategy=strategy)
                         created_fares += len(f_list)

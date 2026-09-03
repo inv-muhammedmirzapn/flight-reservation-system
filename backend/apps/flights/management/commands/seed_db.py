@@ -4,6 +4,7 @@ from datetime import datetime, date, time, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import transaction
 
 from apps.users.models import Profile
 from apps.flights.models import (
@@ -616,6 +617,78 @@ class Command(BaseCommand):
                     }
                 )
             self.stdout.write(f"   Created sample CONFIRMED booking for customer on {sample_booking_instance.flight.flight_no}.")
+
+        self.stdout.write("    Generating randomized historical bookings for Dynamic Pricing demo...")
+        
+        all_14_day_instances = list(FlightInstance.objects.filter(
+            date__range=[today, today + timedelta(days=14)]
+        ).exclude(id=sample_booking_instance.id if sample_booking_instance else 0).exclude(id=waitlist_instance.id if waitlist_instance else 0))
+
+        # Pick 15 flights specifically departing from DEL for the high-booking demo
+        del_departures = [inst for inst in all_14_day_instances if inst.flight.origin_airport and inst.flight.origin_airport.iata_code == 'DEL']
+        high_booking_instances = random.sample(del_departures, min(len(del_departures), 15))
+        low_booking_instances = [inst for inst in all_14_day_instances if inst not in high_booking_instances]
+
+        # 1. High booking rate for demo flights (creates actual Booking records)
+        for inst in high_booking_instances:
+            booking_rate = random.uniform(0.70, 0.95)
+            for cabin in [CabinClass.ECONOMY, CabinClass.BUSINESS, CabinClass.FIRST]:
+                seats = list(inst.seats.filter(seat_class=cabin, status=SeatStatus.AVAILABLE))
+                if not seats:
+                    continue
+                num_to_book = int(len(seats) * booking_rate)
+                if num_to_book == 0:
+                    continue
+                
+                seats_to_book = random.sample(seats, num_to_book)
+                fare = inst.fares.filter(cabin_class=cabin).first()
+                if not fare:
+                    continue
+                
+                with transaction.atomic():
+                    for s in seats_to_book:
+                        s.status = SeatStatus.BOOKED
+                        b = Booking.objects.create(
+                            user=customer_user, flight=inst, status=BookingStatus.CONFIRMED,
+                            cabin_class=cabin, seat_count=1, total_price=fare.price
+                        )
+                        p = Passenger.objects.create(
+                            booking=b, name="Demo Passenger", age=random.randint(18, 60),
+                            gender=random.choice(["M", "F"]), phone_number="+1 555-0000",
+                            seat_number=s.seat_number, free_baggage_allowance_kg=Decimal("30.00")
+                        )
+                        Ticket.objects.create(
+                            booking=b, flight_instance=inst, fare=fare, passenger=p, seat=s,
+                            price_paid=fare.price, currency="INR", fare_code=fare.fare_code,
+                            cabin_class=cabin, refund_type=fare.refund_type or RefundType.PARTIAL
+                        )
+                fare.available_seats = max(0, fare.available_seats - num_to_book)
+                fare.save()
+                Seat.objects.bulk_update(seats_to_book, ['status'])
+            self.stdout.write(f"       -> Simulated high booking ({int(booking_rate*100)}%) for {inst.flight.flight_no} on {inst.date}")
+
+        # 2. Low booking rate for all other flights (only updates Seat & Fare objects to save time)
+        for inst in low_booking_instances:
+            booking_rate = random.uniform(0.01, 0.10)
+            for cabin in [CabinClass.ECONOMY, CabinClass.BUSINESS, CabinClass.FIRST]:
+                seats = list(inst.seats.filter(seat_class=cabin, status=SeatStatus.AVAILABLE))
+                if not seats:
+                    continue
+                num_to_book = int(len(seats) * booking_rate)
+                if num_to_book == 0:
+                    continue
+                
+                seats_to_book = random.sample(seats, num_to_book)
+                fare = inst.fares.filter(cabin_class=cabin).first()
+                if not fare:
+                    continue
+                
+                for s in seats_to_book:
+                    s.status = SeatStatus.BOOKED
+                
+                fare.available_seats = max(0, fare.available_seats - num_to_book)
+                fare.save()
+                Seat.objects.bulk_update(seats_to_book, ['status'])
 
         # -------------------------------------------------------------
         # 11. Populate Airline Logos (if script available)

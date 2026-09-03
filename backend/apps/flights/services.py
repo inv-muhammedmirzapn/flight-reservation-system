@@ -259,6 +259,7 @@ def _make_cabin_seats(
                     seat_class=cabin_class,
                     position=pos,
                     status=SeatStatus.AVAILABLE,
+                    extra_legroom=(row_num == 1),
                 )
             )
             remaining -= 1
