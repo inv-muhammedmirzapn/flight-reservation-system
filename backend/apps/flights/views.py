@@ -145,49 +145,25 @@ class FlightListCreateView(APIView):
         destination = request.query_params.get("destination", "").strip().upper()
 
         if source and destination:
-            # Must have source and dest, and source must happen before dest in the route
-            from django.db.models import F
-            qs = qs.filter(
-                flight__legs__departure_airport__iata_code=source
+            from django.db.models import Max, F
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__departure_airport__iata_code=source,
+                flight__legs__leg_order=1
             ).filter(
-                flight__legs__arrival_airport__iata_code=destination
-            )
-            # Actually, to properly compare leg_order, we need a subquery or annotation
-            from django.db.models import Subquery, OuterRef, IntegerField
-            source_order_sq = Subquery(
-                FlightLeg.objects.filter(
-                    flight_id=OuterRef('flight_id'),
-                    departure_airport__iata_code=source
-                ).values('leg_order')[:1],
-                output_field=IntegerField()
-            )
-            dest_order_sq = Subquery(
-                FlightLeg.objects.filter(
-                    flight_id=OuterRef('flight_id'),
-                    arrival_airport__iata_code=destination
-                ).values('leg_order')[:1],
-                output_field=IntegerField()
-            )
-            qs = qs.annotate(
-                source_order=source_order_sq,
-                dest_order=dest_order_sq
-            ).filter(
-                source_order__isnull=False,
-                dest_order__isnull=False,
-                source_order__lte=F('dest_order')
+                flight__legs__arrival_airport__iata_code=destination,
+                flight__legs__leg_order=F('max_leg')
             )
         elif source:
-            from django.db.models import Exists, OuterRef
-            has_source = Exists(
-                FlightLeg.objects.filter(flight_id=OuterRef('flight_id'), departure_airport__iata_code=source)
+            qs = qs.filter(
+                flight__legs__departure_airport__iata_code=source,
+                flight__legs__leg_order=1
             )
-            qs = qs.filter(has_source)
         elif destination:
-            from django.db.models import Exists, OuterRef
-            has_dest = Exists(
-                FlightLeg.objects.filter(flight_id=OuterRef('flight_id'), arrival_airport__iata_code=destination)
+            from django.db.models import Max, F
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__arrival_airport__iata_code=destination,
+                flight__legs__leg_order=F('max_leg')
             )
-            qs = qs.filter(has_dest)
 
         date = request.query_params.get("date", "").strip()
         if date:
