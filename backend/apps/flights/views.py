@@ -148,10 +148,9 @@ class FlightListCreateView(APIView):
             # Must have source and dest, and source must happen before dest in the route
             from django.db.models import F
             qs = qs.filter(
-                flight__legs__departure_airport__iata_code=source,
-                flight__legs__arrival_airport__iata_code=destination,
-                # Note: this requires proper subqueries if legs are separate rows.
-                # However, since they are related, we can do this:
+                flight__legs__departure_airport__iata_code=source
+            ).filter(
+                flight__legs__arrival_airport__iata_code=destination
             )
             # Actually, to properly compare leg_order, we need a subquery or annotation
             from django.db.models import Subquery, OuterRef, IntegerField

@@ -128,7 +128,7 @@ class Command(BaseCommand):
             ("Germany", "DE"), ("France", "FR"), ("Canada", "CA"), ("Australia", "AU"),
             ("Qatar", "QA"), ("Turkey", "TR"), ("Thailand", "TH"), ("Malaysia", "MY"),
             ("South Korea", "KR"), ("Netherlands", "NL"), ("Switzerland", "CH"),
-        ]
+        ] 
         countries_dict = {}
         for name, iso in countries_data:
             c, _ = Country.objects.get_or_create(iso_code=iso, defaults={"name": name})
