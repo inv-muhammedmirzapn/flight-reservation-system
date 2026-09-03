@@ -185,6 +185,31 @@ export default function CompareModal({ onClose }) {
     }
   };
 
+  // ── Best-value highlights ─────────────────────────────────────────────
+  const bestTravelTimeId = (() => {
+    if (comparisonData.length < 2) return null;
+    const valid = comparisonData.filter(f => f.travel_time_minutes != null);
+    if (!valid.length) return null;
+    return valid.reduce((a, b) => a.travel_time_minutes <= b.travel_time_minutes ? a : b).flight_instance_id;
+  })();
+
+  const bestPriceId = (() => {
+    if (comparisonData.length < 2) return null;
+    const valid = comparisonData.filter(f => f.fares?.find(fare => fare.cabin_class === "ECONOMY"));
+    if (!valid.length) return null;
+    return valid.reduce((a, b) => {
+      const pa = a.fares.find(f => f.cabin_class === "ECONOMY")?.price ?? Infinity;
+      const pb = b.fares.find(f => f.cabin_class === "ECONOMY")?.price ?? Infinity;
+      return pa <= pb ? a : b;
+    }).flight_instance_id;
+  })();
+
+  const isBest = (flight, rowLabel) => {
+    if (rowLabel === "Travel Time") return flight.flight_instance_id === bestTravelTimeId;
+    if (rowLabel === "Economy Price") return flight.flight_instance_id === bestPriceId;
+    return false;
+  };
+
   return (
     /* Backdrop */
     <div
@@ -197,15 +222,12 @@ export default function CompareModal({ onClose }) {
       >
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-7 py-5 bg-gradient-to-r from-yellow-50 to-amber-50/50 border-b border-yellow-100 shrink-0">
+        <div className="flex items-center justify-between px-7 py-5  border-b border-yellow-100 shrink-0">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-              <div className="bg-[#ffeb00] text-slate-900 p-1.5 rounded-xl flex items-center justify-center shadow-sm border border-yellow-400/50">
-                <span className="material-symbols-outlined text-xl">compare_arrows</span>
-              </div>
+            <h2 className="text-xl font-extrabold text-slate-900">
               Flight Comparison
             </h2>
-            <p className="text-xs font-medium text-slate-600 mt-1 ml-11">
+            <p className="text-xs font-medium text-slate-600 mt-1">
               Comparing {comparisonData.length || selectedIds.length} flights side by side
             </p>
           </div>
@@ -284,25 +306,32 @@ export default function CompareModal({ onClose }) {
                         <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{row.label}</span>
                       </div>
                     </td>
-                    {comparisonData.map((flight) => (
-                      <td key={flight.flight_instance_id} className="p-5 text-center border-l border-slate-100">
-                        {getCellValue(flight, row.label)}
-                      </td>
-                    ))}
+                    {comparisonData.map((flight) => {
+                      const best = isBest(flight, row.label);
+                      return (
+                        <td
+                          key={flight.flight_instance_id}
+                          className={`p-5 text-center border-l border-slate-100 relative transition-colors ${
+                            best ? "bg-emerald-50/70" : ""
+                          }`}
+                        >
+
+                          {getCellValue(flight, row.label)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
 
                 {/* Book Now row */}
                 <tr className="border-t-2 border-slate-100 bg-slate-50/50">
-                  <td className="p-5 bg-slate-50/80 border-r border-slate-100 sticky left-0 rounded-bl-xl">
-                    {/* <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider pl-2">Action</span> */}
-                  </td>
+                  <td className="p-5 bg-slate-50/80 border-r border-slate-100 sticky left-0 rounded-bl-xl" />
                   {comparisonData.map((flight) => (
-                    <td key={flight.flight_instance_id} className="p-5 text-center border-l border-slate-100 bg-white">
+                    <td key={flight.flight_instance_id} className="p-6 text-center border-l border-slate-100 bg-white">
                       <button
                         type="button"
                         onClick={() => { dispatch(clearComparison()); handleClose(); navigate(`/flights/${flight.flight_instance_id}`); }}
-                        className="w-full max-w-[140px] mx-auto py-2.5 rounded-xl text-sm font-bold btn-primary shadow-sm hover:shadow-md transition-all"
+                        className="w-[160px] py-3 rounded-xl text-sm font-bold btn-primary shadow-sm hover:shadow-md transition-all"
                       >
                         Book Now
                       </button>

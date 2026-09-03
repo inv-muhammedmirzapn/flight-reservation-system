@@ -337,7 +337,8 @@ export default function UserProfilePage() {
                 <input
                   type="text"
                   name="first_name"
-                  readOnly={!isEditing}
+                  // readOnly={!isEditing}
+                  disabled={!isEditing}
                   value={isEditing ? formData.first_name : (profile?.first_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
                   className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
@@ -351,10 +352,10 @@ export default function UserProfilePage() {
                 <input
                   type="text"
                   name="last_name"
-                  readOnly={!isEditing}
+                 disabled={!isEditing}
                   value={isEditing ? formData.last_name : (profile?.last_name || "-")}
                   onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
-                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default pointer-events-none" : "focus:border-slate-400"
                     }`}
                 />
               </div>
@@ -381,7 +382,7 @@ export default function UserProfilePage() {
                     type="text"
                     readOnly
                     value={profile?.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase() : "-"}
-                    className="input-field cursor-default font-semibold text-slate-800"
+                    className="input-field cursor-default pointer-events-none font-semibold text-slate-800"
                   />
                 )}
               </div>
@@ -413,7 +414,7 @@ export default function UserProfilePage() {
                     type="text"
                     readOnly
                     value={profile?.date_of_birth ? formatDate(profile.date_of_birth) : "-"}
-                    className="input-field cursor-default font-semibold text-slate-800"
+                    className="input-field cursor-default pointer-events-none font-semibold text-slate-800"
                   />
                 )}
               </div>
@@ -434,11 +435,10 @@ export default function UserProfilePage() {
               <input
                 type="text"
                 name="city"
-                readOnly={!isEditing}
+                disabled={!isEditing}
                 value={isEditing ? formData.city : (profile?.city || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                className={`input-field font-semibold text-slate-800 cursor-default focus:border-slate-400`}
               />
             </div>
             <div>
@@ -448,11 +448,10 @@ export default function UserProfilePage() {
               <input
                 type="text"
                 name="state"
-                readOnly={!isEditing}
+                disabled={!isEditing}
                 value={isEditing ? formData.state : (profile?.state || "-")}
                 onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
-                className={`input-field font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
-                  }`}
+                className={`input-field font-semibold text-slate-800 cursor-default pointer-events-none focus:border-slate-400`}
               />
             </div>
             <div>
@@ -471,7 +470,7 @@ export default function UserProfilePage() {
                   type="text"
                   readOnly
                   value={profile?.country || "-"}
-                  className="input-field cursor-default font-semibold text-slate-800"
+                  className="input-field cursor-default pointer-events-none font-semibold text-slate-800"
                 />
               )}
             </div>
@@ -494,7 +493,7 @@ export default function UserProfilePage() {
                   readOnly
                   tabIndex={-1}
                   value={getDialCode(isEditing ? formData.country : profile?.country)}
-                  className="input-field w-20 sm:w-16 text-center cursor-default bg-slate-100/90 font-bold text-slate-700 select-none flex-shrink-0"
+                  className={`input-field w-20 sm:w-16 text-center cursor-default bg-slate-100/90 font-bold text-slate-700 select-none flex-shrink-0 ${!isEditing ? "pointer-events-none" : ""}`}
                   title="Country Code (Auto-filled from selected Country)"
                 />
                 <input
@@ -509,7 +508,7 @@ export default function UserProfilePage() {
                     }))
                   }
                   placeholder="Enter phone number"
-                  className={`input-field flex-1 font-semibold text-slate-800 ${!isEditing ? "cursor-default" : "focus:border-slate-400"
+                  className={`input-field flex-1 font-semibold text-slate-800 ${!isEditing ? "cursor-default pointer-events-none" : "focus:border-slate-400"
                     }`}
                 />
               </div>
@@ -524,7 +523,7 @@ export default function UserProfilePage() {
                   name="email"
                   readOnly
                   value={profile?.email || "-"}
-                  className="input-field font-semibold text-slate-800 pr-10 cursor-default"
+                  className="input-field font-semibold text-slate-800 pr-10 cursor-default pointer-events-none"
                 />
                 {profile?.email && (
                   <span className="material-symbols-outlined text-base text-emerald-500 absolute right-3 pointer-events-none" title="Verified Email">
