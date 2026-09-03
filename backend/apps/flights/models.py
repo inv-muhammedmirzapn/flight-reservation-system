@@ -406,7 +406,6 @@ class RouteFareClass(models.Model):
     change_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     meal_included = models.BooleanField(default=False)
     baggage_weight_allowed_kg = models.PositiveIntegerField(default=15)
-    extra_baggage_price_per_kg = models.DecimalField(max_digits=8, decimal_places=2, default=500.00)
 
     class Meta:
         ordering = ["route", "cabin_class", "fare_code"]
@@ -461,8 +460,14 @@ class Fare(models.Model):
 
     @property
     def effective_baggage_allowance_kg(self):
+        """Cascade: Fare override → RouteFareClass cabin policy → FlightRoute default."""
         if self.baggage_allowance is not None:
             return self.baggage_allowance
+        route_fare = self.flight_instance.flight.fare_classes.filter(
+            cabin_class=self.cabin_class
+        ).first()
+        if route_fare and route_fare.baggage_weight_allowed_kg:
+            return route_fare.baggage_weight_allowed_kg
         return self.flight_instance.flight.baggage_weight_allowed_per_person
 
     @property

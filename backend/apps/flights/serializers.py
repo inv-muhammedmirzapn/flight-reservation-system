@@ -879,7 +879,6 @@ class RouteFareClassSerializer(serializers.ModelSerializer):
             "change_fee",
             "meal_included",
             "baggage_weight_allowed_kg",
-            "extra_baggage_price_per_kg",
         ]
 
     def validate(self, attrs):

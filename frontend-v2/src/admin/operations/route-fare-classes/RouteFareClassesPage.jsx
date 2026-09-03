@@ -46,7 +46,6 @@ const EMPTY_FORM = {
   change_fee: '0',
   meal_included: false,
   baggage_weight_allowed_kg: '15',
-  extra_baggage_price_per_kg: '500',
 };
 
 export default function RouteFareClassesPage() {
@@ -175,7 +174,6 @@ export default function RouteFareClassesPage() {
       change_fee: tmpl.change_fee !== undefined ? String(tmpl.change_fee) : '0',
       meal_included: !!tmpl.meal_included,
       baggage_weight_allowed_kg: tmpl.baggage_weight_allowed_kg !== undefined ? String(tmpl.baggage_weight_allowed_kg) : '15',
-      extra_baggage_price_per_kg: tmpl.extra_baggage_price_per_kg !== undefined ? String(tmpl.extra_baggage_price_per_kg) : '500',
     });
     setLocalErrors({});
     setShowForm(true);
@@ -229,7 +227,6 @@ export default function RouteFareClassesPage() {
       base_price: Number(form.base_price),
       change_fee: Number(form.change_fee),
       baggage_weight_allowed_kg: Number(form.baggage_weight_allowed_kg || minBaggageAllowed),
-      extra_baggage_price_per_kg: Number(form.extra_baggage_price_per_kg || 500),
     };
 
     let promise;
