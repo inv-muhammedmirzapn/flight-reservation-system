@@ -323,7 +323,7 @@ class Command(BaseCommand):
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
-                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "operates_on_days": "1,2,4,5,6,7",
                     "scheduled_departure_time": dep_t,
                     "scheduled_arrival_time": scheduled_arr.time(),
                     "valid_from": valid_from_date,
