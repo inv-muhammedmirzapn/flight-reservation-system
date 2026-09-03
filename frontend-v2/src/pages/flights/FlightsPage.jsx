@@ -78,10 +78,15 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
           <p className="text-sm font-extrabold text-slate-900 leading-tight">
             {uniqueAirlines.map((a) => a.name).join(" · ")}
           </p>
-          <div>
+          <div className="flex gap-2">
             <span className="text-[10px] font-extrabold text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
               {rankLabel}
             </span>
+            {route.has_mixed_cabin && (
+              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                Mixed Cabins
+              </span>
+            )}
           </div>
         </div>
 
@@ -214,6 +219,11 @@ function ConnectingRouteCard({ route, rankLabel, cabinClassParam, navigate }) {
                     {leg.airline_name && (
                       <span className="text-[10px] font-semibold text-slate-600 truncate max-w-[150px]">
                         · {leg.airline_name}
+                      </span>
+                    )}
+                    {leg.actual_cabin_class && leg.actual_cabin_class.toUpperCase() !== (cabinClassParam || "").toUpperCase() && (
+                      <span className="text-[8px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded ml-1">
+                        {leg.actual_cabin_class}
                       </span>
                     )}
                   </div>
@@ -860,6 +870,9 @@ export default function FlightsPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       {totalFare > 0 && (
                         <p className="text-xs font-extrabold text-slate-900">₹{totalFare.toLocaleString("en-IN")}</p>
+                      )}
+                      {route.has_mixed_cabin && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 whitespace-nowrap border border-amber-200/80">Mixed Cabins</span>
                       )}
                       {idx === 0 && (
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-white whitespace-nowrap">{rankLabel}</span>

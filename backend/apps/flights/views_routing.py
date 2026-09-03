@@ -32,8 +32,9 @@ class ShortestDistanceRouteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        cabin_class = request.query_params.get("cabin_class", "ECONOMY")
         optimizer = RouteOptimizer()
-        result = optimizer.shortest_distance_dijkstra(source_iata, dest_iata)
+        result = optimizer.shortest_distance_dijkstra(source_iata, dest_iata, cabin_class=cabin_class)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
@@ -65,8 +66,9 @@ class MinimumStopsRouteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        cabin_class = request.query_params.get("cabin_class", "ECONOMY")
         optimizer = RouteOptimizer()
-        result = optimizer.minimum_stops_bfs(source_iata, dest_iata)
+        result = optimizer.minimum_stops_bfs(source_iata, dest_iata, cabin_class=cabin_class)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
@@ -98,8 +100,9 @@ class FastestRouteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        cabin_class = request.query_params.get("cabin_class", "ECONOMY")
         optimizer = RouteOptimizer()
-        result = optimizer.fastest_route_dijkstra(source_iata, dest_iata)
+        result = optimizer.fastest_route_dijkstra(source_iata, dest_iata, cabin_class=cabin_class)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
@@ -135,9 +138,10 @@ class RecommendRoutesView(APIView):
 
         from .services_currency import CurrencyService
         target_currency = CurrencyService.get_user_currency(request.user)
+        cabin_class = request.query_params.get("cabin_class", "ECONOMY")
         optimizer = RouteOptimizer()
         # Default K is 3 as per requirements
-        result = optimizer.recommend_routes(source_iata, dest_iata, k=3, travel_date=date_param, target_currency=target_currency)
+        result = optimizer.recommend_routes(source_iata, dest_iata, k=3, travel_date=date_param, target_currency=target_currency, cabin_class=cabin_class)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
@@ -169,8 +173,9 @@ class CheapestRouteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        cabin_class = request.query_params.get("cabin_class", "ECONOMY")
         optimizer = RouteOptimizer()
-        result = optimizer.cheapest_route_dijkstra(source_iata, dest_iata)
+        result = optimizer.cheapest_route_dijkstra(source_iata, dest_iata, cabin_class=cabin_class)
 
         if "error" in result:
             return Response(result, status=status.HTTP_404_NOT_FOUND)

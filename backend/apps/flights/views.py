@@ -360,10 +360,11 @@ class FlightListCreateView(APIView):
 
                 if direct_count > 0:
                     # Direct flights found — run all 4 algorithms silently to generate badge hints
-                    cheapest = optimizer.cheapest_route_dijkstra(source, destination)
-                    fastest = optimizer.fastest_route_dijkstra(source, destination)
-                    min_stops = optimizer.minimum_stops_bfs(source, destination)
-                    shortest = optimizer.shortest_distance_dijkstra(source, destination)
+                    req_class = class_key or "ECONOMY"
+                    cheapest = optimizer.cheapest_route_dijkstra(source, destination, cabin_class=req_class)
+                    fastest = optimizer.fastest_route_dijkstra(source, destination, cabin_class=req_class)
+                    min_stops = optimizer.minimum_stops_bfs(source, destination, cabin_class=req_class)
+                    shortest = optimizer.shortest_distance_dijkstra(source, destination, cabin_class=req_class)
 
                     # Extract the top-level flight_no from each result for badge matching
                     def first_flight_no(result):
@@ -397,7 +398,8 @@ class FlightListCreateView(APIView):
                         except (ValueError, TypeError):
                             travel_date = None
 
-                    recommendations = optimizer.recommend_routes(source, destination, k=3, travel_date=travel_date, target_currency=target_currency)
+                    req_class = class_key or "ECONOMY"
+                    recommendations = optimizer.recommend_routes(source, destination, k=3, travel_date=travel_date, target_currency=target_currency, cabin_class=req_class)
                     route_optimization = {
                         "has_direct_flights": False,
                         "recommended_routes": recommendations.get("recommended_routes", []) if "error" not in recommendations else [],
