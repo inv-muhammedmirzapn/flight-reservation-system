@@ -664,6 +664,7 @@ class SeatSerializer(serializers.ModelSerializer):
     attributes = serializers.SerializerMethodField(read_only=True)
     display_seat_fee = serializers.SerializerMethodField()
     display_currency = serializers.SerializerMethodField()
+    my_hold = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Seat
@@ -672,7 +673,7 @@ class SeatSerializer(serializers.ModelSerializer):
             "seat_class", "position", "status",
             "exit_row", "extra_legroom", "seat_fee", "currency",
             "display_seat_fee", "display_currency",
-            "last_rule_applied", "attributes",
+            "last_rule_applied", "attributes", "my_hold",
         ]
         read_only_fields = ["id", "attributes", "display_seat_fee", "display_currency"]
 
@@ -696,6 +697,24 @@ class SeatSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_attributes(self, obj):
         return obj.attributes
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_my_hold(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        if obj.status == 'HELD':
+            try:
+                hold = getattr(obj, 'hold', None)
+                if hold and not hold.is_expired and hold.user_id == request.user.id:
+                    return {
+                        "id": str(hold.id),
+                        "expires_at": hold.expires_at.isoformat()
+                    }
+            except Exception:
+                pass
+        return None
 
     def validate_seat_fee(self, value):
         if value is not None and value < 0:
