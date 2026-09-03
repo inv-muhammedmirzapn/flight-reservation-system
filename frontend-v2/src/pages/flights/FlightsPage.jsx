@@ -650,12 +650,15 @@ export default function FlightsPage() {
               }
 
               // 2. Fastest (Shortest Total Duration)
+              // Always assign to the truly fastest flight — it can also carry "Cheapest" simultaneously.
+              // We use a separate fastestBadges map so both badges can coexist on one flight.
               const fastest = [...fares].filter(x => x.dur !== Infinity).sort((a, b) => a.dur - b.dur)[0];
-              if (fastest && !assignedBadges.has(fastest.id)) {
-                assignedBadges.set(fastest.id, "Fastest");
-              } else if (fastest) {
-                const nextFastest = [...fares].filter(x => x.dur !== Infinity && !assignedBadges.has(x.id)).sort((a, b) => a.dur - b.dur)[0];
-                if (nextFastest) assignedBadges.set(nextFastest.id, "Fastest");
+              if (fastest) {
+                assignedBadges.set(fastest.id, fastest.id === cheapest?.id ? "Cheapest" : "Fastest");
+                if (fastest.id === cheapest?.id) {
+                  // The cheapest is also the fastest — mark it with both, represented via a special combo value
+                  assignedBadges.set(fastest.id, "Cheapest+Fastest");
+                }
               }
 
               // 3. Stops / Distance Badge ("Direct" if 0 layovers, or "Shortest" if layovers exist)
