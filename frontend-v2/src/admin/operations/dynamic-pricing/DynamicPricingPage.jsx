@@ -27,21 +27,11 @@ import ConfirmModal from '@/components/common/ConfirmModal';
 import { parseApiError } from '@/utils/errorUtils';
 import '@/admin/_core/styles/admin.css';
 import {
-  TrendingUp,
-  Settings,
-  Zap,
   Calendar,
   History,
-  AlertCircle,
-  Plus,
   Trash2,
-  Play,
-  CheckCircle2,
   Clock,
-  Sparkles,
   Plane,
-  Tag,
-  ShieldAlert,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -307,8 +297,8 @@ export default function DynamicPricingPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="admin-page-title flex items-center gap-2 text-2xl font-black text-slate-900">
-              <TrendingUp size={28} className="text-amber-600" /> Dynamic Pricing Engine
+            <h1 className="admin-page-title text-2xl font-black text-slate-900">
+              Dynamic Pricing Engine
             </h1>
             <p className="admin-page-subtitle text-xs text-slate-500 font-medium mt-1">
               Configure algorithmic fare adjustments, simulate dynamic pricing, manage holiday events, and audit calculation logs.
@@ -325,9 +315,7 @@ export default function DynamicPricingPage() {
                 <SpinnerLoader size={14} /> Re-evaluating...
               </>
             ) : (
-              <>
-                <Zap size={16} /> Re-evaluate All Fares
-              </>
+              'Re-evaluate All Fares'
             )}
           </button>
         </div>
@@ -338,10 +326,7 @@ export default function DynamicPricingPage() {
           <div className="lg:col-span-5 bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-                <div className="flex items-center gap-2">
-                  <Settings size={20} className="text-slate-700" />
-                  <h2 className="text-base font-extrabold text-slate-900">Engine Configuration</h2>
-                </div>
+                <h2 className="text-base font-extrabold text-slate-900">Engine Configuration</h2>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -483,7 +468,7 @@ export default function DynamicPricingPage() {
                       disabled={isSavingConfig}
                       className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-bold text-xs py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
-                      {isSavingConfig ? <SpinnerLoader size={14} /> : <CheckCircle2 size={14} />} Save Parameters
+                      {isSavingConfig ? <SpinnerLoader size={14} /> : null} Save Parameters
                     </button>
                   </div>
                 </form>
@@ -494,8 +479,7 @@ export default function DynamicPricingPage() {
           {/* Pricing Simulator Card (7 Cols) */}
           <div className="lg:col-span-7 bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 pb-4 border-b border-slate-100 mb-5">
-                <Sparkles size={20} className="text-amber-500" />
+              <div className="pb-4 border-b border-slate-100 mb-5">
                 <h2 className="text-base font-extrabold text-slate-900">Pricing Simulator</h2>
               </div>
 
@@ -547,7 +531,7 @@ export default function DynamicPricingPage() {
                     disabled={isSimulating}
                     className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {isSimulating ? <SpinnerLoader size={14} /> : <Play size={14} />} Run Simulation
+                    {isSimulating ? <SpinnerLoader size={14} /> : null} Run Simulation
                   </button>
                 </div>
               </form>
@@ -607,8 +591,8 @@ export default function DynamicPricingPage() {
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 shadow-sm mb-10">
           <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
             <div>
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Calendar size={20} className="text-amber-600" /> Holiday & Peak Travel Events
+              <h2 className="text-base font-extrabold text-slate-900">
+                Holiday & Peak Travel Events
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 Define peak festival periods and country-specific holidays that trigger price surges.
@@ -619,7 +603,7 @@ export default function DynamicPricingPage() {
               onClick={() => setShowHolidayModal(true)}
               className="flex items-center gap-1.5 bg-slate-900 hover:bg-black text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer"
             >
-              <Plus size={14} /> Add Holiday Event
+              Add Holiday Event
             </button>
           </div>
 
@@ -681,8 +665,8 @@ export default function DynamicPricingPage() {
         <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
             <div>
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <History size={20} className="text-slate-700" /> Dynamic Price Audit Logs
+              <h2 className="text-base font-extrabold text-slate-900">
+                Dynamic Price Audit Logs
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 {logsCount || 0} automated pricing adjustments logged by the strategy engine.
@@ -781,8 +765,8 @@ export default function DynamicPricingPage() {
       {showHolidayModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-scale-up">
-            <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-              <Calendar size={20} className="text-amber-600" /> Add Holiday Event
+            <h3 className="text-lg font-black text-slate-900 mb-4">
+              Add Holiday Event
             </h3>
 
             <form onSubmit={handleAddHoliday} className="space-y-4">
@@ -874,7 +858,7 @@ export default function DynamicPricingPage() {
                   disabled={isAddingHoliday}
                   className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {isAddingHoliday ? <SpinnerLoader size={14} /> : <Plus size={14} />} Create Event
+                  {isAddingHoliday ? <SpinnerLoader size={14} /> : null} Create Event
                 </button>
               </div>
             </form>

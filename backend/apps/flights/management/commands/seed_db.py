@@ -1,6 +1,7 @@
 import random
 from decimal import Decimal
 from datetime import datetime, date, time, timedelta
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -323,7 +324,7 @@ class Command(BaseCommand):
                 flight_no=fno,
                 defaults={
                     "airline": airlines_dict[al_code],
-                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "operates_on_days": "1,2,4,5,6,7",  # Direct flights operate Mon, Tue, Thu, Fri, Sat, Sun (Skipping Wednesday to showcase layovers)
                     "scheduled_departure_time": dep_t,
                     "scheduled_arrival_time": scheduled_arr.time(),
                     "valid_from": valid_from_date,
@@ -444,8 +445,17 @@ class Command(BaseCommand):
                 }
             )
 
-        # Other Global Routes
+        # Other Global Routes & Individual Connecting Legs (DEL -> Layover Hubs -> HAM)
         other_route_templates = [
+            # Connecting Segments for Route Optimization
+            ("LH760", "LH", "DEL", "FRA", 8, 30, "D-AIXA", Decimal("35000.00"), time(3, 15)),
+            ("LH002", "LH", "FRA", "HAM", 1, 10, "D-AIXA", Decimal("7000.00"), time(13, 30)),
+            ("EK511", "EK", "DEL", "DXB", 3, 45, "A6-EEO", Decimal("22000.00"), time(10, 30)),
+            ("EK060", "EK", "DXB", "HAM", 6, 30, "A6-EEO", Decimal("26000.00"), time(16, 30)),
+            ("BA142", "BA", "DEL", "LHR", 9, 15, "G-ZBLB", Decimal("38000.00"), time(11, 45)),
+            ("BA964", "BA", "LHR", "HAM", 1, 40, "G-ZBLB", Decimal("8000.00"), time(23, 0)),
+
+            # Additional Global Routes
             ("EK201", "EK", "DXB", "JFK", 14, 0, "A6-EEO", Decimal("75000.00"), time(8, 30)),
             ("BA177", "BA", "LHR", "JFK", 8, 0, "G-ZBLB", Decimal("62000.00"), time(13, 0)),
             ("AI101", "AI", "DEL", "JFK", 15, 30, "VT-ALN", Decimal("82000.00"), time(1, 45)),
@@ -618,10 +628,20 @@ class Command(BaseCommand):
             self.stdout.write(f"   Created sample CONFIRMED booking for customer on {sample_booking_instance.flight.flight_no}.")
 
         # -------------------------------------------------------------
-        # 11. Populate Airline Logos (if script available)
+        # 11. Run Additional Seeds (seed_hamburg & seat_seed_fees)
+        # -------------------------------------------------------------
+        self.stdout.write("11. Executing Hamburg route & seat fee seeds...")
+        try:
+            call_command("seed_hamburg")
+            call_command("seat_seed_fees")
+        except Exception as ex:
+            self.stdout.write(self.style.WARNING(f"   Note: Seed execution warning: {ex}"))
+
+        # -------------------------------------------------------------
+        # 12. Populate Airline Logos (if script available)
         # -------------------------------------------------------------
         if populate_logos:
-            self.stdout.write("11. Populating Airline Logos...")
+            self.stdout.write("12. Populating Airline Logos...")
             try:
                 populate_logos()
             except Exception as ex:

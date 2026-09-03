@@ -135,7 +135,7 @@ class Command(BaseCommand):
                 flight_no=fno,
                 defaults={
                     "airline": airline,
-                    "operates_on_days": "1,2,3,4,5,6,7",
+                    "operates_on_days": "1,2,4,5,6,7",  # Direct flights operate Mon, Tue, Thu, Fri, Sat, Sun (Skipping Wednesday to showcase layovers)
                     "scheduled_departure_time": dep_t,
                     "scheduled_arrival_time": arr_t,
                     "baggage_weight_allowed_per_person": 30,
@@ -167,6 +167,9 @@ class Command(BaseCommand):
 
         for d_offset in range(num_days):
             current_date = start_date + timedelta(days=d_offset)
+            if current_date.isoweekday() == 3:
+                # Wednesday: Skip direct DEL -> HAM flights to force layover routes on Wednesday
+                continue
             
             for idx, (fno, (fr, ac, d_hrs, d_mins, base_fare)) in enumerate(created_routes.items()):
                 dep_hours = [2, 6, 14][idx % 3]
