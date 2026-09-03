@@ -141,19 +141,54 @@ class FlightListCreateView(APIView):
             scheduled_departure__gte=timezone.now()
         ).order_by("scheduled_departure")
         
-        # Filtering
         source = request.query_params.get("source", "").strip().upper()
-        if source:
-            qs = qs.filter(flight__legs__departure_airport__iata_code=source, flight__legs__leg_order=1)
-
         destination = request.query_params.get("destination", "").strip().upper()
-        if destination:
-            from django.db.models import Max, F
-            route_ids = FlightLeg.objects.values('flight').annotate(max_order=Max('leg_order')).filter(
-                arrival_airport__iata_code__iexact=destination,
-                leg_order=F('max_order')
-            ).values_list('flight_id', flat=True)
-            qs = qs.filter(flight_id__in=route_ids)
+
+        if source and destination:
+            # Must have source and dest, and source must happen before dest in the route
+            from django.db.models import F
+            qs = qs.filter(
+                flight__legs__departure_airport__iata_code=source,
+                flight__legs__arrival_airport__iata_code=destination,
+                # Note: this requires proper subqueries if legs are separate rows.
+                # However, since they are related, we can do this:
+            )
+            # Actually, to properly compare leg_order, we need a subquery or annotation
+            from django.db.models import Subquery, OuterRef, IntegerField
+            source_order_sq = Subquery(
+                FlightLeg.objects.filter(
+                    flight_id=OuterRef('flight_id'),
+                    departure_airport__iata_code=source
+                ).values('leg_order')[:1],
+                output_field=IntegerField()
+            )
+            dest_order_sq = Subquery(
+                FlightLeg.objects.filter(
+                    flight_id=OuterRef('flight_id'),
+                    arrival_airport__iata_code=destination
+                ).values('leg_order')[:1],
+                output_field=IntegerField()
+            )
+            qs = qs.annotate(
+                source_order=source_order_sq,
+                dest_order=dest_order_sq
+            ).filter(
+                source_order__isnull=False,
+                dest_order__isnull=False,
+                source_order__lte=F('dest_order')
+            )
+        elif source:
+            from django.db.models import Exists, OuterRef
+            has_source = Exists(
+                FlightLeg.objects.filter(flight_id=OuterRef('flight_id'), departure_airport__iata_code=source)
+            )
+            qs = qs.filter(has_source)
+        elif destination:
+            from django.db.models import Exists, OuterRef
+            has_dest = Exists(
+                FlightLeg.objects.filter(flight_id=OuterRef('flight_id'), arrival_airport__iata_code=destination)
+            )
+            qs = qs.filter(has_dest)
 
         date = request.query_params.get("date", "").strip()
         if date:
@@ -183,16 +218,16 @@ class FlightListCreateView(APIView):
         min_price = request.query_params.get("min_fare", request.query_params.get("min_price", "")).strip()
         if min_price:
             try:
-                min_price_inr = CurrencyService.convert_amount(min_price, target_currency, "INR")
-                qs = qs.filter(fares__price__gte=min_price_inr)
+                min_price_inr = float(CurrencyService.convert_amount(min_price, target_currency, "INR"))
+                qs = qs.filter(fares__price__gte=max(0, min_price_inr - 1.0))
             except ValueError:
                 pass
         
         max_price = request.query_params.get("max_fare", request.query_params.get("max_price", "")).strip()
         if max_price:
             try:
-                max_price_inr = CurrencyService.convert_amount(max_price, target_currency, "INR")
-                qs = qs.filter(fares__price__lte=max_price_inr)
+                max_price_inr = float(CurrencyService.convert_amount(max_price, target_currency, "INR"))
+                qs = qs.filter(fares__price__lte=max_price_inr + 1.0)
             except ValueError:
                 pass
 
@@ -325,10 +360,11 @@ class FlightListCreateView(APIView):
 
                 if direct_count > 0:
                     # Direct flights found — run all 4 algorithms silently to generate badge hints
-                    cheapest = optimizer.cheapest_route_dijkstra(source, destination)
-                    fastest = optimizer.fastest_route_dijkstra(source, destination)
-                    min_stops = optimizer.minimum_stops_bfs(source, destination)
-                    shortest = optimizer.shortest_distance_dijkstra(source, destination)
+                    req_class = class_key or "ECONOMY"
+                    cheapest = optimizer.cheapest_route_dijkstra(source, destination, cabin_class=req_class)
+                    fastest = optimizer.fastest_route_dijkstra(source, destination, cabin_class=req_class)
+                    min_stops = optimizer.minimum_stops_bfs(source, destination, cabin_class=req_class)
+                    shortest = optimizer.shortest_distance_dijkstra(source, destination, cabin_class=req_class)
 
                     # Extract the top-level flight_no from each result for badge matching
                     def first_flight_no(result):
@@ -362,7 +398,8 @@ class FlightListCreateView(APIView):
                         except (ValueError, TypeError):
                             travel_date = None
 
-                    recommendations = optimizer.recommend_routes(source, destination, k=3, travel_date=travel_date)
+                    req_class = class_key or "ECONOMY"
+                    recommendations = optimizer.recommend_routes(source, destination, k=3, travel_date=travel_date, target_currency=target_currency, cabin_class=req_class)
                     route_optimization = {
                         "has_direct_flights": False,
                         "recommended_routes": recommendations.get("recommended_routes", []) if "error" not in recommendations else [],

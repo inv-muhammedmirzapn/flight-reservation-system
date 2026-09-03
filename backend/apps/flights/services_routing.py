@@ -89,7 +89,7 @@ class RouteOptimizer:
         self.graph = FlightGraph()
         self.graph.build_graph()
 
-    def shortest_distance_dijkstra(self, source_iata: str, dest_iata: str) -> Dict[str, Any]:
+    def shortest_distance_dijkstra(self, source_iata: str, dest_iata: str, cabin_class: str = "ECONOMY") -> Dict[str, Any]:
         """
         Find the route with the minimum travel distance (in km) using Dijkstra's algorithm.
         """
@@ -158,7 +158,7 @@ class RouteOptimizer:
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def minimum_stops_bfs(self, source_iata: str, dest_iata: str) -> Dict[str, Any]:
+    def minimum_stops_bfs(self, source_iata: str, dest_iata: str, cabin_class: str = "ECONOMY") -> Dict[str, Any]:
         """
         Find the route with the fewest flight connections using BFS.
         """
@@ -203,7 +203,7 @@ class RouteOptimizer:
                     
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def fastest_route_dijkstra(self, source_iata: str, dest_iata: str) -> Dict[str, Any]:
+    def fastest_route_dijkstra(self, source_iata: str, dest_iata: str, cabin_class: str = "ECONOMY") -> Dict[str, Any]:
         """
         Find the route with the minimum travel time using Dijkstra's algorithm.
         """
@@ -269,7 +269,7 @@ class RouteOptimizer:
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def cheapest_route_dijkstra(self, source_iata: str, dest_iata: str) -> Dict[str, Any]:
+    def cheapest_route_dijkstra(self, source_iata: str, dest_iata: str, cabin_class: str = "ECONOMY") -> Dict[str, Any]:
         """
         Find the route with the minimum total ticket price using Dijkstra's algorithm.
         """
@@ -318,13 +318,24 @@ class RouteOptimizer:
                 best_leg = None
                 min_price = float('inf')
                 
+                req_class = cabin_class.upper()
+                if req_class not in ["ECONOMY", "BUSINESS", "FIRST"]:
+                    req_class = "ECONOMY"
+
                 for leg in data["legs"]:
-                    # Find economy base price
-                    fare_class = next((fc for fc in leg.flight.fare_classes.all() if fc.cabin_class == "ECONOMY"), None)
-                    price = float(fare_class.base_price) if fare_class else float('inf')
-                    if price < min_price:
-                        min_price = price
-                        best_leg = leg
+                    # Find base price, fallback logic
+                    fare_class = next((fc for fc in leg.flight.fare_classes.all() if fc.cabin_class == req_class), None)
+                    if not fare_class:
+                        for class_fallback in ["BUSINESS", "ECONOMY", "FIRST"]:
+                            fare_class = next((fc for fc in leg.flight.fare_classes.all() if fc.cabin_class == class_fallback), None)
+                            if fare_class:
+                                break
+                                
+                    if fare_class:
+                        leg_price = float(fare_class.base_price)
+                        if leg_price < min_price:
+                            min_price = leg_price
+                            best_leg = leg
                 
                 if not best_leg or min_price == float('inf'):
                     continue
@@ -344,7 +355,7 @@ class RouteOptimizer:
 
         return {"error": f"No active route found between {source_iata} and {dest_iata}."}
 
-    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3, travel_date: Optional[Any] = None) -> Dict[str, Any]:
+    def recommend_routes(self, source_iata: str, dest_iata: str, k: int = 3, travel_date: Optional[Any] = None, target_currency: str = "INR", cabin_class: str = "ECONOMY") -> Dict[str, Any]:
         """
         Suggest the best connecting routes if a direct flight is unavailable.
         Returns the top `k` routes based on minimum stops and minimum time.
@@ -403,7 +414,7 @@ class RouteOptimizer:
                 continue
 
             if current_node == dest_iata:
-                if len(path) > 0:
+                if len(path) > 1:
                     valid_routes.append(path)
                     if len(valid_routes) >= k * 5:
                         break
@@ -466,13 +477,26 @@ class RouteOptimizer:
                             airline_code = airline.iata_airline_code if airline else ""
                             airline_logo_url = airline.logo.url if (airline and airline.logo) else None
 
-                            # Min economy fare for this instance
                             leg_min_fare = None
+                            actual_cabin_class = None
                             try:
-                                inst_fares = inst.fares.all()
-                                economy_prices = [float(f.price) for f in inst_fares if f.cabin_class == "ECONOMY"]
-                                if economy_prices:
-                                    leg_min_fare = min(economy_prices)
+                                inst_fares = list(inst.fares.all())
+                                req_class = cabin_class.upper()
+                                if req_class not in ["ECONOMY", "BUSINESS", "FIRST"]:
+                                    req_class = "ECONOMY"
+                                
+                                # Fallback sequence
+                                target_fares = []
+                                for class_fallback in [req_class, "BUSINESS", "ECONOMY", "FIRST"]:
+                                    target_fares = [f for f in inst_fares if f.cabin_class == class_fallback]
+                                    if target_fares:
+                                        actual_cabin_class = class_fallback
+                                        break
+                                
+                                if target_fares:
+                                    best_fare = min(target_fares, key=lambda f: float(f.price))
+                                    from apps.flights.services_currency import CurrencyService
+                                    leg_min_fare = float(CurrencyService.convert_amount(best_fare.price, best_fare.currency, target_currency))
                             except Exception:
                                 pass
 
@@ -489,6 +513,7 @@ class RouteOptimizer:
                                 "airline_code": airline_code,
                                 "airline_logo_url": airline_logo_url,
                                 "min_fare": leg_min_fare,
+                                "actual_cabin_class": actual_cabin_class,
                             })
 
                     if not options:
@@ -586,20 +611,23 @@ class RouteOptimizer:
                     "total_stops": len(hops) - 1,
                     "total_duration_minutes": overall_elapsed,
                     "total_min_fare": round(total_min_fare, 2) if total_min_fare > 0 else None,
+                    "currency": target_currency,
+                    "has_mixed_cabin": any(
+                        any(o.get("actual_cabin_class") and o.get("actual_cabin_class") != cabin_class.upper() for o in h["options"])
+                        for h in hops
+                    ),
                     "bookable": all(
                         any(o.get("instance_id") for o in h["options"])
                         for h in hops
                     ),
                 })
 
-        # Sort: min cost first, then shortest overall journey duration, then fewest stops
-        formatted_routes.sort(
-            key=lambda x: (
-                x["total_min_fare"] if x["total_min_fare"] is not None else float("inf"),
-                x["total_duration_minutes"],
-                x["total_stops"],
-            )
-        )
+        # Sort routes: first by non-mixed cabin (False first), then by stops, then by minimum total fare
+        formatted_routes.sort(key=lambda x: (
+            x["has_mixed_cabin"],
+            x["total_stops"],
+            x["total_min_fare"] if x["total_min_fare"] is not None else float('inf')
+        ))
 
         if not formatted_routes:
             return {"error": f"No valid routes found between {source_iata} and {dest_iata}."}
