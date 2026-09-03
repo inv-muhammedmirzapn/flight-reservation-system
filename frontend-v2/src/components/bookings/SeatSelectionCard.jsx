@@ -24,13 +24,36 @@ export default function SeatSelectionCard({
 
       const rawSeats = Array.isArray(res) ? res : (res.results || []);
       const cabinSeats = rawSeats.filter(s => s.seat_class === cabinClass);
+      
+      // Look for my_hold on the seats to restore selectedSeats state across page reloads
+      const restoredSelectedSeats = [...selectedSeats];
+      let selectionChanged = false;
+      
+      cabinSeats.forEach(seat => {
+        if (seat.my_hold && seat.my_hold.id) {
+          // If the seat is not already in selectedSeats, add it
+          if (!restoredSelectedSeats.some(s => s.id === seat.id)) {
+            restoredSelectedSeats.push({
+              ...seat,
+              holdId: seat.my_hold.id,
+              expiresAt: new Date(seat.my_hold.expires_at).getTime(),
+            });
+            selectionChanged = true;
+          }
+        }
+      });
+      
+      if (selectionChanged && onSeatSelect) {
+        onSeatSelect(restoredSelectedSeats);
+      }
+
       setSeats(cabinSeats);
     } catch (err) {
       if (isMounted) toast.error("Failed to load seats.");
     } finally {
       if (isMounted) setLoading(false);
     }
-  }, [flight?.id, cabinClass]);
+  }, [flight?.id, cabinClass, selectedSeats, onSeatSelect]);
 
   useEffect(() => {
     let isMounted = true;
@@ -207,8 +230,8 @@ export default function SeatSelectionCard({
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-        <div className="flex-1 w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto lg:overflow-visible">
+      <div className="flex flex-col gap-6 items-start">
+        <div className="w-full bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 flex justify-center overflow-x-auto">
           <div className="flex flex-col items-center gap-4 w-max px-4">
             <div className="w-full text-center pb-4 border-b-2 border-slate-200 border-dashed mb-2">
               <span className="material-symbols-outlined text-slate-300 text-3xl">flight</span>
@@ -326,7 +349,7 @@ export default function SeatSelectionCard({
           </div>
         </div>
 
-        <div className="w-full lg:w-56 xl:w-64 flex-shrink-0 space-y-6 lg:sticky lg:top-24">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200">
             <div className="space-y-3">
               {uniqueFees.map((fee, idx) => {

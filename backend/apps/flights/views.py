@@ -806,7 +806,7 @@ class SeatViewSet(AdminModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related("hold")
         instance_id = self.request.query_params.get("flight_instance")
         if instance_id:
             qs = qs.filter(flight_instance_id=instance_id)
