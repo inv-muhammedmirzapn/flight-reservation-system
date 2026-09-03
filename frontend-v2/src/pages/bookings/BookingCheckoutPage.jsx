@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
@@ -14,6 +15,7 @@ import PaidAddonsCard from "@/components/meals/PaidAddonsCard";
 import PassengerListSection from "@/components/flights/PassengerListSection";
 import DuplicatePassengerModal from "@/components/bookings/DuplicatePassengerModal";
 import toast from "react-hot-toast";
+import { fetchNotifications } from "../../store/notificationsSlice";
 
 export default function BookingCheckoutPage() {
   const { id } = useParams();
@@ -74,6 +76,8 @@ export default function BookingCheckoutPage() {
   // Track selected seats & submission status for unmount hold cleanup
   const selectedSeatsRef = useRef(selectedSeats);
   const bookingSubmittedRef = useRef(false);
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     selectedSeatsRef.current = selectedSeats;
@@ -580,6 +584,8 @@ export default function BookingCheckoutPage() {
       bookingSubmittedRef.current = true;
       if (isWaitlisted) {
         const response = await waitlistAPI.join(id, formattedPassengers, selectedCabin);
+        //console.log(response);
+        dispatch(fetchNotifications());
         toast.success(`Successfully joined waitlist (Position #${response.queue_position || 1})!`);
         navigate(`/booking-confirmation/waitlist/${response.id}`, {
           state: {
@@ -590,6 +596,7 @@ export default function BookingCheckoutPage() {
         });
       } else {
         const response = await bookingAPI.create(id, formattedPassengers, selectedCabin);
+        dispatch(fetchNotifications());
         toast.success("Flight booking confirmed successfully!");
         navigate(`/booking-confirmation/${response.id}`, {
           state: {

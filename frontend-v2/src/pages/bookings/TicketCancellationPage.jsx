@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import { handleApiError, logError } from "@/utils/errorUtils";
 import { bookingAPI } from "@/services/booking-service/bookingService";
 import { waitlistAPI } from "@/services/waitlist-service/waitlistService";
 import FlightItineraryCard from "@/components/flights/FlightItineraryCard";
 import { formatCurrency as fmtCurr } from "@/utils/formatters";
+import { fetchNotifications } from "../../store/notificationsSlice";
 
 export default function TicketCancellationPage() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ export default function TicketCancellationPage() {
   const [loading, setLoading] = useState(!detailData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -79,11 +81,14 @@ export default function TicketCancellationPage() {
     setIsSubmitting(true);
     try {
       if (isWaitlist) {
-        await waitlistAPI.cancel(id);
+        const res = await waitlistAPI.cancel(id);
+        //console.log(res);
         toast.success("Waitlist entry cancelled successfully.");
       } else {
         const res = await bookingAPI.cancel(id);
+        dispatch(fetchNotifications());
         toast.success(res?.detail || "Booking cancelled successfully.");
+
       }
       navigate("/my-bookings", { state: { showPastBookings: true } });
     } catch (err) {
