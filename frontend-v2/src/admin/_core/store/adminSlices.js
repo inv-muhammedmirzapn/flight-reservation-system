@@ -266,15 +266,6 @@ export const updateRouteFareClassPrice = createAsyncThunk(
   }
 );
 
-// ─── FarePriceChangeLog ───────────────────────────────────────────────────────
-const farePriceLogSliceDef = createCrudSlice('farePriceLog', '/flights/v2/fare-price-logs');
-export const farePriceLogActions = farePriceLogSliceDef.actions;
-export const {
-  fetchList: fetchFarePriceLogs,
-  fetchDetail: fetchFarePriceLogDetail,
-} = farePriceLogSliceDef.thunks;
-export const farePriceLogReducer = farePriceLogSliceDef.slice.reducer;
-
 // ─── DynamicPricingConfig ─────────────────────────────────────────────────────
 const dynamicPricingConfigSliceDef = createCrudSlice('dynamicPricingConfig', '/pricing/dynamic-pricing-config');
 export const dynamicPricingConfigActions = dynamicPricingConfigSliceDef.actions;
