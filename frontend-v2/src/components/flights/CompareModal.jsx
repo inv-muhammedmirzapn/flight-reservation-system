@@ -4,24 +4,29 @@ import { useNavigate } from "react-router-dom";
 import { fetchComparison, clearComparison } from "@/store/comparisonSlice";
 import { formatCurrency } from "@/utils/formatters";
 
+// This function converts a relative logo path into a full URL.
 const getLogoUrl = (url) => {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
+// This converts an ISO date-time string into a readable time like:
+// "2026-09-07T14:30:00Z" → 14:30
 const fmtTime = (iso) => {
   if (!iso) return "--:--";
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
+//This converts a date into a shorter UI-friendly format like: 7 Sep           
 const fmtDate = (iso) => {
   if (!iso) return "-";
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 };
 
+//This converts minutes into a readable string: 180 → 3h 0m
 const fmtDuration = (mins) => {
   if (!mins && mins !== 0) return "-";
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
@@ -42,7 +47,7 @@ export default function CompareModal({ onClose }) {
 
   // Prevent background scroll when modal is open
   useEffect(() => {
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";  // first make it hidden and then restore it when the modal is closed
     return () => { document.body.style.overflow = ""; };
   }, []);
 
