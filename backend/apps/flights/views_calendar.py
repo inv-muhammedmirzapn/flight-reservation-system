@@ -58,10 +58,25 @@ class FlightFaresCalendarView(APIView):
             date__range=[start_date, end_date]
         ).exclude(status='CANCELLED')
 
-        if source:
+        # Anchor source to first leg and destination to the last leg of the flight,
+        # so a search for DEL→DXB does NOT match DEL→DXB→HAM (where DXB is a stopover).
+        if source and destination:
+            from django.db.models import Max, F as ModelF
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__departure_airport__iata_code__iexact=source,
+                flight__legs__leg_order=1
+            ).filter(
+                flight__legs__arrival_airport__iata_code__iexact=destination,
+                flight__legs__leg_order=ModelF('max_leg')
+            )
+        elif source:
             qs = qs.filter(flight__legs__departure_airport__iata_code__iexact=source, flight__legs__leg_order=1)
-        if destination:
-            qs = qs.filter(flight__legs__arrival_airport__iata_code__iexact=destination)
+        elif destination:
+            from django.db.models import Max, F as ModelF
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__arrival_airport__iata_code__iexact=destination,
+                flight__legs__leg_order=ModelF('max_leg')
+            )
             
         if stops_param != "":
             try:
@@ -275,10 +290,26 @@ class FlightFareBoundsView(APIView):
 
         qs = FlightInstance.objects.exclude(status='CANCELLED')
 
-        if source:
+        # Anchor source to first leg and destination to the last leg so that
+        # intermediate stopovers (e.g. DXB in DEL→DXB→HAM) are not mistakenly
+        # treated as valid final destinations for a DEL→DXB route search.
+        if source and destination:
+            from django.db.models import Max, F as ModelF
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__departure_airport__iata_code__iexact=source,
+                flight__legs__leg_order=1
+            ).filter(
+                flight__legs__arrival_airport__iata_code__iexact=destination,
+                flight__legs__leg_order=ModelF('max_leg')
+            )
+        elif source:
             qs = qs.filter(flight__legs__departure_airport__iata_code__iexact=source, flight__legs__leg_order=1)
-        if destination:
-            qs = qs.filter(flight__legs__arrival_airport__iata_code__iexact=destination)
+        elif destination:
+            from django.db.models import Max, F as ModelF
+            qs = qs.annotate(max_leg=Max('flight__legs__leg_order')).filter(
+                flight__legs__arrival_airport__iata_code__iexact=destination,
+                flight__legs__leg_order=ModelF('max_leg')
+            )
         if date:
             qs = qs.filter(date=date)
 
@@ -339,7 +370,9 @@ class FlightFareBoundsView(APIView):
                 max_val = max(max_val, *prices)
                 
         if min_val == float('inf'):
-            min_val = 0
-            max_val = 100000
-            
+            # No matching FlightInstances exist for this route — return null bounds
+            # so the frontend knows there is genuinely no data rather than showing
+            # a fake 0–100 000 range that misleads the fare-filter slider.
+            return Response({"min": None, "max": None, "currency": target_currency}, status=200)
+
         return Response({"min": min_val, "max": max_val, "currency": target_currency}, status=200)
