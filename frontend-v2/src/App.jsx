@@ -21,6 +21,7 @@ import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
 import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
 import UserProfilePage from "@/pages/profile/UserProfilePage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
+import NotFoundPage from "@/pages/NotFoundPage";
 
 import PasswordRecoveryPage from "@/pages/auth/PasswordRecoveryPage";
 
@@ -229,8 +230,8 @@ function AppContent() {
             {/* System */}
             <Route path="/admin/system/data-management" element={<AdminRoute><DataManagementPage /></AdminRoute>} />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Fallback – 404 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
       </div>
