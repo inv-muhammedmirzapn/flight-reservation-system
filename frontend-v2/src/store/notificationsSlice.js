@@ -1,16 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { notificationsAPI } from '@/services/notifications-service/notificationsService';
-
-const parseError = (error, defaultMsg) => {
-  let message = defaultMsg;
-  try {
-    const errObj = JSON.parse(error.message);
-    message = errObj.error || errObj.detail || message;
-  } catch (_) {
-    message = error.message || message;
-  }
-  return message;
-};
+import { parseApiError } from '../utils/errorUtils';
 
 /* ─── Async Thunks ──────────────────────────────────────── */
 
@@ -20,7 +10,7 @@ export const fetchNotifications = createAsyncThunk(
     try {
       return await notificationsAPI.list();
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Failed to load notifications'));
+      return rejectWithValue(parseApiError(error, 'Failed to load notifications'));
     }
   }
 );
@@ -31,7 +21,7 @@ export const markNotificationRead = createAsyncThunk(
     try {
       return await notificationsAPI.read(id);
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Failed to mark notification as read'));
+      return rejectWithValue(parseApiError(error, 'Failed to mark notification as read'));
     }
   }
 );
@@ -43,7 +33,7 @@ export const markAllNotificationsRead = createAsyncThunk(
       await notificationsAPI.markAllRead();
       return;
     } catch (error) {
-      return rejectWithValue(parseError(error, 'Failed to mark all notifications as read'));
+      return rejectWithValue(parseApiError(error, 'Failed to mark all notifications as read'));
     }
   }
 );
