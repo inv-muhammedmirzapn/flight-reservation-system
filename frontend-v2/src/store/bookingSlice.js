@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { bookingAPI } from '@/services/booking-service/bookingService';
+import { parseApiError } from '@/utils/errorUtils';
 
 /* ─── Async Thunks ──────────────────────────────────────── */
 
@@ -9,14 +10,7 @@ export const createBooking = createAsyncThunk(
     try {
       return await bookingAPI.create(flightId, passengers, cabinClass);
     } catch (error) {
-      let message = 'Booking failed';
-      try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || errObj.message || message;
-      } catch (_) {
-        message = error.message || message;
-      }
-      return rejectWithValue(message);
+      return rejectWithValue(parseApiError(error, 'Booking failed'));
     }
   }
 );
@@ -27,12 +21,7 @@ export const fetchMyBookings = createAsyncThunk(
     try {
       return await bookingAPI.list();
     } catch (error) {
-      let message = 'Failed to load bookings';
-      try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
-      } catch (_) { /* empty */ }
-      return rejectWithValue(message);
+      return rejectWithValue(parseApiError(error, 'Failed to load bookings'));
     }
   }
 );
@@ -44,12 +33,7 @@ export const cancelBooking = createAsyncThunk(
       const data = await bookingAPI.cancel(bookingId);
       return { bookingId, ...data };
     } catch (error) {
-      let message = 'Failed to cancel booking';
-      try {
-        const errObj = JSON.parse(error.message);
-        message = errObj.detail || message;
-      } catch (_) { /* empty */ }
-      return rejectWithValue(message);
+      return rejectWithValue(parseApiError(error, 'Failed to cancel booking'));
     }
   }
 );

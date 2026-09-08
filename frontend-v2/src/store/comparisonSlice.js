@@ -1,12 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { flightsAPI } from '@/services/flight-service/flightService';
+import { parseApiError } from '@/utils/errorUtils';
 
 // Async thunk — calls the backend and stores the result
 
 // creating an async Redux action.
 export const fetchComparison = createAsyncThunk(
   'comparison/fetchComparison', // This is the action type prefix.
-                                //Redux Toolkit will automatically generate three action types:
+  //Redux Toolkit will automatically generate three action types:
 
   // Thunk parameter- First parameter is ID, value passed by dispatch
   // rejectWithValue() lets you send a custom error value
@@ -14,13 +15,7 @@ export const fetchComparison = createAsyncThunk(
     try {
       return await flightsAPI.compareFlights(flightInstanceIds); // This calls your API service.
     } catch (error) {
-      let message = 'Failed to fetch comparison data';
-      try {
-        const errObj = JSON.parse(error.message); // JSON.parse() converts that string into a JavaScript object
-        message = errObj.flight_instance_ids?.[0] || errObj.detail || message;
-      } catch (_) { /* empty */ }
-      //The API operation failed, and here is the error message
-      return rejectWithValue(message);
+      return rejectWithValue(parseApiError(error, 'Failed to fetch comparison data'));
     }
   }
 );
@@ -59,7 +54,7 @@ const comparisonSlice = createSlice({
   },
 
 
-// extraReducers allows your slice to respond to actions
+  // extraReducers allows your slice to respond to actions
   extraReducers: (builder) => {
     builder
       .addCase(fetchComparison.pending, (state) => {
@@ -69,7 +64,7 @@ const comparisonSlice = createSlice({
       .addCase(fetchComparison.fulfilled, (state, action) => {
         state.loading = false;
         // Backend returns { status: "success", data: [...] }
-        
+
         //Store the data in the redux  --- optional chaining + nullish coalescing.
         state.comparisonData = action.payload?.data ?? action.payload ?? [];
       })
