@@ -109,14 +109,14 @@ export default function LandingPage() {
     <div className="flex-1 flex flex-col min-h-screen">
 
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] md:min-h-[90vh] flex flex-col justify-center items-center px-3 sm:px-4 overflow-hidden pt-12 sm:pt-16">
+      <section className="relative min-h-screen min-h-[100dvh] flex flex-col justify-center items-center px-3 sm:px-4 overflow-hidden pt-16 sm:pt-20 pb-12 sm:pb-16">
 
         {/* Background Image & Overlay */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
           style={{ backgroundImage: "url('/hero_sky.png')" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent via-[65%] to-white/90" />
 
         {/* Content Box */}
         <div className="relative animate-fade-in z-10 w-full max-w-4xl text-center flex flex-col items-center">
