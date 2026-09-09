@@ -2,7 +2,7 @@ import { API_BASE_URL, fetchWithAuth, getResponseData } from '@/services/apiClie
 
 export const flightsAPI = { 
   // This function gets the flight list.
-  list: async (page = 1, params = {}) => {
+  list: async (page = 1, params = {}, options = {}) => {
     const qs = new URLSearchParams({ page: String(page) }); //URLSearchParams helps build query parameters.
     // This is how your frontend sends filters to the backend.
     if (params.search)       qs.set('search', params.search);
@@ -20,11 +20,11 @@ export const flightsAPI = {
     if (params.cabin_class)   qs.set('cabin_class', params.cabin_class);
     if (params.passengers)   qs.set('passengers', params.passengers);
     if (params.page_size)    qs.set('page_size', params.page_size);
-    return fetchWithAuth(`/flights/?${qs.toString()}`); // This is where flightService hands control to apiClient.
+    return fetchWithAuth(`/flights/?${qs.toString()}`, options); // This is where flightService hands control to apiClient.
   },
 
  // This gets fare/price bounds used by filtering UI.
-  getBounds: async (params = {}) => {
+  getBounds: async (params = {}, options = {}) => {
     const qs = new URLSearchParams();
     if (params.source)       qs.set('source', params.source);
     if (params.destination)  qs.set('destination', params.destination);
@@ -33,10 +33,10 @@ export const flightsAPI = {
     if (params.stops !== undefined && params.stops !== "") qs.set('stops', params.stops);
     if (params.airlines)      qs.set('airlines', Array.isArray(params.airlines) ? params.airlines.join(',') : params.airlines);
     const query = qs.toString() ? `?${qs.toString()}` : '';
-    return fetchWithAuth(`/flights/bounds/${query}`);
+    return fetchWithAuth(`/flights/bounds/${query}`, options);
   },
 
-  getCalendar: async (params = {}) => {
+  getCalendar: async (params = {}, options = {}) => {
     const qs = new URLSearchParams();
     if (params.source)       qs.set('source', params.source);
     if (params.destination)  qs.set('destination', params.destination);
@@ -50,7 +50,7 @@ export const flightsAPI = {
     if (params.month)        qs.set('month', params.month);
     if (params.date)         qs.set('date', params.date);
     const query = qs.toString() ? `?${qs.toString()}` : '';
-    return fetchWithAuth(`/flights/calendar/${query}`);
+    return fetchWithAuth(`/flights/calendar/${query}`, options);
   },
 
   retrieve: async (id) => {

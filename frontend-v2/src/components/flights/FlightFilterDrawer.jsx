@@ -49,7 +49,10 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
 
   const handleApply = () => {
     if (onApplyFilters) {
-      onApplyFilters(draftFilters);
+      onApplyFilters({
+        ...draftFilters,
+        maxFare: draftFilters.maxFare >= maxPrice ? null : draftFilters.maxFare
+      });
     }
     if (onClose) {
       onClose();
@@ -62,9 +65,12 @@ export default function FlightFilterDrawer({ isOpen, onClose, filters, onApplyFi
       stops: "",
       airlines: [],
       waitlistMode: "all",
-      maxFare: maxPrice
+      maxFare: null
     };
-    setDraftFilters(defaultFilters);
+    setDraftFilters({
+      ...defaultFilters,
+      maxFare: maxPrice
+    });
     if (onResetFilters) {
       onResetFilters(defaultFilters);
     }

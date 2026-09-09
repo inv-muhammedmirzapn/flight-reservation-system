@@ -34,6 +34,15 @@ export const fetchFlightBounds = createAsyncThunk(
       } catch (_) { /* empty */ }
       return rejectWithValue(message);
     }
+  },
+  {
+    condition: (params, { getState }) => {
+      const { flights } = getState();
+      if (flights.boundsLoading) {
+        return false;
+      }
+      return true;
+    }
   }
 );
 

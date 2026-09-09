@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { flightsAPI } from "@/services/flight-service/flightService";
 
 export default function DateStripCarousel({ selectedDepDate, onSelectDate, filters }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const scrollRef = useRef(null);
   const selectedItemRef = useRef(null);
-
-  const bounds = useSelector((state) => state.flights.bounds);
 
   const from = searchParams.get("from") || "DEL";
   const to = searchParams.get("to") || "HAM";
@@ -70,8 +67,7 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
           if (currentFilters.stops !== undefined && currentFilters.stops !== "") calendarParams.stops = currentFilters.stops;
           if (currentFilters.airlines && currentFilters.airlines.length > 0) calendarParams.airlines = currentFilters.airlines.join(",");
           if (currentFilters.waitlistMode && currentFilters.waitlistMode !== "all") calendarParams.waitlist_mode = currentFilters.waitlistMode;
-          const boundMax = bounds?.max_price || bounds?.max;
-          if (currentFilters.maxFare && boundMax && currentFilters.maxFare < boundMax) {
+          if (currentFilters.maxFare != null) {
             calendarParams.max_fare = currentFilters.maxFare;
           }
         }
@@ -121,8 +117,10 @@ export default function DateStripCarousel({ selectedDepDate, onSelectDate, filte
     if (from && to) {
       loadCalendarPrices();
     }
-    return () => { isMounted = false; };
-  }, [from, to, cabinClass, filtersJson, activeDate, bounds]);
+    return () => {
+      isMounted = false;
+    };
+  }, [from, to, cabinClass, filtersJson, activeDate]);
 
   useEffect(() => {
     const list = [];

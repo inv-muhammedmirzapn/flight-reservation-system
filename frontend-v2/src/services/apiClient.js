@@ -91,6 +91,9 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
       credentials: 'include',  // send/receive HttpOnly cookies automatically
     });
   } catch (_netErr) {
+    if (_netErr.name === 'AbortError') {
+      throw _netErr;
+    }
     // Catch network connectivity failure / connection refused
     dispatchServerDown();
     throw new Error("Unable to connect to server. Please check backend connection.");

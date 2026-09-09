@@ -330,31 +330,16 @@ export default function FlightsPage() {
     stops: "",
     airlines: [],
     waitlistMode: "all",
-    maxFare: 100000
+    maxFare: null
   });
 
   // Reset maxFare when core search parameters change (route or cabin class)
   useEffect(() => {
     setFilters(prev => {
-      if (prev.maxFare === 100000) return prev; // already reset, skip to avoid extra re-render
-      return { ...prev, maxFare: 100000 };
+      if (prev.maxFare === null) return prev;
+      return { ...prev, maxFare: null };
     });
   }, [from, to, cabinClassParam]);
-
-  // Sync draft maxFare when bounds load
-  useEffect(() => {
-    if (bounds && (bounds.max_price || bounds.max)) {
-      const boundMax = bounds.max_price || bounds.max;
-      setFilters(prev => {
-        const newMax = prev.maxFare === 100000 ? boundMax : prev.maxFare;
-        if (prev.maxFare === newMax) return prev;
-        return {
-          ...prev,
-          maxFare: newMax
-        };
-      });
-    }
-  }, [bounds]);
 
   const handleApplyFilters = (newFilters) => {
     setCurrentPage(1);
@@ -367,7 +352,7 @@ export default function FlightsPage() {
       stops: "",
       airlines: [],
       waitlistMode: "all",
-      maxFare: 100000
+      maxFare: null
     });
   };
 
@@ -390,7 +375,10 @@ export default function FlightsPage() {
 
         if (filters.ordering) queryParams.ordering = filters.ordering;
         if (filters.stops !== undefined && filters.stops !== "") queryParams.stops = filters.stops;
-        if (filters.maxFare && filters.maxFare < 100000) queryParams.max_fare = filters.maxFare;
+        const boundMax = bounds?.max_price || bounds?.max;
+        if (filters.maxFare != null && (!boundMax || filters.maxFare < boundMax)) {
+          queryParams.max_fare = filters.maxFare;
+        }
         if (filters.airlines && filters.airlines.length > 0) queryParams.airlines = filters.airlines.join(",");
         if (filters.waitlistMode && filters.waitlistMode !== "all") queryParams.waitlist_mode = filters.waitlistMode;
 
@@ -430,7 +418,7 @@ export default function FlightsPage() {
         }
 
         // 2. Max Fare Filter Fallback
-        if (filters.maxFare && filters.maxFare < 100000) {
+        if (filters.maxFare != null && (!boundMax || filters.maxFare < boundMax)) {
           results = results.filter((f) => Number(f.base_fare) <= filters.maxFare);
         }
 
