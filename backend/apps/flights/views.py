@@ -51,6 +51,7 @@ from .services import (
 from django.utils import timezone
 from .services_currency import CurrencyService
 from .services_pricing import DynamicPricingStrategy, reevaluate_route_fares_dynamically
+from .services_routing import haversine
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -422,7 +423,7 @@ class AirportViewSet(AdminModelViewSet):
     ordering_fields = ["iata_code", "airport_name", "city"]
 
     def get_permissions(self):
-        if self.action in ("list", "retrieve"):
+        if self.action in ("list", "retrieve", "nearest"):
             return [AllowAny()]
         return super().get_permissions()
 
@@ -450,6 +451,65 @@ class AirportViewSet(AdminModelViewSet):
                 Q(country__name__icontains=search)
             )
         return qs.order_by("city")
+
+    @extend_schema(
+        summary="Find nearest airport",
+        description="Returns the nearest airport to the given coordinates (lat, lng) using the Haversine formula.",
+        parameters=[
+            OpenApiParameter("lat", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True, description="Latitude (e.g. 12.9716)"),
+            OpenApiParameter("lng", OpenApiTypes.FLOAT, OpenApiParameter.QUERY, required=True, description="Longitude (e.g. 77.5946)"),
+        ],
+        responses={200: AirportSerializer}
+    )
+    @action(detail=False, methods=["get"], url_path="nearest")
+    def nearest(self, request):
+        lat_raw = request.query_params.get("lat")
+        lng_raw = request.query_params.get("lng")
+
+        if lat_raw is None or lng_raw is None or str(lat_raw).strip() == "" or str(lng_raw).strip() == "":
+            return Response(
+                {"error": "Both 'lat' and 'lng' query parameters are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user_lat = float(lat_raw)
+            user_lng = float(lng_raw)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "'lat' and 'lng' must be valid floating-point numbers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not (-90.0 <= user_lat <= 90.0 and -180.0 <= user_lng <= 180.0):
+            return Response(
+                {"error": "Latitude must be between -90 and 90, and longitude between -180 and 180."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        airports = Airport.objects.select_related("country").filter(
+            latitude__isnull=False,
+            longitude__isnull=False,
+        )
+
+        if not airports.exists():
+            return Response(
+                {"error": "No airports with geographic coordinates found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        nearest_airport = None
+        min_dist = float("inf")
+
+        for airport in airports:
+            dist = haversine(user_lat, user_lng, float(airport.latitude), float(airport.longitude))
+            if dist < min_dist:
+                min_dist = dist
+                nearest_airport = airport
+
+        data = AirportSerializer(nearest_airport).data
+        data["distance_km"] = round(min_dist, 2)
+        return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="import-openflights")
     def import_openflights(self, request):
