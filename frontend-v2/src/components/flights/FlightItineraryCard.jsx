@@ -201,7 +201,7 @@ export default function FlightItineraryCard({
 
 
       {/* Top Header Row: Route Title & Optional Seat/Waitlist Status Badge */}
-      <div className="flex items-start justify-between gap-4 mb-2">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4 mb-2">
         <div className="flex items-center gap-3">
           {logoSrc && (
             <img
@@ -218,7 +218,7 @@ export default function FlightItineraryCard({
         {/* Status Badge — Delayed overrides Available/Waitlist */}
         {showBadge && (
           isDelayed ? (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+            <div className="relative sm:absolute sm:right-5 sm:top-7 flex sm:flex-col items-center justify-center gap-1 sm:gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-2xs font-bold text-xs shrink-0 sm:w-24 sm:h-16">
               <span>Delayed</span>
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-base text-amber-700 select-none">schedule</span>
@@ -226,19 +226,19 @@ export default function FlightItineraryCard({
               </span>
             </div>
           ) : isWaitlisted ? (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+            <div className="relative sm:absolute sm:right-5 sm:top-7 flex sm:flex-col items-center justify-center gap-1.5 bg-amber-100/90 border border-amber-300/90 text-amber-950 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-2xs font-bold text-xs shrink-0 sm:w-24 sm:h-16">
               <span>Waitlist</span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-amber-800 font-bold select-none">people</span>
-                <span className="font-bold text-lg">{queueCount}</span>
+                <span className="material-symbols-outlined text-base sm:text-lg text-amber-800 font-bold select-none">people</span>
+                <span className="font-bold text-sm sm:text-lg">{queueCount}</span>
               </span>
             </div>
           ) : (
-            <div className="absolute right-5 w-24 h-16 flex flex-col items-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3.5 py-1.5 rounded-2xl shadow-2xs font-bold text-xs">
+            <div className="relative sm:absolute sm:right-5 sm:top-7 flex sm:flex-col items-center justify-center gap-1.5 bg-emerald-100/90 border border-emerald-300/90 text-emerald-950 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-2xs font-bold text-xs shrink-0 sm:w-24 sm:h-16">
               <span>Available</span>
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-lg text-emerald-800 font-bold select-none">event_seat</span>
-                <span className="font-bold text-lg">{activeSeats}</span>
+                <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800 font-bold select-none">event_seat</span>
+                <span className="font-bold text-sm sm:text-lg">{activeSeats}</span>
               </span>
             </div>
           )
