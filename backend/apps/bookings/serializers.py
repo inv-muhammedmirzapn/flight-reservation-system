@@ -139,8 +139,8 @@ class PassengerSerializer(serializers.ModelSerializer):
         v = (value or '').strip()
         if len(v) < 2:
             raise serializers.ValidationError("Passenger name must be at least 2 characters.")
-        if len(v) > 60:
-            raise serializers.ValidationError("Passenger name cannot exceed 60 characters.")
+        if len(v) > 150:
+            raise serializers.ValidationError("Passenger name cannot exceed 150 characters.")
         return v
 
     def validate_age(self, value):

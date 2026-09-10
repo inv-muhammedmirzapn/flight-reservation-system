@@ -231,20 +231,39 @@ export default function FlightOverviewPage() {
 
     const handleStatusUpdate = async () => {
         if (!editTarget || !editStatus) return;
+
+        const delayNum = Number(editDelay);
+        if (isNaN(delayNum) || delayNum < 0) {
+            toast.error('Delay minutes cannot be negative');
+            return;
+        }
+        if (editGate && editGate.trim().length > 10) {
+            toast.error('Boarding gate must be 10 characters or less');
+            return;
+        }
+        if (editDepTerminal && editDepTerminal.trim().length > 10) {
+            toast.error('Departure terminal must be 10 characters or less');
+            return;
+        }
+        if (editArrTerminal && editArrTerminal.trim().length > 10) {
+            toast.error('Arrival terminal must be 10 characters or less');
+            return;
+        }
+
         setConfirmOpen(false);
         try {
             await dispatch(updateFlightInstance({
                 id: editTarget.id,
                 data: {
                     status: editStatus,
-                    delay_minutes: Number(editDelay) || 0,
-                    boarding_gate: editGate,
-                    departure_terminal: editDepTerminal,
-                    arrival_terminal: editArrTerminal,
+                    delay_minutes: delayNum || 0,
+                    boarding_gate: editGate.trim(),
+                    departure_terminal: editDepTerminal.trim(),
+                    arrival_terminal: editArrTerminal.trim(),
                 }
             })).unwrap();
 
-            const delayMsg = editDelay > 0 ? ` — delayed by ${editDelay} min` : '';
+            const delayMsg = delayNum > 0 ? ` — delayed by ${delayNum} min` : '';
             toast.success(`Flight status updated to ${editStatus}${delayMsg}`);
             setEditTarget(null);
             fetchFiltered(currentPage, buildParams(activeSearch, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
@@ -741,6 +760,7 @@ export default function FlightOverviewPage() {
                                         id="ov_gate"
                                         label="Boarding Gate"
                                         placeholder="e.g. G12"
+                                        maxLength={10}
                                         value={editGate}
                                         options={['A1','A2','A3','A4','B1','B2','B3','B4','C1','C2','D1','D2','G1','G2','G3','G4','G5','G6','G10','G11','G12'].map(g => ({ value: g, label: g }))}
                                         onChange={(e) => setEditGate(e.target.value)}
@@ -749,6 +769,7 @@ export default function FlightOverviewPage() {
                                         id="ov_dep_terminal"
                                         label="Departure Terminal"
                                         placeholder="e.g. Terminal 1"
+                                        maxLength={10}
                                         value={editDepTerminal}
                                         options={[
                                             ...new Set([
@@ -762,6 +783,7 @@ export default function FlightOverviewPage() {
                                         id="ov_arr_terminal"
                                         label="Arrival Terminal"
                                         placeholder="e.g. Terminal 2"
+                                        maxLength={10}
                                         value={editArrTerminal}
                                         options={[
                                             ...new Set([

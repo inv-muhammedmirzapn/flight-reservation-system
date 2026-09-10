@@ -531,8 +531,17 @@ class FlightRouteSerializer(serializers.ModelSerializer):
                 })
 
             for idx in range(len(legs_data) - 1):
-                curr_arr = legs_data[idx].get("scheduled_arrival_time")
-                next_dep = legs_data[idx + 1].get("scheduled_departure_time")
+                curr_leg = legs_data[idx]
+                next_leg = legs_data[idx + 1]
+                curr_arr_apt = curr_leg.get("arrival_airport")
+                next_dep_apt = next_leg.get("departure_airport")
+                if curr_arr_apt and next_dep_apt and curr_arr_apt != next_dep_apt:
+                    raise serializers.ValidationError({
+                        "legs": f"Leg {idx+2} departure airport must match Leg {idx+1} arrival airport."
+                    })
+
+                curr_arr = curr_leg.get("scheduled_arrival_time")
+                next_dep = next_leg.get("scheduled_departure_time")
                 if curr_arr and next_dep and next_dep < curr_arr:
                     raise serializers.ValidationError({
                         "legs": f"Leg {idx+2} departure ({next_dep.strftime('%H:%M')}) cannot be before Leg {idx+1} arrival ({curr_arr.strftime('%H:%M')})."
@@ -649,6 +658,19 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"scheduled_arrival": "Scheduled arrival must be after scheduled departure."}
             )
+
+        date = attrs.get("date", getattr(self.instance, "date", None))
+        if dep and date and dep.date() != date:
+            raise serializers.ValidationError(
+                {"date": f"Flight instance date ({date}) must match scheduled departure date ({dep.date()})."}
+            )
+
+        aircraft = attrs.get("aircraft", getattr(self.instance, "aircraft", None))
+        if route and aircraft and route.airline_id and aircraft.airline_id:
+            if route.airline_id != aircraft.airline_id:
+                raise serializers.ValidationError(
+                    {"aircraft": f"Aircraft ({aircraft.registration}) belongs to {aircraft.airline.airline_name}, but flight route is operated by {route.airline.airline_name}."}
+                )
 
         # Auto-set status to DELAYED when delay_minutes > 0 and status not explicitly provided
         delay = attrs.get("delay_minutes", getattr(self.instance, "delay_minutes", 0) or 0)

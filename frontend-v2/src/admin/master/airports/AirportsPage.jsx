@@ -25,14 +25,42 @@ const EMPTY_FORM = {
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.iata_code || !/^[A-Za-z]{3}$/.test(form.iata_code.trim())) e.iata_code = 'IATA code must be exactly 3 alphabetic characters.';
-  if (!form.airport_name || form.airport_name.trim().length < 3) e.airport_name = 'Airport name must be at least 3 characters.';
-  if (!form.city || form.city.trim().length < 2) e.city = 'City name must be at least 2 characters.';
-  if (!form.country) e.country = 'Country is required.';
-  if (form.latitude !== '' && (Number(form.latitude) < -90 || Number(form.latitude) > 90)) e.latitude = 'Must be between -90 and 90.';
-  if (form.longitude !== '' && (Number(form.longitude) < -180 || Number(form.longitude) > 180)) e.longitude = 'Must be between -180 and 180.';
+  if (!form.iata_code || !/^[A-Za-z]{3}$/.test(form.iata_code.trim())) {
+    e.iata_code = 'IATA code must be exactly 3 alphabetic characters.';
+  }
+  if (!form.airport_name || form.airport_name.trim().length < 3) {
+    e.airport_name = 'Airport name must be at least 3 characters.';
+  }
+  if (!form.city || form.city.trim().length < 2) {
+    e.city = 'City name must be at least 2 characters.';
+  }
+  if (!form.country) {
+    e.country = 'Country is required.';
+  }
+  if (form.latitude !== '' && form.latitude !== null && form.latitude !== undefined) {
+    const lat = Number(form.latitude);
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      e.latitude = 'Latitude must be a valid number between -90 and 90.';
+    }
+  }
+  if (form.longitude !== '' && form.longitude !== null && form.longitude !== undefined) {
+    const lon = Number(form.longitude);
+    if (isNaN(lon) || lon < -180 || lon > 180) {
+      e.longitude = 'Longitude must be a valid number between -180 and 180.';
+    }
+  }
   return e;
 };
+
+const onBeforeSubmit = (form) => ({
+  ...form,
+  iata_code: form.iata_code.trim().toUpperCase(),
+  airport_name: form.airport_name.trim(),
+  city: form.city.trim(),
+  latitude: form.latitude === '' || form.latitude === null ? null : Number(form.latitude),
+  longitude: form.longitude === '' || form.longitude === null ? null : Number(form.longitude),
+  terminals: (form.terminals || []).map((t) => t.trim()).filter(Boolean),
+});
 
 const THUNKS = { fetchList: fetchAirports, fetchDetail: fetchAirportDetail, add: addAirport, update: updateAirport, remove: removeAirport };
 
@@ -104,6 +132,7 @@ export default function AirportsPage() {
     fields: FIELDS,
     emptyForm: EMPTY_FORM,
     validateForm,
+    onBeforeSubmit,
     thunks: THUNKS,
     getDeleteDetails: (item) => {
       if (!item) return null;

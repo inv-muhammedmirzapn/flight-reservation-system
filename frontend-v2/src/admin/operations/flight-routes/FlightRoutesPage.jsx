@@ -251,12 +251,22 @@ export default function FlightRoutesPage() {
     return { ...f, legs: [...f.legs, newLeg] };
   });
 
-  const removeLeg = (i) => setForm((f) => ({ ...f, legs: f.legs.filter((_, idx) => idx !== i) }));
+  const removeLeg = (i) => setForm((f) => {
+    const remaining = f.legs.filter((_, idx) => idx !== i);
+    for (let idx = 1; idx < remaining.length; idx++) {
+      remaining[idx] = { ...remaining[idx], departure_airport: remaining[idx - 1].arrival_airport };
+    }
+    return { ...f, legs: remaining };
+  });
+
   const updateLeg = (i, key, val) =>
-    setForm((f) => ({
-      ...f,
-      legs: f.legs.map((l, idx) => idx === i ? { ...l, [key]: val } : l),
-    }));
+    setForm((f) => {
+      const nextLegs = f.legs.map((l, idx) => (idx === i ? { ...l, [key]: val } : l));
+      if (key === 'arrival_airport' && nextLegs[i + 1]) {
+        nextLegs[i + 1] = { ...nextLegs[i + 1], departure_airport: val };
+      }
+      return { ...f, legs: nextLegs };
+    });
 
   // ─── Validation ──────────────────────────────────────────────────────────────
   const validateForm = () => {
@@ -270,6 +280,12 @@ export default function FlightRoutesPage() {
     if (!form.scheduled_arrival_time) e.scheduled_arrival_time = 'Scheduled arrival time is required.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
+    if (form.baggage_number_allowed_per_person !== '' && form.baggage_number_allowed_per_person !== null) {
+      const bagNum = Number(form.baggage_number_allowed_per_person);
+      if (isNaN(bagNum) || !Number.isInteger(bagNum) || bagNum < 0) {
+        e.baggage_number_allowed_per_person = 'Must be a non-negative whole number.';
+      }
+    }
     if (Number(form.handbag_weight_allowed_per_person) < 0) e.handbag_weight_allowed_per_person = 'Cannot be negative.';
     if (Number(form.max_extra_baggage_kg_per_person) < 0) e.max_extra_baggage_kg_per_person = 'Cannot be negative.';
     if (Number(form.extra_baggage_price_per_kg) < 0) e.extra_baggage_price_per_kg = 'Cannot be negative.';
@@ -284,6 +300,15 @@ export default function FlightRoutesPage() {
       const lastIdx = form.legs.length - 1;
       if (form.legs[lastIdx].scheduled_arrival_time !== form.scheduled_arrival_time) {
         e[`leg_${lastIdx}_arr_time`] = `Last leg arrival (${form.legs[lastIdx].scheduled_arrival_time}) must match route arrival (${form.scheduled_arrival_time}).`;
+      }
+    }
+
+    // Continuity and individual leg checks
+    for (let i = 1; i < form.legs.length; i++) {
+      const prevLeg = form.legs[i - 1];
+      const currLeg = form.legs[i];
+      if (currLeg.departure_airport && prevLeg.arrival_airport && currLeg.departure_airport !== prevLeg.arrival_airport) {
+        e[`leg_${i}_dep_apt`] = `Leg ${i + 1} departure must match Leg ${i} arrival airport.`;
       }
     }
 
@@ -831,8 +856,9 @@ export default function FlightRoutesPage() {
                     </div>
                     {/* Airports row: DEP ──▶ ARR */}
                     <div className="leg-airports-row">
-                      <Select id={`dep_apt_${i}`} label="Departure Airport" options={airportOptions}
+                      <Select id={`dep_apt_${i}`} label={i > 0 ? `Departure Airport (from Leg ${i})` : "Departure Airport"} options={airportOptions}
                         value={leg.departure_airport}
+                        disabled={i > 0}
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
                       <div className="leg-arrow-container select-none">

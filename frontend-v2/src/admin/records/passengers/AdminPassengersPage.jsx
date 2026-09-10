@@ -82,7 +82,7 @@ export default function AdminPassengersPage() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
+                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sug.value}</span>
                     <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
                   </div>
                 ))}
@@ -109,7 +109,7 @@ export default function AdminPassengersPage() {
               <tbody>
                 {passengers.map((p) => (
                   <tr key={p.id} onClick={() => setSelected(selected?.id === p.id ? null : p)}>
-                    <td><strong>{p.full_name || p.name}</strong></td>
+                    <td style={{ maxWidth: 220, wordBreak: 'break-word' }}><strong>{p.full_name || p.name}</strong></td>
                     <td>{p.gender || '—'}</td>
                     <td>{p.category || '—'}</td>
                     <td><code style={{ fontSize: 12 }}>{p.passport_no || '—'}</code></td>

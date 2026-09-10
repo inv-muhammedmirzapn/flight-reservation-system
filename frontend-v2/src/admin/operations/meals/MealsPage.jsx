@@ -132,10 +132,27 @@ export default function MealsPage() {
     if (!form.airline) e.airline = 'Airline is required.';
     if (!form.cabin_class) e.cabin_class = 'Cabin class is required.';
     if (!form.name || form.name.trim().length < 2) e.name = 'Meal name must be at least 2 characters.';
-    form.items.forEach((item, i) => {
-      if (!item.food_item) e[`item_${i}`] = 'Food item is required.';
-      if (!item.quantity || Number(item.quantity) < 1) e[`item_qty_${i}`] = 'Quantity must be ≥ 1.';
-    });
+
+    if (!form.items || form.items.length === 0) {
+      e.items = 'Meal must contain at least one food item.';
+    } else {
+      const seenFoodIds = new Set();
+      form.items.forEach((item, i) => {
+        if (!item.food_item) {
+          e[`item_${i}`] = 'Food item is required.';
+        } else if (seenFoodIds.has(String(item.food_item))) {
+          e[`item_${i}`] = 'Food item is already included. Adjust quantity instead.';
+        } else {
+          seenFoodIds.add(String(item.food_item));
+        }
+
+        const qty = Number(item.quantity);
+        if (!item.quantity || isNaN(qty) || !Number.isInteger(qty) || qty < 1) {
+          e[`item_qty_${i}`] = 'Quantity must be a whole number ≥ 1.';
+        }
+      });
+    }
+
     setLocalErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -349,7 +366,7 @@ export default function MealsPage() {
                   label="Airline"
                   options={airlineOptions}
                   value={form.airline}
-                  onChange={(e) => setForm((f) => ({ ...f, airline: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, airline: e.target.value, items: [{ ...EMPTY_ITEM }] }))}
                   error={localErrors.airline}
                 />
                 <Select
@@ -380,6 +397,7 @@ export default function MealsPage() {
                     <PlusCircle size={13} /> Add Item
                   </button>
                 </div>
+                {localErrors.items && <p className="text-xs text-status-red mb-2">{localErrors.items}</p>}
                 {form.items.map((item, i) => (
                   <div key={i} className="item-row">
                     <Select

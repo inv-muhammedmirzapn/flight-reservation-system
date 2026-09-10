@@ -53,7 +53,11 @@ const EMPTY_FORM = {
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.registration || !/^[A-Za-z0-9-]+$/.test(form.registration.trim())) e.registration = 'Registration must be alphanumeric with hyphens.';
+  if (!form.registration || !/^[A-Za-z0-9-]+$/.test(form.registration.trim())) {
+    e.registration = 'Registration must be alphanumeric with hyphens (e.g. VT-ANB).';
+  } else if (form.registration.trim().length > 20) {
+    e.registration = 'Registration must be 20 characters or less.';
+  }
   if (!form.airline) e.airline = 'Airline is required.';
   if (!form.aircraft_model) e.aircraft_model = 'Aircraft model is required.';
 
@@ -62,10 +66,27 @@ const validateForm = (form) => {
   if (!isInt(form.business_capacity)) e.business_capacity = 'Must be a non-negative integer.';
   if (!isInt(form.first_class_capacity)) e.first_class_capacity = 'Must be a non-negative integer.';
 
-  const layoutRegex = /^\d+(-\d+)*$/;
-  if (form.economy_layout && !layoutRegex.test(form.economy_layout)) e.economy_layout = 'Layout must be numbers separated by hyphens (e.g. 3-3).';
-  if (form.business_layout && !layoutRegex.test(form.business_layout)) e.business_layout = 'Layout must be numbers separated by hyphens (e.g. 2-2).';
-  if (form.first_class_layout && !layoutRegex.test(form.first_class_layout)) e.first_class_layout = 'Layout must be numbers separated by hyphens (e.g. 2-2).';
+  const totalCap = Number(form.economy_capacity || 0) + Number(form.business_capacity || 0) + Number(form.first_class_capacity || 0);
+  if (totalCap <= 0) {
+    e.economy_capacity = 'Aircraft must have total seating capacity greater than 0.';
+  }
+
+  const layoutRegex = /^[1-9]\d*(?:-[1-9]\d*)*$/; // Disallows 0 or 0-0
+  if (Number(form.economy_capacity) > 0) {
+    if (!form.economy_layout || !layoutRegex.test(form.economy_layout)) {
+      e.economy_layout = 'Valid layout required when economy capacity > 0 (e.g. 3-3).';
+    }
+  }
+  if (Number(form.business_capacity) > 0) {
+    if (!form.business_layout || !layoutRegex.test(form.business_layout)) {
+      e.business_layout = 'Valid layout required when business capacity > 0 (e.g. 2-2).';
+    }
+  }
+  if (Number(form.first_class_capacity) > 0) {
+    if (!form.first_class_layout || !layoutRegex.test(form.first_class_layout)) {
+      e.first_class_layout = 'Valid layout required when first class capacity > 0 (e.g. 2-2).';
+    }
+  }
   return e;
 };
 
@@ -89,7 +110,7 @@ export default function AircraftPage() {
   const modelOptions = models.map((m) => ({ value: m.id, label: `${m.manufacturer} ${m.model_name}` }));
 
   const FIELDS = [
-    { name: 'registration', label: 'Registration', placeholder: 'e.g. VT-ANB' },
+    { name: 'registration', label: 'Registration', placeholder: 'e.g. VT-ANB', autoUpper: true },
     { name: 'airline', label: 'Airline', type: 'select', options: airlineOptions },
     { name: 'aircraft_model', label: 'Aircraft Model', type: 'select', options: modelOptions },
     { name: 'economy_capacity', label: 'Economy Capacity', type: 'number', placeholder: '0' },

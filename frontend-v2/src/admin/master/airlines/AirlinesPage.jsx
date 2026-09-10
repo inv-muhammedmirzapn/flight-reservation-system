@@ -24,17 +24,31 @@ const EMPTY_FORM = { iata_airline_code: '', airline_name: '', logo: null };
 
 const validateForm = (form) => {
   const e = {};
-  if (!form.iata_airline_code || !/^[A-Za-z0-9]{2}$/.test(form.iata_airline_code.trim())) e.iata_airline_code = 'IATA code must be exactly 2 alphanumeric characters.';
-  if (!form.airline_name || form.airline_name.trim().length < 2) e.airline_name = 'Airline name must be at least 2 characters.';
+  if (!form.iata_airline_code || !/^[A-Za-z0-9]{2}$/.test(form.iata_airline_code.trim())) {
+    e.iata_airline_code = 'IATA code must be exactly 2 alphanumeric characters.';
+  }
+  if (!form.airline_name || form.airline_name.trim().length < 2) {
+    e.airline_name = 'Airline name must be at least 2 characters.';
+  }
+  if (form.logo instanceof File) {
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!allowed.includes(form.logo.type)) {
+      e.logo = 'Logo must be a PNG, JPG, WEBP, or SVG image.';
+    } else if (form.logo.size > 2 * 1024 * 1024) {
+      e.logo = 'Logo file size must not exceed 2MB.';
+    }
+  }
   return e;
 };
 
 // Airline uses multipart for logo upload
 const onBeforeSubmit = (form) => {
   const fd = new FormData();
-  Object.entries(form).forEach(([k, v]) => {
-    if (v !== null && v !== undefined) fd.append(k, v);
-  });
+  fd.append('iata_airline_code', form.iata_airline_code.trim().toUpperCase());
+  fd.append('airline_name', form.airline_name.trim());
+  if (form.logo instanceof File) {
+    fd.append('logo', form.logo);
+  }
   return fd;
 };
 

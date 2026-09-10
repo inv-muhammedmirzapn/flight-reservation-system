@@ -27,7 +27,11 @@ export default function useDeleteAction({ thunk, onSuccess, successMessage = 'De
         onSuccess();
       }
     } catch (err) {
-      const msg = parseApiError(err, errorMessage);
+      let msg = parseApiError(err, errorMessage);
+      const errStr = typeof err === 'string' ? err : JSON.stringify(err || '');
+      if (errStr.toLowerCase().includes('protected') || errStr.toLowerCase().includes('foreign key') || errStr.toLowerCase().includes('reference')) {
+        msg = 'Cannot delete this record because other active records (routes, flights, or bookings) depend on it.';
+      }
       toast.error(msg);
     } finally {
       setDeleteLoading(false);

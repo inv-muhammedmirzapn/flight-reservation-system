@@ -252,6 +252,19 @@ def generate_booking_pdf(booking) -> bytes:
     def sp(h=3):
         return Spacer(1, h * mm)
 
+    def _safe_pdf_text(text, max_word_len=22):
+        if not text:
+            return ""
+        words = str(text).split(' ')
+        safe_words = []
+        for w in words:
+            if len(w) > max_word_len:
+                chunks = [w[i:i + max_word_len] for i in range(0, len(w), max_word_len)]
+                safe_words.append(' '.join(chunks))
+            else:
+                safe_words.append(w)
+        return ' '.join(safe_words)
+
     cw_total = A4W - LM - RM
     ref = str(booking.id).replace('-', '').upper()[:8]
     user = booking.user
@@ -523,7 +536,7 @@ def generate_booking_pdf(booking) -> bytes:
                     meal = p.meal.food_item.name
 
                 contact_flowables = [
-                    P(p.name, size=8, bold=True, color=DARK, leading=10),
+                    P(_safe_pdf_text(p.name), size=8, bold=True, color=DARK, leading=10),
                 ]
                 if p.phone_number:
                     contact_flowables.append(P(p.phone_number, size=7, color=SUBTXT, leading=9))
