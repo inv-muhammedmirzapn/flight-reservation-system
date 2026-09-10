@@ -49,7 +49,11 @@ def generate_upcoming_instances(
             "skipped_instances_count": 0,
         }
 
-    default_aircraft = Aircraft.objects.first()
+    airline_aircraft_map = {}
+    for ac in Aircraft.objects.select_related("airline").all():
+        if ac.airline_id not in airline_aircraft_map:
+            airline_aircraft_map[ac.airline_id] = ac
+    fallback_aircraft = Aircraft.objects.first()
 
     created_instances = 0
     skipped_instances = 0
@@ -59,6 +63,7 @@ def generate_upcoming_instances(
     from datetime import datetime, time
 
     for route in active_routes:
+        route_aircraft = airline_aircraft_map.get(route.airline_id) or fallback_aircraft
         r_valid_from = route.valid_from
         r_valid_until = route.valid_until
 
@@ -123,7 +128,7 @@ def generate_upcoming_instances(
                         date=curr_date,
                         scheduled_departure=sch_dep,
                         defaults={
-                            "aircraft": default_aircraft,
+                            "aircraft": route_aircraft,
                             "scheduled_arrival": sch_arr,
                             "status": InstanceStatus.SCHEDULED,
                             "boarding_gate": f"G{random.randint(1, 20)}",

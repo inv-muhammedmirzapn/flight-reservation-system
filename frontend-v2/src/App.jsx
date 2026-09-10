@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Provider, useSelector, useDispatch } from "react-redux";
 import { store } from "@/store";
 import { fetchProfile } from "@/store/authSlice";
+import { fetchAirports } from "@/store/airportsSlice";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -72,6 +73,7 @@ function AppContent() {
 
   useEffect(() => {
     dispatch(fetchProfile());
+    dispatch(fetchAirports());
   }, [dispatch]);
 
   const isAdminPanel = isAdmin || location.pathname.startsWith("/admin");

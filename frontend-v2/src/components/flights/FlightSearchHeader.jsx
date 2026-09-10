@@ -1,10 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import DatePickerModal from "@/components/ui/DatePickerModal";
+import { fetchAirports } from "@/store/airportsSlice";
+import { resolveAirport, AIRPORT_MAP, getAirportInfo } from "@/utils/airportHelpers";
 
 const FALLBACK_AIRPORTS = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
   HAM: { city: "Hamburg", code: "HAM", name: "Fuhlsbuettel", country: "Germany" },
+  CNN: { city: "Kannur", code: "CNN", name: "Kannur International Airport", country: "India" },
+  COK: { city: "Kochi", code: "COK", name: "Cochin International Airport", country: "India" },
+  CCJ: { city: "Kozhikode", code: "CCJ", name: "Calicut International Airport", country: "India" },
+  TRV: { city: "Thiruvananthapuram", code: "TRV", name: "Trivandrum International Airport", country: "India" },
+  BOM: { city: "Mumbai", code: "BOM", name: "Chhatrapati Shivaji Maharaj International Airport", country: "India" },
   JFK: { city: "New York", code: "JFK", name: "John F. Kennedy International Airport", country: "USA" },
   LHR: { city: "London", code: "LHR", name: "Heathrow Airport", country: "UK" },
   HND: { city: "Tokyo", code: "HND", name: "Haneda Airport", country: "Japan" }
@@ -47,14 +55,31 @@ export default function FlightSearchHeader({ onSearchChange }) {
   const cabinDropdownMobileRef = useRef(null);
   const cabinDropdownDesktopRef = useRef(null);
 
-  // Load airports
+  const dispatch = useDispatch();
+  const reduxAirports = useSelector((state) => state.airports?.items) || [];
+  const airportsLoaded = useSelector((state) => state.airports?.loaded);
+
+  // Dispatch fetchAirports if not loaded yet
+  useEffect(() => {
+    if (!airportsLoaded) {
+      dispatch(fetchAirports());
+    }
+  }, [airportsLoaded, dispatch]);
+
+  // Load airports: prioritize Redux DB airports, then merge with static
   useEffect(() => {
     import("../../../resources/airports.json")
       .then((module) => {
-        setAirports(module.default || []);
+        const staticList = module.default || [];
+        const dbCodes = new Set(reduxAirports.map((a) => a.code));
+        const filteredStatic = staticList.filter((s) => s.code && !dbCodes.has(s.code.toUpperCase()));
+        setAirports([...reduxAirports, ...filteredStatic]);
       })
-      .catch((err) => console.error("Failed to load airports:", err));
-  }, []);
+      .catch((err) => {
+        console.error("Failed to load airports:", err);
+        setAirports(reduxAirports);
+      });
+  }, [reduxAirports]);
 
   // Update URL params whenever search inputs change
   const updateUrlAndNotify = (newFrom, newTo, newDep, newArr, newCabin) => {
@@ -108,24 +133,106 @@ export default function FlightSearchHeader({ onSearchChange }) {
 
   const findAirport = (codeOrQuery) => {
     if (!codeOrQuery) return null;
-    const query = codeOrQuery.trim().toUpperCase();
+    const query = String(codeOrQuery).trim().toUpperCase();
+    if (AIRPORT_MAP[query]) return AIRPORT_MAP[query];
     if (FALLBACK_AIRPORTS[query]) return FALLBACK_AIRPORTS[query];
     return airports.find(
-      (a) => a.code === query || a.city.toUpperCase() === query
-    ) || null;
+      (a) => (a.code || "").toUpperCase() === query || (a.city && a.city.toUpperCase() === query)
+    ) || getAirportInfo(query);
   };
 
   const getSuggestions = (query) => {
-    if (!query || query.length < 2) return [];
-    const q = query.toLowerCase();
-    return airports
-      .filter((a) =>
-        a.code.toLowerCase().includes(q) ||
-        a.city.toLowerCase().includes(q) ||
-        a.name.toLowerCase().includes(q) ||
-        a.country.toLowerCase().includes(q)
-      )
-      .slice(0, 6);
+    if (!query || query.trim().length < 1) return [];
+    const q = query.trim().toLowerCase();
+    const matches = airports.filter((a) => {
+      const code = (a.code || "").toLowerCase();
+      const city = (a.city || "").toLowerCase();
+      const name = (a.name || a.airport_name || "").toLowerCase();
+      const country = (a.country || a.country_name || "").toLowerCase();
+      return code.includes(q) || city.includes(q) || name.includes(q) || country.includes(q);
+    });
+
+    return matches.sort((a, b) => {
+      const aCode = (a.code || "").toLowerCase();
+      const bCode = (b.code || "").toLowerCase();
+      const aCity = (a.city || "").toLowerCase();
+      const bCity = (b.city || "").toLowerCase();
+      if (aCode === q) return -1;
+      if (bCode === q) return 1;
+      if (aCity === q) return -1;
+      if (bCity === q) return 1;
+      if (aCode.startsWith(q) && !bCode.startsWith(q)) return -1;
+      if (!aCode.startsWith(q) && bCode.startsWith(q)) return 1;
+      if (aCity.startsWith(q) && !bCity.startsWith(q)) return -1;
+      if (!aCity.startsWith(q) && bCity.startsWith(q)) return 1;
+      return 0;
+    }).slice(0, 8);
+  };
+
+  const handleFromBlur = () => {
+    setTimeout(() => {
+      setIsFromFocused(false);
+      if (fromSearch.trim()) {
+        const resolved = resolveAirport(fromSearch, airports);
+        if (resolved) {
+          setFrom(resolved.code);
+          setFromSearch(resolved.city || resolved.code);
+          updateUrlAndNotify(resolved.code, to, depDate, arrDate, cabinClass);
+          return;
+        }
+      }
+      const current = findAirport(from);
+      setFromSearch(current?.city || from);
+    }, 200);
+  };
+
+  const handleToBlur = () => {
+    setTimeout(() => {
+      setIsToFocused(false);
+      if (toSearch.trim()) {
+        const resolved = resolveAirport(toSearch, airports);
+        if (resolved) {
+          setTo(resolved.code);
+          setToSearch(resolved.city || resolved.code);
+          updateUrlAndNotify(from, resolved.code, depDate, arrDate, cabinClass);
+          return;
+        }
+      }
+      const current = findAirport(to);
+      setToSearch(current?.city || to);
+    }, 200);
+  };
+
+  const handleFromKeyDown = (e) => {
+    if (e.key === "Enter") {
+      const suggestions = getSuggestions(fromSearch);
+      if (suggestions.length > 0) {
+        e.preventDefault();
+        const chosen = suggestions[0];
+        setFrom(chosen.code);
+        setFromSearch(chosen.city || chosen.code);
+        setIsFromFocused(false);
+        updateUrlAndNotify(chosen.code, to, depDate, arrDate, cabinClass);
+      }
+    } else if (e.key === "Escape") {
+      setIsFromFocused(false);
+    }
+  };
+
+  const handleToKeyDown = (e) => {
+    if (e.key === "Enter") {
+      const suggestions = getSuggestions(toSearch);
+      if (suggestions.length > 0) {
+        e.preventDefault();
+        const chosen = suggestions[0];
+        setTo(chosen.code);
+        setToSearch(chosen.city || chosen.code);
+        setIsToFocused(false);
+        updateUrlAndNotify(from, chosen.code, depDate, arrDate, cabinClass);
+      }
+    } else if (e.key === "Escape") {
+      setIsToFocused(false);
+    }
   };
 
   const handleSwap = (e) => {
@@ -209,7 +316,10 @@ export default function FlightSearchHeader({ onSearchChange }) {
             onClick={() => {
               setIsFromFocused(true);
               setFromSearch(fromAirport?.city || from);
-              setTimeout(() => fromInputMobileRef.current?.focus(), 50);
+              setTimeout(() => {
+                fromInputMobileRef.current?.focus();
+                fromInputMobileRef.current?.select();
+              }, 50);
             }}
           >
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 select-none block mb-0.5">
@@ -223,7 +333,9 @@ export default function FlightSearchHeader({ onSearchChange }) {
                   className="airport-input-field text-xs sm:text-sm md:text-base font-bold w-full"
                   value={fromSearch}
                   onChange={(e) => setFromSearch(e.target.value)}
-                  onBlur={() => setTimeout(() => setIsFromFocused(false), 200)}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleFromBlur}
+                  onKeyDown={handleFromKeyDown}
                   placeholder="Search city/airport"
                   autoComplete="off"
                 />
@@ -249,13 +361,13 @@ export default function FlightSearchHeader({ onSearchChange }) {
                     onMouseDown={(e) => {
                       e.preventDefault();
                       setFrom(airport.code);
-                      setFromSearch(airport.city);
+                      setFromSearch(airport.city || airport.code);
                       setIsFromFocused(false);
                       updateUrlAndNotify(airport.code, to, depDate, arrDate, cabinClass);
                     }}
                   >
                     <div className="font-bold text-slate-900 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
-                    <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{airport.name}, {airport.country}</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                   </div>
                 ))}
               </div>
@@ -282,7 +394,10 @@ export default function FlightSearchHeader({ onSearchChange }) {
             onClick={() => {
               setIsToFocused(true);
               setToSearch(toAirport?.city || to);
-              setTimeout(() => toInputMobileRef.current?.focus(), 50);
+              setTimeout(() => {
+                toInputMobileRef.current?.focus();
+                toInputMobileRef.current?.select();
+              }, 50);
             }}
           >
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 select-none block mb-0.5">
@@ -296,7 +411,9 @@ export default function FlightSearchHeader({ onSearchChange }) {
                   className="airport-input-field text-xs sm:text-sm md:text-base font-bold w-full"
                   value={toSearch}
                   onChange={(e) => setToSearch(e.target.value)}
-                  onBlur={() => setTimeout(() => setIsToFocused(false), 200)}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleToBlur}
+                  onKeyDown={handleToKeyDown}
                   placeholder="Search city/airport"
                   autoComplete="off"
                 />
@@ -322,13 +439,13 @@ export default function FlightSearchHeader({ onSearchChange }) {
                     onMouseDown={(e) => {
                       e.preventDefault();
                       setTo(airport.code);
-                      setToSearch(airport.city);
+                      setToSearch(airport.city || airport.code);
                       setIsToFocused(false);
                       updateUrlAndNotify(from, airport.code, depDate, arrDate, cabinClass);
                     }}
                   >
                     <div className="font-bold text-slate-900 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
-                    <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{airport.name}, {airport.country}</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                   </div>
                 ))}
               </div>
@@ -444,7 +561,10 @@ export default function FlightSearchHeader({ onSearchChange }) {
           onClick={() => {
             setIsFromFocused(true);
             setFromSearch(fromAirport?.city || from);
-            setTimeout(() => fromInputDesktopRef.current?.focus(), 50);
+            setTimeout(() => {
+              fromInputDesktopRef.current?.focus();
+              fromInputDesktopRef.current?.select();
+            }, 50);
           }}
         >
           <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 select-none block mb-1">
@@ -459,7 +579,9 @@ export default function FlightSearchHeader({ onSearchChange }) {
                 className="airport-input-field text-xs sm:text-sm md:text-base lg:text-lg font-bold"
                 value={fromSearch}
                 onChange={(e) => setFromSearch(e.target.value)}
-                onBlur={() => setTimeout(() => setIsFromFocused(false), 200)}
+                onFocus={(e) => e.target.select()}
+                onBlur={handleFromBlur}
+                onKeyDown={handleFromKeyDown}
                 placeholder="Search city/airport"
                 autoComplete="off"
               />
@@ -485,13 +607,13 @@ export default function FlightSearchHeader({ onSearchChange }) {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setFrom(airport.code);
-                    setFromSearch(airport.city);
+                    setFromSearch(airport.city || airport.code);
                     setIsFromFocused(false);
                     updateUrlAndNotify(airport.code, to, depDate, arrDate, cabinClass);
                   }}
                 >
                   <div className="font-bold text-slate-900 text-xs">{airport.city} ({airport.code})</div>
-                  <div className="text-[10px] text-slate-500 truncate">{airport.name}, {airport.country}</div>
+                  <div className="text-[10px] text-slate-500 truncate">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                 </div>
               ))}
             </div>
@@ -518,7 +640,10 @@ export default function FlightSearchHeader({ onSearchChange }) {
           onClick={() => {
             setIsToFocused(true);
             setToSearch(toAirport?.city || to);
-            setTimeout(() => toInputDesktopRef.current?.focus(), 50);
+            setTimeout(() => {
+              toInputDesktopRef.current?.focus();
+              toInputDesktopRef.current?.select();
+            }, 50);
           }}
         >
           <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 select-none block mb-1">
@@ -533,7 +658,9 @@ export default function FlightSearchHeader({ onSearchChange }) {
                 className="airport-input-field text-xs sm:text-sm md:text-base lg:text-lg font-bold"
                 value={toSearch}
                 onChange={(e) => setToSearch(e.target.value)}
-                onBlur={() => setTimeout(() => setIsToFocused(false), 200)}
+                onFocus={(e) => e.target.select()}
+                onBlur={handleToBlur}
+                onKeyDown={handleToKeyDown}
                 placeholder="Search city/airport"
                 autoComplete="off"
               />
@@ -559,13 +686,13 @@ export default function FlightSearchHeader({ onSearchChange }) {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setTo(airport.code);
-                    setToSearch(airport.city);
+                    setToSearch(airport.city || airport.code);
                     setIsToFocused(false);
                     updateUrlAndNotify(from, airport.code, depDate, arrDate, cabinClass);
                   }}
                 >
                   <div className="font-bold text-slate-900 text-xs">{airport.city} ({airport.code})</div>
-                  <div className="text-[10px] text-slate-500 truncate">{airport.name}, {airport.country}</div>
+                  <div className="text-[10px] text-slate-500 truncate">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                 </div>
               ))}
             </div>

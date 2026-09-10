@@ -4,7 +4,7 @@ export default function ConfirmModal({
   isOpen = true,
   title,
   description,
-  icon = "warning",
+  icon = null,
   variant = "warning", // "warning" | "danger" | "primary"
   confirmText = "Confirm",
   cancelText = "Cancel",

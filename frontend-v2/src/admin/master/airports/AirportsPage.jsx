@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState, useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import AdminCrudPage from '@/admin/_core/AdminCrudPage';
-import { fetchCountries } from '@/admin/_core/store/adminSlices';
+import { fetchWithAuth } from '@/services/apiClient';
 import {
   fetchAirports, fetchAirportDetail, addAirport, updateAirport, removeAirport,
   importOpenFlights,
@@ -70,7 +70,7 @@ const THUNKS = { fetchList: fetchAirports, fetchDetail: fetchAirportDetail, add:
 
 export default function AirportsPage() {
   const dispatch = useDispatch();
-  const { items: countries } = useSelector((s) => s.country);
+  const [countries, setCountries] = useState([]);
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -78,11 +78,18 @@ export default function AirportsPage() {
   const [limit, setLimit] = useState('200');
   const [countryFilter, setCountryFilter] = useState('India');
 
-  useEffect(() => {
-    if (!countries || countries.length === 0) {
-      dispatch(fetchCountries({ page_size: 1000 }));
+  const loadCountries = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth('/flights/v2/countries/?page_size=1000');
+      setCountries(res?.results || (Array.isArray(res) ? res : []));
+    } catch (err) {
+      console.error('Failed to load countries for airports:', err);
     }
-  }, [dispatch, countries.length]);
+  }, []);
+
+  useEffect(() => {
+    loadCountries();
+  }, [loadCountries]);
 
   const countryOptions = countries.map((c) => ({ value: c.id, label: `${c.name} (${c.iso_code})` }));
 
@@ -138,6 +145,7 @@ export default function AirportsPage() {
     validateForm,
     onBeforeSubmit,
     thunks: THUNKS,
+    onOpenForm: loadCountries,
     getDeleteDetails: (item) => {
       if (!item) return null;
       const details = {};

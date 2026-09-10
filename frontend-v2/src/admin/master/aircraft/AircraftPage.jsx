@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useEffect, useCallback } from 'react';
 import AdminCrudPage from '@/admin/_core/AdminCrudPage';
-import { fetchAirlines, fetchAircraftModels } from '@/admin/_core/store/adminSlices';
+import { fetchWithAuth } from '@/services/apiClient';
 import {
   fetchAircraft, fetchAircraftDetail, addAircraft, updateAircraft, removeAircraft,
 } from '@/admin/_core/store/adminSlices';
@@ -93,18 +92,25 @@ const validateForm = (form) => {
 const THUNKS = { fetchList: fetchAircraft, fetchDetail: fetchAircraftDetail, add: addAircraft, update: updateAircraft, remove: removeAircraft };
 
 export default function AircraftPage() {
-  const dispatch = useDispatch();
-  const { items: airlines } = useSelector((s) => s.airline);
-  const { items: models } = useSelector((s) => s.aircraftModel);
+  const [airlines, setAirlines] = useState([]);
+  const [models, setModels] = useState([]);
+
+  const loadLookups = useCallback(async () => {
+    try {
+      const [airlinesRes, modelsRes] = await Promise.all([
+        fetchWithAuth('/flights/v2/airlines/?page_size=1000'),
+        fetchWithAuth('/flights/v2/aircraft-models/?page_size=1000'),
+      ]);
+      setAirlines(airlinesRes?.results || (Array.isArray(airlinesRes) ? airlinesRes : []));
+      setModels(modelsRes?.results || (Array.isArray(modelsRes) ? modelsRes : []));
+    } catch (err) {
+      console.error('Failed to load aircraft lookups:', err);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!airlines || airlines.length === 0) {
-      dispatch(fetchAirlines({}));
-    }
-    if (!models || models.length === 0) {
-      dispatch(fetchAircraftModels({}));
-    }
-  }, [dispatch, airlines.length, models.length]);
+    loadLookups();
+  }, [loadLookups]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
   const modelOptions = models.map((m) => ({ value: m.id, label: `${m.manufacturer} ${m.model_name}` }));
@@ -129,6 +135,7 @@ export default function AircraftPage() {
     emptyForm: EMPTY_FORM,
     validateForm,
     thunks: THUNKS,
+    onOpenForm: loadLookups,
     getDeleteDetails: (item) => {
       if (!item) return null;
       const details = {};

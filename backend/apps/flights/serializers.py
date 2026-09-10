@@ -668,9 +668,17 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         aircraft = attrs.get("aircraft", getattr(self.instance, "aircraft", None))
         if route and aircraft and route.airline_id and aircraft.airline_id:
             if route.airline_id != aircraft.airline_id:
-                raise serializers.ValidationError(
-                    {"aircraft": f"Aircraft ({aircraft.registration}) belongs to {aircraft.airline.airline_name}, but flight route is operated by {route.airline.airline_name}."}
-                )
+                # If this is a partial update where aircraft was not explicitly provided,
+                # auto-heal to an aircraft belonging to the route's airline if available.
+                if self.instance and "aircraft" not in attrs:
+                    correct_ac = Aircraft.objects.filter(airline_id=route.airline_id).first()
+                    if correct_ac:
+                        attrs["aircraft"] = correct_ac
+                        aircraft = correct_ac
+                if route.airline_id != aircraft.airline_id:
+                    raise serializers.ValidationError(
+                        {"aircraft": f"Aircraft ({aircraft.registration}) belongs to {aircraft.airline.airline_name}, but flight route is operated by {route.airline.airline_name}."}
+                    )
 
         # Auto-set status to DELAYED when delay_minutes > 0 and status not explicitly provided
         delay = attrs.get("delay_minutes", getattr(self.instance, "delay_minutes", 0) or 0)
@@ -751,18 +759,21 @@ class FareSerializer(serializers.ModelSerializer):
     effective_baggage_allowance_kg = serializers.FloatField(read_only=True)
     effective_handbag_allowance_kg = serializers.FloatField(read_only=True)
     effective_baggage_pieces = serializers.IntegerField(read_only=True)
+    flight_no = serializers.CharField(source="flight_instance.flight.flight_no", read_only=True)
+    instance_date = serializers.DateField(source="flight_instance.date", read_only=True)
 
     class Meta:
         model = Fare
         fields = [
-            "id", "flight_instance", "fare_code", "cabin_class",
+            "id", "flight_instance", "flight_no", "instance_date",
+            "fare_code", "cabin_class",
             "price", "currency", "available_seats",
             "refund_type", "change_fee", "meal_included",
             "baggage_allowance", "handbag_allowance", "baggage_pieces_allowance",
             "effective_baggage_allowance_kg", "effective_handbag_allowance_kg", "effective_baggage_pieces"
         ]
         read_only_fields = [
-            "id", "available_seats",
+            "id", "available_seats", "flight_no", "instance_date",
             "effective_baggage_allowance_kg", "effective_handbag_allowance_kg", "effective_baggage_pieces"
         ]
 
