@@ -99,3 +99,25 @@ class PDFGenerationTests(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("only available for confirmed", str(response.content))
+
+    def test_pdf_generation_long_name_and_max_age(self):
+        """Test that PDF generates cleanly for a 60-character passenger name and age 130."""
+        Seat.objects.create(flight_instance=self.instance, seat_number="2B", seat_class="ECONOMY", status="AVAILABLE")
+        long_name = "Maria del Carmen Fernandez de la Vega Al-Mansoor-O'Connor St"[:60]
+        self.assertEqual(len(long_name), 60)
+        pax_data = [
+            {"name": long_name, "age": 130, "gender": "F", "phone_number": "+1 234 567 8900"},
+        ]
+        booking = create_booking(
+            flight_id=self.instance.id,
+            user=self.user,
+            passengers_data=pax_data,
+            cabin_class="ECONOMY"
+        )
+        booking.status = "CONFIRMED"
+        booking.save()
+        pdf_bytes = generate_booking_pdf(booking)
+        self.assertIsInstance(pdf_bytes, bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF-"))
+        self.assertGreater(len(pdf_bytes), 1000)
+

@@ -149,7 +149,7 @@ export default function UserProfilePage() {
     if (age < 18) {
       return "You must be at least 18 years old.";
     }
-    if (age > 120) {
+    if (age > 130) {
       return "Please enter a valid date of birth.";
     }
     return "";

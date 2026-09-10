@@ -377,14 +377,18 @@ export default function BookingCheckoutPage() {
         pErr.name = "Name must be at least 2 characters";
         isValid = false;
         if (!firstInvalidKey) firstInvalidKey = `${idx}-name`;
+      } else if (p.name.trim().length > 60) {
+        pErr.name = "Name cannot exceed 60 characters";
+        isValid = false;
+        if (!firstInvalidKey) firstInvalidKey = `${idx}-name`;
       }
 
       if (!p.age || p.age.toString().trim() === "") {
         pErr.age = "Age is required";
         isValid = false;
         if (!firstInvalidKey) firstInvalidKey = `${idx}-age`;
-      } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 120) {
-        pErr.age = "Please enter a valid age (1-120)";
+      } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 130) {
+        pErr.age = "Please enter a valid age (1-130)";
         isValid = false;
         if (!firstInvalidKey) firstInvalidKey = `${idx}-age`;
       }
@@ -429,12 +433,14 @@ export default function BookingCheckoutPage() {
           fieldError = "Full name is required";
         } else if (p.name.trim().length < 2) {
           fieldError = "Name must be at least 2 characters";
+        } else if (p.name.trim().length > 60) {
+          fieldError = "Name cannot exceed 60 characters";
         }
       } else if (changedField === "age") {
         if (!p.age || p.age.toString().trim() === "") {
           fieldError = "Age is required";
-        } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 120) {
-          fieldError = "Please enter a valid age (1-120)";
+        } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 130) {
+          fieldError = "Please enter a valid age (1-130)";
         }
       }
 
@@ -466,12 +472,14 @@ export default function BookingCheckoutPage() {
         fieldError = "Full name is required";
       } else if (p.name.trim().length < 2) {
         fieldError = "Name must be at least 2 characters";
+      } else if (p.name.trim().length > 60) {
+        fieldError = "Name cannot exceed 60 characters";
       }
     } else if (field === "age") {
       if (!p.age || p.age.toString().trim() === "") {
         fieldError = "Age is required";
-      } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 120) {
-        fieldError = "Please enter a valid age (1-120)";
+      } else if (isNaN(Number(p.age)) || Number(p.age) < 1 || Number(p.age) > 130) {
+        fieldError = "Please enter a valid age (1-130)";
       }
     }
 

@@ -135,9 +135,19 @@ class PassengerSerializer(serializers.ModelSerializer):
         target_currency = CurrencyService.get_user_currency(request.user if request else None)
         return float(CurrencyService.convert_amount(obj.extra_baggage_cost, "INR", target_currency))
 
+    def validate_name(self, value):
+        v = (value or '').strip()
+        if len(v) < 2:
+            raise serializers.ValidationError("Passenger name must be at least 2 characters.")
+        if len(v) > 60:
+            raise serializers.ValidationError("Passenger name cannot exceed 60 characters.")
+        return v
+
     def validate_age(self, value):
-        if value < 0:
-            raise serializers.ValidationError("Age cannot be negative.")
+        if value < 1:
+            raise serializers.ValidationError("Passenger age must be at least 1.")
+        if value > 130:
+            raise serializers.ValidationError("Passenger age cannot exceed 130.")
         return value
 
 

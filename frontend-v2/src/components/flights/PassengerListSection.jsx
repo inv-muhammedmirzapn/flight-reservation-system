@@ -22,18 +22,18 @@ export default function PassengerListSection({
   };
 
   const handleNameChange = (index, rawValue) => {
-    // Only alphabets and spaces allowed, max 40 chars
-    const sanitized = rawValue.replace(/[^A-Za-z\s]/g, "").slice(0, 40);
+    // Only alphabets, spaces, hyphens, and apostrophes allowed, max 60 chars
+    const sanitized = rawValue.replace(/[^A-Za-z\s'-]/g, "").slice(0, 60);
     const updated = [...passengers];
     updated[index] = { ...updated[index], name: sanitized };
     onChangePassengers(updated, index, "name");
   };
 
   const handleAgeChange = (index, rawValue) => {
-    // Only digits allowed
-    let sanitized = rawValue.replace(/[^0-9]/g, "");
-    if (sanitized !== "" && Number(sanitized) > 120) {
-      sanitized = "120";
+    // Only digits allowed, max 130
+    let sanitized = rawValue.replace(/[^0-9]/g, "").slice(0, 3);
+    if (sanitized !== "" && Number(sanitized) > 130) {
+      sanitized = "130";
     }
     const updated = [...passengers];
     updated[index] = { ...updated[index], age: sanitized };
@@ -101,7 +101,7 @@ export default function PassengerListSection({
                       Full Name
                     </label>
                     <span className="text-[9px] font-medium text-slate-400">
-                      {passenger.name.length}/40
+                      {passenger.name.length}/60
                     </span>
                   </div>
                   <input
@@ -112,7 +112,7 @@ export default function PassengerListSection({
                     }}
                     type="text"
                     placeholder="e.g. John Doe"
-                    maxLength={40}
+                    maxLength={60}
                     value={passenger.name}
                     onChange={(e) => handleNameChange(index, e.target.value)}
                     onBlur={() => onBlurField?.(index, "name")}
@@ -140,6 +140,7 @@ export default function PassengerListSection({
                     }}
                     type="text"
                     placeholder="e.g. 28"
+                    maxLength={3}
                     value={passenger.age}
                     onChange={(e) => handleAgeChange(index, e.target.value)}
                     onBlur={() => onBlurField?.(index, "age")}

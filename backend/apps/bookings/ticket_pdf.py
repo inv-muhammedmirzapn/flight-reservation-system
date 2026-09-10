@@ -522,19 +522,23 @@ def generate_booking_pdf(booking) -> bytes:
                 if hasattr(p, 'meal') and p.meal:
                     meal = p.meal.food_item.name
 
-                contact = f"{p.name}\n{p.phone_number or ''}"
+                contact_flowables = [
+                    P(p.name, size=8, bold=True, color=DARK, leading=10),
+                ]
+                if p.phone_number:
+                    contact_flowables.append(P(p.phone_number, size=7, color=SUBTXT, leading=9))
 
                 rows.append([
                     str(p_idx),
-                    contact,
+                    contact_flowables,
                     p.seat_number or '—',
                     str(p.age),
                     gender_map.get(p.gender, p.gender or '—'),
-                    meal,
+                    P(str(meal), size=8, color=DARK, leading=10),
                     f'{checked:g}kg / {cabin_b:g}kg'
                 ])
 
-            col_ws = [8*mm, 44*mm, 18*mm, 12*mm, 18*mm, 36*mm, 42*mm]
+            col_ws = [8*mm, 52*mm, 16*mm, 12*mm, 18*mm, 34*mm, 38*mm]
             p_tbl = Table(rows, colWidths=col_ws, repeatRows=1)
             p_tbl.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), LIGHT),
@@ -554,7 +558,7 @@ def generate_booking_pdf(booking) -> bytes:
                 ('TEXTCOLOR', (2, 1), (2, -1), GREEN),
                 ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
                 ('GRID', (0, 0), (-1, -1), 0.4, MID),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ]))
             story.append(p_tbl)
         else:

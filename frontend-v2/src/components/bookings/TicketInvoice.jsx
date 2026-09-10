@@ -191,13 +191,13 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
 
               return (
                 <div key={idx} className="timeline-card p-3.5 flex flex-col gap-2 font-medium">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-slate-400 text-xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-slate-400 text-xl flex-shrink-0">
                         person
                       </span>
-                      <div>
-                        <p className="font-bold text-slate-950 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-950 text-sm break-words">
                           {p.name || p.full_name || `Passenger ${idx + 1}`}
                         </p>
                         <p className="text-slate-500 text-[10px] mt-0.5">
@@ -207,7 +207,7 @@ export default function TicketInvoice({ detailData, isWaitlist = false, location
                     </div>
 
                     {p.seat_number && (
-                      <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
+                      <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg flex-shrink-0">
                         Seat {p.seat_number}
                       </span>
                     )}

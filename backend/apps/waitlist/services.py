@@ -161,10 +161,12 @@ def _validate_passengers(passengers_data: list) -> str | None:
             return 'Name, age, and gender are required for all passengers.'
         if len(name) < 2:
             return 'Passenger name must be at least 2 characters.'
+        if len(name) > 60:
+            return 'Passenger name cannot exceed 60 characters.'
         try:
             age_int = int(age)
-            if age_int < 1 or age_int > 120:
-                return 'Passenger age must be between 1 and 120.'
+            if age_int < 1 or age_int > 130:
+                return 'Passenger age must be between 1 and 130.'
         except (ValueError, TypeError):
             return 'Passenger age must be a valid number.'
         if gender not in ('M', 'F', 'O'):

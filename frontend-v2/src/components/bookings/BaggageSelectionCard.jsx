@@ -63,20 +63,20 @@ export default function BaggageSelectionCard({
           return (
             <div key={paxIdx} className="p-4 rounded-2xl plain-card space-y-3">
               {/* Passenger Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-slate-400 text-lg">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-slate-400 text-lg flex-shrink-0">
                     person
                   </span>
-                  <h4 className="text-sm font-bold text-slate-950">{paxName}</h4>
+                  <h4 className="text-sm font-bold text-slate-950 break-words">{paxName}</h4>
                   {metaText && (
-                    <span className="text-xs text-slate-400 font-medium">
+                    <span className="text-xs text-slate-400 font-medium flex-shrink-0">
                       ({metaText})
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60 flex-shrink-0">
                   <span className="material-symbols-outlined text-xs">check_circle</span>
                   <span>{cabinBaggageKg} kg + {handbagKg} kg Included</span>
                 </div>

@@ -194,10 +194,12 @@ def create_booking(flight_id, user, passengers_data, cabin_class=None):
             raise ValidationError("Name, age, and gender are required for all passengers.")
         if len(name) < 2:
             raise ValidationError("Passenger name must be at least 2 characters.")
+        if len(name) > 60:
+            raise ValidationError("Passenger name cannot exceed 60 characters.")
         try:
             age_int = int(age)
-            if age_int < 1 or age_int > 120:
-                raise ValidationError("Passenger age must be between 1 and 120.")
+            if age_int < 1 or age_int > 130:
+                raise ValidationError("Passenger age must be between 1 and 130.")
         except (ValueError, TypeError):
             raise ValidationError("Passenger age must be a valid number.")
         if gender not in ['M', 'F', 'O']:
