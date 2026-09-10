@@ -759,18 +759,21 @@ class FareSerializer(serializers.ModelSerializer):
     effective_baggage_allowance_kg = serializers.FloatField(read_only=True)
     effective_handbag_allowance_kg = serializers.FloatField(read_only=True)
     effective_baggage_pieces = serializers.IntegerField(read_only=True)
+    flight_no = serializers.CharField(source="flight_instance.flight.flight_no", read_only=True)
+    instance_date = serializers.DateField(source="flight_instance.date", read_only=True)
 
     class Meta:
         model = Fare
         fields = [
-            "id", "flight_instance", "fare_code", "cabin_class",
+            "id", "flight_instance", "flight_no", "instance_date",
+            "fare_code", "cabin_class",
             "price", "currency", "available_seats",
             "refund_type", "change_fee", "meal_included",
             "baggage_allowance", "handbag_allowance", "baggage_pieces_allowance",
             "effective_baggage_allowance_kg", "effective_handbag_allowance_kg", "effective_baggage_pieces"
         ]
         read_only_fields = [
-            "id", "available_seats",
+            "id", "available_seats", "flight_no", "instance_date",
             "effective_baggage_allowance_kg", "effective_handbag_allowance_kg", "effective_baggage_pieces"
         ]
 

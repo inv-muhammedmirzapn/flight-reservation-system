@@ -1,12 +1,13 @@
 /**
  * FaresPage — per-flight-instance fares. available_seats is read-only/derived.
  */
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdminCrudPage from '@/admin/_core/AdminCrudPage';
 import { fetchFlightInstances, fetchFares, fetchFareDetail, addFare, updateFare, removeFare } from '@/admin/_core/store/adminSlices';
 import { ChevronRight, Armchair, Utensils } from 'lucide-react';
+import DatePicker from '@/components/ui/DatePicker';
 
 const CABIN_OPTIONS = [
   { value: 'ECONOMY', label: 'Economy' },
@@ -20,7 +21,8 @@ const REFUND_OPTIONS = [
 ];
 
 const COLUMNS = [
-  { key: 'fare_code', label: 'Fare Code' },
+  { key: 'flight_no', label: 'Flight No.' },
+  { key: 'instance_date', label: 'Date' },
   { key: 'cabin_class', label: 'Cabin' },
   { key: 'price', label: 'Price', render: (r) => `${r.currency} ${r.price}` },
   { key: 'available_seats', label: 'Avail. Seats (derived)' },
@@ -62,6 +64,9 @@ export default function FaresPage() {
   const [searchParams] = useSearchParams();
   const instanceParam = searchParams.get('instance');
 
+  // Date filter state (used when NOT in instance-param mode)
+  const [dateFilter, setDateFilter] = useState('');
+
   const { items: instances } = useSelector((s) => s.flightInstance);
   useEffect(() => {
     if (!instances || instances.length === 0) {
@@ -93,10 +98,22 @@ export default function FaresPage() {
 
   const initialForm = { ...EMPTY_FORM, flight_instance: instanceParam || '' };
 
-  const modifiedThunks = {
+  // Build the fetchList thunk — pass flight_instance if in instance mode, or date filter otherwise
+  const buildFetchList = useCallback((params) => {
+    const extra = {};
+    if (instanceParam) {
+      extra.flight_instance = instanceParam;
+    }
+    if (dateFilter) {
+      extra.date = dateFilter;
+    }
+    return fetchFares({ ...params, ...extra });
+  }, [instanceParam, dateFilter]);
+
+  const modifiedThunks = useMemo(() => ({
     ...THUNKS,
-    fetchList: (params) => fetchFares({ ...params, flight_instance: instanceParam || '' }),
-  };
+    fetchList: buildFetchList,
+  }), [buildFetchList]);
 
   const fromPage = searchParams.get('fromPage');
   const inFlow = searchParams.get('inFlow') === '1';
@@ -182,6 +199,66 @@ export default function FaresPage() {
     </>
   );
 
+  /* ── Date filter bar (Today / Tomorrow / DatePicker) ── */
+  const today = new Date();
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const todayStr = fmt(today);
+  const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+
+  const dateChips = [
+    { label: 'Today', date: todayStr },
+    { label: 'Tomorrow', date: tomorrowStr },
+  ];
+
+  const dateFilterBar = !instanceParam ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      {/* Divider */}
+      <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+
+      {/* Quick Date Chips */}
+      {dateChips.map(chip => {
+        const isActive = dateFilter === chip.date;
+        return (
+          <button
+            key={chip.label}
+            type="button"
+            onClick={() => {
+              if (isActive) {
+                setDateFilter('');
+              } else {
+                setDateFilter(chip.date);
+              }
+            }}
+            style={{
+              padding: '6px 13px',
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.18s',
+              border: isActive ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
+              background: isActive ? '#705d00' : 'rgba(255,255,255,0.7)',
+              color: isActive ? '#fff' : '#5e5e5e',
+              boxShadow: isActive ? '0 2px 8px rgba(112,93,0,0.18)' : 'none',
+            }}
+          >
+            {chip.label}
+          </button>
+        );
+      })}
+
+      {/* Inline Date Picker */}
+      <div style={{ flexShrink: 0, width: 136 }}>
+        <DatePicker
+          placeholder="Pick date"
+          value={dateFilter}
+          onChange={(val) => setDateFilter(val)}
+        />
+      </div>
+    </div>
+  ) : null;
+
   const CONFIG = {
     title: 'Fares (Instance Level)',
     breadcrumb,
@@ -195,11 +272,14 @@ export default function FaresPage() {
     getDeleteDetails: (item) => {
       if (!item) return null;
       const details = {};
+      if (item.flight_no) {
+        details['FLIGHT NO.'] = item.flight_no;
+      }
       if (item.fare_code) {
         details['FARE CODE'] = item.fare_code;
-        if (item.cabin_class) details['CABIN CLASS'] = item.cabin_class;
-        if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
       }
+      if (item.cabin_class) details['CABIN CLASS'] = item.cabin_class;
+      if (item.price !== undefined && item.price !== null) details['PRICE'] = `${item.currency || 'INR'} ${item.price}`;
       return details;
     }
   };
@@ -209,6 +289,7 @@ export default function FaresPage() {
       <AdminCrudPage
         config={CONFIG}
         banner={combinedBanner}
+        filterBar={dateFilterBar}
         saveAndNextUrl={instanceParam && inFlow ? `/admin/operations/seat-map?instance=${instanceParam}&inFlow=1${fromPage ? `&fromPage=${fromPage}` : ''}` : null}
       />
     </>

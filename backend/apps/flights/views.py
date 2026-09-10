@@ -909,7 +909,7 @@ class SeatViewSet(AdminModelViewSet):
 
 
 class FareViewSet(AdminModelViewSet):
-    queryset = Fare.objects.select_related("flight_instance").all()
+    queryset = Fare.objects.select_related("flight_instance", "flight_instance__flight").all()
     serializer_class = FareSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["fare_code", "cabin_class", "flight_instance__flight__flight_no"]
@@ -920,6 +920,9 @@ class FareViewSet(AdminModelViewSet):
         instance_id = self.request.query_params.get("flight_instance")
         if instance_id:
             qs = qs.filter(flight_instance_id=instance_id)
+        date = self.request.query_params.get("date")
+        if date:
+            qs = qs.filter(flight_instance__date=date)
         return qs
 
 
