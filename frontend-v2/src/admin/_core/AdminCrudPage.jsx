@@ -427,7 +427,7 @@ export default function AdminCrudPage({
                     </div>
                   )}
                 </div>
-                <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
+                <button type="submit" className="btn-primary px-[14px] py-[7px] text-[13px]">Search</button>
               </form>
             )}
             {filterBar}

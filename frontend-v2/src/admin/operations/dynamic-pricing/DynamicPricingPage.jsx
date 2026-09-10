@@ -341,7 +341,7 @@ export default function DynamicPricingPage() {
           <button
             onClick={() => setShowEvaluateConfirmModal(true)}
             disabled={isEvaluating}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {isEvaluating ? (
               <>
@@ -499,7 +499,7 @@ export default function DynamicPricingPage() {
                     <button
                       type="submit"
                       disabled={isSavingConfig}
-                      className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-bold text-xs py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="btn-primary w-full justify-center disabled:opacity-50"
                     >
                       {isSavingConfig ? <SpinnerLoader size={14} /> : null} Save Parameters
                     </button>
@@ -562,7 +562,7 @@ export default function DynamicPricingPage() {
                   <button
                     type="submit"
                     disabled={isSimulating}
-                    className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                    className="btn-primary disabled:opacity-50"
                   >
                     {isSimulating ? <SpinnerLoader size={14} /> : null} Run Simulation
                   </button>
@@ -889,7 +889,7 @@ export default function DynamicPricingPage() {
                 <button
                   type="submit"
                   disabled={isAddingHoliday}
-                  className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-1.5 btn-primary text-xs px-4 py-2 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isAddingHoliday ? <SpinnerLoader size={14} /> : null} Create Event
                 </button>
@@ -903,8 +903,8 @@ export default function DynamicPricingPage() {
         isOpen={showEvaluateConfirmModal}
         title="Re-evaluate All Dynamic Prices?"
         description="This will trigger an automated recalculation of fares for all scheduled upcoming flight instances based on current occupancy, booking proximity, weekend rules, and active holiday events."
-        variant="warning"
-        icon="bolt"
+        icon={null}
+        variant="primary"
         confirmText="Yes, Re-evaluate Fares"
         cancelText="Cancel"
         onConfirm={executeEvaluateAll}
