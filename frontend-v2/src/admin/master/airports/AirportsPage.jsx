@@ -20,7 +20,7 @@ const COLUMNS = [
 
 const EMPTY_FORM = {
   iata_code: '', airport_name: '', city: '', timezone: 'UTC',
-  latitude: '', longitude: '', country: '', terminals: [],
+  latitude: '', longitude: '', country: '', terminals: [''],
 };
 
 const validateForm = (form) => {
@@ -49,6 +49,10 @@ const validateForm = (form) => {
       e.longitude = 'Longitude must be a valid number between -180 and 180.';
     }
   }
+  const validTerminals = (form.terminals || []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean);
+  if (validTerminals.length === 0) {
+    e.terminals = 'At least one terminal is required.';
+  }
   return e;
 };
 
@@ -59,7 +63,7 @@ const onBeforeSubmit = (form) => ({
   city: form.city.trim(),
   latitude: form.latitude === '' || form.latitude === null ? null : Number(form.latitude),
   longitude: form.longitude === '' || form.longitude === null ? null : Number(form.longitude),
-  terminals: (form.terminals || []).map((t) => t.trim()).filter(Boolean),
+  terminals: (form.terminals || []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean),
 });
 
 const THUNKS = { fetchList: fetchAirports, fetchDetail: fetchAirportDetail, add: addAirport, update: updateAirport, remove: removeAirport };
