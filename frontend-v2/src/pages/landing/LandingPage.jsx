@@ -10,11 +10,6 @@ import { resolveAirport, AIRPORT_MAP, getAirportInfo } from "@/utils/airportHelp
 const FALLBACK_AIRPORTS = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
   HAM: { city: "Hamburg", code: "HAM", name: "Fuhlsbuettel", country: "Germany" },
-  CNN: { city: "Kannur", code: "CNN", name: "Kannur International Airport", country: "India" },
-  COK: { city: "Kochi", code: "COK", name: "Cochin International Airport", country: "India" },
-  CCJ: { city: "Kozhikode", code: "CCJ", name: "Calicut International Airport", country: "India" },
-  TRV: { city: "Thiruvananthapuram", code: "TRV", name: "Trivandrum International Airport", country: "India" },
-  BOM: { city: "Mumbai", code: "BOM", name: "Chhatrapati Shivaji Maharaj International Airport", country: "India" },
 };
 
 export default function LandingPage() {
