@@ -189,11 +189,14 @@ export default function RouteFareClassesPage() {
     const e = {};
     if (!form.route) e.route = 'Flight route is required.';
     if (!form.cabin_class) e.cabin_class = 'Cabin class is required.';
-    if (form.base_price === '' || Number(form.base_price) < 0) {
-      e.base_price = 'Base price must be a non-negative number.';
+    if (form.base_price === '' || isNaN(Number(form.base_price)) || Number(form.base_price) <= 0) {
+      e.base_price = 'Base price must be greater than 0.';
     }
-    if (form.change_fee === '' || Number(form.change_fee) < 0) {
+    if (form.change_fee === '' || isNaN(Number(form.change_fee)) || Number(form.change_fee) < 0) {
       e.change_fee = 'Change fee must be 0 or a positive number.';
+    }
+    if (!form.currency || !/^[A-Za-z]{3}$/.test(form.currency.trim())) {
+      e.currency = 'Currency must be a 3-letter code (e.g. INR).';
     }
     if (form.baggage_weight_allowed_kg !== '' && Number(form.baggage_weight_allowed_kg) < minBaggageAllowed) {
       e.baggage_weight_allowed_kg = `Baggage allowance cannot be less than the route default (${minBaggageAllowed} kg).`;
@@ -225,6 +228,7 @@ export default function RouteFareClassesPage() {
       route: Number(form.route),
       fare_code: form.cabin_class,
       base_price: Number(form.base_price),
+      currency: form.currency.trim().toUpperCase(),
       change_fee: Number(form.change_fee),
       baggage_weight_allowed_kg: Number(form.baggage_weight_allowed_kg || minBaggageAllowed),
     };
@@ -254,8 +258,8 @@ export default function RouteFareClassesPage() {
 
   const handleRepriceSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!newBasePrice || Number(newBasePrice) < 0) {
-      toast.error('Enter a valid non-negative base price.');
+    if (!newBasePrice || isNaN(Number(newBasePrice)) || Number(newBasePrice) <= 0) {
+      toast.error('Enter a valid base price greater than 0.');
       return;
     }
 

@@ -377,8 +377,8 @@ export default function BookingCheckoutPage() {
         pErr.name = "Name must be at least 2 characters";
         isValid = false;
         if (!firstInvalidKey) firstInvalidKey = `${idx}-name`;
-      } else if (p.name.trim().length > 60) {
-        pErr.name = "Name cannot exceed 60 characters";
+      } else if (p.name.trim().length > 150) {
+        pErr.name = "Name cannot exceed 150 characters";
         isValid = false;
         if (!firstInvalidKey) firstInvalidKey = `${idx}-name`;
       }
@@ -433,8 +433,8 @@ export default function BookingCheckoutPage() {
           fieldError = "Full name is required";
         } else if (p.name.trim().length < 2) {
           fieldError = "Name must be at least 2 characters";
-        } else if (p.name.trim().length > 60) {
-          fieldError = "Name cannot exceed 60 characters";
+        } else if (p.name.trim().length > 150) {
+          fieldError = "Name cannot exceed 150 characters";
         }
       } else if (changedField === "age") {
         if (!p.age || p.age.toString().trim() === "") {
@@ -472,8 +472,8 @@ export default function BookingCheckoutPage() {
         fieldError = "Full name is required";
       } else if (p.name.trim().length < 2) {
         fieldError = "Name must be at least 2 characters";
-      } else if (p.name.trim().length > 60) {
-        fieldError = "Name cannot exceed 60 characters";
+      } else if (p.name.trim().length > 150) {
+        fieldError = "Name cannot exceed 150 characters";
       }
     } else if (field === "age") {
       if (!p.age || p.age.toString().trim() === "") {

@@ -10,7 +10,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export function ComboInput({ id, label, placeholder, value = '', onChange, options = [], error, disabled }) {
+export function ComboInput({ id, label, placeholder, value = '', onChange, options = [], error, disabled, maxLength, ...props }) {
   const [open, setOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [inputVal, setInputVal] = useState(value);
@@ -160,9 +160,11 @@ export function ComboInput({ id, label, placeholder, value = '', onChange, optio
           type="text"
           autoComplete="off"
           disabled={disabled}
+          maxLength={maxLength}
           placeholder={placeholder}
           value={inputVal}
           onChange={handleInput}
+          {...props}
           onFocus={() => {
             setOpen(true);
             setIsFocused(true);

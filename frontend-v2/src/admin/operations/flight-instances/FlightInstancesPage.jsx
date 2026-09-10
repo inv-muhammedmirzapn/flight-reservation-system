@@ -269,14 +269,56 @@ export default function FlightInstancesPage() {
     if (!form.aircraft) e.aircraft = 'Aircraft is required.';
     if (!form.scheduled_departure) e.scheduled_departure = 'Scheduled departure is required.';
     if (!form.scheduled_arrival) e.scheduled_arrival = 'Scheduled arrival is required.';
+
+    if (form.date && form.scheduled_departure) {
+      const depDateStr = form.scheduled_departure.split('T')[0].split(' ')[0];
+      if (form.date !== depDateStr) {
+        e.date = `Instance date (${form.date}) must match scheduled departure date (${depDateStr}).`;
+      }
+    }
+
+    if (form.flight && form.date) {
+      const selectedRoute = routes.find(r => String(r.id) === String(form.flight));
+      if (selectedRoute?.operates_on_days) {
+        const d = new Date(form.date + 'T00:00:00');
+        const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const isoDay = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+        const activeDays = selectedRoute.operates_on_days.split(',').map(x => x.trim());
+        if (!activeDays.includes(isoDay)) {
+          const dayNames = { '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' };
+          const activeNames = activeDays.map(k => dayNames[k] || k).join(', ');
+          e.date = `Route does not operate on this day (active days: ${activeNames}).`;
+        }
+      }
+    }
+
     if (form.scheduled_departure && form.scheduled_arrival) {
       if (new Date(form.scheduled_arrival) <= new Date(form.scheduled_departure)) {
         e.scheduled_arrival = 'Arrival must be after departure.';
       }
     }
-    if (!form.boarding_gate || !form.boarding_gate.trim()) e.boarding_gate = 'Boarding gate is required.';
-    if (!form.departure_terminal || !form.departure_terminal.trim()) e.departure_terminal = 'Departure terminal is required.';
-    if (!form.arrival_terminal || !form.arrival_terminal.trim()) e.arrival_terminal = 'Arrival terminal is required.';
+
+    if (form.checkin_open && form.boarding_time) {
+      if (new Date(form.boarding_time) <= new Date(form.checkin_open)) {
+        e.boarding_time = 'Boarding time must be after check-in opens.';
+      }
+    }
+    if (form.boarding_time && form.scheduled_departure) {
+      if (new Date(form.boarding_time) > new Date(form.scheduled_departure)) {
+        e.boarding_time = 'Boarding time cannot be after scheduled departure.';
+      }
+    }
+
+    if (form.boarding_gate && form.boarding_gate.trim().length > 10) {
+      e.boarding_gate = 'Boarding gate must be 10 characters or less.';
+    }
+    if (form.departure_terminal && form.departure_terminal.trim().length > 10) {
+      e.departure_terminal = 'Departure terminal must be 10 characters or less.';
+    }
+    if (form.arrival_terminal && form.arrival_terminal.trim().length > 10) {
+      e.arrival_terminal = 'Arrival terminal must be 10 characters or less.';
+    }
+
     setLocalErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -595,15 +637,15 @@ export default function FlightInstancesPage() {
 
               {/* Row 3: Boarding Gate + Departure Terminal + Arrival Terminal */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
-                <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12"
+                <ComboInput id="fi_gate" label="Boarding Gate" placeholder="e.g. G12" maxLength={10}
                   value={form.boarding_gate} options={gateOptions}
                   onChange={(e) => { setForm((f) => ({ ...f, boarding_gate: e.target.value })); if (e.target.value) clearError('boarding_gate'); }}
                   error={localErrors.boarding_gate} />
-                <ComboInput id="fi_dep_term" label="Departure Terminal" placeholder="e.g. Terminal 1"
+                <ComboInput id="fi_dep_term" label="Departure Terminal" placeholder="e.g. Terminal 1" maxLength={10}
                   value={form.departure_terminal} options={depTerminalOptions}
                   onChange={(e) => { setForm((f) => ({ ...f, departure_terminal: e.target.value })); if (e.target.value) clearError('departure_terminal'); }}
                   error={localErrors.departure_terminal} />
-                <ComboInput id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. Terminal 2"
+                <ComboInput id="fi_arr_term" label="Arrival Terminal" placeholder="e.g. Terminal 2" maxLength={10}
                   value={form.arrival_terminal} options={arrTerminalOptions}
                   onChange={(e) => { setForm((f) => ({ ...f, arrival_terminal: e.target.value })); if (e.target.value) clearError('arrival_terminal'); }}
                   error={localErrors.arrival_terminal} />

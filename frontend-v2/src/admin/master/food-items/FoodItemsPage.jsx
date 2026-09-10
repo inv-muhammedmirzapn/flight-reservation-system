@@ -31,16 +31,36 @@ const validateForm = (form) => {
   const e = {};
   if (!form.airline) e.airline = 'Airline is required.';
   if (!form.name || form.name.trim().length < 2) e.name = 'Name must be at least 2 characters.';
-  if (form.price === '' || Number(form.price) < 0) e.price = 'Price must be a valid non-negative number.';
+  if (form.price === '' || isNaN(Number(form.price)) || Number(form.price) < 0) {
+    e.price = 'Price must be a valid non-negative number.';
+  }
+  if (!form.currency || !/^[A-Za-z]{3}$/.test(form.currency.trim())) {
+    e.currency = 'Currency must be a 3-letter code (e.g. INR).';
+  }
+  if (form.image instanceof File) {
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowed.includes(form.image.type)) {
+      e.image = 'Image must be a PNG, JPG, or WEBP file.';
+    } else if (form.image.size > 2 * 1024 * 1024) {
+      e.image = 'Image size must not exceed 2MB.';
+    }
+  }
   return e;
 };
 
 // Food item uses multipart for image upload
 const onBeforeSubmit = (form) => {
   const fd = new FormData();
-  Object.entries(form).forEach(([k, v]) => {
-    if (v !== null && v !== undefined) fd.append(k, v);
-  });
+  fd.append('airline', form.airline);
+  fd.append('name', form.name.trim());
+  fd.append('price', Number(form.price).toFixed(2));
+  fd.append('currency', form.currency.trim().toUpperCase());
+  fd.append('is_veg', form.is_vegan ? 'true' : String(!!form.is_veg));
+  fd.append('is_halal', String(!!form.is_halal));
+  fd.append('is_vegan', String(!!form.is_vegan));
+  if (form.image instanceof File) {
+    fd.append('image', form.image);
+  }
   return fd;
 };
 

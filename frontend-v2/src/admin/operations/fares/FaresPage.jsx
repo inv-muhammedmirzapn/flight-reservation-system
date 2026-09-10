@@ -39,9 +39,18 @@ const validateForm = (form) => {
   if (!form.flight_instance) e.flight_instance = 'Flight instance is required.';
   if (!form.fare_code || form.fare_code.trim().length < 2) e.fare_code = 'Fare code must be at least 2 characters.';
   if (!form.cabin_class) e.cabin_class = 'Cabin class is required.';
-  if (form.price === '' || Number(form.price) < 0) e.price = 'Price must be a non-negative number.';
-  if (form.change_fee === '' || Number(form.change_fee) < 0) e.change_fee = 'Change fee must be a non-negative number.';
-  if (form.baggage_allowance !== '' && Number(form.baggage_allowance) < 0) e.baggage_allowance = 'Baggage cannot be negative.';
+  if (form.price === '' || isNaN(Number(form.price)) || Number(form.price) <= 0) {
+    e.price = 'Price must be greater than 0.';
+  }
+  if (form.change_fee === '' || isNaN(Number(form.change_fee)) || Number(form.change_fee) < 0) {
+    e.change_fee = 'Change fee must be a non-negative number.';
+  }
+  if (form.baggage_allowance !== '' && (isNaN(Number(form.baggage_allowance)) || Number(form.baggage_allowance) < 0)) {
+    e.baggage_allowance = 'Baggage cannot be negative.';
+  }
+  if (!form.currency || !/^[A-Za-z]{3}$/.test(form.currency.trim())) {
+    e.currency = 'Currency must be a 3-letter code (e.g. INR).';
+  }
   return e;
 };
 

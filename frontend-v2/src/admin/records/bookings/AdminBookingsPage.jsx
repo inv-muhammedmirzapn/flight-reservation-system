@@ -394,7 +394,7 @@ export default function AdminBookingsPage() {
                     <tbody>
                       {selected.passengers.map((p, idx) => (
                         <tr key={p.id || idx} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '8px 12px', fontWeight: 600 }}>{p.name || p.full_name}</td>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, maxWidth: 220, wordBreak: 'break-word' }}>{p.name || p.full_name}</td>
                           <td style={{ padding: '8px 12px' }}>{p.age}</td>
                           <td style={{ padding: '8px 12px' }}>{p.gender}</td>
                           <td style={{ padding: '8px 12px' }}>{p.phone_number || '—'}</td>

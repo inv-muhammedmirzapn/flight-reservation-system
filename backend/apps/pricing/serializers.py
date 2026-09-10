@@ -26,11 +26,16 @@ class DynamicPricingConfigSerializer(serializers.ModelSerializer):
 
 class HolidayEventSerializer(serializers.ModelSerializer):
     multiplier = serializers.DecimalField(source='surge_multiplier', max_digits=5, decimal_places=2, read_only=True)
-    country_name = serializers.CharField(source='country.name', read_only=True, allow_null=True, default='')
+    country_name = serializers.SerializerMethodField()
 
     class Meta:
         model = HolidayEvent
         fields = "__all__"
+
+    def get_country_name(self, obj):
+        if obj.applicable_countries and len(obj.applicable_countries) > 0:
+            return ", ".join(str(c) for c in obj.applicable_countries)
+        return "Global (All Countries)" if obj.is_global else ""
 
 
 class DynamicPriceLogSerializer(serializers.ModelSerializer):

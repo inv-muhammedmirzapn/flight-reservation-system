@@ -64,10 +64,16 @@ export default function AdminCrudPage({
 
   const openCreate = useCallback(() => {
     setEditId(null);
-    setForm(emptyForm);
+    const initialForm = { ...emptyForm };
+    fields?.forEach(({ name, type }) => {
+      if (type === 'string-array' && (!Array.isArray(initialForm[name]) || initialForm[name].length === 0)) {
+        initialForm[name] = [''];
+      }
+    });
+    setForm(initialForm);
     setLocalErrors({});
     setShowForm(true);
-  }, [emptyForm]);
+  }, [emptyForm, fields]);
 
   const autoOpenedRef = useRef(false);
   useEffect(() => {
@@ -82,7 +88,14 @@ export default function AdminCrudPage({
   const openEdit = (item) => {
     setEditId(item.id);
     const f = {};
-    fields.forEach(({ name }) => { f[name] = item[name] ?? ''; });
+    fields.forEach(({ name, type }) => {
+      if (type === 'string-array') {
+        const val = item[name];
+        f[name] = Array.isArray(val) && val.length > 0 ? [...val] : [''];
+      } else {
+        f[name] = item[name] ?? '';
+      }
+    });
     setForm(f);
     setLocalErrors({});
     setShowForm(true);
@@ -455,18 +468,25 @@ export default function AdminCrudPage({
                     );
                   }
                   if (field.type === 'string-array') {
-                    const arr = Array.isArray(form[field.name]) ? form[field.name] : [];
+                    const rawArr = form[field.name];
+                    const arr = Array.isArray(rawArr) && rawArr.length > 0 ? rawArr : [''];
                     return (
                       <div key={field.name} className={field.fullWidth ? 'admin-form-full' : ''}>
                         <div className="flex justify-between items-center mb-1.5">
                           <label className="text-[11px] font-bold tracking-[0.06em] uppercase text-admin-muted">
                             {field.label}
                           </label>
-                          <button type="button" onClick={() => setForm(f => ({ ...f, [field.name]: [...arr, ''] }))} className="text-[11px] font-bold text-admin-accent-dark bg-transparent border-none cursor-pointer flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setForm(f => {
+                              const currentArr = Array.isArray(f[field.name]) && f[field.name].length > 0 ? f[field.name] : [''];
+                              return { ...f, [field.name]: [...currentArr, ''] };
+                            })}
+                            className="text-[11px] font-bold text-admin-accent-dark bg-transparent border-none cursor-pointer flex items-center gap-1 hover:underline"
+                          >
                             <Plus size={12} /> Add
                           </button>
                         </div>
-                        {arr.length === 0 && <p className="text-xs text-admin-muted mt-1 mb-2">No items added.</p>}
                         {arr.map((val, idx) => (
                           <div key={idx} className="flex gap-2 mb-2 items-center">
                             <div className="flex-1">
@@ -474,18 +494,33 @@ export default function AdminCrudPage({
                                 value={val}
                                 placeholder={field.placeholder || ''}
                                 onChange={(e) => {
-                                  const newArr = [...arr];
-                                  newArr[idx] = e.target.value;
-                                  setForm(f => ({ ...f, [field.name]: newArr }));
+                                  const currentArr = Array.isArray(form[field.name]) && form[field.name].length > 0
+                                    ? [...form[field.name]]
+                                    : [''];
+                                  currentArr[idx] = e.target.value;
+                                  setForm(f => ({ ...f, [field.name]: currentArr }));
+                                  if (localErrors[field.name]) {
+                                    setLocalErrors((prev) => ({ ...prev, [field.name]: '' }));
+                                  }
                                 }}
                               />
                             </div>
-                            <button type="button" onClick={() => {
-                              const newArr = arr.filter((_, i) => i !== idx);
-                              setForm(f => ({ ...f, [field.name]: newArr }));
-                            }} className="bg-transparent border-none text-status-red cursor-pointer p-1">
-                              <X size={14} />
-                            </button>
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentArr = Array.isArray(form[field.name]) && form[field.name].length > 0
+                                    ? form[field.name]
+                                    : [''];
+                                  const newArr = currentArr.filter((_, i) => i !== idx);
+                                  setForm(f => ({ ...f, [field.name]: newArr }));
+                                }}
+                                className="bg-transparent border-none text-status-red cursor-pointer p-1 hover:opacity-75"
+                                title="Remove"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
                           </div>
                         ))}
                         {errorMsg && <p className="text-xs text-status-red mt-1">{errorMsg}</p>}

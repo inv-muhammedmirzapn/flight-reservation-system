@@ -499,6 +499,11 @@
     grid-template-columns: 1fr auto 1fr;
   }
 
+  .leg-times-row {
+    @apply grid gap-3 items-start mt-3;
+    grid-template-columns: 1fr auto 1fr;
+  }
+
   .leg-arrow-container {
     @apply flex flex-col items-center;
   }
@@ -513,7 +518,8 @@
   }
 
   @media (max-width: 600px) {
-    .leg-airports-row {
+    .leg-airports-row,
+    .leg-times-row {
       @apply grid-cols-1;
     }
 

@@ -162,6 +162,11 @@ export default function DynamicPricingPage() {
       toast.error('No configuration record found to update.');
       return;
     }
+    const windowDays = parseInt(configForm.demand_window_days, 10);
+    if (isNaN(windowDays) || windowDays < 1 || windowDays > 90) {
+      toast.error('Demand window must be between 1 and 90 days.');
+      return;
+    }
     setIsSavingConfig(true);
     try {
       const payload = {
@@ -173,8 +178,8 @@ export default function DynamicPricingPage() {
         demand_surge_per_booking: parseFloat(configForm.demand_surge_pct || 0).toFixed(2),
         max_demand_surge_percent: parseFloat(configForm.max_surge_cap_pct || 0).toFixed(2),
         max_surge_cap: (1 + parseFloat(configForm.max_surge_cap_pct || 0) / 100).toFixed(2),
-        demand_window_days: Number(configForm.demand_window_days),
-        rolling_window_days: Number(configForm.demand_window_days),
+        demand_window_days: windowDays,
+        rolling_window_days: windowDays,
       };
       await dispatch(
         updateDynamicPricingConfig({
@@ -213,13 +218,22 @@ export default function DynamicPricingPage() {
       toast.error('Please select a route fare class for simulation.');
       return;
     }
+    const mockCount = Number(simForm.mock_booking_count);
+    if (isNaN(mockCount) || !Number.isInteger(mockCount) || mockCount < 0) {
+      toast.error('Mock booking count must be a non-negative whole number.');
+      return;
+    }
+    if (!simForm.flight_date) {
+      toast.error('Please select a flight date.');
+      return;
+    }
     setIsSimulating(true);
     try {
       const res = await dispatch(
         simulateDynamicPricing({
           route_fare_id: simForm.route_fare_id,
           flight_date: simForm.flight_date,
-          mock_booking_count: Number(simForm.mock_booking_count),
+          mock_booking_count: mockCount,
         })
       ).unwrap();
       setSimResult(res);
@@ -234,23 +248,42 @@ export default function DynamicPricingPage() {
   // Handle Add Holiday Event
   const handleAddHoliday = async (e) => {
     e.preventDefault();
-    if (!holidayForm.name || !holidayForm.start_date || !holidayForm.end_date) {
-      toast.error('Please complete all required fields.');
+    if (!holidayForm.name?.trim()) {
+      toast.error('Holiday event name is required.');
       return;
     }
+    if (!holidayForm.start_date || !holidayForm.end_date) {
+      toast.error('Start and end dates are required.');
+      return;
+    }
+    if (new Date(holidayForm.end_date) < new Date(holidayForm.start_date)) {
+      toast.error('End date cannot be before start date.');
+      return;
+    }
+    const surge = parseFloat(holidayForm.surge_percent);
+    if (isNaN(surge) || surge < 0) {
+      toast.error('Surge percentage must be a non-negative number.');
+      return;
+    }
+
     setIsAddingHoliday(true);
     try {
-      const multDecimal = (1 + parseFloat(holidayForm.surge_percent || 20) / 100).toFixed(2);
-      await dispatch(
-        addHolidayEvent({
-          name: holidayForm.name,
-          country: holidayForm.country || null,
-          start_date: holidayForm.start_date,
-          end_date: holidayForm.end_date,
-          multiplier: multDecimal,
-          surge_multiplier: multDecimal,
-        })
-      ).unwrap();
+      const multDecimal = (1 + surge / 100).toFixed(2);
+      const selectedCountryObj = countries?.find((c) => String(c.id) === String(holidayForm.country));
+      const countryName = selectedCountryObj?.name || (typeof holidayForm.country === 'string' ? holidayForm.country.trim() : '');
+
+      const payload = {
+        name: holidayForm.name.trim(),
+        start_date: holidayForm.start_date,
+        end_date: holidayForm.end_date,
+        surge_multiplier: multDecimal,
+        multiplier: multDecimal,
+        is_global: !countryName,
+        applicable_countries: countryName ? [countryName] : [],
+        is_active: true,
+      };
+
+      await dispatch(addHolidayEvent(payload)).unwrap();
       toast.success('Holiday event added successfully.');
       setShowHolidayModal(false);
       setHolidayForm({ name: '', country: '', start_date: '', end_date: '', surge_percent: '20' });

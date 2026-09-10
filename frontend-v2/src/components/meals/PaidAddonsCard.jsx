@@ -53,11 +53,11 @@ export default function PaidAddonsCard({
           return (
             <div key={paxIdx} className="p-4 rounded-2xl plain-card space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="material-symbols-outlined text-slate-500 text-lg flex-shrink-0">
                     person
                   </span>
-                  <h4 className="text-sm font-bold text-slate-950 break-words">{paxName}</h4>
+                  <h4 className="text-sm font-bold text-slate-950 break-words [overflow-wrap:anywhere]">{paxName}</h4>
                   {metaText && (
                     <span className="text-xs text-slate-400 font-medium flex-shrink-0">
                       ({metaText})

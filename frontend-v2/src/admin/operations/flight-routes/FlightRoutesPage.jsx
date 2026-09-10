@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchWithAuth } from '@/services/apiClient';
 import { Input } from '@/components/ui/Input';
+import { TimePicker } from '@/components/ui/TimePicker';
 import '@/admin/_core/styles/admin.css';
 import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
@@ -19,7 +20,7 @@ import {
 import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus, Pencil, Trash2, Save, X, AlertCircle, ChevronRight,
-  Search, PlusCircle, MinusCircle, MapPin, Tag, Clock, Calendar,
+  Search, PlusCircle, MinusCircle, MapPin, Tag, Clock, Calendar, Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useDeleteAction from '../../_core/hooks/useDeleteAction';
@@ -46,6 +47,52 @@ const formatDays = (daysStr) => {
   return parts.map((d) => dayNames[d] || d).join(', ');
 };
 
+// ─── Time calculation & formatting helpers ────────────────────────────────────
+const timeToMinutes = (str) => {
+  if (!str) return 0;
+  const [h, m] = str.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+const minutesToTime = (totalMins) => {
+  const norm = ((totalMins % 1440) + 1440) % 1440;
+  const h = Math.floor(norm / 60);
+  const m = norm % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+const addMinutesToTime = (timeStr, mins) => {
+  return minutesToTime(timeToMinutes(timeStr) + (Number(mins) || 0));
+};
+
+const diffMinutes = (startStr, endStr) => {
+  const start = timeToMinutes(startStr);
+  const end = timeToMinutes(endStr);
+  if (end >= start) return end - start;
+  return (end + 1440) - start; // crossed midnight
+};
+
+const formatTime12h = (timeStr) => {
+  if (!timeStr) return '--:--';
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  if (isNaN(h)) return timeStr;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+};
+
+const formatMins = (mins) => {
+  if (!mins) return '0m';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
 const EMPTY_LEG = {
   departure_airport: '',
   arrival_airport: '',
@@ -60,7 +107,7 @@ const EMPTY_FORM = {
   airline: '',
   operates_on_days: '1,2,3,4,5,6,7',
   scheduled_departure_time: '08:00',
-  scheduled_arrival_time: '14:00',
+  scheduled_arrival_time: '10:00',
   baggage_weight_allowed_per_person: '20',
   baggage_number_allowed_per_person: '',
   handbag_weight_allowed_per_person: '7',
@@ -99,8 +146,8 @@ export default function FlightRoutesPage() {
       if (r.flight_no?.toLowerCase().includes(q)) map.set(r.flight_no, 'Flight No');
       if (r.airline_name?.toLowerCase().includes(q)) map.set(r.airline_name, 'Airline');
       (r.legs || []).forEach(leg => {
-         if (leg.departure_airport_iata?.toLowerCase().includes(q)) map.set(leg.departure_airport_iata, 'Airport Code');
-         if (leg.arrival_airport_iata?.toLowerCase().includes(q)) map.set(leg.arrival_airport_iata, 'Airport Code');
+        if (leg.departure_airport_iata?.toLowerCase().includes(q)) map.set(leg.departure_airport_iata, 'Airport Code');
+        if (leg.arrival_airport_iata?.toLowerCase().includes(q)) map.set(leg.arrival_airport_iata, 'Airport Code');
       });
     });
     return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
@@ -208,26 +255,38 @@ export default function FlightRoutesPage() {
       const regex = new RegExp(`^${selectedAirline.iata_airline_code}[-]?`, 'i');
       numericFlightNo = numericFlightNo.replace(regex, '');
     }
+
+    const loadedLegs = (route.legs || []).map((leg) => {
+      const depT = leg.scheduled_departure_time ? leg.scheduled_departure_time.substring(0, 5) : '08:00';
+      const dur = Number(leg.flight_duration_minutes) || 120;
+      const arrT = leg.scheduled_arrival_time ? leg.scheduled_arrival_time.substring(0, 5) : addMinutesToTime(depT, dur);
+      return {
+        departure_airport: leg.departure_airport,
+        arrival_airport: leg.arrival_airport,
+        flight_duration_minutes: dur,
+        layover_duration_minutes: leg.layover_duration_minutes || 0,
+        scheduled_departure_time: depT,
+        scheduled_arrival_time: arrT,
+      };
+    });
+
+    const finalLegs = loadedLegs.length > 0 ? loadedLegs : [{ ...EMPTY_LEG }];
+    const overallDep = finalLegs[0]?.scheduled_departure_time || (route.scheduled_departure_time ? route.scheduled_departure_time.substring(0, 5) : '08:00');
+    const overallArr = finalLegs[finalLegs.length - 1]?.scheduled_arrival_time || (route.scheduled_arrival_time ? route.scheduled_arrival_time.substring(0, 5) : '10:00');
+
     setForm({
       flight_no: numericFlightNo,
       airline: route.airline || '',
       operates_on_days: route.operates_on_days || '1,2,3,4,5,6,7',
-      scheduled_departure_time: route.scheduled_departure_time ? route.scheduled_departure_time.substring(0, 5) : '08:00',
-      scheduled_arrival_time: route.scheduled_arrival_time ? route.scheduled_arrival_time.substring(0, 5) : '14:00',
+      scheduled_departure_time: overallDep,
+      scheduled_arrival_time: overallArr,
       baggage_weight_allowed_per_person: route.baggage_weight_allowed_per_person || '20',
       baggage_number_allowed_per_person: route.baggage_number_allowed_per_person ?? '',
       handbag_weight_allowed_per_person: route.handbag_weight_allowed_per_person || '7',
       max_extra_baggage_kg_per_person: route.max_extra_baggage_kg_per_person ?? '20',
       extra_baggage_price_per_kg: route.extra_baggage_price_per_kg ?? '500',
       extra_baggage_currency: route.extra_baggage_currency || 'INR',
-      legs: (route.legs || []).map((leg) => ({
-        departure_airport: leg.departure_airport,
-        arrival_airport: leg.arrival_airport,
-        flight_duration_minutes: leg.flight_duration_minutes || 120,
-        layover_duration_minutes: leg.layover_duration_minutes || 0,
-        scheduled_departure_time: leg.scheduled_departure_time ? leg.scheduled_departure_time.substring(0, 5) : '08:00',
-        scheduled_arrival_time: leg.scheduled_arrival_time ? leg.scheduled_arrival_time.substring(0, 5) : '10:00',
-      })),
+      legs: finalLegs,
     });
     setLocalErrors({});
     setShowForm(true);
@@ -242,21 +301,109 @@ export default function FlightRoutesPage() {
       const prevLeg = f.legs[f.legs.length - 1];
       newLeg.departure_airport = prevLeg.arrival_airport;
       newLeg.layover_duration_minutes = 60; // 1 hour default layover
-      newLeg.scheduled_departure_time = prevLeg.scheduled_arrival_time || '11:00';
-      newLeg.scheduled_arrival_time = f.scheduled_arrival_time || '14:00';
+      const depTime = prevLeg.scheduled_arrival_time ? addMinutesToTime(prevLeg.scheduled_arrival_time, 60) : '11:00';
+      newLeg.scheduled_departure_time = depTime;
+      newLeg.flight_duration_minutes = 120;
+      newLeg.scheduled_arrival_time = addMinutesToTime(depTime, 120);
     } else {
       newLeg.scheduled_departure_time = f.scheduled_departure_time || '08:00';
-      newLeg.scheduled_arrival_time = f.scheduled_arrival_time || '14:00';
+      newLeg.flight_duration_minutes = 120;
+      newLeg.scheduled_arrival_time = addMinutesToTime(newLeg.scheduled_departure_time, 120);
     }
-    return { ...f, legs: [...f.legs, newLeg] };
+    const nextLegs = [...f.legs, newLeg];
+    return {
+      ...f,
+      legs: nextLegs,
+      scheduled_departure_time: nextLegs[0]?.scheduled_departure_time || f.scheduled_departure_time,
+      scheduled_arrival_time: nextLegs[nextLegs.length - 1]?.scheduled_arrival_time || f.scheduled_arrival_time,
+    };
   });
 
-  const removeLeg = (i) => setForm((f) => ({ ...f, legs: f.legs.filter((_, idx) => idx !== i) }));
-  const updateLeg = (i, key, val) =>
-    setForm((f) => ({
+  const removeLeg = (i) => setForm((f) => {
+    const remaining = f.legs.filter((_, idx) => idx !== i);
+    for (let idx = 1; idx < remaining.length; idx++) {
+      remaining[idx] = { ...remaining[idx], departure_airport: remaining[idx - 1].arrival_airport };
+    }
+    return {
       ...f,
-      legs: f.legs.map((l, idx) => idx === i ? { ...l, [key]: val } : l),
-    }));
+      legs: remaining,
+      scheduled_departure_time: remaining[0]?.scheduled_departure_time || f.scheduled_departure_time,
+      scheduled_arrival_time: remaining[remaining.length - 1]?.scheduled_arrival_time || f.scheduled_arrival_time,
+    };
+  });
+
+  const updateLeg = (i, key, val) =>
+    setForm((f) => {
+      let nextLegs = f.legs.map((l, idx) => (idx === i ? { ...l, [key]: val } : { ...l }));
+
+      // Airport continuity
+      if (key === 'arrival_airport' && nextLegs[i + 1]) {
+        nextLegs[i + 1].departure_airport = val;
+      }
+
+      // Departure time changed
+      if (key === 'scheduled_departure_time') {
+        if (val) {
+          const currentArr = nextLegs[i].scheduled_arrival_time;
+          if (currentArr) {
+            const mins = diffMinutes(val, currentArr);
+            if (mins > 0 && mins < 1440) {
+              nextLegs[i].flight_duration_minutes = mins;
+            } else {
+              const prevDur = Number(nextLegs[i].flight_duration_minutes) || 120;
+              nextLegs[i].scheduled_arrival_time = addMinutesToTime(val, prevDur);
+            }
+          } else {
+            const prevDur = Number(nextLegs[i].flight_duration_minutes) || 120;
+            nextLegs[i].scheduled_arrival_time = addMinutesToTime(val, prevDur);
+          }
+        }
+      }
+
+      // Arrival time changed -> automatically calculate flight duration
+      if (key === 'scheduled_arrival_time') {
+        if (val && nextLegs[i].scheduled_departure_time) {
+          const calcMins = diffMinutes(nextLegs[i].scheduled_departure_time, val);
+          nextLegs[i].flight_duration_minutes = calcMins > 0 ? calcMins : 0;
+        }
+      }
+
+      // Layover changed on leg i -> update departure & arrival of leg i
+      if (key === 'layover_duration_minutes' && i > 0) {
+        const prevArr = nextLegs[i - 1]?.scheduled_arrival_time;
+        const layover = Number(val) || 0;
+        if (prevArr) {
+          const newDep = addMinutesToTime(prevArr, layover);
+          nextLegs[i].scheduled_departure_time = newDep;
+          const dur = Number(nextLegs[i].flight_duration_minutes) || 120;
+          nextLegs[i].scheduled_arrival_time = addMinutesToTime(newDep, dur);
+        }
+      }
+
+      // Cascade timing changes to subsequent legs
+      if (['scheduled_departure_time', 'scheduled_arrival_time', 'layover_duration_minutes'].includes(key)) {
+        for (let k = i + 1; k < nextLegs.length; k++) {
+          const prevArr = nextLegs[k - 1]?.scheduled_arrival_time;
+          if (prevArr) {
+            const layover = Number(nextLegs[k].layover_duration_minutes) || 0;
+            const newDep = addMinutesToTime(prevArr, layover);
+            nextLegs[k].scheduled_departure_time = newDep;
+            const dur = Number(nextLegs[k].flight_duration_minutes) || 120;
+            nextLegs[k].scheduled_arrival_time = addMinutesToTime(newDep, dur);
+          }
+        }
+      }
+
+      const routeDep = nextLegs[0]?.scheduled_departure_time || f.scheduled_departure_time;
+      const routeArr = nextLegs[nextLegs.length - 1]?.scheduled_arrival_time || f.scheduled_arrival_time;
+
+      return {
+        ...f,
+        legs: nextLegs,
+        scheduled_departure_time: routeDep,
+        scheduled_arrival_time: routeArr,
+      };
+    });
 
   // ─── Validation ──────────────────────────────────────────────────────────────
   const validateForm = () => {
@@ -266,24 +413,24 @@ export default function FlightRoutesPage() {
     }
     if (!form.airline) e.airline = 'Airline is required.';
     if (!form.operates_on_days) e.operates_on_days = 'Select at least one operating day.';
-    if (!form.scheduled_departure_time) e.scheduled_departure_time = 'Scheduled departure time is required.';
-    if (!form.scheduled_arrival_time) e.scheduled_arrival_time = 'Scheduled arrival time is required.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
+    if (form.baggage_number_allowed_per_person !== '' && form.baggage_number_allowed_per_person !== null) {
+      const bagNum = Number(form.baggage_number_allowed_per_person);
+      if (isNaN(bagNum) || !Number.isInteger(bagNum) || bagNum < 0) {
+        e.baggage_number_allowed_per_person = 'Must be a non-negative whole number.';
+      }
+    }
     if (Number(form.handbag_weight_allowed_per_person) < 0) e.handbag_weight_allowed_per_person = 'Cannot be negative.';
     if (Number(form.max_extra_baggage_kg_per_person) < 0) e.max_extra_baggage_kg_per_person = 'Cannot be negative.';
     if (Number(form.extra_baggage_price_per_kg) < 0) e.extra_baggage_price_per_kg = 'Cannot be negative.';
 
-    if (form.legs.length > 0 && form.legs[0].scheduled_departure_time && form.scheduled_departure_time) {
-      if (form.legs[0].scheduled_departure_time !== form.scheduled_departure_time) {
-        e.leg_0_dep_time = `Leg 1 departure (${form.legs[0].scheduled_departure_time}) must match route departure (${form.scheduled_departure_time}).`;
-      }
-    }
-
-    if (form.legs.length > 0 && form.legs[form.legs.length - 1].scheduled_arrival_time && form.scheduled_arrival_time) {
-      const lastIdx = form.legs.length - 1;
-      if (form.legs[lastIdx].scheduled_arrival_time !== form.scheduled_arrival_time) {
-        e[`leg_${lastIdx}_arr_time`] = `Last leg arrival (${form.legs[lastIdx].scheduled_arrival_time}) must match route arrival (${form.scheduled_arrival_time}).`;
+    // Continuity and individual leg checks
+    for (let i = 1; i < form.legs.length; i++) {
+      const prevLeg = form.legs[i - 1];
+      const currLeg = form.legs[i];
+      if (currLeg.departure_airport && prevLeg.arrival_airport && currLeg.departure_airport !== prevLeg.arrival_airport) {
+        e[`leg_${i}_dep_apt`] = `Leg ${i + 1} departure must match Leg ${i} arrival airport.`;
       }
     }
 
@@ -315,11 +462,14 @@ export default function FlightRoutesPage() {
     const prefix = selectedAirline ? `${selectedAirline.iata_airline_code}-` : '';
     const fullFlightNo = `${prefix}${form.flight_no.trim()}`;
 
+    const routeDepTime = form.legs[0]?.scheduled_departure_time || form.scheduled_departure_time;
+    const routeArrTime = form.legs[form.legs.length - 1]?.scheduled_arrival_time || form.scheduled_arrival_time;
+
     const payload = {
       ...form,
       flight_no: fullFlightNo,
-      scheduled_departure_time: form.scheduled_departure_time ? `${form.scheduled_departure_time}:00` : null,
-      scheduled_arrival_time: form.scheduled_arrival_time ? `${form.scheduled_arrival_time}:00` : null,
+      scheduled_departure_time: routeDepTime ? `${routeDepTime}:00` : null,
+      scheduled_arrival_time: routeArrTime ? `${routeArrTime}:00` : null,
       baggage_weight_allowed_per_person: form.baggage_weight_allowed_per_person ? Number(form.baggage_weight_allowed_per_person) : 20,
       baggage_number_allowed_per_person: form.baggage_number_allowed_per_person ? Number(form.baggage_number_allowed_per_person) : null,
       handbag_weight_allowed_per_person: form.handbag_weight_allowed_per_person ? Number(form.handbag_weight_allowed_per_person) : 7,
@@ -365,13 +515,6 @@ export default function FlightRoutesPage() {
     errorMessage: 'Failed to delete flight route.'
   });
 
-  const formatMins = (mins) => {
-    if (!mins) return '0m';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}` : `${m}m`;
-  };
-
   const totalPages = count ? Math.ceil(count / ADMIN_PAGE_SIZE) : 1;
 
   return (
@@ -389,17 +532,17 @@ export default function FlightRoutesPage() {
 
         {/* Search */}
         <form onSubmit={(e) => { e.preventDefault(); setActiveSearch(search); setPage(1); }} className="flex gap-2 mb-5">
-          <div className="admin-toolbar-search" style={{ position: 'relative' }}>
+          <div className="admin-toolbar-search relative">
             <Search size={14} className="search-icon" />
-            <input 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               onFocus={() => setSearchFocus(true)}
               onBlur={() => setSearchFocus(false)}
-              placeholder="Search by flight number…" 
+              placeholder="Search by flight number…"
             />
             {searchFocus && searchSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
+              <div className="absolute top-full left-0 right-0 z-[1000] bg-white border border-black/10 rounded-lg max-h-[180px] overflow-y-auto shadow-[0_4px_12px_rgba(0,0,0,0.1)] mt-1">
                 {searchSuggestions.map((sug, idx) => (
                   <div
                     key={idx}
@@ -410,12 +553,11 @@ export default function FlightRoutesPage() {
                       setPage(1);
                       setSearchFocus(false);
                     }}
-                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    className={`px-3 py-2 cursor-pointer flex items-center justify-between gap-1.5 transition-colors hover:bg-[rgba(112,93,0,0.06)] ${idx < searchSuggestions.length - 1 ? 'border-b border-black/[0.04]' : ''
+                      }`}
                   >
-                    <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
-                    <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
+                    <span className="font-semibold text-[#1a1c1d] text-[13px]">{sug.value}</span>
+                    <span className="text-[11px] text-[#888] uppercase tracking-[0.05em] font-bold">{sug.category}</span>
                   </div>
                 ))}
               </div>
@@ -463,61 +605,61 @@ export default function FlightRoutesPage() {
                       onClick={(e) => handleRowClick(e, r.id)}
                       className={`admin-row cursor-pointer ${isHighlighted ? 'admin-row-highlight' : ''}`}
                     >
-                    <td><strong>{r.flight_no}</strong></td>
-                    <td>{r.airline_name || r.airline}</td>
-                    <td>
-                      <div className="flex flex-col text-xs font-semibold gap-0.5">
-                        <span className="text-[#1a1c1d] flex items-center gap-1">
-                          <Clock size={11} className="text-[#705d00]" />
-                          {r.scheduled_departure_time ? r.scheduled_departure_time.substring(0, 5) : '--:--'} – {r.scheduled_arrival_time ? r.scheduled_arrival_time.substring(0, 5) : '--:--'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {formatDays(r.operates_on_days)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="fr-legs-cell">
-                      <div className="flex flex-col gap-1">
-                        {(r.legs || []).map((leg, i) => (
-                          <div key={i} className="flex flex-col gap-0.5">
-                            {i > 0 && (
-                              <div className="fr-layover-row flex items-center gap-1 pl-1">
-                                <div className="w-px h-3 bg-[#ccc]" />
-                                <span className="fr-layover-pill text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded leading-none">
-                                  Layover {formatMins(leg.layover_duration_minutes)}
-                                </span>
-                              </div>
-                            )}
-                            <span className="fr-leg-badge text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold whitespace-nowrap w-max">
-                              {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
-                              <span className="text-[#666] font-normal ml-1">({leg.scheduled_departure_time?.substring(0, 5)} - {leg.scheduled_arrival_time?.substring(0, 5)}, {formatMins(leg.flight_duration_minutes)})</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td>{r.baggage_weight_allowed_per_person}</td>
-                    <td>{r.handbag_weight_allowed_per_person}</td>
-                    <td className="text-right whitespace-nowrap">
-                      <div className="flex gap-1.5 items-center justify-end">
-                        <button
-                          className="btn-secondary"
-                          title="Route Fare Templates"
-                          onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}&fromPage=${page}`)}
-                          style={{ padding: '5px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <Tag size={12} className="text-[#705d00]" /> Fares
-                        </button>
-                        <button className="btn-secondary" title="Edit" onClick={() => openEdit(r)} style={{ padding: '6px 8px' }}>
-                          <Pencil size={14} />
-                        </button>
-                        <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(r)} style={{ padding: '6px 8px' }}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );})}
+                      <td><strong>{r.flight_no}</strong></td>
+                      <td>{r.airline_name || r.airline}</td>
+                      <td>
+                        <div className="flex flex-col text-xs font-semibold gap-0.5">
+                          <span className="text-[#1a1c1d] flex items-center gap-1">
+                            <Clock size={11} className="text-[#705d00]" />
+                            {r.scheduled_departure_time ? r.scheduled_departure_time.substring(0, 5) : '--:--'} – {r.scheduled_arrival_time ? r.scheduled_arrival_time.substring(0, 5) : '--:--'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {formatDays(r.operates_on_days)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="fr-legs-cell">
+                        <div className="flex flex-col gap-1">
+                          {(r.legs || []).map((leg, i) => (
+                            <div key={i} className="flex flex-col gap-0.5">
+                              {i > 0 && (
+                                <div className="fr-layover-row flex items-center gap-1 pl-1">
+                                  <div className="w-px h-3 bg-[#ccc]" />
+                                  <span className="fr-layover-pill text-[10px] text-[#888] bg-black/5 px-1.5 py-px rounded leading-none">
+                                    Layover {formatMins(leg.layover_duration_minutes)}
+                                  </span>
+                                </div>
+                              )}
+                              <span className="fr-leg-badge text-[11px] bg-[rgba(112,93,0,0.08)] rounded-md px-2 py-0.5 font-semibold whitespace-nowrap w-max">
+                                {leg.departure_airport_iata || leg.departure_airport} → {leg.arrival_airport_iata || leg.arrival_airport}
+                                <span className="text-[#666] font-normal ml-1">({leg.scheduled_departure_time?.substring(0, 5)} - {leg.scheduled_arrival_time?.substring(0, 5)}, {formatMins(leg.flight_duration_minutes)})</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td>{r.baggage_weight_allowed_per_person}</td>
+                      <td>{r.handbag_weight_allowed_per_person}</td>
+                      <td className="text-right whitespace-nowrap">
+                        <div className="flex gap-1.5 items-center justify-end">
+                          <button
+                            className="btn-secondary py-1 px-2 text-[11px] flex items-center gap-1"
+                            title="Route Fare Templates"
+                            onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}&fromPage=${page}`)}
+                          >
+                            <Tag size={12} className="text-[#705d00]" /> Fares
+                          </button>
+                          <button className="btn-secondary py-1.5 px-2" title="Edit" onClick={() => openEdit(r)}>
+                            <Pencil size={14} />
+                          </button>
+                          <button className="btn-danger py-1.5 px-2" title="Delete" onClick={() => setDeleteItem(r)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -552,7 +694,7 @@ export default function FlightRoutesPage() {
 
             {validationErrors && (
               <div className="admin-error">
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-1">
                   {typeof validationErrors === 'string' ? (
                     <span>{validationErrors}</span>
@@ -572,8 +714,8 @@ export default function FlightRoutesPage() {
 
             <form onSubmit={handleSubmit}>
               {/* Row 1: Airline + Flight Number */}
-              <div className="admin-form-grid" style={{ marginBottom: 16 }}>
-                 <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
+              <div className="admin-form-grid mb-4">
+                <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
                   onChange={(e) => {
                     const airlineId = e.target.value;
                     setForm((f) => ({
@@ -587,32 +729,15 @@ export default function FlightRoutesPage() {
                   <label htmlFor="flight_no" className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                     Flight Number
                   </label>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div className="flex items-center">
                     {form.airline ? (() => {
                       const selected = airlines.find((a) => String(a.id) === String(form.airline));
                       if (selected) {
                         return (
-                          <div style={{
-                            padding: '9px 14px',
-                            background: 'rgba(0, 0, 0, 0.04)',
-                            border: `1.5px solid ${
-                              (localErrors.flight_no || validationErrors?.flight_no)
-                                ? '#b91c1c'
-                                : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
-                            }`,
-                            borderRight: 'none',
-                            borderRadius: '10px 0 0 10px',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: '#5e5e5e',
-                            fontFamily: 'Inter, sans-serif',
-                            height: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            boxSizing: 'border-box',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0
-                          }}>
+                          <div className={`py-[9px] px-3.5 bg-black/[0.04] border-[1.5px] border-r-0 rounded-l-[10px] text-sm font-bold text-[#5e5e5e] font-sans h-10 flex items-center box-border whitespace-nowrap shrink-0 ${(localErrors.flight_no || validationErrors?.flight_no)
+                              ? 'border-[#b91c1c]'
+                              : (isFlightNoFocused ? 'border-[#888888]' : 'border-black/10')
+                            }`}>
                             {selected.iata_airline_code} -
                           </div>
                         );
@@ -630,35 +755,18 @@ export default function FlightRoutesPage() {
                       }}
                       onFocus={() => setIsFlightNoFocused(true)}
                       onBlur={() => setIsFlightNoFocused(false)}
-                      style={{
-                        flex: 1,
-                        background: form.airline
-                          ? (isFlightNoFocused ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.65)')
-                          : 'rgba(0,0,0,0.03)',
-                        border: `1.5px solid ${
-                          (localErrors.flight_no || validationErrors?.flight_no)
-                            ? '#b91c1c'
-                            : (isFlightNoFocused ? '#888888' : 'rgba(0,0,0,0.1)')
-                        }`,
-                        borderLeft: form.airline ? 'none' : undefined,
-                        borderRadius: form.airline ? '0 10px 10px 0' : '10px',
-                        padding: '9px 13px',
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: '#1a1c1d',
-                        fontFamily: 'Inter, sans-serif',
-                        outline: 'none',
-                        height: '40px',
-                        boxSizing: 'border-box',
-                        boxShadow: (localErrors.flight_no || validationErrors?.flight_no)
-                          ? (isFlightNoFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
-                          : (isFlightNoFocused ? '0 0 0 3px rgba(0,0,0,0.05)' : 'none'),
-                        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s'
-                      }}
+                      className={`flex-1 border-[1.5px] py-[9px] px-[13px] text-sm font-medium text-[#1a1c1d] font-sans outline-none h-10 box-border transition-all duration-200 ${form.airline ? 'border-l-0 rounded-r-[10px]' : 'rounded-[10px]'
+                        } ${form.airline
+                          ? (isFlightNoFocused ? 'bg-white/90' : 'bg-white/65')
+                          : 'bg-black/[0.03]'
+                        } ${(localErrors.flight_no || validationErrors?.flight_no)
+                          ? (isFlightNoFocused ? 'border-[#b91c1c] shadow-[0_0_0_3px_rgba(185,28,28,0.18)]' : 'border-[#b91c1c] shadow-[0_0_0_3px_rgba(185,28,28,0.1)]')
+                          : (isFlightNoFocused ? 'border-[#888888] shadow-[0_0_0_3px_rgba(0,0,0,0.05)]' : 'border-black/10 shadow-none')
+                        }`}
                     />
                   </div>
                   {(localErrors.flight_no || validationErrors?.flight_no) && (
-                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 2, paddingLeft: 2 }}>
+                    <p className="text-xs text-[#b91c1c] mt-0.5 pl-0.5">
                       {localErrors.flight_no || (Array.isArray(validationErrors.flight_no) ? validationErrors.flight_no.join(', ') : validationErrors.flight_no)}
                     </p>
                   )}
@@ -687,11 +795,10 @@ export default function FlightRoutesPage() {
                           }
                           setForm((f) => ({ ...f, operates_on_days: next.join(',') }));
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                          selected
-                            ? 'bg-[#705d00] text-white border-[#705d00] shadow-sm'
-                            : 'bg-white/60 text-slate-600 border-slate-200 hover:bg-slate-100'
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${selected
+                            ? 'shadow-sm bg-[rgba(112,93,0,0.06)] border-[rgba(112,93,0,0.25)] text-[#705d00]'
+                            : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-slate-600'
+                          }`}
                       >
                         {d.short}
                       </button>
@@ -701,7 +808,7 @@ export default function FlightRoutesPage() {
                     <button
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, operates_on_days: '1,2,3,4,5,6,7' }))}
-                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                      className="text-slate-600 hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
                     >
                       All
                     </button>
@@ -709,7 +816,7 @@ export default function FlightRoutesPage() {
                     <button
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, operates_on_days: '1,2,3,4,5' }))}
-                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                      className="text-slate-600 hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
                     >
                       Weekdays
                     </button>
@@ -717,7 +824,7 @@ export default function FlightRoutesPage() {
                     <button
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, operates_on_days: '6,7' }))}
-                      className="text-[#705d00] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+                      className="text-slate-600 hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
                     >
                       Weekends
                     </button>
@@ -728,57 +835,8 @@ export default function FlightRoutesPage() {
                 )}
               </div>
 
-              {/* Row 3: Overall Scheduled Departure & Arrival */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                <Input
-                  id="scheduled_dep_time"
-                  label="Scheduled Departure Time (Overall Route)"
-                  type="time"
-                  value={form.scheduled_departure_time}
-                  onChange={(e) => setForm((f) => ({ ...f, scheduled_departure_time: e.target.value }))}
-                  error={localErrors.scheduled_departure_time}
-                />
-                <Input
-                  id="scheduled_arr_time"
-                  label="Scheduled Arrival Time (Overall Route)"
-                  type="time"
-                  value={form.scheduled_arrival_time}
-                  onChange={(e) => setForm((f) => ({ ...f, scheduled_arrival_time: e.target.value }))}
-                  error={localErrors.scheduled_arrival_time}
-                />
-              </div>
-
-              {/* Row 4: Baggage Allowance + Baggage Count + Handbag Allowance */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'start' }}>
-                <div>
-                  <Input id="baggage_weight" label="Default Checked Baggage (kg)" type="number"
-                    value={form.baggage_weight_allowed_per_person}
-                    onChange={(e) => setForm((f) => ({ ...f, baggage_weight_allowed_per_person: e.target.value }))} />
-                  <span className="text-[11px] text-slate-500 block mt-1">
-                    Route default checked baggage limit (e.g. 20 kg).
-                  </span>
-                </div>
-                <div>
-                  <Input id="baggage_number" label="Max Checked Pieces (optional)" type="number"
-                    value={form.baggage_number_allowed_per_person}
-                    placeholder="e.g. 1 or 2"
-                    onChange={(e) => setForm((f) => ({ ...f, baggage_number_allowed_per_person: e.target.value }))} />
-                  <span className="text-[11px] text-slate-500 block mt-1">
-                    Maximum number of bags per passenger.
-                  </span>
-                </div>
-                <div>
-                  <Input id="handbag_weight" label="Cabin Carry-on Allowance (kg)" type="number"
-                    value={form.handbag_weight_allowed_per_person}
-                    onChange={(e) => setForm((f) => ({ ...f, handbag_weight_allowed_per_person: e.target.value }))} />
-                  <span className="text-[11px] text-slate-500 block mt-1">
-                    Hand luggage limit per passenger (e.g. 7 kg).
-                  </span>
-                </div>
-              </div>
-
-              {/* Row 5: Extra Baggage Add-on Configuration */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20, alignItems: 'start' }}>
+              {/* Row 3: Extra Baggage Add-on Configuration */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5 items-start">
                 <div>
                   <Input id="max_extra_baggage" label="Max Extra Baggage (kg)" type="number"
                     value={form.max_extra_baggage_kg_per_person}
@@ -807,13 +865,58 @@ export default function FlightRoutesPage() {
                 </div>
               </div>
 
+              {/* Live Route Schedule Overview Card */}
+              {(() => {
+                const firstLeg = form.legs[0];
+                const lastLeg = form.legs[form.legs.length - 1];
+                const originAirport = airports.find((a) => String(a.id) === String(firstLeg?.departure_airport));
+                const destAirport = airports.find((a) => String(a.id) === String(lastLeg?.arrival_airport));
+                const totalFlightMins = form.legs.reduce((acc, l) => acc + (Number(l.flight_duration_minutes) || 0), 0);
+                const totalLayoverMins = form.legs.slice(1).reduce((acc, l) => acc + (Number(l.layover_duration_minutes) || 0), 0);
+                const totalTripMins = totalFlightMins + totalLayoverMins;
+                const stopsCount = Math.max(0, form.legs.length - 1);
+
+                return (
+                  <div className="mb-5 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs bg-[rgba(112,93,0,0.04)] border border-[rgba(112,93,0,0.12)]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-200/70 flex items-center justify-center text-slate-600 shrink-0 border border-slate-200/60">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Overall Route Schedule</span>
+                          <span className="text-[10px] bg-slate-200/80 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
+                            {stopsCount === 0 ? 'Non-stop' : `${stopsCount} Stop${stopsCount > 1 ? 's' : ''}`}
+                          </span>
+                        </div>
+                        <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                          <span>{formatTime12h(form.scheduled_departure_time || firstLeg?.scheduled_departure_time)}</span>
+                          <span className="text-slate-400 font-normal">→</span>
+                          <span>{formatTime12h(form.scheduled_arrival_time || lastLeg?.scheduled_arrival_time)}</span>
+                          <span className="text-xs font-normal text-slate-500 ml-1">
+                            ({formatMins(totalTripMins)} total)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs shrink-0">
+                      <span className="font-bold text-slate-800">{originAirport?.iata_code || 'DEP'}</span>
+                      <span className="text-slate-400">✈</span>
+                      <span className="font-bold text-slate-800">{destAirport?.iata_code || 'ARR'}</span>
+
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Legs */}
               <div className="mb-5">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="m-0 text-[13px] font-bold uppercase tracking-[.06em] text-[#705d00] flex items-center gap-1.5">
+                  <h3 className="m-0 text-[13px] font-bold uppercase tracking-[.06em] text-slate-600 flex items-center gap-1.5">
                     <MapPin size={14} /> Flight Legs
                   </h3>
-                  <button type="button" className="btn-secondary" onClick={addLeg} style={{ fontSize: 12, padding: '5px 10px' }}>
+                  <button type="button" className="btn-secondary text-xs py-1 px-2.5" onClick={addLeg}>
                     <PlusCircle size={13} /> Add Leg
                   </button>
                 </div>
@@ -822,7 +925,7 @@ export default function FlightRoutesPage() {
                 {form.legs.map((leg, i) => (
                   <div key={i} className="leg-row mb-3">
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-bold text-[#705d00]">Leg {i + 1}</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Leg {i + 1}</span>
                       {form.legs.length > 1 && (
                         <button type="button" onClick={() => removeLeg(i)} className="bg-transparent border-none cursor-pointer text-[#b91c1c] p-0">
                           <MinusCircle size={16} />
@@ -831,12 +934,13 @@ export default function FlightRoutesPage() {
                     </div>
                     {/* Airports row: DEP ──▶ ARR */}
                     <div className="leg-airports-row">
-                      <Select id={`dep_apt_${i}`} label="Departure Airport" options={airportOptions}
+                      <Select id={`dep_apt_${i}`} label={i > 0 ? `Departure Airport (from Leg ${i})` : "Departure Airport"} options={airportOptions}
                         value={leg.departure_airport}
+                        disabled={i > 0}
                         onChange={(e) => updateLeg(i, 'departure_airport', e.target.value)}
                         error={localErrors[`leg_${i}_dep_apt`]} />
                       <div className="leg-arrow-container select-none">
-                        <div style={{ height: 21 }} />
+                        <div className="h-[21px]" />
                         <div className="leg-arrow">→</div>
                       </div>
                       <Select id={`arr_apt_${i}`} label="Arrival Airport" options={airportOptions}
@@ -845,41 +949,73 @@ export default function FlightRoutesPage() {
                         error={localErrors[`leg_${i}_arr_apt`]} />
                     </div>
 
-                    {/* Schedule times for this Leg */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 12 }}>
-                      <Input
-                        id={`leg_dep_time_${i}`}
-                        label="Leg Departure Time"
-                        type="time"
-                        value={leg.scheduled_departure_time || ''}
-                        onChange={(e) => updateLeg(i, 'scheduled_departure_time', e.target.value)}
-                        error={localErrors[`leg_${i}_dep_time`]}
-                      />
-                      <Input
-                        id={`leg_arr_time_${i}`}
-                        label="Leg Arrival Time"
-                        type="time"
-                        value={leg.scheduled_arrival_time || ''}
-                        onChange={(e) => updateLeg(i, 'scheduled_arrival_time', e.target.value)}
-                        error={localErrors[`leg_${i}_arr_time`]}
-                      />
+                    {/* Schedule times — 2 columns + full-width duration bar */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
+                      <div>
+                        <TimePicker
+                          id={`leg_dep_time_${i}`}
+                          label="Leg Departure Time"
+                          value={leg.scheduled_departure_time || ''}
+                          onChange={(e) => updateLeg(i, 'scheduled_departure_time', e.target.value)}
+                          error={localErrors[`leg_${i}_dep_time`]}
+                        />
+                        <span className="text-[11px] text-slate-500 block mt-1">
+                          {formatTime12h(leg.scheduled_departure_time)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <TimePicker
+                          id={`leg_arr_time_${i}`}
+                          label={i === form.legs.length - 1 ? "Final Arrival Time" : "Leg Arrival Time"}
+                          value={leg.scheduled_arrival_time || ''}
+                          onChange={(e) => updateLeg(i, 'scheduled_arrival_time', e.target.value)}
+                          error={localErrors[`leg_${i}_arr_time`]}
+                        />
+                        <span className="text-[11px] text-slate-500 block mt-1">
+                          {formatTime12h(leg.scheduled_arrival_time)}
+                        </span>
+                      </div>
+
+                      {/* Flight duration bar — spans both columns */}
+                      <div className="col-span-full flex items-center gap-3 py-1">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <div className={`flex items-center gap-1.5 text-[12px] tracking-wide select-none ${localErrors[`leg_${i}_duration`] ? 'text-red-600' : 'text-slate-500'
+                          }`}>
+                          <Clock size={13} className={localErrors[`leg_${i}_duration`] ? 'text-red-500' : 'text-slate-400'} />
+                          <span className={`font-bold text-[13px] ${localErrors[`leg_${i}_duration`] ? 'text-red-600' : 'text-slate-700'}`}>
+                            {formatMins(Number(leg.flight_duration_minutes) || 0)}
+                          </span>
+                          <span className="font-normal text-[11px]">
+                            {leg.flight_duration_minutes || 0} mins
+                          </span>
+                        </div>
+                        <div className="flex-1 h-px bg-slate-200" />
+                        {localErrors[`leg_${i}_duration`] && (
+                          <span className="text-[10px] text-red-600 font-medium whitespace-nowrap">
+                            {localErrors[`leg_${i}_duration`]}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Duration + Layover row */}
-                    <div className="leg-details-row mt-2">
-                      <Input id={`duration_${i}`} label="Flight Duration (mins)" type="number"
-                        placeholder="e.g. 150"
-                        value={leg.flight_duration_minutes}
-                        onChange={(e) => updateLeg(i, 'flight_duration_minutes', e.target.value)}
-                        error={localErrors[`leg_${i}_duration`]} />
-                      {i > 0 ? (
-                        <Input id={`layover_${i}`} label="Layover Before This Leg (mins)" type="number"
+                    {/* Layover row for multi-leg routes */}
+                    {i > 0 && (
+                      <div className="mt-3 max-w-[280px]">
+                        <Input
+                          id={`layover_${i}`}
+                          label="Layover Before This Leg (mins)"
+                          type="number"
                           placeholder="e.g. 60"
                           value={leg.layover_duration_minutes}
                           onChange={(e) => updateLeg(i, 'layover_duration_minutes', e.target.value)}
-                          error={localErrors[`leg_${i}_layover`]} />
-                      ) : <div />}
-                    </div>
+                          error={localErrors[`leg_${i}_layover`]}
+                        />
+                        <span className="text-[11px] text-slate-500 block mt-1">
+                          Layover: {formatMins(Number(leg.layover_duration_minutes) || 0)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

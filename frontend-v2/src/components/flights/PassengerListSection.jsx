@@ -22,8 +22,8 @@ export default function PassengerListSection({
   };
 
   const handleNameChange = (index, rawValue) => {
-    // Only alphabets, spaces, hyphens, and apostrophes allowed, max 60 chars
-    const sanitized = rawValue.replace(/[^A-Za-z\s'-]/g, "").slice(0, 60);
+    // Only alphabets, spaces, hyphens, and apostrophes allowed, max 150 chars
+    const sanitized = rawValue.replace(/[^A-Za-z\s'-]/g, "").slice(0, 150);
     const updated = [...passengers];
     updated[index] = { ...updated[index], name: sanitized };
     onChangePassengers(updated, index, "name");
@@ -101,7 +101,7 @@ export default function PassengerListSection({
                       Full Name
                     </label>
                     <span className="text-[9px] font-medium text-slate-400">
-                      {passenger.name.length}/60
+                      {passenger.name.length}/150
                     </span>
                   </div>
                   <input
@@ -112,7 +112,7 @@ export default function PassengerListSection({
                     }}
                     type="text"
                     placeholder="e.g. John Doe"
-                    maxLength={60}
+                    maxLength={150}
                     value={passenger.name}
                     onChange={(e) => handleNameChange(index, e.target.value)}
                     onBlur={() => onBlurField?.(index, "name")}
