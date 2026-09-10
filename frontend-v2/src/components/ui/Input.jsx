@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export function Input({ id, label, type = 'text', error, onFocus, onBlur, ...props }) {
+export function Input({ id, label, type = 'text', error, onFocus, onBlur, onClick, ...props }) {
   const [isFocused, setIsFocused] = useState(false);
 
   const borderColor = error
@@ -11,17 +11,43 @@ export function Input({ id, label, type = 'text', error, onFocus, onBlur, ...pro
     ? (isFocused ? '0 0 0 3px rgba(185,28,28,0.18)' : '0 0 0 3px rgba(185,28,28,0.1)')
     : (isFocused ? '0 0 0 3px rgba(112,93,0,0.1)' : 'none');
 
+  const handleClick = (e) => {
+    if (type === 'time' || type === 'date') {
+      try {
+        if (typeof e.currentTarget.showPicker === 'function') {
+          e.currentTarget.showPicker();
+        }
+      } catch {
+        // Browser throws if picker is already showing or not allowed
+      }
+    }
+    onClick?.(e);
+  };
+
+  const handleLabelClick = () => {
+    if (type === 'time' || type === 'date') {
+      try {
+        const el = id ? document.getElementById(id) : null;
+        el?.showPicker?.();
+      } catch {
+        // Suppress if already showing
+      }
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {label && (
         <label
           htmlFor={id}
+          onClick={handleLabelClick}
           style={{
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
             color: '#5e5e5e',
+            cursor: (type === 'time' || type === 'date') ? 'pointer' : undefined,
           }}
         >
           {label}
@@ -45,8 +71,10 @@ export function Input({ id, label, type = 'text', error, onFocus, onBlur, ...pro
           outline: 'none',
           boxShadow: boxShadow,
           transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
+          cursor: (type === 'time' || type === 'date') ? 'pointer' : undefined,
           ...props.style,
         }}
+        onClick={handleClick}
         onFocus={e => {
           setIsFocused(true);
           onFocus?.(e);

@@ -162,3 +162,9 @@ body {
     @apply font-bold text-slate-900 whitespace-nowrap text-right ml-4;
   }
 }
+
+/* Ensure native time and date picker indicators display a pointer cursor */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
