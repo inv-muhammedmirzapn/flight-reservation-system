@@ -14,6 +14,7 @@
 
 ## Table of Contents
 - [System Architecture & Core Highlights](#-system-architecture--core-highlights)
+  - [Modular Backend Architecture (13 Apps)](#-modular-django-backend-apps-13-services)
 - [Comprehensive Feature Overview](#-comprehensive-feature-overview)
   - [Passenger & Booking Experience](#-passenger--booking-experience)
   - [Admin Panel & Airline Operations](#-admin-panel--airline-operations)
@@ -36,35 +37,81 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT TIER (React 18 + Vite)                 │
+│                        CLIENT TIER (React 18 + Vite)                        │
 │  Traveler Web Portal (Glassmorphic UI)  │  Admin Operations & Analytics Hub │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │ HTTP / REST / Cookie JWT
 ┌──────────────────────────────────────▼──────────────────────────────────────┐
-│                              DJANGO BACKEND APPS                            │
-│  ┌───────────────────────────────┐     ┌──────────────────────────────────┐ │
-│  │         apps.flights          │     │          apps.pricing            │ │
-│  │ Route Templates & Continuity  │     │ Template Pricing & Demand Surge  │ │
-│  │ Rolling Horizon Generator     │     │ Multi-Currency Engine (INR/USD)  │ │
-│  └───────────────┬───────────────┘     └─────────────────┬────────────────┘ │
-│                  │                                       │                  │
-│  ┌───────────────▼───────────────┐     ┌─────────────────▼────────────────┐ │
-│  │         apps.bookings         │     │          apps.waitlist           │ │
-│  │ 10-Min Atomic Seat Holds      │     │ FIFO Priority Cabin Queue        │ │
-│  │ Up to 150-Char Pax & PDF Pass │     │ Automated Seat Re-allocation     │ │
-│  └───────────────┬───────────────┘     └──────────────────────────────────┘ │
-│                  │                                                          │
-│  ┌───────────────▼───────────────┐     ┌──────────────────────────────────┐ │
-│  │          apps.meals           │     │         apps.analytics           │ │
-│  │ Recipes, Veg/Vegan, Addons    │     │ Load Factor & Revenue Metrics    │ │
-│  └───────────────────────────────┘     └──────────────────────────────────┘ │
+│                  DJANGO BACKEND ARCHITECTURE (13 APPS)                      │
+│                                                                             │
+│  [Identity & Infrastructure]                                                │
+│  ┌─────────────────────────────────┐   ┌─────────────────────────────────┐  │
+│  │           apps.users            │   │          apps.caching           │  │
+│  │ Cookie JWT Auth & Role Access   │   │ Request Throttling & DB Cache   │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Flight Core & Search Engine]                          │                   │
+│  ┌────────────────▼────────────────┐   ┌────────────────▼────────────────┐  │
+│  │          apps.flights           │   │           apps.search           │  │
+│  │ Routes, Legs, Instances & Meals │   │ Geolocation & Connecting Graph  │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Revenue & Dynamic Pricing]                            │                   │
+│  ┌────────────────▼────────────────┐   ┌────────────────▼────────────────┐  │
+│  │          apps.pricing           │   │      apps.fare_prediction       │  │
+│  │ Dynamic Surge, Multi-Currency   │   │ Real-Time Trend Direction Rules │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Booking & Waitlist Pipeline]                          │                   │
+│  ┌────────────────▼────────────────┐   ┌────────────────▼────────────────┐  │
+│  │          apps.bookings          │   │          apps.waitlist          │  │
+│  │ 10-Min Seat Locks & PDF Passes  │   │ FIFO Priority Cabin Queue       │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Operations & Traveler Alerts]                         │                   │
+│  ┌────────────────▼────────────────┐   ┌────────────────▼────────────────┐  │
+│  │           apps.delays           │   │       apps.notifications        │  │
+│  │ Milestone Tracking & Gate Ops   │   │ Delay Alerts & Boarding Notices │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Decision Support & Analytics]                         │                   │
+│  ┌────────────────▼────────────────┐   ┌────────────────▼────────────────┐  │
+│  │         apps.comparison         │   │         apps.analytics          │  │
+│  │ Multi-Flight Spec & Fare Matrix │   │ Load Factors & Revenue Metrics  │  │
+│  └────────────────┬────────────────┘   └────────────────┬────────────────┘  │
+│                   │                                     │                   │
+│  [Master Data Pipeline]                                 │                   │
+│  ┌────────────────▼─────────────────────────────────────▼────────────────┐  │
+│  │                       apps.bulk_upload                                │  │
+│  │ High-Performance CSV/Excel Bulk Ingestion Engine & Validation Reports │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │ ORM / Transactions
 ┌──────────────────────────────────────▼──────────────────────────────────────┐
-│                    PERSISTENCE & CACHING TIER                               │
-│        PostgreSQL / SQLite Database   │   Database Cache & Throttling        │
+│                        PERSISTENCE & CACHING TIER                           │
+│        MYSQL / SQLite Database   │   Database Cache & Throttling       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 🧩 Modular Django Backend Apps (13 Services)
+
+| App Module | Domain Category | Key Responsibilities & Capabilities |
+| :--- | :--- | :--- |
+| **`apps.users`** | Identity & Security | Cookie JWT authentication, role separation (`ADMIN` vs `CUSTOMER`), profile management, OTP verification for password & email changes. |
+| **`apps.caching`** | Infrastructure & Caching | Request throttling policies, public/auth API rate limiting, and database-backed cache operations (`createcachetable`). |
+| **`apps.flights`** | Flight Core & Master Data | Master entities (Airports, Airlines, Aircraft), Flight Routes & Leg continuity, rolling horizon instance generator, cabin seat maps, and in-flight food/meal recipe builder. |
+| **`apps.search`** | Search & Routing | Geolocated airport discovery via Haversine formula, direct flight queries, and multi-segment layover route graphs. |
+| **`apps.pricing`** | Revenue & Dynamic Pricing | Reusable `RouteFareClass` templates, dynamic surge curves (occupancy thresholds, booking windows, holiday calendars), atomic bulk repricing (`select_for_update`), and multi-currency engine. |
+| **`apps.fare_prediction`** | Price Intelligence | Rule-based price trend forecasting (`INCREASE`, `STABLE`, `DECREASE`) and confidence scoring to inform travelers on optimal booking timing. |
+| **`apps.bookings`** | Booking & Fulfillment | Multi-step checkout wizard, 10-minute atomic seat locks (`SeatHold`), passenger manifests (up to 150-char names), meal addons, and ReportLab PDF boarding pass/invoice generation. |
+| **`apps.waitlist`** | Capacity Management | Cabin-specific FIFO priority waitlist queues, automatic seat reallocation upon booking cancellations, and instant zero-penalty refunds. |
+| **`apps.delays`** | Operations & Milestones | Real-time flight milestone tracking (`SCHEDULED`, `DELAYED`, `BOARDING`, `DEPARTED`, `ARRIVED`, `CANCELLED`), delay management, and gate/terminal updates. |
+| **`apps.notifications`** | Traveler Communications | In-app notification center, unread counter badges, flight delay alerts, boarding gate notices, and waitlist promotion alerts with deep linking. |
+| **`apps.comparison`** | Decision Support | Side-by-side multi-flight comparison engine evaluating durations, stopovers, baggage allowances, amenities, and cabin fares. |
+| **`apps.analytics`** | Business Intelligence | Executive BI analytics: revenue trends, average load factors, passenger volume timelines, route popularity rankings, and cancellation ratios. |
+| **`apps.bulk_upload`** | Master Data Pipeline | High-performance CSV & Excel (`.xlsx`, `.xls`) dataset ingestion engine for airports, airlines, aircraft, routes, and schedules with row-by-row validation audit reports. |
+
+### ⚡ Architectural Highlights
 
 1. **Template-Driven Route Pricing**: Routes define reusable `RouteFareClass` templates (base prices, refund policies, change fees, and baggage allowances). Flight instances inherit these templates dynamically, isolating historical ticket snapshots from future pricing changes.
 2. **Sequential Leg Continuity**: Multi-leg connecting flights enforce airport path continuity (`leg[i].departure === leg[i-1].arrival`) on both frontend form builders and backend serializers.
@@ -319,8 +366,7 @@ flight-management/
 │   │   ├── comparison/       # Flight comparison service
 │   │   ├── delays/           # Real-time delay calculation & milestones
 │   │   ├── fare_prediction/  # Price trend prediction heuristics
-│   │   ├── flights/          # Routes, instances, aircraft models, seat layouts
-│   │   ├── meals/            # Food items & meal recipes
+│   │   ├── flights/          # Routes, instances, aircraft models, seat layouts, food & meals
 │   │   ├── notifications/    # In-app notification center & alerts
 │   │   ├── pricing/          # Template pricing, dynamic surge & currency converter
 │   │   ├── search/           # Geolocation proximity & connecting route graph
