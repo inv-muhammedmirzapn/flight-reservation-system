@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import DatePickerModal, { formatDisplayDate } from "@/components/ui/DatePickerModal";
+import { flightsAPI } from "@/services/flight-service/flightService";
 
 const FALLBACK_AIRPORTS = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
@@ -36,6 +37,32 @@ export default function LandingPage() {
   const [calendarTab, setCalendarTab] = useState("dep");
 
   const isAnyDropdownActive = isFromFocused || isToFocused;
+
+  // Automatically fetch nearest airport from user's geolocation on mount
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const airportData = await flightsAPI.getNearestAirport(latitude, longitude);
+
+          if (airportData && airportData.iata_code) {
+            setFrom(airportData.iata_code);
+            const cityName = airportData.city || airportData.airport_name || airportData.iata_code;
+            setFromSearch(cityName);
+          }
+        } catch (err) {
+          console.error("Failed to fetch nearest airport:", err);
+        }
+      },
+      () => {
+        // Silently ignore if geolocation is denied or unavailable
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
 
   // Redirect admin if authenticated
   useEffect(() => {

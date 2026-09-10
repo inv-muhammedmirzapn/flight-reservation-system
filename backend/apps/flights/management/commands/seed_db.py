@@ -154,6 +154,11 @@ class Command(BaseCommand):
             ("DOH", "Hamad International Airport", "Doha", "Asia/Qatar", Decimal("25.273056"), Decimal("51.608056"), "QA", ["1"]),
             ("IST", "Istanbul Airport", "Istanbul", "Europe/Istanbul", Decimal("41.259722"), Decimal("28.745556"), "TR", ["1"]),
             ("BKK", "Suvarnabhumi Airport", "Bangkok", "Asia/Bangkok", Decimal("13.681108"), Decimal("100.747283"), "TH", ["1"]),
+            # Kerala Airports
+            ("COK", "Cochin International Airport", "Kochi", "Asia/Kolkata", Decimal("10.152000"), Decimal("76.401900"), "IN", ["T1", "T2", "T3"]),
+            ("TRV", "Trivandrum International Airport", "Thiruvananthapuram", "Asia/Kolkata", Decimal("8.482100"), Decimal("76.919900"), "IN", ["T1", "T2"]),
+            ("CCJ", "Calicut International Airport", "Kozhikode", "Asia/Kolkata", Decimal("11.136800"), Decimal("75.955300"), "IN", ["T1"]),
+            ("CNN", "Kannur International Airport", "Kannur", "Asia/Kolkata", Decimal("11.918700"), Decimal("75.547200"), "IN", ["T1"]),
         ]
         airports_dict = {}
         for iata, name, city, tz, lat, lon, country_iso, term in airports_data:
@@ -309,15 +314,21 @@ class Command(BaseCommand):
         today = date.today()
         valid_from_date = today - timedelta(days=30)
 
-        # Direct Routes: DEL -> HAM
-        direct_del_ham_routes = [
-            ("AI121", "AI", "VT-ALN", 7, 45, Decimal("38000.00"), time(6, 15)),
-            ("LH761", "LH", "D-ABPA", 8, 30, Decimal("42000.00"), time(2, 30)),
-            ("EK061", "EK", "A6-EEO", 8, 0, Decimal("46000.00"), time(14, 0)),
-            ("6E191", "6E", "VT-IZI", 13, 30, Decimal("24000.00"), time(23, 45)),
+        # Direct Routes: DEL -> HAM and COK -> HAM
+        direct_routes = [
+            # Direct DEL -> HAM
+            ("AI121", "AI", "DEL", "HAM", "VT-ALN", 7, 45, Decimal("38000.00"), time(6, 15)),
+            ("LH761", "LH", "DEL", "HAM", "D-ABPA", 8, 30, Decimal("42000.00"), time(2, 30)),
+            ("EK061", "EK", "DEL", "HAM", "A6-EEO", 8, 0, Decimal("46000.00"), time(14, 0)),
+            ("6E191", "6E", "DEL", "HAM", "VT-IZI", 13, 30, Decimal("24000.00"), time(23, 45)),
+            # Direct COK -> HAM (same flights from Kochi)
+            ("AI123", "AI", "COK", "HAM", "VT-ALN", 8, 30, Decimal("39000.00"), time(6, 45)),
+            ("LH763", "LH", "COK", "HAM", "D-ABPA", 9, 15, Decimal("43000.00"), time(2, 45)),
+            ("EK063", "EK", "COK", "HAM", "A6-EEO", 8, 45, Decimal("47000.00"), time(14, 30)),
+            ("6E193", "6E", "COK", "HAM", "VT-IZI", 14, 0, Decimal("25000.00"), time(23, 15)),
         ]
 
-        for fno, al_code, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_del_ham_routes:
+        for fno, al_code, dep_ap, arr_ap, ac_reg, dur_hrs, dur_mins, base_fare, dep_t in direct_routes:
             scheduled_dep = datetime.combine(today, dep_t)
             scheduled_arr = scheduled_dep + timedelta(hours=dur_hrs, minutes=dur_mins)
             fr, _ = FlightRoute.objects.get_or_create(
@@ -339,8 +350,8 @@ class Command(BaseCommand):
                 flight=fr,
                 leg_order=1,
                 defaults={
-                    "departure_airport": airports_dict["DEL"],
-                    "arrival_airport": airports_dict["HAM"],
+                    "departure_airport": airports_dict[dep_ap],
+                    "arrival_airport": airports_dict[arr_ap],
                     "flight_duration_minutes": dur_hrs * 60 + dur_mins,
                     "layover_duration_minutes": 0,
                     "scheduled_departure_time": dep_t,
@@ -379,8 +390,9 @@ class Command(BaseCommand):
                     }
                 )
 
-        # 1-Stop Connecting Routes (DEL -> Layover -> HAM)
+        # 1-Stop Connecting Routes (DEL & COK -> Layover -> HAM)
         connecting_del_ham_routes = [
+            # DEL -> HAM
             ("LH763-C", "LH", "D-AIXA", Decimal("42000.00"), time(3, 15), [
                 ("DEL", "FRA", 510, 0, time(3, 15)),
                 ("FRA", "HAM", 70, 105, time(13, 30)),
@@ -392,6 +404,15 @@ class Command(BaseCommand):
             ("BA143-C", "BA", "G-ZBLB", Decimal("46000.00"), time(11, 45), [
                 ("DEL", "LHR", 555, 0, time(11, 45)),
                 ("LHR", "HAM", 100, 120, time(23, 0)),
+            ]),
+            # COK -> HAM
+            ("LH765-C", "LH", "D-AIXA", Decimal("44000.00"), time(2, 30), [
+                ("COK", "FRA", 550, 0, time(2, 30)),
+                ("FRA", "HAM", 70, 100, time(13, 10)),
+            ]),
+            ("EK507-C", "EK", "A6-EEO", Decimal("49000.00"), time(9, 30), [
+                ("COK", "DXB", 250, 0, time(9, 30)),
+                ("DXB", "HAM", 390, 135, time(15, 45)),
             ]),
         ]
 
@@ -457,6 +478,24 @@ class Command(BaseCommand):
             ("AA100", "AA", "JFK", "LHR", 7, 0, "N777AA", Decimal("54000.00"), time(19, 30)),
             ("QF001", "QF", "SYD", "LHR", 22, 0, "VH-ZNA", Decimal("110000.00"), time(16, 0)),
             ("6E055", "6E", "BOM", "DXB", 3, 30, "VT-IZI", Decimal("18000.00"), time(21, 15)),
+            # Kerala Routes – Domestic
+            ("AI681", "AI", "DEL", "COK", 3, 10, "VT-ALN", Decimal("8500.00"), time(6, 0)),
+            ("6E301", "6E", "DEL", "COK", 3, 15, "VT-IZI", Decimal("5200.00"), time(5, 30)),
+            ("AI683", "AI", "BOM", "COK", 1, 50, "VT-ALN", Decimal("5800.00"), time(10, 30)),
+            ("6E303", "6E", "BOM", "COK", 1, 45, "VT-IZI", Decimal("3800.00"), time(14, 0)),
+            ("AI685", "AI", "DEL", "TRV", 3, 15, "VT-ALN", Decimal("9200.00"), time(7, 15)),
+            ("6E305", "6E", "DEL", "TRV", 3, 20, "VT-IZI", Decimal("5500.00"), time(22, 0)),
+            ("6E307", "6E", "BOM", "TRV", 1, 55, "VT-IZI", Decimal("4200.00"), time(16, 30)),
+            ("AI687", "AI", "DEL", "CCJ", 3, 5, "VT-ALN", Decimal("8800.00"), time(9, 0)),
+            ("6E309", "6E", "DEL", "CCJ", 3, 10, "VT-IZI", Decimal("5000.00"), time(11, 45)),
+            ("6E311", "6E", "BOM", "CCJ", 1, 40, "VT-IZI", Decimal("3600.00"), time(8, 15)),
+            ("6E313", "6E", "DEL", "CNN", 3, 20, "VT-IZI", Decimal("5300.00"), time(13, 0)),
+            # Kerala Routes – International
+            ("AI689", "AI", "COK", "DXB", 4, 10, "VT-ALN", Decimal("16000.00"), time(3, 30)),
+            ("EK529", "EK", "DXB", "COK", 4, 15, "A6-EEO", Decimal("18000.00"), time(9, 45)),
+            ("AI691", "AI", "TRV", "DXB", 4, 20, "VT-ALN", Decimal("16500.00"), time(2, 0)),
+            ("EK531", "EK", "DXB", "TRV", 4, 25, "A6-EEO", Decimal("18500.00"), time(10, 15)),
+            ("AI693", "AI", "CCJ", "DXB", 4, 30, "VT-ALN", Decimal("17000.00"), time(4, 0)),
         ]
 
         for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:

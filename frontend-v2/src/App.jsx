@@ -21,7 +21,7 @@ import TicketDetailPage from "@/pages/bookings/TicketDetailPage";
 import TicketCancellationPage from "@/pages/bookings/TicketCancellationPage";
 import UserProfilePage from "@/pages/profile/UserProfilePage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
-import NotFoundPage from "@/pages/NotFoundPage";
+import NotFoundPage from "@/pages/common/NotFoundPage";
 
 import PasswordRecoveryPage from "@/pages/auth/PasswordRecoveryPage";
 
