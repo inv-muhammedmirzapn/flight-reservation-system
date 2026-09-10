@@ -221,16 +221,12 @@ export default function FlightRoutesPage() {
   };
 
   const loadLookups = () => {
-    if (airlines.length === 0) {
-      fetchWithAuth('/flights/v2/airlines/?page_size=1000')
-        .then((data) => setAirlines(data.results || data || []))
-        .catch((err) => console.error('Failed to load airlines lookup:', err));
-    }
-    if (airports.length === 0) {
-      fetchWithAuth('/flights/v2/airports/?page_size=1000')
-        .then((data) => setAirports(data.results || data || []))
-        .catch((err) => console.error('Failed to load airports lookup:', err));
-    }
+    fetchWithAuth('/flights/v2/airlines/?page_size=1000')
+      .then((data) => setAirlines(data.results || data || []))
+      .catch((err) => console.error('Failed to load airlines lookup:', err));
+    fetchWithAuth('/flights/v2/airports/?page_size=1000')
+      .then((data) => setAirports(data.results || data || []))
+      .catch((err) => console.error('Failed to load airports lookup:', err));
   };
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));

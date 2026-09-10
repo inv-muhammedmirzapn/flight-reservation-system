@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import flightsReducer from './flightSlice';
+import airportsReducer from './airportsSlice';
 import bookingsReducer from './bookingSlice';
 import waitlistReducer from './waitlistSlice';
 import notificationsReducer from './notificationsSlice';
@@ -33,6 +34,7 @@ export const store = configureStore({
     // Passenger app
     auth: authReducer,
     flights: flightsReducer,
+    airports: airportsReducer,
     bookings: bookingsReducer,
     waitlist: waitlistReducer,
     notifications: notificationsReducer,

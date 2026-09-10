@@ -1,5 +1,25 @@
 [
   {
+    "code": "CNN",
+    "lat": "11.918700",
+    "lon": "75.547200",
+    "name": "Kannur International Airport",
+    "city": "Kannur",
+    "state": "Kerala",
+    "country": "India",
+    "woeid": "",
+    "tz": "Asia/Kolkata",
+    "phone": "",
+    "type": "Airports",
+    "email": "",
+    "url": "",
+    "runway_length": "10000",
+    "elev": "335",
+    "icao": "VOKN",
+    "direct_flights": "10",
+    "carriers": "5"
+  },
+  {
     "code": "AAA",
     "lat": "-17.3595",
     "lon": "-145.494",

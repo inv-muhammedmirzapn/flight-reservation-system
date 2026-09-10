@@ -135,6 +135,16 @@ export function Select({
     }
   };
 
+  const handleInputClick = () => {
+    if (!disabled && !isOpen) {
+      updateDropdownPosition();
+      setIsOpen(true);
+      setSearchQuery('');
+      const idx = normalizedOptions.findIndex(opt => String(opt.value) === String(value));
+      setHighlightedIndex(idx >= 0 ? idx : 0);
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (disabled) return;
 
@@ -298,6 +308,7 @@ export function Select({
           value={displayValue}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
+          onClick={handleInputClick}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
           placeholder={selectedOption ? selectedOption.label : placeholder}

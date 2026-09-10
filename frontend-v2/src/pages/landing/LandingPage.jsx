@@ -1,18 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import DatePickerModal, { formatDisplayDate } from "@/components/ui/DatePickerModal";
 import { flightsAPI } from "@/services/flight-service/flightService";
+import { fetchAirports } from "@/store/airportsSlice";
+import { resolveAirport, AIRPORT_MAP, getAirportInfo } from "@/utils/airportHelpers";
 
 const FALLBACK_AIRPORTS = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
-  HAM: { city: "Hamburg", code: "HAM", name: "Fuhlsbuettel", country: "Germany" }
+  HAM: { city: "Hamburg", code: "HAM", name: "Fuhlsbuettel", country: "Germany" },
+  CNN: { city: "Kannur", code: "CNN", name: "Kannur International Airport", country: "India" },
+  COK: { city: "Kochi", code: "COK", name: "Cochin International Airport", country: "India" },
+  CCJ: { city: "Kozhikode", code: "CCJ", name: "Calicut International Airport", country: "India" },
+  TRV: { city: "Thiruvananthapuram", code: "TRV", name: "Trivandrum International Airport", country: "India" },
+  BOM: { city: "Mumbai", code: "BOM", name: "Chhatrapati Shivaji Maharaj International Airport", country: "India" },
 };
 
 export default function LandingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // Redux airports from database
+  const reduxAirports = useSelector((state) => state.airports?.items) || [];
+  const airportsLoaded = useSelector((state) => state.airports?.loaded);
 
   // Safe useSelector fallback if Redux isn't initialized/populated yet
   const auth = useSelector((state) => state?.auth) || { isAuthenticated: false, isAdmin: false };
@@ -37,6 +49,28 @@ export default function LandingPage() {
   const [calendarTab, setCalendarTab] = useState("dep");
 
   const isAnyDropdownActive = isFromFocused || isToFocused;
+
+  // Dispatch fetchAirports if not loaded yet
+  useEffect(() => {
+    if (!airportsLoaded) {
+      dispatch(fetchAirports());
+    }
+  }, [airportsLoaded, dispatch]);
+
+  // Load airports: prioritize Redux DB airports, then merge with static airports
+  useEffect(() => {
+    import("../../../resources/airports.json")
+      .then((module) => {
+        const staticList = module.default || [];
+        const dbCodes = new Set(reduxAirports.map((a) => a.code));
+        const filteredStatic = staticList.filter((s) => s.code && !dbCodes.has(s.code.toUpperCase()));
+        setAirports([...reduxAirports, ...filteredStatic]);
+      })
+      .catch((err) => {
+        console.error("Failed to load static airports:", err);
+        setAirports(reduxAirports);
+      });
+  }, [reduxAirports]);
 
   // Automatically fetch nearest airport from user's geolocation on mount
   useEffect(() => {
@@ -71,36 +105,103 @@ export default function LandingPage() {
     }
   }, [isAuthenticated, isAdmin, navigate]);
 
-  // Load airports
-  useEffect(() => {
-    import("../../../resources/airports.json")
-      .then((module) => {
-        setAirports(module.default || []);
-      })
-      .catch((err) => console.error("Failed to load airports:", err));
-  }, []);
-
   const findAirport = (codeOrQuery) => {
     if (!codeOrQuery) return null;
-    const query = codeOrQuery.trim().toUpperCase();
-    const fallback = FALLBACK_AIRPORTS[query];
-    if (fallback) return fallback;
+    const query = String(codeOrQuery).trim().toUpperCase();
+    if (AIRPORT_MAP[query]) return AIRPORT_MAP[query];
+    if (FALLBACK_AIRPORTS[query]) return FALLBACK_AIRPORTS[query];
     return airports.find(
-      (a) => a.code === query || a.city.toUpperCase() === query
-    );
+      (a) => (a.code || "").toUpperCase() === query || (a.city && a.city.toUpperCase() === query)
+    ) || getAirportInfo(query);
   };
 
   const getSuggestions = (query) => {
-    if (!query || query.length < 2) return [];
-    const q = query.toLowerCase();
-    return airports
-      .filter((a) =>
-        a.code.toLowerCase().includes(q) ||
-        a.city.toLowerCase().includes(q) ||
-        a.name.toLowerCase().includes(q) ||
-        a.country.toLowerCase().includes(q)
-      )
-      .slice(0, 5);
+    if (!query || query.trim().length < 1) return [];
+    const q = query.trim().toLowerCase();
+
+    const matches = airports.filter((a) => {
+      const code = (a.code || "").toLowerCase();
+      const city = (a.city || "").toLowerCase();
+      const name = (a.name || a.airport_name || "").toLowerCase();
+      const country = (a.country || a.country_name || "").toLowerCase();
+      return code.includes(q) || city.includes(q) || name.includes(q) || country.includes(q);
+    });
+
+    return matches.sort((a, b) => {
+      const aCode = (a.code || "").toLowerCase();
+      const bCode = (b.code || "").toLowerCase();
+      const aCity = (a.city || "").toLowerCase();
+      const bCity = (b.city || "").toLowerCase();
+      if (aCode === q) return -1;
+      if (bCode === q) return 1;
+      if (aCity === q) return -1;
+      if (bCity === q) return 1;
+      if (aCode.startsWith(q) && !bCode.startsWith(q)) return -1;
+      if (!aCode.startsWith(q) && bCode.startsWith(q)) return 1;
+      if (aCity.startsWith(q) && !bCity.startsWith(q)) return -1;
+      if (!aCity.startsWith(q) && bCity.startsWith(q)) return 1;
+      return 0;
+    }).slice(0, 8);
+  };
+
+  const handleFromBlur = () => {
+    setTimeout(() => {
+      setIsFromFocused(false);
+      if (fromSearch.trim()) {
+        const resolved = resolveAirport(fromSearch, airports);
+        if (resolved) {
+          setFrom(resolved.code);
+          setFromSearch(resolved.city || resolved.code);
+          return;
+        }
+      }
+      const current = findAirport(from);
+      setFromSearch(current?.city || from);
+    }, 200);
+  };
+
+  const handleToBlur = () => {
+    setTimeout(() => {
+      setIsToFocused(false);
+      if (toSearch.trim()) {
+        const resolved = resolveAirport(toSearch, airports);
+        if (resolved) {
+          setTo(resolved.code);
+          setToSearch(resolved.city || resolved.code);
+          return;
+        }
+      }
+      const current = findAirport(to);
+      setToSearch(current?.city || to);
+    }, 200);
+  };
+
+  const handleFromKeyDown = (e) => {
+    if (e.key === "Enter") {
+      const suggestions = getSuggestions(fromSearch);
+      if (suggestions.length > 0) {
+        e.preventDefault();
+        setFrom(suggestions[0].code);
+        setFromSearch(suggestions[0].city || suggestions[0].code);
+        setIsFromFocused(false);
+      }
+    } else if (e.key === "Escape") {
+      setIsFromFocused(false);
+    }
+  };
+
+  const handleToKeyDown = (e) => {
+    if (e.key === "Enter") {
+      const suggestions = getSuggestions(toSearch);
+      if (suggestions.length > 0) {
+        e.preventDefault();
+        setTo(suggestions[0].code);
+        setToSearch(suggestions[0].city || suggestions[0].code);
+        setIsToFocused(false);
+      }
+    } else if (e.key === "Escape") {
+      setIsToFocused(false);
+    }
   };
 
   const handleSwap = (e) => {
@@ -116,9 +217,27 @@ export default function LandingPage() {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    let finalFrom = from;
+    let finalTo = to;
+
+    if (fromSearch.trim()) {
+      const resolved = resolveAirport(fromSearch, airports);
+      if (resolved) {
+        finalFrom = resolved.code;
+        setFrom(resolved.code);
+      }
+    }
+    if (toSearch.trim()) {
+      const resolved = resolveAirport(toSearch, airports);
+      if (resolved) {
+        finalTo = resolved.code;
+        setTo(resolved.code);
+      }
+    }
+
     const params = new URLSearchParams();
-    if (from.trim()) params.set("from", from.trim());
-    if (to.trim()) params.set("to", to.trim());
+    if (finalFrom.trim()) params.set("from", finalFrom.trim());
+    if (finalTo.trim()) params.set("to", finalTo.trim());
     if (depDate) params.set("depDate", depDate);
     if (arrDate) params.set("arrDate", arrDate);
     params.set("adults", "1");
@@ -161,7 +280,10 @@ export default function LandingPage() {
                 className={`col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-left cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-l-3xl relative ${isFromFocused ? "z-50" : "z-10"}`}
                 onClick={() => {
                   setIsFromFocused(true);
-                  setTimeout(() => fromInputRef.current?.focus(), 50);
+                  setTimeout(() => {
+                    fromInputRef.current?.focus();
+                    fromInputRef.current?.select();
+                  }, 50);
                 }}
               >
                 <span className="text-[9px] sm:text-[10px] font-bold tracking-wider text-slate-400 select-none">
@@ -175,7 +297,10 @@ export default function LandingPage() {
                     className="airport-input-field font-bold mt-0.5 sm:mt-1"
                     value={fromSearch}
                     onChange={(e) => setFromSearch(e.target.value)}
-                    onBlur={() => setTimeout(() => setIsFromFocused(false), 200)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={handleFromBlur}
+                    onKeyDown={handleFromKeyDown}
+                    placeholder={t("landing.cityOrAirport", "City or Airport")}
                     autoComplete="off"
                   />
                 ) : (
@@ -185,7 +310,7 @@ export default function LandingPage() {
                     </div>
                     {from && findAirport(from) && (
                       <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-slate-500 truncate mt-0.5 sm:mt-1">
-                        {findAirport(from).code}, {findAirport(from).name}
+                        {findAirport(from).code || from}, {findAirport(from).name}
                       </div>
                     )}
                   </div>
@@ -201,12 +326,12 @@ export default function LandingPage() {
                         onMouseDown={(e) => {
                           e.preventDefault();
                           setFrom(airport.code);
-                          setFromSearch(airport.city);
+                          setFromSearch(airport.city || airport.code);
                           setIsFromFocused(false);
                         }}
                       >
                         <div className="font-extrabold text-slate-800 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
-                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name}, {airport.country}</div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                       </div>
                     ))}
                   </div>
@@ -230,7 +355,10 @@ export default function LandingPage() {
                 className={`col-span-2 w-full px-3 sm:px-6 py-2.5 sm:py-3.5 md:py-4 text-right cursor-pointer transition-colors hover:bg-slate-500/5 rounded-xl sm:rounded-2xl md:rounded-r-3xl relative ${isToFocused ? "z-50" : "z-10"}`}
                 onClick={() => {
                   setIsToFocused(true);
-                  setTimeout(() => toInputRef.current?.focus(), 50);
+                  setTimeout(() => {
+                    toInputRef.current?.focus();
+                    toInputRef.current?.select();
+                  }, 50);
                 }}
               >
                 <span className="text-[9px] sm:text-[10px] font-extrabold tracking-wider text-slate-400 select-none">
@@ -244,7 +372,10 @@ export default function LandingPage() {
                     className="airport-input-field text-right font-bold mt-0.5 sm:mt-1"
                     value={toSearch}
                     onChange={(e) => setToSearch(e.target.value)}
-                    onBlur={() => setTimeout(() => setIsToFocused(false), 200)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={handleToBlur}
+                    onKeyDown={handleToKeyDown}
+                    placeholder={t("landing.destination", "Destination")}
                     autoComplete="off"
                   />
                 ) : (
@@ -254,7 +385,7 @@ export default function LandingPage() {
                     </div>
                     {to && findAirport(to) && (
                       <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-slate-500 truncate mt-0.5 sm:mt-1">
-                        {to.code || to}, {findAirport(to).name}
+                        {findAirport(to).code || to}, {findAirport(to).name}
                       </div>
                     )}
                   </div>
@@ -270,12 +401,12 @@ export default function LandingPage() {
                         onMouseDown={(e) => {
                           e.preventDefault();
                           setTo(airport.code);
-                          setToSearch(airport.city);
+                          setToSearch(airport.city || airport.code);
                           setIsToFocused(false);
                         }}
                       >
                         <div className="font-extrabold text-slate-800 text-[11px] sm:text-xs">{airport.city} ({airport.code})</div>
-                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name}, {airport.country}</div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold mt-0.5 sm:mt-1">{airport.name || airport.airport_name}, {airport.country || airport.country_name}</div>
                       </div>
                     ))}
                   </div>

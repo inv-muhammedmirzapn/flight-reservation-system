@@ -18,6 +18,7 @@ import { parseApiError } from '@/utils/errorUtils';
 
 import PageLoader from '@/admin/_core/components/PageLoader';
 import { ADMIN_PAGE_SIZE } from '@/admin/_core/store/adminSlices';
+import { fetchWithAuth } from '@/services/apiClient';
 
 export default function AdminCrudPage({
   config,
@@ -73,7 +74,8 @@ export default function AdminCrudPage({
     setForm(initialForm);
     setLocalErrors({});
     setShowForm(true);
-  }, [emptyForm, fields]);
+    config?.onOpenForm?.();
+  }, [emptyForm, fields, config]);
 
   const autoOpenedRef = useRef(false);
   useEffect(() => {
@@ -99,6 +101,7 @@ export default function AdminCrudPage({
     setForm(f);
     setLocalErrors({});
     setShowForm(true);
+    config?.onOpenForm?.(item);
   };
 
   const closeForm = () => {
@@ -108,6 +111,19 @@ export default function AdminCrudPage({
     setLocalErrors({});
   };
 
+  const focusField = useCallback((fieldName) => {
+    if (!fieldName) return;
+    setTimeout(() => {
+      const el =
+        document.getElementById(fieldName) ||
+        document.querySelector(`[name="${fieldName}"]`);
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     const fieldConfig = fields.find((f) => f.name === name);
@@ -115,6 +131,9 @@ export default function AdminCrudPage({
     if (fieldConfig?.autoUpper && typeof val === 'string') val = val.toUpperCase().trim();
     setForm((prev) => ({ ...prev, [name]: val }));
     if (localErrors[name]) setLocalErrors((prev) => ({ ...prev, [name]: '' }));
+    if (validationErrors && entityName) {
+      dispatch({ type: `${entityName}/clearErrors` });
+    }
   };
 
   const handleDateChange = (name, iso) => {
@@ -128,6 +147,8 @@ export default function AdminCrudPage({
     if (Object.keys(errors).length > 0) {
       setLocalErrors(errors);
       toast.error('Please fix the validation errors.');
+      const firstInvalid = fields.find((f) => errors[f.name]);
+      if (firstInvalid) focusField(firstInvalid.name);
       return;
     }
 
@@ -142,17 +163,56 @@ export default function AdminCrudPage({
     try {
       await promise;
       closeForm();
-      loadList(search, page);
+      loadList(activeSearch, page);
       toast.success(`${title} saved successfully!`);
       if (goNext && saveAndNextUrl) {
         navigate(saveAndNextUrl);
       }
     } catch (err) {
       toast.error(parseApiError(err, `Failed to save ${title}.`));
+      const raw = err?.data || err;
+      const fieldErrors = raw?.errors || raw;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstInvalid = fields.find((f) => fieldErrors[f.name]);
+        if (firstInvalid) focusField(firstInvalid.name);
+      }
     }
   };
 
-  
+  useEffect(() => {
+    if (!showForm || !validationErrors) return;
+    const raw = validationErrors?.errors || validationErrors;
+    if (raw && typeof raw === 'object') {
+      const firstInvalid = fields?.find((f) => raw[f.name]);
+      if (firstInvalid) focusField(firstInvalid.name);
+    }
+  }, [validationErrors, showForm, fields, focusField]);
+
+  const getFieldError = (fieldName) => {
+    if (localErrors[fieldName]) return localErrors[fieldName];
+    if (!validationErrors) return null;
+
+    const envErr = validationErrors?.errors?.[fieldName];
+    if (Array.isArray(envErr) && envErr.length > 0) return envErr[0];
+    if (typeof envErr === 'string') return envErr;
+
+    const directErr = validationErrors?.[fieldName];
+    if (Array.isArray(directErr) && directErr.length > 0) return directErr[0];
+    if (typeof directErr === 'string') return directErr;
+
+    return null;
+  };
+
+  const nonFieldErrors = useMemo(() => {
+    if (!validationErrors) return null;
+    const nfe =
+      validationErrors.non_field_errors ||
+      validationErrors?.errors?.non_field_errors ||
+      (validationErrors.detail ? [validationErrors.detail] : null);
+    if (!nfe) return null;
+    return Array.isArray(nfe) ? nfe : [nfe];
+  }, [validationErrors]);
+
   const getSingularTitle = (t) => {
     if (!t) return 'Item';
     if (t.endsWith('ies')) return t.slice(0, -3) + 'y';
@@ -200,23 +260,73 @@ export default function AdminCrudPage({
     });
   }, [items, sortConfig]);
 
+  const apiBasePath = config?.apiBasePath || thunks?.apiBasePath || thunks?.fetchList?.apiBasePath;
+  const [serverSuggestions, setServerSuggestions] = useState([]);
+
+  useEffect(() => {
+    const q = search?.trim()?.toLowerCase();
+    if (!q || q.length < 2 || !apiBasePath) {
+      setServerSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const query = new URLSearchParams({ search: q, page_size: 10 }).toString();
+        const res = await fetchWithAuth(`${apiBasePath}/?${query}`);
+        const results = res?.results || (Array.isArray(res) ? res : []);
+        const map = new Map();
+        results.forEach((item) => {
+          (columns || []).forEach((col) => {
+            const val = item[col.key];
+            if (typeof val === 'string' && val.toLowerCase().includes(q)) {
+              if (!map.has(val)) {
+                map.set(val, col.label || col.key);
+              }
+            }
+          });
+        });
+        setServerSuggestions(
+          Array.from(map.entries()).map(([value, category]) => ({ value, category }))
+        );
+      } catch (err) {
+        console.warn('Failed to fetch search suggestions:', err);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [search, apiBasePath, columns]);
+
   const searchSuggestions = useMemo(() => {
-    if (!search || search.trim().length < 2 || !items) return [];
+    if (!search || search.trim().length < 2) return [];
     const q = search.toLowerCase().trim();
     const suggestionsMap = new Map();
-    
-    items.forEach(item => {
-      columns.forEach(col => {
-        const val = item[col.key];
-        if (typeof val === 'string' && val.toLowerCase().includes(q)) {
-          if (!suggestionsMap.has(val)) {
-            suggestionsMap.set(val, col.label || col.key);
+
+    // 1. Immediate local matching from current items
+    if (items) {
+      items.forEach((item) => {
+        (columns || []).forEach((col) => {
+          const val = item[col.key];
+          if (typeof val === 'string' && val.toLowerCase().includes(q)) {
+            if (!suggestionsMap.has(val)) {
+              suggestionsMap.set(val, col.label || col.key);
+            }
           }
-        }
+        });
       });
+    }
+
+    // 2. Merge server-fetched suggestions across entire database
+    serverSuggestions.forEach((sug) => {
+      if (!suggestionsMap.has(sug.value)) {
+        suggestionsMap.set(sug.value, sug.category);
+      }
     });
-    return Array.from(suggestionsMap.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
-  }, [search, items, columns]);
+
+    return Array.from(suggestionsMap.entries())
+      .map(([value, category]) => ({ value, category }))
+      .slice(0, 6);
+  }, [search, items, columns, serverSuggestions]);
 
   const totalPages = state?.count ? Math.ceil(state.count / ADMIN_PAGE_SIZE) : 1;
 
@@ -403,17 +513,17 @@ export default function AdminCrudPage({
             </div>
             {banner && <div className="mb-4">{banner}</div>}
 
-            {validationErrors?.non_field_errors && (
+            {nonFieldErrors && (
               <div className="admin-error">
                 <AlertCircle size={15} />
-                <span>{validationErrors.non_field_errors.join(', ')}</span>
+                <span>{nonFieldErrors.join(', ')}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
               <div className="admin-form-grid">
                 {fields.map((field) => {
-                  const errorMsg = validationErrors?.[field.name]?.[0] || localErrors[field.name];
+                  const errorMsg = getFieldError(field.name);
 
                   if (field.type === 'select') {
                     return (

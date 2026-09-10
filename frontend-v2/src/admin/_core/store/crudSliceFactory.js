@@ -31,6 +31,7 @@ export function createCrudSlice(entityName, apiBasePath) {
       }
     }
   );
+  fetchList.apiBasePath = apiBasePath;
 
   const fetchDetail = createAsyncThunk(
     `${entityName}/fetchDetail`,
@@ -203,8 +204,9 @@ export function createCrudSlice(entityName, apiBasePath) {
 
   return {
     slice,
-    thunks: { fetchList, fetchDetail, add, update, remove, createCustomAction },
+    thunks: { fetchList, fetchDetail, add, update, remove, createCustomAction, apiBasePath },
     actions: slice.actions,
+    apiBasePath,
   };
 }
 

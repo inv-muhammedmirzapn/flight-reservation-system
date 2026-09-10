@@ -777,9 +777,11 @@ class FlightInstanceViewSet(AdminModelViewSet):
             logger.exception("Failed to send flight status/info notification after update")
 
     def perform_create(self, serializer):
-        """Auto-generate seats immediately after a new flight instance is saved."""
+        """Auto-generate seats and fares immediately after a new flight instance is saved."""
         instance = serializer.save()
         generate_seats_for_instance(instance)
+        from apps.pricing.services import generate_fares_for_instance
+        generate_fares_for_instance(instance)
 
     @action(detail=True, methods=["post"], url_path="generate-seats",
             permission_classes=[IsAdminOrSuperuser])
@@ -994,6 +996,12 @@ class RouteFareClassViewSet(AdminModelViewSet):
         if cabin:
             qs = qs.filter(cabin_class=cabin)
         return qs
+
+    def perform_create(self, serializer):
+        route_fare = serializer.save()
+        from apps.pricing.services import generate_fares_for_instance
+        for inst in route_fare.route.instances.filter(status="SCHEDULED"):
+            generate_fares_for_instance(inst)
 
     def perform_update(self, serializer):
         from .services_pricing import update_route_fare_price

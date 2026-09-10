@@ -26,7 +26,10 @@ export function parseApiError(err, fallback = 'An unexpected error occurred.') {
   if (typeof err === 'string') return err || fallback;
 
   // ── JS Error – attempt to unwrap a JSON-serialised body ──────────────────
-  if (err instanceof Error || (err.message && typeof err.message === 'string')) {
+  if (err instanceof Error) {
+    if (err.data) {
+      return parseApiError(err.data, fallback);
+    }
     const msg = err.message;
     if (msg === 'null') return 'An unexpected error occurred. Please check backend connection.';
 
@@ -47,16 +50,21 @@ export function parseApiError(err, fallback = 'An unexpected error occurred.') {
   // ── Object (DRF response body / custom envelope) ──────────────────────────
   if (typeof err === 'object') {
     // Custom envelope: { status: "error", message: "...", errors: { field: [...] } }
-    if (err.message && typeof err.message === 'string') {
-      if (err.errors && typeof err.errors === 'object' && Object.keys(err.errors).length > 0) {
-        const details = Object.entries(err.errors)
-          .map(([field, msgs]) => {
-            const msgStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
-            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgStr}`;
-          })
-          .join(' · ');
-        return details ? `${err.message} — ${details}` : err.message;
+    if (err.errors && typeof err.errors === 'object' && Object.keys(err.errors).length > 0) {
+      const details = Object.entries(err.errors)
+        .map(([field, msgs]) => {
+          const msgStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+          return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgStr}`;
+        })
+        .join(' · ');
+      if (details) {
+        if (!err.message || err.message === 'An error occurred.') {
+          return details;
+        }
+        return `${err.message} — ${details}`;
       }
+    }
+    if (err.message && typeof err.message === 'string') {
       return err.message;
     }
 

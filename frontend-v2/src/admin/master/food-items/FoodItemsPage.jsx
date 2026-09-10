@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useEffect, useCallback } from 'react';
 import AdminCrudPage from '@/admin/_core/AdminCrudPage';
-import { fetchAirlines } from '@/admin/_core/store/adminSlices';
+import { fetchWithAuth } from '@/services/apiClient';
 import {
   fetchFoodItems, fetchFoodItemDetail, addFoodItem, updateFoodItem, removeFoodItem,
 } from '@/admin/_core/store/adminSlices';
@@ -67,13 +66,20 @@ const onBeforeSubmit = (form) => {
 const THUNKS = { fetchList: fetchFoodItems, fetchDetail: fetchFoodItemDetail, add: addFoodItem, update: updateFoodItem, remove: removeFoodItem };
 
 export default function FoodItemsPage() {
-  const dispatch = useDispatch();
-  const { items: airlines } = useSelector((s) => s.airline);
-  useEffect(() => {
-    if (!airlines || airlines.length === 0) {
-      dispatch(fetchAirlines({}));
+  const [airlines, setAirlines] = useState([]);
+
+  const loadLookups = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth('/flights/v2/airlines/?page_size=1000');
+      setAirlines(res?.results || (Array.isArray(res) ? res : []));
+    } catch (err) {
+      console.error('Failed to load airlines lookup for food items:', err);
     }
-  }, [dispatch, airlines.length]);
+  }, []);
+
+  useEffect(() => {
+    loadLookups();
+  }, [loadLookups]);
 
   const airlineOptions = airlines.map((a) => ({ value: a.id, label: `${a.iata_airline_code} – ${a.airline_name}` }));
 
@@ -97,6 +103,7 @@ export default function FoodItemsPage() {
     validateForm,
     onBeforeSubmit,
     thunks: THUNKS,
+    onOpenForm: loadLookups,
     getDeleteDetails: (item) => {
       if (!item) return null;
       const details = {};

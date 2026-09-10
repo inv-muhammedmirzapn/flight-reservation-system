@@ -99,21 +99,15 @@ export default function FlightInstancesPage() {
   }, [pageStr, activeSearch, load]);
 
   const loadLookups = () => {
-    if (routes.length === 0) {
-      fetchWithAuth('/flights/v2/flight-routes/?page_size=1000')
-        .then((data) => setRoutes(data.results || data || []))
-        .catch((err) => console.error('Failed to load routes lookup:', err));
-    }
-    if (allAircraft.length === 0) {
-      fetchWithAuth('/flights/v2/aircraft/?page_size=1000')
-        .then((data) => setAllAircraft(data.results || data || []))
-        .catch((err) => console.error('Failed to load aircraft lookup:', err));
-    }
-    if (airports.length === 0) {
-      fetchWithAuth('/flights/v2/airports/?page_size=1000')
-        .then((data) => setAirports(data.results || data || []))
-        .catch((err) => console.error('Failed to load airports lookup:', err));
-    }
+    fetchWithAuth('/flights/v2/flight-routes/?page_size=1000')
+      .then((data) => setRoutes(data.results || data || []))
+      .catch((err) => console.error('Failed to load routes lookup:', err));
+    fetchWithAuth('/flights/v2/aircraft/?page_size=1000')
+      .then((data) => setAllAircraft(data.results || data || []))
+      .catch((err) => console.error('Failed to load aircraft lookup:', err));
+    fetchWithAuth('/flights/v2/airports/?page_size=1000')
+      .then((data) => setAirports(data.results || data || []))
+      .catch((err) => console.error('Failed to load airports lookup:', err));
   };
 
   useEffect(() => {

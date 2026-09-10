@@ -73,6 +73,15 @@ export const flightsAPI = {
     return fetchWithAuth(`/flights/v2/airports/nearest/?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`, options);
   },
 
+  getAirports: async (params = {}, options = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page_size) qs.set('page_size', params.page_size);
+    if (params.q) qs.set('q', params.q);
+    if (params.search) qs.set('search', params.search);
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetchWithAuth(`/flights/v2/airports/${query}`, options);
+  },
+
   // Admin V2 CRUD Operations
   create: async (flightData) => {
     return fetchWithAuth('/flights/v2/', {

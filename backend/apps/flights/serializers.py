@@ -668,9 +668,17 @@ class FlightInstanceSerializer(serializers.ModelSerializer):
         aircraft = attrs.get("aircraft", getattr(self.instance, "aircraft", None))
         if route and aircraft and route.airline_id and aircraft.airline_id:
             if route.airline_id != aircraft.airline_id:
-                raise serializers.ValidationError(
-                    {"aircraft": f"Aircraft ({aircraft.registration}) belongs to {aircraft.airline.airline_name}, but flight route is operated by {route.airline.airline_name}."}
-                )
+                # If this is a partial update where aircraft was not explicitly provided,
+                # auto-heal to an aircraft belonging to the route's airline if available.
+                if self.instance and "aircraft" not in attrs:
+                    correct_ac = Aircraft.objects.filter(airline_id=route.airline_id).first()
+                    if correct_ac:
+                        attrs["aircraft"] = correct_ac
+                        aircraft = correct_ac
+                if route.airline_id != aircraft.airline_id:
+                    raise serializers.ValidationError(
+                        {"aircraft": f"Aircraft ({aircraft.registration}) belongs to {aircraft.airline.airline_name}, but flight route is operated by {route.airline.airline_name}."}
+                    )
 
         # Auto-set status to DELAYED when delay_minutes > 0 and status not explicitly provided
         delay = attrs.get("delay_minutes", getattr(self.instance, "delay_minutes", 0) or 0)
