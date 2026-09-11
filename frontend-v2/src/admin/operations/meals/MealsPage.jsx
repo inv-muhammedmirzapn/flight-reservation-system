@@ -40,6 +40,8 @@ export default function MealsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const airlineParam = searchParams.get('airline') || '';
   const cabinParam = searchParams.get('cabin_class') || '';
+  const instanceParam = searchParams.get('instance') || '';
+  const fromPage = searchParams.get('fromPage') || '';
 
   const [filterAirline, setFilterAirline] = useState(airlineParam);
   const [filterCabin, setFilterCabin] = useState(cabinParam);
@@ -200,21 +202,41 @@ export default function MealsPage() {
     <div className="admin-page">
       <div className="admin-container">
 
-        {airlineParam && (
+        {(airlineParam || instanceParam) && (
           <div className="admin-breadcrumb" style={{ marginBottom: 16 }}>
-            <span>
-              <Link to="/admin/operations/airlines">Airlines</Link>
-              <span style={{ margin: '0 8px' }}>/</span>
-            </span>
-            <span>Meals (Airline #{airlineParam})</span>
+            {instanceParam ? (
+              <span>
+                <Link
+                  to={`/admin/operations/flight-instances?${fromPage ? `page=${fromPage}&` : ''}highlightInstance=${instanceParam}`}
+                  onClick={() => sessionStorage.setItem('highlightInstance', String(instanceParam))}
+                >
+                  Flight Instances
+                </Link>
+                <span style={{ margin: '0 8px' }}>/</span>
+                <span>Meals (Instance #{instanceParam})</span>
+              </span>
+            ) : (
+              <span>
+                <Link to="/admin/operations/airlines">Airlines</Link>
+                <span style={{ margin: '0 8px' }}>/</span>
+                <span>Meals (Airline #{airlineParam})</span>
+              </span>
+            )}
           </div>
         )}
 
         <div className="flex items-center gap-3.5 mb-7 justify-between">
           <div className="flex items-center gap-3.5">
-            {airlineParam && (
+            {(airlineParam || instanceParam) && (
               <button
-                onClick={() => navigate('/admin/operations/airlines')}
+                onClick={() => {
+                  if (instanceParam) {
+                    sessionStorage.setItem('highlightInstance', String(instanceParam));
+                    navigate(`/admin/operations/flight-instances?${fromPage ? `page=${fromPage}&` : ''}highlightInstance=${instanceParam}`);
+                  } else {
+                    navigate('/admin/operations/airlines');
+                  }
+                }}
                 className="flex items-center gap-1.5 bg-black/5 border-none rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-[#555] cursor-pointer transition-colors hover:bg-black/10"
               >
                 <ArrowLeft size={15} /> Back

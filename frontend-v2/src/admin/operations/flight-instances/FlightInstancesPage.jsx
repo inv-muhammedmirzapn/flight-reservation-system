@@ -54,7 +54,7 @@ export default function FlightInstancesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const routeParam = searchParams.get('route');
   const autoCreate = searchParams.get('autoCreate');
-  const highlightInstance = searchParams.get('highlightInstance');
+  const highlightInstance = searchParams.get('highlightInstance') || sessionStorage.getItem('highlightInstance');
 
   const { items: instances, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightInstance);
 
@@ -98,6 +98,18 @@ export default function FlightInstancesPage() {
     load(activeSearch, resolvedPage);
   }, [pageStr, activeSearch, load]);
 
+  // Keep sessionStorage in sync and scroll to highlighted row
+  useEffect(() => {
+    if (highlightInstance) {
+      sessionStorage.setItem('highlightInstance', String(highlightInstance));
+      const timer = setTimeout(() => {
+        const el = document.querySelector('.admin-row-highlight');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightInstance, instances]);
+
   const loadLookups = () => {
     fetchWithAuth('/flights/v2/flight-routes/?page_size=1000')
       .then((data) => setRoutes(data.results || data || []))
@@ -124,18 +136,59 @@ export default function FlightInstancesPage() {
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (!searchParams.has('highlightInstance')) return;
+      const activeHighlight = searchParams.get('highlightInstance') || sessionStorage.getItem('highlightInstance');
+      if (!activeHighlight) return;
+
+      // Ignore clicks on disconnected elements (e.g. dropdown items or modals unmounted on click)
+      if (!e.target || !e.target.isConnected) return;
+
+      // Check composedPath for any interactive, header, or nav ancestor
+      const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+      const isInteractiveOrNav = path.some((el) => {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName.toLowerCase();
+        if (
+          tag === 'a' ||
+          tag === 'button' ||
+          tag === 'nav' ||
+          tag === 'header' ||
+          tag === 'input' ||
+          tag === 'select' ||
+          tag === 'textarea'
+        ) {
+          return true;
+        }
+        if (el.classList) {
+          if (
+            el.classList.contains('admin-navbar') ||
+            el.classList.contains('admin-sidebar') ||
+            el.classList.contains('admin-modal') ||
+            el.classList.contains('toast') ||
+            el.classList.contains('admin-toolbar-search')
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (isInteractiveOrNav) return;
+
+      if (
+        e.target.closest('a') ||
+        e.target.closest('button') ||
+        e.target.closest('nav') ||
+        e.target.closest('header') ||
+        e.target.closest('.admin-navbar') ||
+        e.target.closest('.admin-sidebar') ||
+        e.target.closest('.admin-modal') ||
+        e.target.closest('.toast')
+      ) {
+        return;
+      }
 
       const tableContainer = document.querySelector('.admin-table-wrap');
       if (tableContainer && !tableContainer.contains(e.target)) {
-        const isInteractiveModal =
-          e.target.closest('.admin-modal') ||
-          e.target.closest('.toast') ||
-          e.target.closest('.admin-sidebar') ||
-          e.target.closest('.admin-navbar') ||
-          e.target.closest('nav');
-        if (isInteractiveModal) return;
-
+        sessionStorage.removeItem('highlightInstance');
         setSearchParams((prev) => {
           if (!prev.has('highlightInstance')) return prev;
           const nextParams = new URLSearchParams(prev);
@@ -164,16 +217,22 @@ export default function FlightInstancesPage() {
     ) {
       return;
     }
-    setSearchParams((prev) => {
-      const nextParams = new URLSearchParams(prev);
-      const currentHighlight = nextParams.get('highlightInstance');
-      if (currentHighlight === String(instId)) {
+    const currentHighlight = searchParams.get('highlightInstance') || sessionStorage.getItem('highlightInstance');
+    if (currentHighlight === String(instId)) {
+      sessionStorage.removeItem('highlightInstance');
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
         nextParams.delete('highlightInstance');
-      } else {
+        return nextParams;
+      });
+    } else {
+      sessionStorage.setItem('highlightInstance', String(instId));
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
         nextParams.set('highlightInstance', String(instId));
-      }
-      return nextParams;
-    });
+        return nextParams;
+      });
+    }
   };
 
   const calculateArrival = (routeObj, depStr) => {
@@ -490,22 +549,62 @@ export default function FlightInstancesPage() {
                         <td className="text-right whitespace-nowrap">
                           <div className="fi-actions-wrap" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                             <div className="fi-quick-links" style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 2 }}>
-                              <Link to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Fares">
+                              <Link
+                                to={`/admin/operations/fares?instance=${inst.id}&fromPage=${page}&highlightInstance=${inst.id}`}
+                                onClick={() => sessionStorage.setItem('highlightInstance', String(inst.id))}
+                                className="fi-action-link"
+                                style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                                title="Manage Fares"
+                              >
                                 <Banknote size={13} /><span className="fi-action-label"> Fares</span>
                               </Link>
-                              <Link to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Seats">
+                              <Link
+                                to={`/admin/operations/seat-map?instance=${inst.id}&fromPage=${page}&highlightInstance=${inst.id}`}
+                                onClick={() => sessionStorage.setItem('highlightInstance', String(inst.id))}
+                                className="fi-action-link"
+                                style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                                title="Manage Seats"
+                              >
                                 <Armchair size={13} /><span className="fi-action-label"> Seats</span>
                               </Link>
-                              <Link to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}`} className="fi-action-link" style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'} onMouseLeave={e => e.currentTarget.style.background='transparent'} title="Manage Meals">
+                              <Link
+                                to={`/admin/operations/meals?instance=${inst.id}&fromPage=${page}&highlightInstance=${inst.id}`}
+                                onClick={() => sessionStorage.setItem('highlightInstance', String(inst.id))}
+                                className="fi-action-link"
+                                style={{ padding: '6px 10px', color: '#1a1c1d', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontSize: 12, fontWeight: 600, transition: 'background 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                                title="Manage Meals"
+                              >
                                 <Utensils size={13} /><span className="fi-action-label"> Meals</span>
                               </Link>
                             </div>
 
                             <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-                              <button className="btn-secondary" title="Edit" onClick={() => openEdit(inst)} style={{ padding: '6px 8px' }}>
+                              <button
+                                className="btn-secondary"
+                                title="Edit"
+                                onClick={() => {
+                                  sessionStorage.setItem('highlightInstance', String(inst.id));
+                                  openEdit(inst);
+                                }}
+                                style={{ padding: '6px 8px' }}
+                              >
                                 <Pencil size={14} />
                               </button>
-                              <button className="btn-danger" title="Delete" onClick={() => setDeleteItem(inst)} style={{ padding: '6px 8px' }}>
+                              <button
+                                className="btn-danger"
+                                title="Delete"
+                                onClick={() => {
+                                  sessionStorage.setItem('highlightInstance', String(inst.id));
+                                  setDeleteItem(inst);
+                                }}
+                                style={{ padding: '6px 8px' }}
+                              >
                                 <Trash2 size={14} />
                               </button>
                             </div>

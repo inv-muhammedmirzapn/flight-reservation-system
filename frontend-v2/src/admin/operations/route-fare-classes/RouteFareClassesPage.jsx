@@ -299,7 +299,12 @@ export default function RouteFareClassesPage() {
         {routeParam && (
           <div className="admin-breadcrumb">
             <span>
-              <Link to="/admin/operations/flight-routes">FLIGHT ROUTES</Link>
+              <Link
+                to={`/admin/operations/flight-routes?${searchParams.get('fromPage') ? `page=${searchParams.get('fromPage')}&` : ''}highlightRoute=${routeParam}`}
+                onClick={() => sessionStorage.setItem('highlightRoute', String(routeParam))}
+              >
+                FLIGHT ROUTES
+              </Link>
               <span className="mx-2">/</span>
             </span>
             <span>
@@ -314,6 +319,7 @@ export default function RouteFareClassesPage() {
             {routeParam && (
               <button
                 onClick={() => {
+                  sessionStorage.setItem('highlightRoute', String(routeParam));
                   const fromPage = searchParams.get('fromPage');
                   if (fromPage) {
                     navigate(`/admin/operations/flight-routes?page=${fromPage}&highlightRoute=${routeParam}`);

@@ -35,6 +35,7 @@ export default function FlightOverviewPage() {
     // Using flightInstance slice for live data
     const { items: flights, count, loading, actionLoading, error } = useSelector(s => s.flightInstance);
     const [airports, setAirports] = useState([]);
+    const [serverFlights, setServerFlights] = useState([]);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [sourceFocus, setSourceFocus] = useState(false);
@@ -99,7 +100,32 @@ export default function FlightOverviewPage() {
         fetchFiltered(1, buildParams('', '', '', '', '', '', 'scheduled_departure', 'desc'));
     }, [fetchFiltered, buildParams]); // initial load only
 
+    // Pre-load all master airports immediately so recommendations for any airport (CCJ, COK, DEL, etc.) work live
+    useEffect(() => {
+        fetchWithAuth('/flights/v2/airports/?page_size=1000')
+            .then((data) => setAirports(data.results || (Array.isArray(data) ? data : [])))
+            .catch((err) => console.error('Failed to load airports lookup:', err));
+    }, []);
 
+    // Debounced search across all flight instances in database for flight numbers / routes
+    useEffect(() => {
+        const q = searchInput?.trim()?.toLowerCase();
+        if (!q || q.length < 2) {
+            setServerFlights([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetchWithAuth(`/flights/v2/flight-instances/?search=${encodeURIComponent(q)}&page_size=10`);
+                setServerFlights(res?.results || (Array.isArray(res) ? res : []));
+            } catch (err) {
+                console.warn('Failed to fetch flight suggestions:', err);
+            }
+        }, 200);
+
+        return () => clearTimeout(timer);
+    }, [searchInput]);
 
     // Lock background page scroll when any modal is open
     const anyModalOpen = filterOpen || (!!editTarget && !confirmOpen) || confirmOpen;
@@ -114,36 +140,95 @@ export default function FlightOverviewPage() {
         };
     }, [anyModalOpen]);
 
-    // Quick search input change handler (only updates local state, fetching happens on submit/clear)
+    // Quick search input change handler
     const handleSearchChange = (e) => {
         setSearchInput(e.target.value);
     };
 
     const searchSuggestions = useMemo(() => {
-        if (!searchInput || searchInput.trim().length < 2 || !flights) return [];
+        if (!searchInput || searchInput.trim().length < 1) return [];
         const q = searchInput.toLowerCase().trim();
         const map = new Map();
-        flights.forEach(f => {
-            const num = f.flight_number;
+
+        // 1. Search across master airports database (IATA code, city, airport name)
+        if (airports && airports.length > 0) {
+            airports.forEach(a => {
+                const iata = a.iata_code?.toUpperCase();
+                const city = a.city;
+                const name = a.airport_name;
+
+                if (iata && iata.toLowerCase().includes(q)) {
+                    if (!map.has(iata)) {
+                        map.set(iata, {
+                            value: iata,
+                            sub: [city, name].filter(Boolean).join(' — '),
+                            category: 'Airport Code',
+                        });
+                    }
+                }
+
+                if (city && city.toLowerCase().includes(q)) {
+                    if (iata && !map.has(iata)) {
+                        map.set(iata, {
+                            value: iata,
+                            sub: [city, name].filter(Boolean).join(' — '),
+                            category: 'Airport Code',
+                        });
+                    }
+                    if (!map.has(city)) {
+                        map.set(city, {
+                            value: city,
+                            sub: `${iata ? `${iata} • ` : ''}${name || ''}`,
+                            category: 'City',
+                        });
+                    }
+                }
+
+                if (name && name.toLowerCase().includes(q)) {
+                    if (iata && !map.has(iata)) {
+                        map.set(iata, {
+                            value: iata,
+                            sub: [city, name].filter(Boolean).join(' — '),
+                            category: 'Airport Code',
+                        });
+                    }
+                    if (!map.has(name)) {
+                        map.set(name, {
+                            value: name,
+                            sub: `${iata ? `${iata} • ` : ''}${city || ''}`,
+                            category: 'Airport',
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Search across current flights + server-fetched flights (Flight numbers & Airlines)
+        const combinedFlights = [...(flights || []), ...(serverFlights || [])];
+        combinedFlights.forEach(f => {
+            const num = f.flight_number || f.flight_no;
             const sIata = f.route?.source?.iata_code;
             const dIata = f.route?.destination?.iata_code;
             const al = f.route?.airline?.name;
-            const sCity = f.route?.source?.city;
-            const dCity = f.route?.destination?.city;
-            const sName = f.route?.source?.name;
-            const dName = f.route?.destination?.name;
 
-            if (num?.toLowerCase().includes(q) && !map.has(num)) map.set(num, 'Flight No.');
-            if (sIata?.toLowerCase().includes(q) && !map.has(sIata)) map.set(sIata, 'Airport Code');
-            if (dIata?.toLowerCase().includes(q) && !map.has(dIata)) map.set(dIata, 'Airport Code');
-            if (al?.toLowerCase().includes(q) && !map.has(al)) map.set(al, 'Airline');
-            if (sCity?.toLowerCase().includes(q) && !map.has(sCity)) map.set(sCity, 'City');
-            if (dCity?.toLowerCase().includes(q) && !map.has(dCity)) map.set(dCity, 'City');
-            if (sName?.toLowerCase().includes(q) && !map.has(sName)) map.set(sName, 'Airport');
-            if (dName?.toLowerCase().includes(q) && !map.has(dName)) map.set(dName, 'Airport');
+            if (num && num.toLowerCase().includes(q) && !map.has(num)) {
+                map.set(num, {
+                    value: num,
+                    sub: sIata && dIata ? `${sIata} → ${dIata}` : 'Flight Instance',
+                    category: 'Flight No.',
+                });
+            }
+            if (al && al.toLowerCase().includes(q) && !map.has(al)) {
+                map.set(al, {
+                    value: al,
+                    sub: 'Airline',
+                    category: 'Airline',
+                });
+            }
         });
-        return Array.from(map.entries()).map(([value, category]) => ({ value, category })).slice(0, 5);
-    }, [searchInput, flights]);
+
+        return Array.from(map.values()).slice(0, 7);
+    }, [searchInput, airports, flights, serverFlights]);
 
     const getAirportSuggestions = (query) => {
         if (!query || query.trim().length < 1) return [];
@@ -272,209 +357,204 @@ export default function FlightOverviewPage() {
         }
     };
 
+    const today = new Date();
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    const todayStr = fmt(today);
+    const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+
+    const dateChips = [
+        { label: 'Today', date: todayStr },
+        { label: 'Tomorrow', date: tomorrowStr },
+    ];
+
     return (
         <div className="admin-page">
             <div className="admin-container">
 
                 {/* Header */}
-                <div className="flex justify-between items-start flex-wrap gap-4 mb-8">
-                    <div>
-                        <h1 className="admin-page-title">{t("admin.overviewTitle", { defaultValue: 'Flight Overview' })}</h1>
-                        <p className="admin-page-subtitle">{t("admin.overviewSubtitle", { defaultValue: 'Monitor live flight instances, update statuses and check schedules.' })}</p>
-                    </div>
-                </div>
-
-                {/* Unified Search + Filter Control Bar */}
-                <div className="glass-card overview-controls" style={{ position: 'relative', zIndex: 50, borderRadius: 16, padding: '16px 20px', marginBottom: 12, overflow: 'visible' }}>
-
-                    {/* Row 1: Search + Action Buttons */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        {/* Quick Search */}
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                setActiveSearch(searchInput);
-                                setCurrentPage(1);
-                                fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                            }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 260px', minWidth: 0 }}
-                        >
-                            <div className="admin-toolbar-search" style={{ position: 'relative', flex: 1 }}>
-                                <Search size={14} className="search-icon" />
-                                <input
-                                    className="filter-input"
-                                    type="text"
-                                    placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
-                                    value={searchInput}
-                                    onChange={handleSearchChange}
-                                    onFocus={() => setSearchFocus(true)}
-                                    onBlur={() => setSearchFocus(false)}
-                                />
-                                {searchInput && (
-                                    <button
-                                        type="button"
-                                        className="clear-search-btn"
-                                        onClick={() => {
-                                            setSearchInput('');
-                                            setActiveSearch('');
-                                            setCurrentPage(1);
-                                            fetchFiltered(1, buildParams('', statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                                        }}
-                                        title="Clear search"
-                                    >
-                                        <X size={13} />
-                                    </button>
-                                )}
-                                {searchFocus && searchSuggestions.length > 0 && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 180, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 }}>
-                                        {searchSuggestions.map((sug, idx) => (
-                                            <div
-                                                key={idx}
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    setSearchInput(sug.value);
-                                                    setActiveSearch(sug.value);
-                                                    setCurrentPage(1);
-                                                    fetchFiltered(1, buildParams(sug.value, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
-                                                    setSearchFocus(false);
-                                                }}
-                                                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                            >
-                                                <span style={{ fontWeight: 600, color: '#1a1c1d', fontSize: 13 }}>{sug.value}</span>
-                                                <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{sug.category}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                type="submit"
-                                className="btn-primary"
-                                style={{ padding: '7px 14px', fontSize: 13, flexShrink: 0 }}
-                            >
-                                {t("admin.search", { defaultValue: 'Search' })}
-                            </button>
-                        </form>
-
-                        {/* Divider */}
-                        <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
-
-                        {/* Quick Date Chips */}
-                        {(() => {
-                            const today = new Date();
-                            const fmt = (d) => d.toISOString().slice(0, 10);
-                            const todayStr = fmt(today);
-                            const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
-
-                            const chips = [
-                                { label: 'Today', date: todayStr },
-                                { label: 'Tomorrow', date: tomorrowStr },
-                            ];
-
-                            return chips.map(chip => {
-                                const isActive = dateFilter === chip.date && !arrivalDateFilter;
-                                return (
-                                    <button
-                                        key={chip.label}
-                                        type="button"
-                                        onClick={() => {
-                                            if (isActive) {
-                                                setDateFilter('');
-                                                setArrivalDateFilter('');
-                                                setDraftDate('');
-                                                setDraftArrivalDate('');
-                                                setCurrentPage(1);
-                                                fetchFiltered(1, buildParams(activeSearch, statusFilter, '', '', sourceFilter, destFilter, sortBy, sortOrder));
-                                            } else {
-                                                setDateFilter(chip.date);
-                                                setArrivalDateFilter('');
-                                                setDraftDate(chip.date);
-                                                setDraftArrivalDate('');
-                                                setCurrentPage(1);
-                                                fetchFiltered(1, buildParams(activeSearch, statusFilter, chip.date, '', sourceFilter, destFilter, sortBy, sortOrder));
-                                            }
-                                        }}
-                                        style={{
-                                            padding: '6px 13px',
-                                            borderRadius: 20,
-                                            fontSize: 12,
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            flexShrink: 0,
-                                            transition: 'all 0.18s',
-                                            border: isActive ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
-                                            background: isActive ? '#705d00' : 'rgba(255,255,255,0.7)',
-                                            color: isActive ? '#fff' : '#5e5e5e',
-                                            boxShadow: isActive ? '0 2px 8px rgba(112,93,0,0.18)' : 'none',
-                                        }}
-                                    >
-                                        {chip.label}
-                                    </button>
-                                );
-                            });
-                        })()}
-
-                        {/* Inline Date Picker — reuses shared DatePicker component */}
-                        <div style={{ flexShrink: 0, width: 136 }}>
-                            <DatePicker
-                                placeholder="Pick date"
-                                value={dateFilter}
-                                onChange={(val) => {
-                                    setDateFilter(val);
-                                    setArrivalDateFilter('');
-                                    setDraftDate(val);
-                                    setDraftArrivalDate('');
-                                    setCurrentPage(1);
-                                    fetchFiltered(1, buildParams(activeSearch, statusFilter, val, '', sourceFilter, destFilter, sortBy, sortOrder));
-                                }}
-                            />
+                <div className="admin-page-header">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h1 className="admin-page-title">{t("admin.overviewTitle", { defaultValue: 'Flight Overview' })}</h1>
+                            <p className="admin-page-subtitle">
+                                {count !== undefined ? `${count} total records found` : t("admin.overviewSubtitle", { defaultValue: 'Monitor live flight instances, update statuses and check schedules.' })}
+                            </p>
                         </div>
-
-                        {/* Divider */}
-                        <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
-
-                        {/* Filter & Sort Modal Button */}
-                        <button
-                            onClick={handleOpenFilters}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', flexShrink: 0 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = 'rgba(112,93,0,0.2)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}
-                        >
-                            <SlidersHorizontal size={14} color="#705d00" />
-                            <span>{t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}</span>
-                            {hasActiveFilters && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
-                                    {
-                                        (statusFilter ? 1 : 0) +
-                                        (dateFilter ? 1 : 0) +
-                                        (arrivalDateFilter ? 1 : 0) +
-                                        (sourceFilter ? 1 : 0) +
-                                        (destFilter ? 1 : 0) +
-                                        (sortBy !== 'scheduled_departure' || sortOrder !== 'desc' ? 1 : 0)
-                                    }
-                                </span>
-                            )}
-                        </button>
-
-                        {/* Clear All */}
-                        {hasActiveFilters && (
-                            <button
-                                onClick={handleClearFilters}
-                                style={{ padding: '8px 14px', background: 'rgba(220,38,38,0.08)', border: '1.5px solid rgba(220,38,38,0.15)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#dc2626', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
-                            >
-                                {t("admin.clearAll", { defaultValue: 'Clear All' })}
-                            </button>
-                        )}
                     </div>
-
-
                 </div>
 
+                {/* Toolbar */}
+                <div className="admin-toolbar">
+                    {/* Quick Search */}
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setActiveSearch(searchInput);
+                            setCurrentPage(1);
+                            fetchFiltered(1, buildParams(searchInput, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                        }}
+                        className="flex gap-2"
+                    >
+                        <div className="admin-toolbar-search" style={{ position: 'relative' }}>
+                            <Search size={14} className="search-icon" />
+                            <input
+                                type="text"
+                                placeholder={t("admin.searchPlaceholder", { defaultValue: 'Search flight no., airline, airport...' })}
+                                value={searchInput}
+                                onChange={handleSearchChange}
+                                onFocus={() => setSearchFocus(true)}
+                                onBlur={() => setSearchFocus(false)}
+                            />
+                            {searchInput && (
+                                <button
+                                    type="button"
+                                    className="clear-search-btn"
+                                    onClick={() => {
+                                        setSearchInput('');
+                                        setActiveSearch('');
+                                        setCurrentPage(1);
+                                        fetchFiltered(1, buildParams('', statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                    }}
+                                    title="Clear search"
+                                >
+                                    <X size={13} />
+                                </button>
+                            )}
+                            {searchFocus && searchSuggestions.length > 0 && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, minWidth: 280, zIndex: 1000, background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, maxHeight: 240, overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', marginTop: 4 }}>
+                                    {searchSuggestions.map((sug, idx) => (
+                                        <div
+                                            key={idx}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setSearchInput(sug.value);
+                                                setActiveSearch(sug.value);
+                                                setCurrentPage(1);
+                                                fetchFiltered(1, buildParams(sug.value, statusFilter, dateFilter, arrivalDateFilter, sourceFilter, destFilter, sortBy, sortOrder));
+                                                setSearchFocus(false);
+                                            }}
+                                            style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: idx < searchSuggestions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(112,93,0,0.06)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                                                <span style={{ fontWeight: 700, color: '#1a1c1d', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sug.value}</span>
+                                                {sug.sub && <span style={{ fontSize: 11, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sug.sub}</span>}
+                                            </div>
+                                            <span style={{ fontSize: 10, color: '#705d00', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, background: 'rgba(112,93,0,0.08)', padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>{sug.category}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            className="btn-primary px-[14px] py-[7px] text-[13px]"
+                        >
+                            {t("admin.search", { defaultValue: 'Search' })}
+                        </button>
+                    </form>
 
+                    {/* Divider */}
+                    <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+
+                    {/* Quick Date Chips */}
+                    {dateChips.map(chip => {
+                        const isActive = dateFilter === chip.date && !arrivalDateFilter;
+                        return (
+                            <button
+                                key={chip.label}
+                                type="button"
+                                onClick={() => {
+                                    if (isActive) {
+                                        setDateFilter('');
+                                        setArrivalDateFilter('');
+                                        setDraftDate('');
+                                        setDraftArrivalDate('');
+                                        setCurrentPage(1);
+                                        fetchFiltered(1, buildParams(activeSearch, statusFilter, '', '', sourceFilter, destFilter, sortBy, sortOrder));
+                                    } else {
+                                        setDateFilter(chip.date);
+                                        setArrivalDateFilter('');
+                                        setDraftDate(chip.date);
+                                        setDraftArrivalDate('');
+                                        setCurrentPage(1);
+                                        fetchFiltered(1, buildParams(activeSearch, statusFilter, chip.date, '', sourceFilter, destFilter, sortBy, sortOrder));
+                                    }
+                                }}
+                                style={{
+                                    padding: '6px 13px',
+                                    borderRadius: 20,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    transition: 'all 0.18s',
+                                    border: isActive ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
+                                    background: isActive ? '#705d00' : 'rgba(255,255,255,0.7)',
+                                    color: isActive ? '#fff' : '#5e5e5e',
+                                    boxShadow: isActive ? '0 2px 8px rgba(112,93,0,0.18)' : 'none',
+                                }}
+                            >
+                                {chip.label}
+                            </button>
+                        );
+                    })}
+
+                    {/* Inline Date Picker */}
+                    <div style={{ flexShrink: 0, width: 136 }}>
+                        <DatePicker
+                            placeholder="Pick date"
+                            value={dateFilter}
+                            onChange={(val) => {
+                                setDateFilter(val);
+                                setArrivalDateFilter('');
+                                setDraftDate(val);
+                                setDraftArrivalDate('');
+                                setCurrentPage(1);
+                                fetchFiltered(1, buildParams(activeSearch, statusFilter, val, '', sourceFilter, destFilter, sortBy, sortOrder));
+                            }}
+                        />
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+
+                    {/* Filter & Sort Modal Button */}
+                    <button
+                        onClick={handleOpenFilters}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#1a1c1d', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', flexShrink: 0 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; e.currentTarget.style.borderColor = 'rgba(112,93,0,0.2)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; }}
+                    >
+                        <SlidersHorizontal size={14} color="#705d00" />
+                        <span>{t("admin.filtersAndSorting", { defaultValue: 'Filters & Sorting' })}</span>
+                        {hasActiveFilters && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: '50%', background: '#705d00', color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 2px' }}>
+                                {
+                                    (statusFilter ? 1 : 0) +
+                                    (dateFilter ? 1 : 0) +
+                                    (arrivalDateFilter ? 1 : 0) +
+                                    (sourceFilter ? 1 : 0) +
+                                    (destFilter ? 1 : 0) +
+                                    (sortBy !== 'scheduled_departure' || sortOrder !== 'desc' ? 1 : 0)
+                                }
+                            </span>
+                        )}
+                    </button>
+
+                    {/* Clear All */}
+                    {hasActiveFilters && (
+                        <button
+                            onClick={handleClearFilters}
+                            style={{ padding: '7px 14px', background: 'rgba(220,38,38,0.08)', border: '1.5px solid rgba(220,38,38,0.15)', borderRadius: 12, fontSize: 13, fontWeight: 600, color: '#dc2626', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.12)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
+                        >
+                            {t("admin.clearAll", { defaultValue: 'Clear All' })}
+                        </button>
+                    )}
+                </div>
 
                 {/* Error */}
                 {error && (
@@ -483,66 +563,85 @@ export default function FlightOverviewPage() {
                     </div>
                 )}
 
-                {/* Table */}
-                <div className="glass-card overview-table-container" style={{ borderRadius: 20, overflow: 'hidden' }}>
-                    {loading ? (
-                        <PageLoader fullScreen={true} label={t("admin.fetching", { defaultValue: 'Fetching flights...' })} />
+                {/* Table Card */}
+                <div className="admin-card admin-table-wrap">
+                    {loading && !flights?.length ? (
+                        <PageLoader label={t("admin.fetching", { defaultValue: 'Fetching flights...' })} />
                     ) : flights.length === 0 ? (
-                        <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-                            <Plane size={44} color="#d0c6ab" style={{ margin: '0 auto 16px' }} />
-                            <p style={{ fontWeight: 700, fontSize: 16, color: '#5e5e5e' }}>
-                                {hasActiveFilters ? t("admin.noMatch", { defaultValue: 'No flights match your filters.' }) : t("admin.noFlights", { defaultValue: 'No flights registered yet.' })}
-                            </p>
+                        <div className="admin-empty">
+                            <div className="admin-empty-icon"><Plane size={28} /></div>
+                            <h3>{hasActiveFilters ? t("admin.noMatch", { defaultValue: 'No flights match your filters.' }) : t("admin.noFlights", { defaultValue: 'No flights registered yet.' })}</h3>
+                            <p>{t("admin.emptySub", { defaultValue: 'Adjust your search or filters to see flights.' })}</p>
                         </div>
                     ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="overview-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <>
+                            <table className="admin-table">
                                 <thead>
-                                    <tr style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                                        {[t("admin.table.flightNo", { defaultValue: 'Flight No.' }), t("admin.table.route", { defaultValue: 'Route' }), t("admin.table.times", { defaultValue: 'Times (Dep / Arr)' }), t("admin.table.gate", { defaultValue: 'Gate/Terminal' }), t("admin.table.status", { defaultValue: 'Status' }), t("admin.table.actions", { defaultValue: 'Actions' })].map(h => (
-                                            <th key={h} className="overview-th" style={{ padding: '14px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5e5e5e', whiteSpace: 'nowrap' }}>{h}</th>
+                                    <tr>
+                                        {[
+                                            t("admin.table.flightNo", { defaultValue: 'Flight No.' }),
+                                            t("admin.table.route", { defaultValue: 'Route' }),
+                                            t("admin.table.times", { defaultValue: 'Times (Dep / Arr)' }),
+                                            t("admin.table.gate", { defaultValue: 'Gate/Terminal' }),
+                                            t("admin.table.status", { defaultValue: 'Status' }),
+                                            t("admin.table.actions", { defaultValue: 'Actions' })
+                                        ].map((h, i) => (
+                                            <th key={h} style={i === 5 ? { textAlign: 'right' } : {}}>{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {flights.map(f => (
-                                        <tr key={f.id} className="admin-row" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.2s' }}>
-                                            <td className="overview-td-main" style={{ padding: '16px', fontWeight: 800, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>{f.flight_number}</td>
-                                            <td className="overview-td-main" style={{ padding: '16px', fontWeight: 700, fontSize: 14, color: '#1a1c1d', whiteSpace: 'nowrap' }}>
+                                        <tr key={f.id}>
+                                            <td style={{ fontWeight: 800, fontSize: 14 }}>{f.flight_number}</td>
+                                            <td style={{ fontWeight: 700, fontSize: 14 }}>
                                                 {f.route?.source?.iata_code}<span style={{ color: '#705d00', margin: '0 4px' }}>→</span>{f.route?.destination?.iata_code}
                                             </td>
-                                            <td className="overview-td-sub" style={{ padding: '16px', fontSize: 12, color: '#5e5e5e', lineHeight: 1.7 }}>
+                                            <td style={{ fontSize: 12, color: '#5e5e5e', lineHeight: 1.7 }}>
                                                 <div>Dep: {fmtDT(f.scheduled_departure)}</div>
                                                 <div>Arr: {fmtDT(f.scheduled_arrival)}</div>
                                             </td>
-                                            <td className="overview-td-sub" style={{ padding: '16px', fontSize: 13, color: '#5e5e5e', whiteSpace: 'nowrap' }}>
+                                            <td style={{ fontSize: 13, color: '#5e5e5e', whiteSpace: 'nowrap' }}>
                                                 <div>Gate: {f.boarding_gate || '-'}</div>
                                                 <div>Term: {f.departure_terminal || '-'} / {f.arrival_terminal || '-'}</div>
                                             </td>
-                                            <td className="overview-td-status" style={{ padding: '16px' }}><StatusBadge status={f.status} /></td>
-                                            <td className="overview-td-actions" style={{ padding: '16px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <button className="act" onClick={() => { 
-                                                        setEditTarget(f); 
-                                                        setEditStatus(f.status); 
-                                                        setEditDelay(f.delay_minutes || 0); 
-                                                        setEditGate(f.boarding_gate || '');
-                                                        setEditDepTerminal(f.departure_terminal || '');
-                                                        setEditArrTerminal(f.arrival_terminal || '');
-                                                    }} title="Update Status" style={{ padding: 8, borderRadius: 8, color: '#5e5e5e', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.2s' }}><Edit2 size={16} /></button>
+                                            <td><StatusBadge status={f.status} /></td>
+                                            <td>
+                                                <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
+                                                    <button
+                                                        className="btn-icon"
+                                                        onClick={() => { 
+                                                            setEditTarget(f); 
+                                                            setEditStatus(f.status); 
+                                                            setEditDelay(f.delay_minutes || 0); 
+                                                            setEditGate(f.boarding_gate || '');
+                                                            setEditDepTerminal(f.departure_terminal || '');
+                                                            setEditArrTerminal(f.arrival_terminal || '');
+                                                        }}
+                                                        title="Update Status"
+                                                    >
+                                                        <Edit2 size={15} />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-                    )}
 
-                    {!loading && flights.length > 0 && (
-                        <div style={{ padding: '0 20px 20px' }}>
-                            <Pagination currentPage={currentPage} totalPages={totalPages} totalCount={count} pageSize={ADMIN_PAGE_SIZE} onPageChange={handlePageChange} />
-                        </div>
+                            {/* Pagination footer */}
+                            {totalPages > 1 && (
+                                <div className="p-4 border-t border-black/[0.04]">
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        totalCount={count}
+                                        pageSize={ADMIN_PAGE_SIZE}
+                                        onPageChange={handlePageChange}
+                                    />
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 

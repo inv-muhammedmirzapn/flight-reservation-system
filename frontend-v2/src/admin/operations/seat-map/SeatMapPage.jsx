@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import '@/admin/_core/styles/admin.css';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { fetchFlightInstances, fetchSeats, generateSeats, bulkPriceSeats } from '@/admin/_core/store/adminSlices';
-import { ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Check, DollarSign, X, ChevronRight, Utensils, Plane } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { parseApiError } from '@/utils/errorUtils';
+import { fetchWithAuth } from '@/services/apiClient';
 
 const ATTRS = [
   { id: 'window', label: 'Window' },
@@ -80,6 +81,23 @@ export default function SeatMapPage() {
   const [dragStart, setDragStart] = useState(null);
   const [dragCur, setDragCur] = useState(null);
   const [dragMode, setDragMode] = useState('add');
+
+  const [instanceDetail, setInstanceDetail] = useState(null);
+
+  useEffect(() => {
+    if (selInstance) {
+      const found = instances.find(i => String(i.id) === String(selInstance));
+      if (found) {
+        setInstanceDetail(found);
+      } else {
+        fetchWithAuth(`/flights/v2/flight-instances/${selInstance}/`)
+          .then(data => setInstanceDetail(data))
+          .catch(err => console.warn('Could not load instance detail:', err));
+      }
+    } else {
+      setInstanceDetail(null);
+    }
+  }, [selInstance, instances]);
 
   const load = useCallback(id => {
     if (!id) return;
@@ -187,7 +205,7 @@ export default function SeatMapPage() {
       setBulkPrice('');
       return;
     }
-    
+
     let commonPrice = null;
     let allSame = true;
 
@@ -253,8 +271,11 @@ export default function SeatMapPage() {
   const classOrder = ['FIRST', 'BUSINESS', 'ECONOMY'].filter(c => grid[c] && Object.keys(grid[c]).length > 0);
 
   const instanceOptions = instances.map(i => ({ value: String(i.id), label: `${i.flight_no || i.flight_number} — ${i.date} (${i.status})` }));
-  const selInstanceObj = instances.find(i => String(i.id) === String(selInstance));
-  const hasSeatCountWarning = selInstanceObj && seats.length > 0 && seats.length !== selInstanceObj.total_capacity;
+  const selInstanceObj = instanceDetail || instances.find(i => String(i.id) === String(selInstance));
+  const flightNo = selInstanceObj?.flight_no || selInstanceObj?.flight_number;
+  const flightRoute = selInstanceObj?.route ? `${selInstanceObj.route.source?.iata_code || ''} → ${selInstanceObj.route.destination?.iata_code || ''}` : '';
+  const flightDate = selInstanceObj?.date;
+  const aircraftReg = selInstanceObj?.aircraft_registration;
 
   // Selection class summary
   const selClasses = new Set();
@@ -276,27 +297,68 @@ export default function SeatMapPage() {
     <>
       <div className="smp-wrap">
         <div className="smp-breadcrumb">
-          FLIGHT INSTANCES / SEAT MAP {selInstance ? `(INSTANCE #${selInstance})` : ''}
+          <Link
+            to={`/admin/operations/flight-instances?${searchParams.get('fromPage') ? `page=${searchParams.get('fromPage')}&` : ''}highlightInstance=${instanceParam || selInstance}`}
+            onClick={() => {
+              if (instanceParam || selInstance) sessionStorage.setItem('highlightInstance', String(instanceParam || selInstance));
+            }}
+            style={{ color: 'inherit', textDecoration: 'none' }}
+            className="hover:underline"
+          >
+            FLIGHT INSTANCES
+          </Link>
+          {' '}/ SEAT MAP {flightNo ? `• ${flightNo} ` : ''}{selInstance ? `(INSTANCE #${selInstance})` : ''}
         </div>
 
         <div className="smp-header">
-          <div className="smp-header-left">
+          <div className="smp-header-left" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {instanceParam && (
               <button
                 className="smp-back"
                 onClick={() => {
+                  sessionStorage.setItem('highlightInstance', String(instanceParam));
                   const fromPage = searchParams.get('fromPage');
                   if (fromPage) {
                     navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
                   } else {
-                    navigate('/admin/operations/flight-instances');
+                    navigate(`/admin/operations/flight-instances?highlightInstance=${instanceParam}`);
                   }
                 }}
               >
                 <ArrowLeft size={14} /> Back
               </button>
             )}
-            <h1 className="smp-title">Seat Pricing & Selection</h1>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h1 className="smp-title" style={{ margin: 0 }}>Seat Pricing & Selection</h1>
+                {flightNo && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(112,93,0,0.1)',
+                    color: '#705d00',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    padding: '3px 12px',
+                    borderRadius: 20,
+                    border: '1.5px solid rgba(112,93,0,0.25)',
+                    letterSpacing: '0.02em',
+                  }}>
+                    <Plane size={14} /> {flightNo}
+                  </span>
+                )}
+              </div>
+              {(flightRoute || flightDate || aircraftReg) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 12, color: '#555', fontWeight: 500 }}>
+                  {flightRoute && <span style={{ fontWeight: 700, color: '#1a1c1d' }}>{flightRoute}</span>}
+                  {flightRoute && flightDate && <span>•</span>}
+                  {flightDate && <span>{flightDate}</span>}
+                  {aircraftReg && <span>•</span>}
+                  {aircraftReg && <span style={{ background: 'rgba(0,0,0,0.05)', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{aircraftReg}</span>}
+                </div>
+              )}
+            </div>
           </div>
           {instanceParam && inFlow && (
             <div className="flex items-center gap-2">
@@ -313,11 +375,12 @@ export default function SeatMapPage() {
               <button
                 type="button"
                 onClick={() => {
+                  sessionStorage.setItem('highlightInstance', String(instanceParam));
                   const fromPage = searchParams.get('fromPage');
                   if (fromPage) {
                     navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
                   } else {
-                    navigate('/admin/operations/flight-instances');
+                    navigate(`/admin/operations/flight-instances?highlightInstance=${instanceParam}`);
                   }
                 }}
                 className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
@@ -343,15 +406,6 @@ export default function SeatMapPage() {
                   <button className="btn-primary" onClick={() => { setSelectedIds(new Set()); load(selInstance); }} disabled={!selInstance || seatsLoading} style={{ padding: '0 14px', height: '38px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {seatsLoading ? 'Loading…' : 'Search Seats'}
                   </button>
-                </div>
-              </div>
-            )}
-            
-            {hasSeatCountWarning && (
-              <div className="smp-section">
-                <div className="smp-warning">
-                  <AlertTriangle size={14} />
-                  Showing {seats.length} of {selInstanceObj.total_capacity} seats — check seat generation logic, capacity may have changed.
                 </div>
               </div>
             )}

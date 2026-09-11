@@ -198,13 +198,25 @@ def generate_seats_for_instance(instance: FlightInstance) -> int:
     if not aircraft:
         return 0
 
+    def _parse_layout_cols(layout_str, fallback):
+        try:
+            parts = [int(x) for x in layout_str.split('-') if x.isdigit()]
+            return sum(parts) if parts else fallback
+        except Exception:
+            return fallback
+
     seats = []
     fc = aircraft.first_class_capacity
-    seats += _make_cabin_seats(instance, fc, CabinClass.FIRST, "F", 4 if fc > 2 else max(fc, 2))
+    f_cols = _parse_layout_cols(aircraft.first_class_layout, 4)
+    seats += _make_cabin_seats(instance, fc, CabinClass.FIRST, "F", f_cols)
+
     bc = aircraft.business_capacity
-    seats += _make_cabin_seats(instance, bc, CabinClass.BUSINESS, "B", 4 if bc > 2 else max(bc, 2))
+    b_cols = _parse_layout_cols(aircraft.business_layout, 4)
+    seats += _make_cabin_seats(instance, bc, CabinClass.BUSINESS, "B", b_cols)
+
     ec = aircraft.economy_capacity
-    seats += _make_cabin_seats(instance, ec, CabinClass.ECONOMY, "E", 6 if ec > 3 else max(ec, 3))
+    e_cols = _parse_layout_cols(aircraft.economy_layout, 6)
+    seats += _make_cabin_seats(instance, ec, CabinClass.ECONOMY, "E", e_cols)
 
     Seat.objects.bulk_create(seats)
     return len(seats)
@@ -234,18 +246,16 @@ def _make_cabin_seats(
     prefix: str,
     cols_per_row: int,
 ) -> list:
-    if capacity <= 0:
+    if capacity <= 0 or cols_per_row <= 0:
         return []
     rows_needed = -(-capacity // cols_per_row)  # ceiling division
     col_letters = [chr(ord("A") + i) for i in range(cols_per_row)]
     left_block = cols_per_row // 2
     right_block = cols_per_row - left_block
 
-    seats, remaining = [], capacity
+    seats = []
     for row_num in range(1, rows_needed + 1):
         for col_idx, letter in enumerate(col_letters):
-            if remaining <= 0:
-                break
             is_left = col_idx < left_block
             pos = _seat_position(
                 col_idx if is_left else col_idx - left_block,
@@ -262,7 +272,6 @@ def _make_cabin_seats(
                     extra_legroom=(row_num == 1),
                 )
             )
-            remaining -= 1
     return seats
 
 

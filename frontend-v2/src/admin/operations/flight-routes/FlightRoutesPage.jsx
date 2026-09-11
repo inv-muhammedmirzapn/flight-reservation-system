@@ -121,7 +121,7 @@ export default function FlightRoutesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const highlightRoute = searchParams.get('highlightRoute');
+  const highlightRoute = searchParams.get('highlightRoute') || sessionStorage.getItem('highlightRoute');
   const { items: routes, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightRoute);
   const [airlines, setAirlines] = useState([]);
   const [airports, setAirports] = useState([]);
@@ -166,20 +166,73 @@ export default function FlightRoutesPage() {
     load(activeSearch, resolvedPage);
   }, [pageStr, activeSearch, load]);
 
+  // Keep sessionStorage in sync and scroll to highlighted row
+  useEffect(() => {
+    if (highlightRoute) {
+      sessionStorage.setItem('highlightRoute', String(highlightRoute));
+      const timer = setTimeout(() => {
+        const el = document.querySelector('.admin-row-highlight');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightRoute, routes]);
+
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (!searchParams.has('highlightRoute')) return;
+      const activeHighlight = searchParams.get('highlightRoute') || sessionStorage.getItem('highlightRoute');
+      if (!activeHighlight) return;
+
+      // Ignore clicks on disconnected elements (e.g. dropdown items or modals unmounted on click)
+      if (!e.target || !e.target.isConnected) return;
+
+      // Check composedPath for any interactive, header, or nav ancestor
+      const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+      const isInteractiveOrNav = path.some((el) => {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName.toLowerCase();
+        if (
+          tag === 'a' ||
+          tag === 'button' ||
+          tag === 'nav' ||
+          tag === 'header' ||
+          tag === 'input' ||
+          tag === 'select' ||
+          tag === 'textarea'
+        ) {
+          return true;
+        }
+        if (el.classList) {
+          if (
+            el.classList.contains('admin-navbar') ||
+            el.classList.contains('admin-sidebar') ||
+            el.classList.contains('admin-modal') ||
+            el.classList.contains('toast') ||
+            el.classList.contains('admin-toolbar-search')
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (isInteractiveOrNav) return;
+
+      if (
+        e.target.closest('a') ||
+        e.target.closest('button') ||
+        e.target.closest('nav') ||
+        e.target.closest('header') ||
+        e.target.closest('.admin-navbar') ||
+        e.target.closest('.admin-sidebar') ||
+        e.target.closest('.admin-modal') ||
+        e.target.closest('.toast')
+      ) {
+        return;
+      }
 
       const tableContainer = document.querySelector('.admin-table-wrap');
       if (tableContainer && !tableContainer.contains(e.target)) {
-        const isInteractiveModal =
-          e.target.closest('.admin-modal') ||
-          e.target.closest('.toast') ||
-          e.target.closest('.admin-sidebar') ||
-          e.target.closest('.admin-navbar') ||
-          e.target.closest('nav');
-        if (isInteractiveModal) return;
-
+        sessionStorage.removeItem('highlightRoute');
         setSearchParams((prev) => {
           if (!prev.has('highlightRoute')) return prev;
           const nextParams = new URLSearchParams(prev);
@@ -208,16 +261,22 @@ export default function FlightRoutesPage() {
     ) {
       return;
     }
-    setSearchParams((prev) => {
-      const nextParams = new URLSearchParams(prev);
-      const currentHighlight = nextParams.get('highlightRoute');
-      if (currentHighlight === String(routeId)) {
+    const currentHighlight = searchParams.get('highlightRoute') || sessionStorage.getItem('highlightRoute');
+    if (currentHighlight === String(routeId)) {
+      sessionStorage.removeItem('highlightRoute');
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
         nextParams.delete('highlightRoute');
-      } else {
+        return nextParams;
+      });
+    } else {
+      sessionStorage.setItem('highlightRoute', String(routeId));
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
         nextParams.set('highlightRoute', String(routeId));
-      }
-      return nextParams;
-    });
+        return nextParams;
+      });
+    }
   };
 
   const loadLookups = () => {
@@ -641,14 +700,31 @@ export default function FlightRoutesPage() {
                           <button
                             className="btn-secondary py-1 px-2 text-[11px] flex items-center gap-1"
                             title="Route Fare Templates"
-                            onClick={() => navigate(`/admin/operations/route-fare-classes?route=${r.id}&fromPage=${page}`)}
+                            onClick={() => {
+                              sessionStorage.setItem('highlightRoute', String(r.id));
+                              navigate(`/admin/operations/route-fare-classes?route=${r.id}&fromPage=${page}&highlightRoute=${r.id}`);
+                            }}
                           >
                             <Tag size={12} className="text-[#705d00]" /> Fares
                           </button>
-                          <button className="btn-secondary py-1.5 px-2" title="Edit" onClick={() => openEdit(r)}>
+                          <button
+                            className="btn-secondary py-1.5 px-2"
+                            title="Edit"
+                            onClick={() => {
+                              sessionStorage.setItem('highlightRoute', String(r.id));
+                              openEdit(r);
+                            }}
+                          >
                             <Pencil size={14} />
                           </button>
-                          <button className="btn-danger py-1.5 px-2" title="Delete" onClick={() => setDeleteItem(r)}>
+                          <button
+                            className="btn-danger py-1.5 px-2"
+                            title="Delete"
+                            onClick={() => {
+                              sessionStorage.setItem('highlightRoute', String(r.id));
+                              setDeleteItem(r);
+                            }}
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>

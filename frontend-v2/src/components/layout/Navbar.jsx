@@ -106,6 +106,13 @@ export default function Navbar() {
     setIsProfileMenuOpen(false);
   };
 
+  const handleNavClick = () => {
+    setOpenGroup(null);
+    setIsMobileMenuOpen(false);
+    sessionStorage.removeItem('highlightRoute');
+    sessionStorage.removeItem('highlightInstance');
+  };
+
   const handleLogout = () => {
     const targetPath = isAdmin ? "/admin/login" : "/login";
     setShowLogoutModal(false);
@@ -164,7 +171,7 @@ export default function Navbar() {
                 ? 'lg:relative lg:left-0 lg:translate-x-0'
                 : 'md:relative md:left-0 md:translate-x-0'
               }`}
-            onClick={() => navigate(isAdmin ? "/admin/overview" : "/")}
+            onClick={() => { handleNavClick(); navigate(isAdmin ? "/admin/overview" : "/"); }}
           >
             <img
               src="/updated%20logo.png"
@@ -186,7 +193,7 @@ export default function Navbar() {
                     <Link
                       key={link.href}
                       to={link.href}
-                      onClick={() => setOpenGroup(null)}
+                      onClick={handleNavClick}
                       className={`transition-all duration-200 px-4 py-2 rounded-full cursor-pointer ${isAdminLinkActive(link.href)
                           ? "font-extrabold text-slate-900"
                           : "font-semibold text-slate-700 hover:text-slate-900"
@@ -235,7 +242,7 @@ export default function Navbar() {
                                 <Link
                                   key={link.href}
                                   to={link.href}
-                                  onClick={() => setOpenGroup(null)}
+                                  onClick={handleNavClick}
                                   className={`block w-full text-left px-5 py-2.5 text-[13px] transition-colors duration-150 cursor-pointer ${active
                                       ? "font-bold text-amber-700 bg-amber-50/80"
                                       : "font-medium text-slate-700 hover:bg-slate-100/80"
@@ -406,7 +413,7 @@ export default function Navbar() {
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div
                   className="flex items-center cursor-pointer"
-                  onClick={() => { setIsMobileMenuOpen(false); navigate(isAdmin ? "/admin/overview" : "/"); }}
+                  onClick={() => { handleNavClick(); navigate(isAdmin ? "/admin/overview" : "/"); }}
                 >
                   <img
                     src="/updated%20logo.png"
@@ -505,7 +512,7 @@ export default function Navbar() {
                       <Link
                         key={link.href}
                         to={link.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={handleNavClick}
                         className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs transition-colors ${isAdminLinkActive(link.href) ? "font-bold text-slate-900 bg-amber-500/15" : "font-semibold text-slate-700 hover:bg-slate-100"
                           }`}
                       >
@@ -537,7 +544,7 @@ export default function Navbar() {
                                 <Link
                                   key={link.href}
                                   to={link.href}
-                                  onClick={() => setIsMobileMenuOpen(false)}
+                                  onClick={handleNavClick}
                                   className={`px-4 py-2 rounded-xl text-[11px] transition-colors ${location.pathname === link.href ? "font-bold text-amber-700 bg-amber-50" : "font-medium text-slate-600 hover:bg-slate-100"
                                     }`}
                                 >

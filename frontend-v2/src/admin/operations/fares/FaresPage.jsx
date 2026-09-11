@@ -91,8 +91,14 @@ export default function FaresPage() {
     { name: 'baggage_allowance', label: 'Baggage Override (kg, optional)', type: 'number', placeholder: 'Leave blank to use flight default' },
   ];
 
+  const fromPage = searchParams.get('fromPage');
+  const inFlow = searchParams.get('inFlow') === '1';
+
   const breadcrumb = instanceParam ? [
-    { label: 'Flight Instances', href: '/admin/operations/flight-instances' },
+    {
+      label: 'Flight Instances',
+      href: `/admin/operations/flight-instances?${fromPage ? `page=${fromPage}&` : ''}highlightInstance=${instanceParam}`,
+    },
     { label: `Fares (Instance #${instanceParam})` }
   ] : null;
 
@@ -114,9 +120,6 @@ export default function FaresPage() {
     ...THUNKS,
     fetchList: buildFetchList,
   }), [buildFetchList]);
-
-  const fromPage = searchParams.get('fromPage');
-  const inFlow = searchParams.get('inFlow') === '1';
 
   const flowBanner = instanceParam && inFlow ? (
     <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
@@ -152,10 +155,11 @@ export default function FaresPage() {
         <button
           type="button"
           onClick={() => {
+            sessionStorage.setItem('highlightInstance', String(instanceParam));
             if (fromPage) {
               navigate(`/admin/operations/flight-instances?page=${fromPage}&highlightInstance=${instanceParam}`);
             } else {
-              navigate('/admin/operations/flight-instances');
+              navigate(`/admin/operations/flight-instances?highlightInstance=${instanceParam}`);
             }
           }}
           className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-all border border-slate-200 cursor-pointer"
