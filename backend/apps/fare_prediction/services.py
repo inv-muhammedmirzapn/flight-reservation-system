@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 from apps.flights.models import FlightInstance, Fare, SeatStatus
 from apps.bookings.models import Booking, BookingStatus
+from apps.pricing.models import HolidayEvent
 
 
 logger = logging.getLogger(__name__)
@@ -92,20 +93,44 @@ class FarePredictionService:
         # Check if the departure is on a weekend
         is_weekend = departure_date.weekday() in [4, 5, 6]  # Fri, Sat, Sun
 
-        # Check if departure falls on or near a major Indian public holiday
-        INDIAN_HOLIDAYS = {
-            (1, 1):   "New Year's Day",
-            (1, 26):  "Republic Day",
-            (3, 25):  "Holi",
-            (8, 15):  "Independence Day",
-            (10, 2):  "Gandhi Jayanti",
-            (10, 24): "Dussehra",
-            (11, 1):  "Diwali",
-            (12, 25): "Christmas",
-        }
-        dep_month_day = (departure_date.month, departure_date.day)
-        is_holiday = dep_month_day in INDIAN_HOLIDAYS
-        holiday_name = INDIAN_HOLIDAYS.get(dep_month_day, None)
+        # Check active location-aware holiday events from database
+        route = fi.flight if hasattr(fi, "flight") else None
+        orig_country = route.origin_airport.country if route and hasattr(route, "origin_airport") and route.origin_airport else None
+        dest_country = route.destination_airport.country if route and hasattr(route, "destination_airport") and route.destination_airport else None
+
+        orig_name = orig_country.name.lower() if orig_country else ""
+        orig_iso = orig_country.iso_code.lower() if orig_country else ""
+        dest_name = dest_country.name.lower() if dest_country else ""
+        dest_iso = dest_country.iso_code.lower() if dest_country else ""
+
+        active_holidays = HolidayEvent.objects.filter(
+            is_active=True,
+            start_date__lte=departure_date,
+            end_date__gte=departure_date,
+        )
+
+        applied_holiday_names = []
+        for holiday in active_holidays:
+            applies = False
+            if holiday.is_global:
+                applies = True
+            else:
+                raw_countries = holiday.applicable_countries
+                if isinstance(raw_countries, str):
+                    countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]
+                elif isinstance(raw_countries, list):
+                    countries = [str(c).strip().lower() for c in raw_countries if str(c).strip()]
+                else:
+                    countries = []
+
+                if not countries or any(c in countries for c in [orig_name, orig_iso, dest_name, dest_iso] if c):
+                    applies = True
+
+            if applies:
+                applied_holiday_names.append(holiday.name)
+
+        is_holiday = len(applied_holiday_names) > 0
+        holiday_name = ", ".join(applied_holiday_names) if is_holiday else ""
 
         # Peak season: April-June (summer), Oct-Nov (festive), Dec-Jan (winter)
         is_peak_season = departure_date.month in [4, 5, 6, 10, 11, 12, 1]
@@ -125,8 +150,15 @@ class FarePredictionService:
         factors = []
 
         if days_until_departure <= 3:
-            score += 3
-            factors.append("Departure is within 3 days — strong last-minute surge expected.")
+            if occupancy_pct >= 60:
+                score += 3
+                factors.append("Departure is within 3 days with high occupancy — strong price surge expected.")
+            elif occupancy_pct < 30:
+                score -= 3
+                factors.append("Departure is within 3 days but flight is mostly empty — price drop risk.")
+            else:
+                score += 1
+                factors.append("Departure is within 3 days with moderate occupancy — mild last-minute pressure.")
         elif days_until_departure <= 7:
             score += 2
             factors.append("Departure is within a week — prices typically rise.")
@@ -144,9 +176,18 @@ class FarePredictionService:
         elif occupancy_pct >= 50:
             score += 1
             factors.append(f"Flight is {occupancy_pct:.0f}% full — moderate demand.")
+        elif occupancy_pct < 10:
+            score -= 5
+            factors.append(f"Flight is critically empty ({occupancy_pct:.0f}% full) — severe price drop likely.")
+        elif occupancy_pct < 20:
+            score -= 4
+            factors.append(f"Flight is only {occupancy_pct:.0f}% full — very low demand, significant drop expected.")
         elif occupancy_pct < 30:
-            score -= 2
-            factors.append(f"Flight is only {occupancy_pct:.0f}% full — low demand may soften prices.")
+            score -= 3
+            factors.append(f"Flight is only {occupancy_pct:.0f}% full — low demand, prices likely to decrease.")
+        else:
+            # 30–50%: average demand, no strong price pressure in either direction
+            factors.append(f"Flight is {occupancy_pct:.0f}% full — average demand, no strong price pressure.")
 
 
         if is_weekend:

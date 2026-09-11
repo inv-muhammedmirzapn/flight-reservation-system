@@ -295,7 +295,7 @@ export default function CompareModal({ onClose }) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-yellow-100">
                 {rows.map((row, rowIdx) => (
                   <tr
                     key={row.label}
