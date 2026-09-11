@@ -335,11 +335,14 @@ Running `python manage.py seed_db` initializes two default role accounts:
 | Command | Purpose |
 | :--- | :--- |
 | `python manage.py seed_db` | Seeds static reference datasets (Airports, Airlines, Aircraft, Routes, Meal Combos, Demo Users). |
+| `python manage.py import_airports` | Imports airports from OpenFlights dataset or a local file (`--countries`, `--limit`, `--overwrite`, `--file`). |
+| `python manage.py import_countries` | Imports/populates ISO countries via pycountry or local file (`--file`, `--clear`). |
 | `python manage.py generate_instances --days 90` | Generates upcoming flight instances, seat maps, and fares for the next N days. |
 | `python manage.py createcachetable` | Initializes the database cache table required for API rate throttling. |
 | `python manage.py check` | Runs full Django system checks across models, settings, and apps. |
 | `python manage.py test apps.bookings` | Executes automated tests for bookings, seat holds, role separation, and PDF generation. |
 | `python manage.py test apps.flights.tests.test_pricing` | Runs automated tests for pricing architecture, fare class templates, and repricing logic. |
+
 
 ---
 
