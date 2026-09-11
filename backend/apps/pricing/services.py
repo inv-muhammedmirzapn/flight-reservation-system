@@ -13,6 +13,7 @@ from apps.flights.models import (
     FarePriceChangeLog,
     InstanceStatus,
     FlightInstance,
+    SeatStatus,
 )
 from apps.pricing.models import (
     DynamicPricingConfig,
@@ -221,10 +222,16 @@ class DynamicPricingStrategy(PricingStrategy):
 
         Rules:
         - If feature disabled, or no flight_instance, or outside window → (1.0000, 0.00, days_out)
-        - Inside window:
-            - occupancy >= threshold → premium (multiplier > 1)
-            - occupancy < threshold  → discount (multiplier < 1)
-        - Magnitude scales linearly from 0% at the window edge to max_percent at departure day.
+        - Inside window, occupancy is bucketed into tiers mirrored from fare_prediction's
+          scoring boundaries (85 / 70 / 50 / 30). Each tier has its own standalone max
+          percent from config — not a fraction of another tier's max:
+            - >= 85%  → premium, cap = max_proximity_premium_percent
+            - >= 70%  → premium, cap = proximity_premium_high_percent
+            - >= 50%  → premium, cap = proximity_premium_moderate_percent
+            - >= 30%  → neutral (no adjustment)
+            - <  30%  → discount, cap = max_proximity_discount_percent
+        - Each tier's adjustment scales linearly from 0% at the window edge to that tier's
+          own cap at departure day (unchanged 3-day window ramp).
         """
         no_effect = (Decimal("1.0000"), Decimal("0.00"), 0)
 
@@ -243,25 +250,31 @@ class DynamicPricingStrategy(PricingStrategy):
             return (Decimal("1.0000"), Decimal("0.00"), days_out)
 
         # Compute cabin occupancy from real seat data
-        aircraft = flight_instance.aircraft
         cabin_upper = cabin_class.upper()
-        capacity_map = {
-            "ECONOMY": aircraft.economy_capacity,
-            "BUSINESS": aircraft.business_capacity,
-            "FIRST": aircraft.first_class_capacity,
-        }
-        total_seats = capacity_map.get(cabin_upper, 0)
+        total_seats = flight_instance.seats.filter(seat_class=cabin_upper).count()
 
         if total_seats <= 0:
             return (Decimal("1.0000"), Decimal("0.00"), days_out)
 
         booked_seats = flight_instance.seats.filter(
             seat_class=cabin_upper,
-            status="BOOKED",
+            status=SeatStatus.BOOKED,
         ).count()
         occupancy_pct = Decimal(str(round(booked_seats / total_seats * 100, 2)))
 
-        threshold = Decimal(str(self.config.occupancy_threshold_percent))
+        # Occupancy tiers mirrored from fare_prediction's score boundaries (85/70/50/30).
+        # Each tier's cap is a standalone config value — no tier is derived as a
+        # fraction of another tier's max.
+        if occupancy_pct >= Decimal("85"):
+            direction, max_pct = "premium", Decimal(str(self.config.max_proximity_premium_percent))
+        elif occupancy_pct >= Decimal("70"):
+            direction, max_pct = "premium", Decimal(str(self.config.proximity_premium_high_percent))
+        elif occupancy_pct >= Decimal("50"):
+            direction, max_pct = "premium", Decimal(str(self.config.proximity_premium_moderate_percent))
+        elif occupancy_pct >= Decimal("30"):
+            direction, max_pct = "neutral", Decimal("0")
+        else:
+            direction, max_pct = "discount", Decimal(str(self.config.max_proximity_discount_percent))
 
         # Linear magnitude: full effect at day 0, zero effect at window boundary
         # days_out is clamped to [0, window]; at window boundary → 0% magnitude
@@ -271,16 +284,14 @@ class DynamicPricingStrategy(PricingStrategy):
         else:
             magnitude_ratio = Decimal("1")
 
-        if occupancy_pct >= threshold:
-            # High occupancy → premium
-            max_pct = Decimal(str(self.config.max_proximity_premium_percent))
-            adj_pct = max_pct * magnitude_ratio
+        adj_pct = max_pct * magnitude_ratio
+
+        if direction == "premium":
             p_mult = (Decimal("1") + adj_pct / Decimal("100")).quantize(Decimal("0.0001"))
-        else:
-            # Low occupancy → discount
-            max_pct = Decimal(str(self.config.max_proximity_discount_percent))
-            adj_pct = max_pct * magnitude_ratio
+        elif direction == "discount":
             p_mult = (Decimal("1") - adj_pct / Decimal("100")).quantize(Decimal("0.0001"))
+        else:
+            p_mult = Decimal("1.0000")
 
         return (p_mult, occupancy_pct, days_out)
 

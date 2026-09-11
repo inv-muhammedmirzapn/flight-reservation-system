@@ -46,15 +46,23 @@ class DynamicPricingConfig(models.Model):
     )
     occupancy_threshold_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("60.00"),
-        help_text="Seat occupancy % threshold: above = premium surge, below = discount"
+        help_text="Legacy field, no longer read by proximity pricing (tiered logic replaced the single threshold). Kept for backward compatibility."
     )
     max_proximity_premium_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("30.00"),
-        help_text="Max price increase % at departure day when occupancy is high"
+        help_text="Max price increase % at departure day when occupancy is >= 85% (top tier, standalone — not a fraction of anything)"
+    )
+    proximity_premium_high_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("20.00"),
+        help_text="Max price increase % at departure day when occupancy is 70-84% (standalone tier cap)"
+    )
+    proximity_premium_moderate_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("10.00"),
+        help_text="Max price increase % at departure day when occupancy is 50-69% (standalone tier cap)"
     )
     max_proximity_discount_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("20.00"),
-        help_text="Max price decrease % at departure day when occupancy is low"
+        help_text="Max price decrease % at departure day when occupancy is < 30% (standalone tier cap)"
     )
 
     # Global Floor / Ceiling Clamps
@@ -92,6 +100,8 @@ class DynamicPricingConfig(models.Model):
         max_demand_surge = to_dec(self.max_demand_surge_percent)
         occupancy_thresh = to_dec(self.occupancy_threshold_percent)
         max_prox_prem = to_dec(self.max_proximity_premium_percent)
+        prox_prem_high = to_dec(self.proximity_premium_high_percent)
+        prox_prem_moderate = to_dec(self.proximity_premium_moderate_percent)
         max_prox_disc = to_dec(self.max_proximity_discount_percent)
         price_floor = to_dec(self.price_floor_percent)
         price_ceiling = to_dec(self.price_ceiling_percent)
@@ -109,6 +119,10 @@ class DynamicPricingConfig(models.Model):
             errors["occupancy_threshold_percent"] = "Occupancy threshold must be between 0 and 100."
         if max_prox_prem is not None and max_prox_prem < Decimal("0"):
             errors["max_proximity_premium_percent"] = "Max proximity premium percent cannot be negative."
+        if prox_prem_high is not None and prox_prem_high < Decimal("0"):
+            errors["proximity_premium_high_percent"] = "Proximity premium (high tier) percent cannot be negative."
+        if prox_prem_moderate is not None and prox_prem_moderate < Decimal("0"):
+            errors["proximity_premium_moderate_percent"] = "Proximity premium (moderate tier) percent cannot be negative."
         if max_prox_disc is not None and max_prox_disc < Decimal("0"):
             errors["max_proximity_discount_percent"] = "Max proximity discount percent cannot be negative."
         if price_floor is not None and price_floor <= Decimal("0"):
