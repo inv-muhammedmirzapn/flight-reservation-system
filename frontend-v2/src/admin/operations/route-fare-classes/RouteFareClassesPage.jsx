@@ -367,7 +367,7 @@ export default function RouteFareClassesPage() {
                   placeholder="Search flight no, airline, cabin..."
                 />
               </div>
-              <button type="submit" className="btn-secondary px-[14px] py-[7px] text-[13px]">Search</button>
+              <button type="submit" className="btn-primary px-[14px] py-[7px] text-[13px]">Search</button>
             </form>
 
             <div className="flex items-center gap-2 flex-wrap">

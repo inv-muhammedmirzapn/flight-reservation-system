@@ -343,6 +343,7 @@ class Command(BaseCommand):
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 8,
+                    "aircraft": aircraft_dict[ac_reg],
                 }
             )
 
@@ -352,6 +353,8 @@ class Command(BaseCommand):
                 defaults={
                     "departure_airport": airports_dict[dep_ap],
                     "arrival_airport": airports_dict[arr_ap],
+                    "departure_terminal": airports_dict[dep_ap].terminals[0] if airports_dict[dep_ap].terminals else "T1",
+                    "arrival_terminal": airports_dict[arr_ap].terminals[0] if airports_dict[arr_ap].terminals else "T1",
                     "flight_duration_minutes": dur_hrs * 60 + dur_mins,
                     "layover_duration_minutes": 0,
                     "scheduled_departure_time": dep_t,
@@ -432,6 +435,7 @@ class Command(BaseCommand):
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 7,
+                    "aircraft": aircraft_dict[ac_reg],
                 }
             )
             for idx, (dep_ap, arr_ap, dur_m, lay_m, leg_dep_t) in enumerate(legs_info, start=1):
@@ -443,6 +447,8 @@ class Command(BaseCommand):
                     defaults={
                         "departure_airport": airports_dict[dep_ap],
                         "arrival_airport": airports_dict[arr_ap],
+                        "departure_terminal": airports_dict[dep_ap].terminals[0] if airports_dict[dep_ap].terminals else "T1",
+                        "arrival_terminal": airports_dict[arr_ap].terminals[0] if airports_dict[arr_ap].terminals else "T1",
                         "flight_duration_minutes": dur_m,
                         "layover_duration_minutes": lay_m,
                         "scheduled_departure_time": leg_dep_t,

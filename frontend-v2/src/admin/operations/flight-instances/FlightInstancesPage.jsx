@@ -12,6 +12,7 @@ import DeleteConfirmationModal from '../../_core/DeleteConfirmationModal';
 import { Select } from '@/components/ui/Select';
 import { ComboInput } from '@/components/ui/ComboInput';
 import DateTimePicker from '@/components/ui/DateTimePicker';
+import DatePicker from '@/components/ui/DatePicker';
 import {
   fetchFlightInstances, addFlightInstance,
   updateFlightInstance, removeFlightInstance,
@@ -85,8 +86,10 @@ export default function FlightInstancesPage() {
   const initialPage = isNaN(pageParam) ? 1 : pageParam;
   const [page, setPage] = useState(initialPage);
 
-  const load = useCallback((s, p) => {
-    dispatch(fetchFlightInstances({ search: s, page: p }));
+  const [dateFilter, setDateFilter] = useState('');
+
+  const load = useCallback((s, p, d) => {
+    dispatch(fetchFlightInstances({ search: s, page: p, date: d }));
   }, [dispatch]);
 
   const pageStr = searchParams.get('page') || '1';
@@ -95,8 +98,8 @@ export default function FlightInstancesPage() {
     const p = parseInt(pageStr, 10);
     const resolvedPage = isNaN(p) ? 1 : p;
     setPage(resolvedPage);
-    load(activeSearch, resolvedPage);
-  }, [pageStr, activeSearch, load]);
+    load(activeSearch, resolvedPage, dateFilter);
+  }, [pageStr, activeSearch, dateFilter, load]);
 
   // Keep sessionStorage in sync and scroll to highlighted row
   useEffect(() => {
@@ -441,6 +444,7 @@ export default function FlightInstancesPage() {
           <button className="btn-primary" onClick={openCreate} id="add-fi-btn"><Plus size={15} /> Add Instance</button>
         </div>
 
+      <div className="flex flex-wrap items-center gap-4 mb-5">
         <form onSubmit={(e) => {
           e.preventDefault();
           setActiveSearch(search);
@@ -452,7 +456,7 @@ export default function FlightInstancesPage() {
               return nextParams;
             });
           }
-        }} className="flex gap-2 mb-5">
+        }} className="flex gap-2">
           <div className="admin-toolbar-search" style={{ position: 'relative' }}>
             <Search size={14} className="search-icon" />
             <input
@@ -513,6 +517,53 @@ export default function FlightInstancesPage() {
           </div>
           <button type="submit" className="btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>Search</button>
         </form>
+
+        {/* Date Filter Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
+          {[
+            { label: 'Today', date: new Date().toISOString().slice(0, 10) },
+            { label: 'Tomorrow', date: new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10) },
+          ].map(chip => {
+            const isActive = dateFilter === chip.date;
+            return (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => {
+                  setDateFilter(isActive ? '' : chip.date);
+                  setSearchParams((prev) => { const np = new URLSearchParams(prev); np.set('page', '1'); return np; });
+                }}
+                style={{
+                  padding: '6px 13px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'all 0.18s',
+                  border: isActive ? '1.5px solid #705d00' : '1.5px solid rgba(0,0,0,0.1)',
+                  background: isActive ? '#705d00' : 'rgba(255,255,255,0.7)',
+                  color: isActive ? '#fff' : '#5e5e5e',
+                  boxShadow: isActive ? '0 2px 8px rgba(112,93,0,0.18)' : 'none',
+                }}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+          <div style={{ flexShrink: 0, width: 136 }}>
+            <DatePicker
+              placeholder="Pick date"
+              value={dateFilter}
+              onChange={(val) => {
+                setDateFilter(val);
+                setSearchParams((prev) => { const np = new URLSearchParams(prev); np.set('page', '1'); return np; });
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
         {error && (
           <div className="admin-error">

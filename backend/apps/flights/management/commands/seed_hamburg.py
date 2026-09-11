@@ -141,6 +141,7 @@ class Command(BaseCommand):
                     "baggage_weight_allowed_per_person": 30,
                     "baggage_number_allowed_per_person": 2,
                     "handbag_weight_allowed_per_person": 8,
+                    "aircraft": ac,
                 }
             )
             created_routes[fno] = (fr, ac, duration_hrs, duration_mins, base_fare)
@@ -151,6 +152,8 @@ class Command(BaseCommand):
                 defaults={
                     "departure_airport": del_airport,
                     "arrival_airport": ham_airport,
+                    "departure_terminal": del_airport.terminals[0] if del_airport.terminals else "T1",
+                    "arrival_terminal": ham_airport.terminals[0] if ham_airport.terminals else "T1",
                     "scheduled_departure_time": dep_t,
                     "scheduled_arrival_time": arr_t,
                     "flight_duration_minutes": duration_hrs * 60 + duration_mins,
