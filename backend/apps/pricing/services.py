@@ -230,8 +230,10 @@ class DynamicPricingStrategy(PricingStrategy):
             - >= 50%  → premium, cap = proximity_premium_moderate_percent
             - >= 30%  → neutral (no adjustment)
             - <  30%  → discount, cap = max_proximity_discount_percent
-        - Each tier's adjustment scales linearly from 0% at the window edge to that tier's
-          own cap at departure day (unchanged 3-day window ramp).
+        - Each tier's adjustment scales from 0% at the window edge to that tier's own cap
+          at departure day. The ramp shape is controlled by proximity_ramp_curve_exponent:
+          1.00 = linear, < 1.00 front-loads the ramp (reaches most of the effect earlier
+          in the window), > 1.00 back-loads it (stays low until close to departure).
         """
         no_effect = (Decimal("1.0000"), Decimal("0.00"), 0)
 
@@ -276,11 +278,17 @@ class DynamicPricingStrategy(PricingStrategy):
         else:
             direction, max_pct = "discount", Decimal(str(self.config.max_proximity_discount_percent))
 
-        # Linear magnitude: full effect at day 0, zero effect at window boundary
-        # days_out is clamped to [0, window]; at window boundary → 0% magnitude
+        # Magnitude ramp: full effect at day 0, zero effect at window boundary.
+        # days_out is clamped to [0, window]; at window boundary → 0% magnitude.
+        # Curve shape is configurable via proximity_ramp_curve_exponent (1.00 = linear).
         days_clamped = max(0, min(days_out, window))
         if window > 0:
-            magnitude_ratio = Decimal(str(1 - days_clamped / window))
+            linear_ratio = 1 - days_clamped / window
+            exponent = float(self.config.proximity_ramp_curve_exponent or Decimal("1.00"))
+            if linear_ratio > 0 and exponent > 0:
+                magnitude_ratio = Decimal(str(round(linear_ratio ** exponent, 6)))
+            else:
+                magnitude_ratio = Decimal("0")
         else:
             magnitude_ratio = Decimal("1")
 

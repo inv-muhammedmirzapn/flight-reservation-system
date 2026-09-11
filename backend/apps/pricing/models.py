@@ -44,12 +44,22 @@ class DynamicPricingConfig(models.Model):
     proximity_window_days = models.PositiveIntegerField(
         default=3, help_text="Days before departure to activate the proximity multiplier"
     )
+    proximity_ramp_curve_exponent = models.DecimalField(
+        max_digits=4, decimal_places=2, default=Decimal("0.50"),
+        help_text=(
+            "Shape of the day-based ramp within the proximity window. 1.00 = linear "
+            "(current default before this field existed). Less than 1.00 front-loads the "
+            "ramp so most of the effect is reached earlier in the window (e.g. 0.50 = "
+            "square-root curve). Greater than 1.00 back-loads it so effect stays low until "
+            "close to departure. Must be greater than 0."
+        )
+    )
     occupancy_threshold_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("60.00"),
         help_text="Legacy field, no longer read by proximity pricing (tiered logic replaced the single threshold). Kept for backward compatibility."
     )
     max_proximity_premium_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("30.00"),
+        max_digits=5, decimal_places=2, default=Decimal("40.00"),
         help_text="Max price increase % at departure day when occupancy is >= 85% (top tier, standalone — not a fraction of anything)"
     )
     proximity_premium_high_percent = models.DecimalField(
@@ -100,6 +110,7 @@ class DynamicPricingConfig(models.Model):
         max_demand_surge = to_dec(self.max_demand_surge_percent)
         occupancy_thresh = to_dec(self.occupancy_threshold_percent)
         max_prox_prem = to_dec(self.max_proximity_premium_percent)
+        prox_ramp_exp = to_dec(self.proximity_ramp_curve_exponent)
         prox_prem_high = to_dec(self.proximity_premium_high_percent)
         prox_prem_moderate = to_dec(self.proximity_premium_moderate_percent)
         max_prox_disc = to_dec(self.max_proximity_discount_percent)
@@ -119,6 +130,8 @@ class DynamicPricingConfig(models.Model):
             errors["occupancy_threshold_percent"] = "Occupancy threshold must be between 0 and 100."
         if max_prox_prem is not None and max_prox_prem < Decimal("0"):
             errors["max_proximity_premium_percent"] = "Max proximity premium percent cannot be negative."
+        if prox_ramp_exp is not None and prox_ramp_exp <= Decimal("0"):
+            errors["proximity_ramp_curve_exponent"] = "Proximity ramp curve exponent must be greater than 0."
         if prox_prem_high is not None and prox_prem_high < Decimal("0"):
             errors["proximity_premium_high_percent"] = "Proximity premium (high tier) percent cannot be negative."
         if prox_prem_moderate is not None and prox_prem_moderate < Decimal("0"):
