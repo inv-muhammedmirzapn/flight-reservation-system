@@ -67,24 +67,33 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
   }
 
   // 3. Proximity & Occupancy Yield Factor (Micro Load Factor Adjustment)
+  // Tier labels mirror the backend's occupancy bands (85/70/50/30) — kept as
+  // descriptive copy only, no threshold math happens here.
   if (proxDiff !== 0) {
     if (proxDiff < 0) {
+      const tierLabel = occupancyPercent < 30 ? "Low Demand" : "Below-Average Demand";
       factors.push({
         id: "occupancy_discount",
         icon: "airline_seat_recline_normal",
-        label: `Low Occupancy Discount (${occupancyPercent}% Booked)`,
+        label: `${tierLabel} Discount (${occupancyPercent}% Booked)`,
         badgeText: `${proxDiff}%`,
         badgeColor: "bg-emerald-100 text-emerald-900 border-emerald-300",
-        description: `Occupancy < 60% within departure window (${daysUntilDeparture}d out) → ${Math.abs(proxDiff)}% yield discount applied on seasonal rate`,
+        description: `${occupancyPercent}% booked within departure window (${daysUntilDeparture}d out) → ${Math.abs(proxDiff)}% yield discount applied on seasonal rate`,
       });
     } else {
+      const tierLabel =
+        occupancyPercent >= 85
+          ? "Very High Demand"
+          : occupancyPercent >= 70
+            ? "High Demand"
+            : "Moderate Demand";
       factors.push({
         id: "proximity_surge",
         icon: "schedule",
-        label: `Proximity & High Demand Surge (${occupancyPercent}% Booked)`,
+        label: `${tierLabel} Surge (${occupancyPercent}% Booked)`,
         badgeText: `+${proxDiff}%`,
         badgeColor: "bg-amber-100 text-amber-900 border-amber-300",
-        description: `Occupancy ≥ 60% within departure window (${daysUntilDeparture}d out) → ${proxDiff}% yield surge applied`,
+        description: `${occupancyPercent}% booked within departure window (${daysUntilDeparture}d out) → ${proxDiff}% yield surge applied`,
       });
     }
   }
@@ -137,8 +146,8 @@ export default function DynamicPriceBreakdownCard({ flight, selectedCabin = "ECO
             {overallPercentChange !== 0 && (
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${overallPercentChange > 0
-                    ? "bg-rose-100 text-rose-800"
-                    : "bg-emerald-100 text-emerald-800"
+                  ? "bg-rose-100 text-rose-800"
+                  : "bg-emerald-100 text-emerald-800"
                   }`}
               >
                 {overallPercentChange > 0 ? `+${overallPercentChange}%` : `${overallPercentChange}%`}
