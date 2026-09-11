@@ -63,7 +63,7 @@ def generate_upcoming_instances(
     from datetime import datetime, time
 
     for route in active_routes:
-        route_aircraft = airline_aircraft_map.get(route.airline_id) or fallback_aircraft
+        route_aircraft = route.aircraft or airline_aircraft_map.get(route.airline_id) or fallback_aircraft
         r_valid_from = route.valid_from
         r_valid_until = route.valid_until
 
@@ -112,16 +112,23 @@ def generate_upcoming_instances(
                 with transaction.atomic():
                     import random
                     
-                    # Try to fetch actual terminals if available
-                    dep_term = "T1"
-                    arr_term = "T1"
+                    # Use route leg defaults if available, else fetch actual terminals if available
                     first_leg = route.legs.order_by("leg_order").first()
                     last_leg = route.legs.order_by("-leg_order").first()
                     
-                    if first_leg and first_leg.departure_airport.terminals:
-                        dep_term = random.choice(first_leg.departure_airport.terminals)
-                    if last_leg and last_leg.arrival_airport.terminals:
-                        arr_term = random.choice(last_leg.arrival_airport.terminals)
+                    dep_term = first_leg.departure_terminal if first_leg else ""
+                    arr_term = last_leg.arrival_terminal if last_leg else ""
+                    
+                    if not dep_term:
+                        if first_leg and first_leg.departure_airport.terminals:
+                            dep_term = random.choice(first_leg.departure_airport.terminals)
+                        else:
+                            dep_term = "T1"
+                    if not arr_term:
+                        if last_leg and last_leg.arrival_airport.terminals:
+                            arr_term = random.choice(last_leg.arrival_airport.terminals)
+                        else:
+                            arr_term = "T1"
 
                     instance, created = FlightInstance.objects.get_or_create(
                         flight=route,
@@ -131,7 +138,7 @@ def generate_upcoming_instances(
                             "aircraft": route_aircraft,
                             "scheduled_arrival": sch_arr,
                             "status": InstanceStatus.SCHEDULED,
-                            "boarding_gate": f"G{random.randint(1, 20)}",
+                            "boarding_gate": f"{random.choice(['A', 'B', 'C', 'D'])}{random.randint(1, 20)}",
                             "departure_terminal": dep_term,
                             "arrival_terminal": arr_term,
                         },

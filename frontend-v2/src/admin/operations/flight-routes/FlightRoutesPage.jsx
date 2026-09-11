@@ -96,6 +96,8 @@ const formatMins = (mins) => {
 const EMPTY_LEG = {
   departure_airport: '',
   arrival_airport: '',
+  departure_terminal: '',
+  arrival_terminal: '',
   flight_duration_minutes: 120,
   layover_duration_minutes: 0,
   scheduled_departure_time: '08:00',
@@ -105,6 +107,7 @@ const EMPTY_LEG = {
 const EMPTY_FORM = {
   flight_no: '',
   airline: '',
+  aircraft: '',
   operates_on_days: '1,2,3,4,5,6,7',
   scheduled_departure_time: '08:00',
   scheduled_arrival_time: '10:00',
@@ -125,10 +128,22 @@ export default function FlightRoutesPage() {
   const { items: routes, loading, actionLoading, count, error, validationErrors } = useSelector((s) => s.flightRoute);
   const [airlines, setAirlines] = useState([]);
   const [airports, setAirports] = useState([]);
+  const [aircraftList, setAircraftList] = useState([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  useEffect(() => {
+    if (form.airline) {
+      fetchWithAuth(`/flights/v2/aircraft/?airline=${form.airline}&page_size=1000`)
+        .then((data) => setAircraftList(data.results || data || []))
+        .catch((err) => console.error('Failed to load aircraft:', err));
+    } else {
+      setAircraftList([]);
+    }
+  }, [form.airline]);
+
   const [localErrors, setLocalErrors] = useState({});
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -318,6 +333,8 @@ export default function FlightRoutesPage() {
       return {
         departure_airport: leg.departure_airport,
         arrival_airport: leg.arrival_airport,
+        departure_terminal: leg.departure_terminal || '',
+        arrival_terminal: leg.arrival_terminal || '',
         flight_duration_minutes: dur,
         layover_duration_minutes: leg.layover_duration_minutes || 0,
         scheduled_departure_time: depT,
@@ -332,6 +349,7 @@ export default function FlightRoutesPage() {
     setForm({
       flight_no: numericFlightNo,
       airline: route.airline || '',
+      aircraft: route.aircraft || '',
       operates_on_days: route.operates_on_days || '1,2,3,4,5,6,7',
       scheduled_departure_time: overallDep,
       scheduled_arrival_time: overallArr,
@@ -467,6 +485,7 @@ export default function FlightRoutesPage() {
       e.flight_no = 'Flight number must be numeric (e.g., 202).';
     }
     if (!form.airline) e.airline = 'Airline is required.';
+    if (!form.aircraft) e.aircraft = 'Default aircraft is required.';
     if (!form.operates_on_days) e.operates_on_days = 'Select at least one operating day.';
     if (form.legs.length === 0) e.legs = 'At least one leg is required.';
     if (Number(form.baggage_weight_allowed_per_person) < 0) e.baggage_weight_allowed_per_person = 'Cannot be negative.';
@@ -523,6 +542,7 @@ export default function FlightRoutesPage() {
     const payload = {
       ...form,
       flight_no: fullFlightNo,
+      aircraft: form.aircraft || null,
       scheduled_departure_time: routeDepTime ? `${routeDepTime}:00` : null,
       scheduled_arrival_time: routeArrTime ? `${routeArrTime}:00` : null,
       baggage_weight_allowed_per_person: form.baggage_weight_allowed_per_person ? Number(form.baggage_weight_allowed_per_person) : 20,
@@ -785,7 +805,7 @@ export default function FlightRoutesPage() {
             )}
 
             <form onSubmit={handleSubmit}>
-              {/* Row 1: Airline + Flight Number */}
+              {/* Row 1: Airline + Flight Number + Aircraft */}
               <div className="admin-form-grid mb-4">
                 <Select id="airline" label="Airline" options={airlineOptions} value={form.airline}
                   onChange={(e) => {
@@ -794,9 +814,11 @@ export default function FlightRoutesPage() {
                       ...f,
                       airline: airlineId,
                       flight_no: '',
+                      aircraft: '',
                     }));
                   }}
                   error={localErrors.airline} />
+                
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="flight_no" className="text-[11px] font-bold tracking-[0.06em] uppercase text-[#5e5e5e]">
                     Flight Number
@@ -827,7 +849,7 @@ export default function FlightRoutesPage() {
                       }}
                       onFocus={() => setIsFlightNoFocused(true)}
                       onBlur={() => setIsFlightNoFocused(false)}
-                      className={`flex-1 border-[1.5px] py-[9px] px-[13px] text-sm font-medium text-[#1a1c1d] font-sans outline-none h-10 box-border transition-all duration-200 ${form.airline ? 'border-l-0 rounded-r-[10px]' : 'rounded-[10px]'
+                      className={`flex-1 w-full border-[1.5px] py-[9px] px-[13px] text-sm font-medium text-[#1a1c1d] font-sans outline-none h-10 box-border transition-all duration-200 min-w-0 ${form.airline ? 'border-l-0 rounded-r-[10px]' : 'rounded-[10px]'
                         } ${form.airline
                           ? (isFlightNoFocused ? 'bg-white/90' : 'bg-white/65')
                           : 'bg-black/[0.03]'
@@ -843,6 +865,14 @@ export default function FlightRoutesPage() {
                     </p>
                   )}
                 </div>
+
+                <Select id="aircraft" label="Default Aircraft" 
+                  options={[{ value: '', label: 'Select aircraft...', hidden: true }, ...aircraftList.map(a => ({ value: a.id, label: `${a.registration} (${a.model_display || 'Unknown'})` }))]}
+                  value={form.aircraft || ''}
+                  onChange={(e) => setForm(f => ({ ...f, aircraft: e.target.value }))}
+                  disabled={!form.airline}
+                  error={localErrors.aircraft}
+                />
               </div>
 
               {/* Row 2: Days selection */}
@@ -948,35 +978,39 @@ export default function FlightRoutesPage() {
                 const totalTripMins = totalFlightMins + totalLayoverMins;
                 const stopsCount = Math.max(0, form.legs.length - 1);
 
+                const depTerminalOptions = [{ value: '', label: 'Select terminal...' }, ...(originAirport?.terminals || []).map(t => ({ value: t, label: `Terminal ${t}` }))];
+                const arrTerminalOptions = [{ value: '', label: 'Select terminal...' }, ...(destAirport?.terminals || []).map(t => ({ value: t, label: `Terminal ${t}` }))];
+
                 return (
-                  <div className="mb-5 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs bg-[rgba(112,93,0,0.04)] border border-[rgba(112,93,0,0.12)]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-200/70 flex items-center justify-center text-slate-600 shrink-0 border border-slate-200/60">
-                        <Clock size={20} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Overall Route Schedule</span>
-                          <span className="text-[10px] bg-slate-200/80 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
-                            {stopsCount === 0 ? 'Non-stop' : `${stopsCount} Stop${stopsCount > 1 ? 's' : ''}`}
-                          </span>
+                  <div className="mb-5 p-4 rounded-2xl flex flex-col gap-4 shadow-xs bg-[rgba(112,93,0,0.04)] border border-[rgba(112,93,0,0.12)]">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200/70 flex items-center justify-center text-slate-600 shrink-0 border border-slate-200/60">
+                          <Clock size={20} />
                         </div>
-                        <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
-                          <span>{formatTime12h(form.scheduled_departure_time || firstLeg?.scheduled_departure_time)}</span>
-                          <span className="text-slate-400 font-normal">→</span>
-                          <span>{formatTime12h(form.scheduled_arrival_time || lastLeg?.scheduled_arrival_time)}</span>
-                          <span className="text-xs font-normal text-slate-500 ml-1">
-                            ({formatMins(totalTripMins)} total)
-                          </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Overall Route Schedule</span>
+                            <span className="text-[10px] bg-slate-200/80 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
+                              {stopsCount === 0 ? 'Non-stop' : `${stopsCount} Stop${stopsCount > 1 ? 's' : ''}`}
+                            </span>
+                          </div>
+                          <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                            <span>{formatTime12h(form.scheduled_departure_time || firstLeg?.scheduled_departure_time)}</span>
+                            <span className="text-slate-400 font-normal">→</span>
+                            <span>{formatTime12h(form.scheduled_arrival_time || lastLeg?.scheduled_arrival_time)}</span>
+                            <span className="text-xs font-normal text-slate-500 ml-1">
+                              ({formatMins(totalTripMins)} total)
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs shrink-0">
-                      <span className="font-bold text-slate-800">{originAirport?.iata_code || 'DEP'}</span>
-                      <span className="text-slate-400">✈</span>
-                      <span className="font-bold text-slate-800">{destAirport?.iata_code || 'ARR'}</span>
-
+                      <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs shrink-0">
+                        <span className="font-bold text-slate-800">{originAirport?.iata_code || 'DEP'}</span>
+                        <span className="text-slate-400">✈</span>
+                        <span className="font-bold text-slate-800">{destAirport?.iata_code || 'ARR'}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1020,6 +1054,27 @@ export default function FlightRoutesPage() {
                         onChange={(e) => updateLeg(i, 'arrival_airport', e.target.value)}
                         error={localErrors[`leg_${i}_arr_apt`]} />
                     </div>
+
+                    {/* Terminals row */}
+                    {(() => {
+                      const legOrigin = airports.find((a) => String(a.id) === String(leg.departure_airport));
+                      const legDest = airports.find((a) => String(a.id) === String(leg.arrival_airport));
+                      const depTerms = [{ value: '', label: 'Select terminal...', hidden: true }, ...(legOrigin?.terminals || []).map(t => ({ value: t, label: `Terminal ${t}` }))];
+                      const arrTerms = [{ value: '', label: 'Select terminal...', hidden: true }, ...(legDest?.terminals || []).map(t => ({ value: t, label: `Terminal ${t}` }))];
+                      
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
+                          <Select id={`dep_term_${i}`} label="Departure Terminal" options={depTerms}
+                            value={leg.departure_terminal || ''}
+                            onChange={(e) => updateLeg(i, 'departure_terminal', e.target.value)}
+                            disabled={!legOrigin || !legOrigin.terminals?.length} />
+                          <Select id={`arr_term_${i}`} label="Arrival Terminal" options={arrTerms}
+                            value={leg.arrival_terminal || ''}
+                            onChange={(e) => updateLeg(i, 'arrival_terminal', e.target.value)}
+                            disabled={!legDest || !legDest.terminals?.length} />
+                        </div>
+                      );
+                    })()}
 
                     {/* Schedule times — 2 columns + full-width duration bar */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">

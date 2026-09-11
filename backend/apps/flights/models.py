@@ -159,6 +159,11 @@ class FlightRoute(models.Model):
     valid_until = models.DateField(null=True, blank=True)
     scheduled_departure_time = models.TimeField(null=True, blank=True, help_text="Daily departure time of the whole flight")
     scheduled_arrival_time = models.TimeField(null=True, blank=True, help_text="Daily arrival time of the whole flight")
+    aircraft = models.ForeignKey(
+        Aircraft, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="flight_routes",
+        help_text="Default aircraft for all instances of this route"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -217,6 +222,14 @@ class FlightLeg(models.Model):
     scheduled_arrival = models.DateTimeField(null=True, blank=True)
     actual_departure = models.DateTimeField(null=True, blank=True)
     actual_arrival = models.DateTimeField(null=True, blank=True)
+    departure_terminal = models.CharField(
+        max_length=10, blank=True, default="",
+        help_text="Departure terminal for this leg"
+    )
+    arrival_terminal = models.CharField(
+        max_length=10, blank=True, default="",
+        help_text="Arrival terminal for this leg"
+    )
 
     class Meta:
         ordering = ["flight", "leg_order"]

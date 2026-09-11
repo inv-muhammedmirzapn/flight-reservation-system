@@ -42,9 +42,10 @@ export function Select({
 
   // Options filtered by user typing in the main input
   const filteredOptions = useMemo(() => {
-    if (!isOpen || !searchQuery.trim()) return normalizedOptions;
+    const visibleOptions = normalizedOptions.filter(opt => !opt.hidden);
+    if (!isOpen || !searchQuery.trim()) return visibleOptions;
     const term = searchQuery.toLowerCase().trim();
-    return normalizedOptions.filter(opt =>
+    return visibleOptions.filter(opt =>
       String(opt.label).toLowerCase().includes(term) ||
       String(opt.value).toLowerCase().includes(term)
     );

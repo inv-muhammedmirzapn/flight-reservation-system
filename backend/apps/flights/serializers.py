@@ -438,7 +438,8 @@ class FlightLegSerializer(serializers.ModelSerializer):
             "flight_duration_minutes", "layover_duration_minutes",
             "scheduled_departure_time", "scheduled_arrival_time",
             "scheduled_departure", "scheduled_arrival",
-            "actual_departure", "actual_arrival"
+            "actual_departure", "actual_arrival",
+            "departure_terminal", "arrival_terminal"
         ]
         extra_kwargs = {
             "scheduled_departure_time": {"required": False, "allow_null": True},
@@ -476,6 +477,8 @@ class FlightLegSerializer(serializers.ModelSerializer):
 class FlightRouteSerializer(serializers.ModelSerializer):
     legs = FlightLegSerializer(many=True)
     airline_name = serializers.CharField(source="airline.airline_name", read_only=True)
+    aircraft_display = serializers.CharField(source="aircraft.aircraft_model.model_name", read_only=True)
+    aircraft_registration = serializers.CharField(source="aircraft.registration", read_only=True)
 
     class Meta:
         model = FlightRoute
@@ -483,6 +486,7 @@ class FlightRouteSerializer(serializers.ModelSerializer):
             "id", "flight_no", "airline", "airline_name",
             "operates_on_days", "valid_from", "valid_until",
             "scheduled_departure_time", "scheduled_arrival_time",
+            "aircraft", "aircraft_display", "aircraft_registration",
             "baggage_weight_allowed_per_person",
             "baggage_number_allowed_per_person",
             "handbag_weight_allowed_per_person",
