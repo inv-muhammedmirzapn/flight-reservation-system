@@ -624,6 +624,13 @@ export default function FlightsPage() {
               };
 
               const assignedBadges = new Map();
+              const addBadge = (id, badge) => {
+                if (!assignedBadges.has(id)) assignedBadges.set(id, []);
+                if (!assignedBadges.get(id).includes(badge)) {
+                  assignedBadges.get(id).push(badge);
+                }
+              };
+
               const fares = flights.map(f => ({
                 id: f.id,
                 fare: getFare(f),
@@ -631,42 +638,39 @@ export default function FlightsPage() {
                 stops: getStops(f)
               }));
 
-              // 1. Cheapest (Lowest Fare > 0)
-              const cheapest = [...fares].filter(x => x.fare > 0).sort((a, b) => a.fare - b.fare)[0];
-              if (cheapest) {
-                assignedBadges.set(cheapest.id, "Cheapest");
-              }
+              // Assign comparative badges only if there are multiple flights to compare
+              if (flights.length > 1) {
+                // 1. Cheapest (Lowest Fare > 0)
+                const cheapest = [...fares].filter(x => x.fare > 0).sort((a, b) => a.fare - b.fare)[0];
+                if (cheapest) {
+                  addBadge(cheapest.id, "Cheapest");
+                }
 
-              // 2. Fastest (Shortest Total Duration)
-              // Always assign to the truly fastest flight — it can also carry "Cheapest" simultaneously.
-              // We use a separate fastestBadges map so both badges can coexist on one flight.
-              const fastest = [...fares].filter(x => x.dur !== Infinity).sort((a, b) => a.dur - b.dur)[0];
-              if (fastest) {
-                assignedBadges.set(fastest.id, fastest.id === cheapest?.id ? "Cheapest" : "Fastest");
-                if (fastest.id === cheapest?.id) {
-                  // The cheapest is also the fastest — mark it with both, represented via a special combo value
-                  assignedBadges.set(fastest.id, "Cheapest+Fastest");
+                // 2. Fastest (Shortest Total Duration)
+                const fastest = [...fares].filter(x => x.dur !== Infinity).sort((a, b) => a.dur - b.dur)[0];
+                if (fastest) {
+                  addBadge(fastest.id, "Fastest");
+                }
+
+                // 3. Stops / Distance Badge ("Direct" if 0 layovers, or "Shortest" if layovers exist)
+                const minStopsCount = Math.min(...fares.map(x => x.stops));
+                if (minStopsCount === 0) {
+                  const unbadgedDirect = fares.find(x => x.stops === 0 && (!assignedBadges.has(x.id) || !assignedBadges.get(x.id).includes("Direct")));
+                  if (unbadgedDirect) {
+                    addBadge(unbadgedDirect.id, "Direct");
+                  }
+                } else {
+                  const unbadgedShortest = fares.find(x => x.stops === minStopsCount && (!assignedBadges.has(x.id) || !assignedBadges.get(x.id).includes("Shortest")));
+                  if (unbadgedShortest) {
+                    addBadge(unbadgedShortest.id, "Shortest");
+                  }
                 }
               }
 
-              // 3. Stops / Distance Badge ("Direct" if 0 layovers, or "Shortest" if layovers exist)
-              const minStopsCount = Math.min(...fares.map(x => x.stops));
-              if (minStopsCount === 0) {
-                const unbadgedDirect = fares.find(x => x.stops === 0 && !assignedBadges.has(x.id));
-                if (unbadgedDirect) {
-                  assignedBadges.set(unbadgedDirect.id, "Direct");
-                }
-              } else {
-                const unbadgedShortest = fares.find(x => x.stops === minStopsCount && !assignedBadges.has(x.id));
-                if (unbadgedShortest) {
-                  assignedBadges.set(unbadgedShortest.id, "Shortest");
-                }
-              }
-
-              // 4. Non-stop flights get "Direct" badge if not already badged as Cheapest or Fastest
+              // 4. Non-stop flights get "Direct" badge
               fares.forEach(x => {
-                if (x.stops === 0 && !assignedBadges.has(x.id)) {
-                  assignedBadges.set(x.id, "Direct");
+                if (x.stops === 0) {
+                  addBadge(x.id, "Direct");
                 }
               });
 
@@ -676,7 +680,7 @@ export default function FlightsPage() {
                   flight={flight}
                   selectedCabinClass={cabinClassParam}
                   onViewDetails={handleViewDetails}
-                  optimizationBadge={assignedBadges.get(flight.id) || null}
+                  optimizationBadges={assignedBadges.get(flight.id) || []}
                   compareMode={compareMode}
                 />
               ));
