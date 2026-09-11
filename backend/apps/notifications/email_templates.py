@@ -8,6 +8,8 @@ _LOGO_URL = (
 
 # Build an inline base64 data URI so the logo renders in all email clients
 # regardless of image-blocking policies.
+
+# Locates the logo image at frontend/public/updated logo.png, reads its binary data, and converts it to a Base64 Data URI
 def _build_logo_src() -> str:
     try:
         from django.conf import settings
@@ -28,7 +30,7 @@ _LOGO_SRC = _build_logo_src()
 
 
 # ─── Shell ────────────────────────────────────────────────────────────────────
-
+# centralizes all standard layout code into one place.
 def _wrap(inner_html: str, preview_text: str = "") -> str:
     preview_span = (
         f'<span style="display:none;max-height:0;overflow:hidden;">{preview_text}</span>'
@@ -113,7 +115,7 @@ def _body_text(html: str) -> str:
       </td>
     </tr>"""
 
-
+# Renders a structured flight details box displaying the flight number and route
 def _flight_info_table(flight_number: str, origin: str, destination: str,
                         extra_rows: str = "") -> str:
     return f"""

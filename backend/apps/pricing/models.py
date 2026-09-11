@@ -59,19 +59,19 @@ class DynamicPricingConfig(models.Model):
         help_text="Legacy field, no longer read by proximity pricing (tiered logic replaced the single threshold). Kept for backward compatibility."
     )
     max_proximity_premium_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("40.00"),
+        max_digits=5, decimal_places=2, default=Decimal("80.00"),
         help_text="Max price increase % at departure day when occupancy is >= 85% (top tier, standalone — not a fraction of anything)"
     )
     proximity_premium_high_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("20.00"),
+        max_digits=5, decimal_places=2, default=Decimal("40.00"),
         help_text="Max price increase % at departure day when occupancy is 70-84% (standalone tier cap)"
     )
     proximity_premium_moderate_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("10.00"),
+        max_digits=5, decimal_places=2, default=Decimal("20.00"),
         help_text="Max price increase % at departure day when occupancy is 50-69% (standalone tier cap)"
     )
     max_proximity_discount_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("20.00"),
+        max_digits=5, decimal_places=2, default=Decimal("40.00"),
         help_text="Max price decrease % at departure day when occupancy is < 30% (standalone tier cap)"
     )
 

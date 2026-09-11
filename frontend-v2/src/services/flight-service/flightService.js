@@ -14,7 +14,9 @@ export const flightsAPI = {
     if (params.ordering)     qs.set('ordering', params.ordering);
     if (params.min_fare)     qs.set('min_fare', params.min_fare);
     if (params.max_fare)     qs.set('max_fare', params.max_fare);
+    // if (0) is false in JavaScript - but can have value 0 as stops - use ' !== ""' to check for empty string.
     if (params.stops !== undefined && params.stops !== "") qs.set('stops', params.stops);
+    // if an array, joins them using ,
     if (params.airlines)      qs.set('airlines', Array.isArray(params.airlines) ? params.airlines.join(',') : params.airlines);
     if (params.waitlist_mode) qs.set('waitlist_mode', params.waitlist_mode);
     if (params.cabin_class)   qs.set('cabin_class', params.cabin_class);

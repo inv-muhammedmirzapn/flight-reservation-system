@@ -64,9 +64,12 @@ class NotificationService:
             logo_path = os.path.normpath(
                 os.path.join(str(settings.BASE_DIR), '..', 'frontend', 'public', 'updated logo.png')
             )
+            #Safely checks if the file exists on disk to prevent FileNotFoundError.
+            #Reads the image file as raw bytes ('rb') and wraps it in a MIMEImage object.
             if os.path.isfile(logo_path):
                 with open(logo_path, 'rb') as f:
                     img = MIMEImage(f.read(), _subtype='png')
+                    
                 # Give the embedded image a Content-ID matching the CID used in the HTML.
                 img.add_header('Content-ID', '<passenger_logo>')
                 img.add_header('Content-Disposition', 'inline')

@@ -98,11 +98,13 @@ class FarePredictionServiceTest(TestCase):
             patch("apps.fare_prediction.services.FlightInstance.objects") as fi_mgr,
             patch("apps.fare_prediction.services.Fare.objects") as fare_mgr,
             patch("apps.fare_prediction.services.Booking.objects") as booking_mgr,
+            patch("apps.fare_prediction.services.HolidayEvent.objects") as holiday_mgr,
         ):
             tz_mock.now.return_value = FIXED_NOW
             fi_mgr.select_related.return_value.get.return_value = fi
             fare_mgr.filter.return_value.first.return_value = fare_mock
             booking_mgr.filter.return_value.count.return_value = booking_velocity
+            holiday_mgr.filter.return_value = []
 
             return FarePredictionService.predict_fare(
                 flight_instance_id=1,
@@ -146,8 +148,8 @@ class FarePredictionServiceTest(TestCase):
     # ── Direction: INCREASE ───────────────────────────────────────────────────
 
     def test_direction_increase_within_3_days(self):
-        # +2 days = Wed Jan 3 (not weekend): days<=3 (+3), occ=40% (0) → score=3 → INCREASE
-        result = self._run(days_ahead=2, booked_seats=40)
+        # +2 days = Wed Jan 3 (not weekend): days<=3 & occ=70% (+3), occ=70% (+2) → score=5 → INCREASE
+        result = self._run(days_ahead=2, booked_seats=70)
         self.assertEqual(result["direction"], "INCREASE")
         self.assertEqual(result["days_until_departure"], 2)
 
@@ -188,8 +190,8 @@ class FarePredictionServiceTest(TestCase):
         self.assertEqual(result["confidence"], 50)
 
     def test_confidence_increase_score_3_is_80(self):
-        # +2 days (Wed Jan 3, not weekend): score=3 → 50 + abs(3)*10 = 80
-        result = self._run(days_ahead=2, booked_seats=40)
+        # +3 days = Thu Jan 4 (not weekend): days<=7 (+2), occ=60% (+1) → score=3 → 50 + abs(3)*10 = 80
+        result = self._run(days_ahead=3, booked_seats=60)
         self.assertEqual(result["confidence"], 80)
 
     def test_confidence_decrease_score_minus2_is_70(self):
@@ -244,8 +246,8 @@ class FarePredictionServiceTest(TestCase):
     # ── Days-until-departure ──────────────────────────────────────────────────
 
     def test_days_3_or_less_adds_3_and_mentions_3_days(self):
-        # +2 days = Wed Jan 3 (not weekend): score=3 → INCREASE
-        result = self._run(days_ahead=2, booked_seats=40)
+        # +2 days = Wed Jan 3 (not weekend) with occ=70%: score=5 → INCREASE
+        result = self._run(days_ahead=2, booked_seats=70)
         self.assertIn("3 days", result["factors"][0])
         self.assertEqual(result["days_until_departure"], 2)
 
