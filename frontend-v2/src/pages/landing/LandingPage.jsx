@@ -6,6 +6,8 @@ import DatePickerModal, { formatDisplayDate } from "@/components/ui/DatePickerMo
 import { flightsAPI } from "@/services/flight-service/flightService";
 import { fetchAirports } from "@/store/airportsSlice";
 import { resolveAirport, AIRPORT_MAP, getAirportInfo } from "@/utils/airportHelpers";
+import AiChatbot from "@/components/chat/AiChatbot";
+
 
 const FALLBACK_AIRPORTS = {
   DEL: { city: "New Delhi", code: "DEL", name: "Indira Gandhi International Airport", country: "India" },
@@ -533,6 +535,9 @@ export default function LandingPage() {
 
         </div>
       </section>
+
+      {/* ── AI Travel Assistant Chatbot ── */}
+      <AiChatbot />
 
     </div>
   );

@@ -13,3 +13,8 @@ pycountry
 openpyxl
 pandas
 reportlab
+# AI Agent (LangGraph + Gemini)
+langgraph
+langchain
+langchain-google-genai
+langchain-community

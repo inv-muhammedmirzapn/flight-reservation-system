@@ -1093,3 +1093,61 @@ from apps.pricing.views import (
     HolidayEventViewSet,
     DynamicPriceLogViewSet,
 )
+
+
+# ─── AI Agent Chat View ──────────────────────────────────────────────────────────
+
+class AgentChatView(APIView):
+    """
+    POST /api/flights/agent/chat/
+
+    Accepts a plain-text user message and routes it through the LangGraph
+    travel agent. Returns a structured JSON response with the agent's reply
+    and, if a flight match is found, redirect parameters for the frontend.
+
+    Request body:
+        { "message": "I want to see the FIFA final" }
+
+    Response (REDIRECT):
+        {
+            "action": "REDIRECT",
+            "reply_message": "Great! I found flights to Newark (EWR)...",
+            "redirect_params": {
+                "destination": "EWR",
+                "departure_date": "2026-07-18",
+                "event_name": "FIFA World Cup Final",
+                ...
+            }
+        }
+
+    Response (ASK):
+        {
+            "action": "ASK",
+            "reply_message": "Which event are you trying to attend?"
+        }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        user_message = request.data.get("message", "").strip()
+
+        if not user_message:
+            return Response(
+                {"error": "Please provide a 'message' field."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            from .services_agent import run_travel_agent
+            result = run_travel_agent(user_message)
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception(f"AgentChatView error: {e}")
+            return Response(
+                {
+                    "action": "ERROR",
+                    "reply_message": "Sorry, the AI agent is temporarily unavailable. Please try again.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

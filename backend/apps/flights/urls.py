@@ -19,6 +19,7 @@ from .views_routing import (
     RecommendRoutesView,
     CheapestRouteView,
 )
+from .views import AgentChatView
 
 app_name = "apps/flights"
 
@@ -57,6 +58,9 @@ urlpatterns = [
     path("route-optimization/fastest/", FastestRouteView.as_view(), name="fastest-route"),
     path("route-optimization/cheapest/", CheapestRouteView.as_view(), name="cheapest-route"),
     path("route-optimization/recommend/", RecommendRoutesView.as_view(), name="recommend-routes"),
+
+    # ── AI Agent Chat endpoint ────────────────────────────────────────────────
+    path("agent/chat/", AgentChatView.as_view(), name="agent-chat"),
 
     # ── New entity endpoints ─────────────────────────────────────────────────
     path("", include(router.urls)),
