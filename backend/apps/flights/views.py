@@ -1130,6 +1130,7 @@ class AgentChatView(APIView):
 
     def post(self, request, *args, **kwargs):
         user_message = request.data.get("message", "").strip()
+        history = request.data.get("history", [])
 
         if not user_message:
             return Response(
@@ -1138,9 +1139,15 @@ class AgentChatView(APIView):
             )
 
         try:
-            from .services_agent import run_travel_agent
-            result = run_travel_agent(user_message)
-            return Response(result, status=status.HTTP_200_OK)
+            from .services_agent import run_travel_agent_stream
+            import json
+            from django.http import StreamingHttpResponse
+
+            def event_stream():
+                for update in run_travel_agent_stream(user_message, history):
+                    yield f"data: {json.dumps(update)}\n\n"
+
+            return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
 
         except Exception as e:
             logger.exception(f"AgentChatView error: {e}")

@@ -15,33 +15,49 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
  * Sends a user message to the LangGraph travel agent.
  *
  * @param {string} message - The user's natural language query.
+ * @param {Array} history - Previous message history.
+ * @param {Function} onUpdate - Callback for streaming updates.
  * @returns {Promise<{action: string, reply_message: string, redirect_params?: object}>}
  */
-export async function sendAgentMessage(message) {
+export async function sendAgentMessage(message, history = [], onUpdate = null) {
   const response = await fetch(`${API_BASE}/flights/agent/chat/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
 
-  const envelope = await response.json().catch(() => ({
-    status: "error",
-    data: {
-      action: "ERROR",
-      reply_message: `Server returned status ${response.status}. Check the backend logs.`,
-    },
-  }));
-
   if (!response.ok) {
-    const msg =
-      envelope?.data?.reply_message ||
-      envelope?.message ||
-      `Server error: ${response.status}`;
-    throw new Error(msg);
+    throw new Error(`Server error: ${response.status}`);
   }
 
-  // Unwrap the standardized envelope: { status, data: { action, reply_message, ... } }
-  return envelope?.data ?? envelope;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let finalData = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split('\n');
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.type === 'update' && onUpdate) {
+            onUpdate(data.step);
+          } else if (data.type === 'final') {
+            finalData = data.data;
+          }
+        } catch (e) {
+          console.error("Error parsing stream chunk:", e);
+        }
+      }
+    }
+  }
+
+  return finalData || { action: "ERROR", reply_message: "Stream ended without final data." };
 }

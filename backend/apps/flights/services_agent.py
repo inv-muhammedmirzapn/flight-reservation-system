@@ -18,7 +18,7 @@ import logging
 from typing import TypedDict, Annotated, Optional
 from datetime import datetime, timedelta
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
@@ -44,6 +44,7 @@ class AgentState(TypedDict):
     action: Optional[str]              # "REDIRECT" | "ASK" | "ERROR"
     reply_message: Optional[str]
     error: Optional[str]
+    flight_options: list
 
 
 # ─── Tools ─────────────────────────────────────────────────────────────────────
@@ -92,8 +93,8 @@ def find_nearest_airport_to_city(city: str, country: str) -> str:
         if airports.exists():
             airport = airports.first()
             return json.dumps({
-                "iata_code": airport.iata_code or airport.code,
-                "airport_name": airport.name,
+                "iata_code": airport.iata_code,
+                "airport_name": airport.airport_name,
                 "city": airport.city,
                 "country": country,
                 "source": "database"
@@ -106,24 +107,89 @@ def find_nearest_airport_to_city(city: str, country: str) -> str:
         "note": f"No DB record found for {city}, {country}. Use your knowledge to provide the most important international airport IATA code for this city. Return JSON: iata_code, airport_name, city, country"
     })
 
+@tool
+def search_upcoming_flights(destination_iata: str, travel_date: str = None) -> str:
+    """
+    Searches the application database for actual available upcoming flights to a destination.
+    Args:
+        destination_iata: The IATA code of the destination airport.
+        travel_date: Optional travel date (YYYY-MM-DD). If omitted, returns upcoming flights from today.
+    """
+    try:
+        from .models import FlightInstance
+        from django.utils import timezone
+        
+        qs = FlightInstance.objects.filter(
+            flight__legs__arrival_airport__iata_code=destination_iata,
+            status="SCHEDULED"
+        )
+        if travel_date:
+            qs = qs.filter(date=travel_date)
+        else:
+            qs = qs.filter(scheduled_departure__gte=timezone.now())
+            
+        qs = qs.order_by("scheduled_departure")[:3]
+        
+        if not qs.exists():
+            return json.dumps({"note": "No available flights found in the database for this date and destination."})
+            
+        results = []
+        for fi in qs:
+            fares = fi.fares.all()
+            min_fare = min([f.price for f in fares]) if fares else 0
+            
+            # get the source iata from the first leg
+            first_leg = fi.flight.legs.order_by('leg_order').first()
+            source_iata = first_leg.departure_airport.iata_code if first_leg else ""
+            
+            stops = max(0, fi.flight.legs.count() - 1)
+            if fi.scheduled_arrival and fi.scheduled_departure:
+                duration_td = fi.scheduled_arrival - fi.scheduled_departure
+                total_minutes = int(duration_td.total_seconds() // 60)
+                hours = total_minutes // 60
+                minutes = total_minutes % 60
+                duration_str = f"{hours}h {minutes}m"
+                arrival_time = fi.scheduled_arrival.strftime('%H:%M')
+            else:
+                duration_str = "Unknown"
+                arrival_time = "Unknown"
+            
+            results.append({
+                "id": fi.id,
+                "flight_no": fi.flight.flight_no,
+                "date": str(fi.date),
+                "time": fi.scheduled_departure.strftime('%H:%M'),
+                "arrival_time": arrival_time,
+                "duration": duration_str,
+                "stops": stops,
+                "price": float(min_fare),
+                "source": source_iata,
+                "destination": destination_iata,
+                "airline": fi.flight.airline.airline_name,
+            })
+        return json.dumps({"flights": results})
+    except Exception as e:
+        return json.dumps({"error": f"Error searching flights: {e}"})
+
 
 # ─── LLM Initialization ────────────────────────────────────────────────────────
 
 def _get_llm_with_tools():
-    """Initialize Gemini Flash with bound tools."""
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+    """Initialize Groq LLM with bound tools."""
+    api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
         raise ValueError(
-            "GEMINI_API_KEY is not set. Please add it to your backend/.env file. "
-            "Get a free key at: https://aistudio.google.com/apikey"
+            "GROQ_API_KEY is not set. Please add it to your backend/.env file."
         )
 
-    tools = [search_event_details, find_nearest_airport_to_city]
+    tools = [search_event_details, find_nearest_airport_to_city, search_upcoming_flights]
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-3.6-flash",
-        google_api_key=api_key,
+    llm = ChatGroq(
+        model="qwen/qwen3.8-27b",
+        api_key=api_key,
         temperature=0.1,
+        max_tokens=800,
+        max_retries=0,
     )
     return llm.bind_tools(tools), tools
 
@@ -131,31 +197,48 @@ def _get_llm_with_tools():
 # ─── Graph Nodes ───────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are a smart travel assistant for a flight reservation system.
-Your job is to help users find flights to attend events (concerts, sports, festivals, etc.).
+Your job is to help users find flights. Users may ask for flights to events (concerts, sports, festivals) or they may ask for direct flights between cities.
 
-When a user mentions an event they want to attend:
-1. Call search_event_details to find the event's location and date
-2. Call find_nearest_airport_to_city with the event city and country
-3. After getting both results, respond with a precise JSON object (and ONLY that JSON, no other text):
+When a user asks for flights:
+1. If they mention an event, call search_event_details to find the event's location/date, then find_nearest_airport_to_city, then search_upcoming_flights.
+2. If they just ask for flights between cities (e.g. "flights from Kochi to Hamburg this Sunday"), directly call find_nearest_airport_to_city for the destination (and source if needed), then call search_upcoming_flights.
+3. After getting flight results, you MUST respond with a precise JSON object (and ONLY that JSON, no markdown, no other text):
 
 {
   "action": "REDIRECT",
-  "event_name": "<name of the event>",
-  "event_date": "<YYYY-MM-DD>",
-  "event_city": "<city>",
-  "event_country": "<country>",
-  "airport_iata": "<IATA code>",
-  "airport_name": "<full airport name>",
-  "suggested_travel_date": "<YYYY-MM-DD, one day before event>",
-  "reply_message": "<a short, friendly message to the user, e.g. 'Great choice! The FIFA Final is on July 19 in New Jersey. I found Newark Airport (EWR) nearby — let me find flights for you!'>"
+  "event_name": "<name of the event, or null if none>",
+  "event_date": "<YYYY-MM-DD, or null>",
+  "event_city": "<city, or null>",
+  "event_country": "<country, or null>",
+  "airport_iata": "<destination IATA code>",
+  "airport_name": "<destination airport name>",
+  "suggested_travel_date": "<YYYY-MM-DD>",
+  "flight_options": [
+      {
+         "id": <flight instance ID numeric>,
+         "flight_no": "<flight number>",
+         "date": "<YYYY-MM-DD>",
+         "time": "<HH:MM>",
+         "arrival_time": "<HH:MM>",
+         "duration": "<e.g. 2h 45m>",
+         "stops": <integer>,
+         "price": <price numeric>,
+         "source": "<source IATA>",
+         "destination": "<destination IATA>",
+         "airline": "<airline name>"
+      }
+  ],
+  "reply_message": "<A short, friendly message summarizing the flights you found. E.g. 'I found some great flights from Kochi to Hamburg this Sunday. Click an option below to book!'>"
 }
 
-If the user's request is unclear or not event-related, respond with:
+If you cannot find flights, or the user's request is unclear, respond with:
 {
   "action": "ASK",
   "reply_message": "<friendly follow-up question to clarify their travel plans>"
 }
 
+CRITICAL: Do NOT output any plain text outside the JSON. Your final response must be ONLY valid JSON.
+Remember to use previous conversation history to understand context.
 Always be enthusiastic and helpful. Today's date is """ + datetime.now().strftime("%B %d, %Y") + "."
 
 
@@ -189,6 +272,7 @@ def tools_node_func(state: AgentState) -> AgentState:
     tools_map = {
         "search_event_details": search_event_details,
         "find_nearest_airport_to_city": find_nearest_airport_to_city,
+        "search_upcoming_flights": search_upcoming_flights,
     }
 
     messages = state["messages"]
@@ -254,6 +338,7 @@ def parse_response_node(state: AgentState) -> AgentState:
             "nearest_airport_iata": parsed.get("airport_iata"),
             "nearest_airport_name": parsed.get("airport_name"),
             "suggested_travel_date": parsed.get("suggested_travel_date"),
+            "flight_options": parsed.get("flight_options", []),
             "reply_message": parsed.get("reply_message", "I found some flights for you!"),
         }
     except (json.JSONDecodeError, KeyError, IndexError):
@@ -327,12 +412,13 @@ def get_agent_graph():
 
 # ─── Public API ────────────────────────────────────────────────────────────────
 
-def run_travel_agent(user_message: str) -> dict:
+def run_travel_agent(user_message: str, history: list = None) -> dict:
     """
     Entry point called by the Django view.
     
     Args:
         user_message: The raw natural language message from the user.
+        history: List of previous messages from the chat.
     
     Returns:
         A dictionary with:
@@ -343,9 +429,23 @@ def run_travel_agent(user_message: str) -> dict:
     """
     try:
         graph = get_agent_graph()
+        
+        messages = [SystemMessage(content=SYSTEM_PROMPT)]
+        if history:
+            for msg in history:
+                role = msg.get("role")
+                text = msg.get("text", "")
+                if role == "user":
+                    messages.append(HumanMessage(content=text))
+                elif role == "bot":
+                    messages.append(AIMessage(content=text))
+                    
+        # Append the new user message that triggered this turn
+        messages.append(HumanMessage(content=user_message))
+                    
         initial_state: AgentState = {
             "user_message": user_message,
-            "messages": [],
+            "messages": messages,
             "event_name": None,
             "event_date": None,
             "event_city": None,
@@ -373,6 +473,7 @@ def run_travel_agent(user_message: str) -> dict:
                 "event_date": final_state.get("event_date", ""),
                 "event_city": final_state.get("event_city", ""),
                 "airport_name": final_state.get("nearest_airport_name", ""),
+                "flight_options": final_state.get("flight_options", []),
             }
 
         return result
@@ -383,3 +484,81 @@ def run_travel_agent(user_message: str) -> dict:
             "action": "ERROR",
             "reply_message": f"Sorry, I ran into a problem: {str(e)}. Please try again.",
         }
+
+def run_travel_agent_stream(user_message: str, history: list = None):
+    history = history or []
+    try:
+        from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+        yield {"type": "update", "step": "Initializing AI travel agent..."}
+        
+        graph = get_agent_graph()
+        
+        messages = [SystemMessage(content=SYSTEM_PROMPT)]
+        if history:
+            for msg in history:
+                role = msg.get("role")
+                text = msg.get("text", "")
+                if role == "user":
+                    messages.append(HumanMessage(content=text))
+                elif role == "bot":
+                    messages.append(AIMessage(content=text))
+                    
+        messages.append(HumanMessage(content=user_message))
+        
+        initial_state = {
+            "user_message": user_message,
+            "messages": messages,
+            "event_name": None,
+            "event_date": None,
+            "event_city": None,
+            "event_country": None,
+            "nearest_airport_iata": None,
+            "nearest_airport_name": None,
+            "suggested_travel_date": None,
+            "action": None,
+            "reply_message": None,
+            "error": None,
+            "flight_options": []
+        }
+
+        yield {"type": "update", "step": "Analyzing your request..."}
+        
+        final_state = None
+        for state in graph.stream(initial_state, stream_mode="values"):
+            final_state = state
+            
+            messages_list = state.get("messages", [])
+            if messages_list:
+                last_msg = messages_list[-1]
+                if getattr(last_msg, "type", "") == "ai" and getattr(last_msg, "tool_calls", None):
+                    yield {"type": "update", "step": f"Using tool: {last_msg.tool_calls[0]['name']}..."}
+                elif getattr(last_msg, "type", "") == "tool":
+                    yield {"type": "update", "step": "Processing database results..."}
+                elif getattr(last_msg, "type", "") == "ai":
+                    yield {"type": "update", "step": "Thinking..."}
+                    
+        result = {
+            "action": final_state.get("action", "ASK"),
+            "reply_message": final_state.get("reply_message", "How can I help you?"),
+        }
+
+        if final_state.get("action") == "REDIRECT":
+            result["redirect_params"] = {
+                "destination": final_state.get("nearest_airport_iata", ""),
+                "departure_date": final_state.get("suggested_travel_date", ""),
+                "event_name": final_state.get("event_name", ""),
+                "event_date": final_state.get("event_date", ""),
+                "event_city": final_state.get("event_city", ""),
+                "airport_name": final_state.get("nearest_airport_name", ""),
+                "flight_options": final_state.get("flight_options", []),
+            }
+            
+        yield {"type": "final", "data": result}
+        
+    except Exception as e:
+        logger.exception(f"Travel agent stream failed: {e}")
+        yield {"type": "final", "data": {
+            "action": "ERROR",
+            "reply_message": f"Sorry, I ran into a problem: {str(e)}. Please try again.",
+        }}
+
