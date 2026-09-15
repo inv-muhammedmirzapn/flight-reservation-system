@@ -78,11 +78,14 @@ export default function LandingPage() {
         try {
           const { latitude, longitude } = position.coords;
           const airportData = await flightsAPI.getNearestAirport(latitude, longitude);
-
           if (airportData && airportData.iata_code) {
             setFrom(airportData.iata_code);
             const cityName = airportData.city || airportData.airport_name || airportData.iata_code;
             setFromSearch(cityName);
+            
+            // Save for AI Chatbot
+            localStorage.setItem("user_nearest_airport", airportData.iata_code);
+            localStorage.setItem("user_nearest_city", cityName);
           }
         } catch (err) {
           console.error("Failed to fetch nearest airport:", err);

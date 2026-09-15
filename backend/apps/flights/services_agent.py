@@ -53,22 +53,61 @@ class AgentState(TypedDict):
 def search_event_details(event_query: str) -> str:
     """
     Searches for a real-world event and returns its name, date, city, and country.
-    Use this when the user asks about attending a specific event like a sports final,
-    concert, or festival.
-
+    Use this when the user asks about attending an event (e.g., a sports match, concert, festival).
+    If the user asks for the "next" or "latest" instance of a recurring event (like "next F1 race"), pass that exact phrase as the query rather than asking the user for clarification.
+    
     Args:
-        event_query: The name of the event to search for (e.g. "FIFA World Cup Final 2026")
-
-    Returns:
-        JSON string with keys: event_name, event_date (YYYY-MM-DD), city, country.
-        If not found, returns an error key.
+        event_query: The name of the event or phrase to search for (e.g., "next F1 race").
     """
-    # This uses the LLM's embedded world knowledge as the "search".
-    # In production you can swap this with a real web-search API (e.g. Tavily, SerpAPI).
-    # The LLM tool-caller will fill this in based on its training knowledge.
-    return json.dumps({
-        "note": "Use your world knowledge to answer this. Return a JSON with keys: event_name, event_date (YYYY-MM-DD), city, country. If unknown, set event_date to a best guess date string."
-    })
+    # This tool is intercepted by the researcher_node.
+    pass
+
+
+def researcher_node(state: AgentState) -> AgentState:
+    """A specialized node using Gemini to perform deep web research."""
+    messages = state["messages"]
+    last_message = messages[-1]
+    tool_messages = []
+    
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    
+    for tool_call in last_message.tool_calls:
+        if tool_call["name"] == "search_event_details":
+            if not api_key:
+                err_msg = json.dumps({"error": "GROQ_API_KEY is missing. Cannot perform web research."})
+                tool_messages.append(ToolMessage(content=err_msg, tool_call_id=tool_call["id"]))
+                continue
+                
+            query = tool_call["args"].get("event_query", "")
+            try:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                from langchain_community.tools.tavily_search import TavilySearchResults
+                
+                # 1. Search the web
+                search = TavilySearchResults(max_results=3)
+                current_date = datetime.now().strftime("%Y-%m-%d")
+                raw_results = search.invoke(f"When and where is {query} taking place? Today is {current_date}")
+                
+                # 2. Use Groq to extract structured data
+                groq_llm = ChatGroq(model="openai/gpt-oss-20b", api_key=api_key, temperature=0)
+                prompt = f"Today is {current_date}. Web search results for '{query}':\n{raw_results}\n\nExtract the event_name, event_date (YYYY-MM-DD), city, and country for the most immediate upcoming instance of this event. Return ONLY a valid JSON object."
+                groq_res = groq_llm.invoke(prompt)
+                
+                tool_messages.append(ToolMessage(content=groq_res.content, tool_call_id=tool_call["id"]))
+            except Exception as e:
+                tool_messages.append(ToolMessage(content=json.dumps({"error": str(e)}), tool_call_id=tool_call["id"]))
+        else:
+            # Handle any other stray tool calls just in case
+            tools_map = {
+                "find_nearest_airport_to_city": find_nearest_airport_to_city,
+                "search_upcoming_flights": search_upcoming_flights,
+            }
+            tool_fn = tools_map.get(tool_call["name"])
+            if tool_fn:
+                res = tool_fn.invoke(tool_call["args"])
+                tool_messages.append(ToolMessage(content=str(res), tool_call_id=tool_call["id"]))
+
+    return {**state, "messages": messages + tool_messages}
 
 
 @tool
@@ -108,10 +147,11 @@ def find_nearest_airport_to_city(city: str, country: str) -> str:
     })
 
 @tool
-def search_upcoming_flights(destination_iata: str, travel_date: str = None) -> str:
+def search_upcoming_flights(source_iata: str, destination_iata: str, travel_date: Optional[str] = None) -> str:
     """
-    Searches the application database for actual available upcoming flights to a destination.
+    Searches the application database for actual available upcoming flights between two airports.
     Args:
+        source_iata: The IATA code of the departure airport.
         destination_iata: The IATA code of the destination airport.
         travel_date: Optional travel date (YYYY-MM-DD). If omitted, returns upcoming flights from today.
     """
@@ -120,18 +160,31 @@ def search_upcoming_flights(destination_iata: str, travel_date: str = None) -> s
         from django.utils import timezone
         
         qs = FlightInstance.objects.filter(
-            flight__legs__arrival_airport__iata_code=destination_iata,
+            flight__legs__departure_airport__iata_code__iexact=source_iata
+        ).filter(
+            flight__legs__arrival_airport__iata_code__iexact=destination_iata
+        ).filter(
             status="SCHEDULED"
-        )
+        ).distinct()
+        
         if travel_date:
+            try:
+                from datetime import datetime
+                parsed_date = datetime.strptime(travel_date, "%Y-%m-%d").date()
+                if parsed_date < timezone.now().date():
+                    return json.dumps({"note": f"The travel date {travel_date} is in the past. Tell the user that the event has already passed, and no flights can be booked."})
+            except ValueError:
+                pass
             qs = qs.filter(date=travel_date)
+            # Also ensure we only return flights that haven't departed yet even if it's today
+            qs = qs.filter(scheduled_departure__gte=timezone.now())
         else:
             qs = qs.filter(scheduled_departure__gte=timezone.now())
             
-        qs = qs.order_by("scheduled_departure")[:3]
+        qs = qs.order_by("scheduled_departure")[:2]
         
         if not qs.exists():
-            return json.dumps({"note": "No available flights found in the database for this date and destination."})
+            return json.dumps({"note": f"No available flights found from {source_iata} to {destination_iata}. Reply to the user that no flights are available from their source airport, and ask if they want to mention any other departure airports (like Delhi, for example)."})
             
         results = []
         for fi in qs:
@@ -175,71 +228,45 @@ def search_upcoming_flights(destination_iata: str, travel_date: str = None) -> s
 # ─── LLM Initialization ────────────────────────────────────────────────────────
 
 def _get_llm_with_tools():
-    """Initialize Groq LLM with bound tools."""
-    api_key = os.environ.get("GROQ_API_KEY", "")
+    """Initialize Gemini LLM with bound tools to avoid Groq rate limits."""
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         raise ValueError(
-            "GROQ_API_KEY is not set. Please add it to your backend/.env file."
+            "GEMINI_API_KEY is not set. Please add it to your backend/.env file."
         )
 
     tools = [search_event_details, find_nearest_airport_to_city, search_upcoming_flights]
 
-    llm = ChatGroq(
-        model="qwen/qwen3.8-27b",
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-3.1-flash-lite",
         api_key=api_key,
         temperature=0.1,
-        max_tokens=800,
-        max_retries=0,
     )
     return llm.bind_tools(tools), tools
 
 
 # ─── Graph Nodes ───────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are a smart travel assistant for a flight reservation system.
-Your job is to help users find flights. Users may ask for flights to events (concerts, sports, festivals) or they may ask for direct flights between cities.
-
-When a user asks for flights:
-1. If they mention an event, call search_event_details to find the event's location/date, then find_nearest_airport_to_city, then search_upcoming_flights.
-2. If they just ask for flights between cities (e.g. "flights from Kochi to Hamburg this Sunday"), directly call find_nearest_airport_to_city for the destination (and source if needed), then call search_upcoming_flights.
-3. After getting flight results, you MUST respond with a precise JSON object (and ONLY that JSON, no markdown, no other text):
-
+SYSTEM_PROMPT = """You are a flight reservation assistant.
+Users ask for flights to events or cities.
+1. Event: call search_event_details, then find_nearest_airport_to_city, then search_upcoming_flights.
+   - CRITICAL RULE: If a user mentions ANY event (e.g., "next F1 race", "World Cup"), you must NEVER ask for clarification about the location, country, or date. IMMEDIATELY call search_event_details with the user's exact phrase. The web search tool is responsible for finding the location, not the user.
+2. Cities: call find_nearest_airport_to_city, then search_upcoming_flights.
+3. For search_upcoming_flights, you MUST provide a source_iata. If the user explicitly mentions a departure city, use that. If the user does not mention a departure city, use the nearest_airport provided in your system instructions below.
+4. Respond ONLY with this exact JSON structure (no markdown/text):
 {
-  "action": "REDIRECT",
-  "event_name": "<name of the event, or null if none>",
-  "event_date": "<YYYY-MM-DD, or null>",
-  "event_city": "<city, or null>",
-  "event_country": "<country, or null>",
-  "airport_iata": "<destination IATA code>",
-  "airport_name": "<destination airport name>",
+  "action": "REDIRECT" or "ASK",
+  "event_name": "<name or null>", "event_date": "<YYYY-MM-DD or null>", "event_city": "<city or null>", "event_country": "<country or null>",
+  "airport_iata": "<dest IATA>", "airport_name": "<dest name>",
   "suggested_travel_date": "<YYYY-MM-DD>",
-  "flight_options": [
-      {
-         "id": <flight instance ID numeric>,
-         "flight_no": "<flight number>",
-         "date": "<YYYY-MM-DD>",
-         "time": "<HH:MM>",
-         "arrival_time": "<HH:MM>",
-         "duration": "<e.g. 2h 45m>",
-         "stops": <integer>,
-         "price": <price numeric>,
-         "source": "<source IATA>",
-         "destination": "<destination IATA>",
-         "airline": "<airline name>"
-      }
-  ],
-  "reply_message": "<A short, friendly message summarizing the flights you found. E.g. 'I found some great flights from Kochi to Hamburg this Sunday. Click an option below to book!'>"
+  "flight_options": [ { "id": "<real flight id>", "flight_no": "...", "date": "...", "time": "...", "arrival_time": "...", "duration": "...", "stops": "<int>", "price": "<float>", "source": "...", "destination": "...", "airline": "..." } ],
+  "reply_message": "<Friendly summary or question>"
 }
 
-If you cannot find flights, or the user's request is unclear, respond with:
-{
-  "action": "ASK",
-  "reply_message": "<friendly follow-up question to clarify their travel plans>"
-}
+5. GUARDRAIL: If the user asks ANY question unrelated to flights, travel, airports, or events (e.g., coding, math, general trivia, jokes), you must completely REFUSE to answer the question itself. You must ONLY reply with something like: "I am a flight reservation assistant and can only help you with flights and travel." Do NOT provide the answer or code.
 
-CRITICAL: Do NOT output any plain text outside the JSON. Your final response must be ONLY valid JSON.
-Remember to use previous conversation history to understand context.
-Always be enthusiastic and helpful. Today's date is """ + datetime.now().strftime("%B %d, %Y") + "."
+CRITICAL: Output ONLY valid JSON. Use history for context. Today's date: """ + datetime.now().strftime("%Y-%m-%d") + "."
 
 
 def agent_node(state: AgentState) -> AgentState:
@@ -363,6 +390,8 @@ def should_continue(state: AgentState) -> str:
 
     # If the LLM returned tool calls, execute them
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        if any(tc["name"] == "search_event_details" for tc in last_message.tool_calls):
+            return "researcher"
         return "tools"
 
     # Otherwise, parse the final text response
@@ -376,6 +405,7 @@ def build_agent_graph():
     workflow = StateGraph(AgentState)
 
     workflow.add_node("agent", agent_node)
+    workflow.add_node("researcher", researcher_node)
     workflow.add_node("tools", tools_node_func)
     workflow.add_node("parse", parse_response_node)
 
@@ -385,13 +415,15 @@ def build_agent_graph():
         "agent",
         should_continue,
         {
+            "researcher": "researcher",
             "tools": "tools",
             "parse": "parse",
             "end": END,
         }
     )
 
-    # After tools run, go back to agent for the next reasoning step
+    # After tools/research run, go back to agent for the next reasoning step
+    workflow.add_edge("researcher", "agent")
     workflow.add_edge("tools", "agent")
     # After parsing, we are done
     workflow.add_edge("parse", END)
@@ -485,7 +517,7 @@ def run_travel_agent(user_message: str, history: list = None) -> dict:
             "reply_message": f"Sorry, I ran into a problem: {str(e)}. Please try again.",
         }
 
-def run_travel_agent_stream(user_message: str, history: list = None):
+def run_travel_agent_stream(user_message: str, history: list = None, nearest_airport: str = None, nearest_city: str = None):
     history = history or []
     try:
         from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -493,8 +525,15 @@ def run_travel_agent_stream(user_message: str, history: list = None):
         
         graph = get_agent_graph()
         
-        messages = [SystemMessage(content=SYSTEM_PROMPT)]
+        current_system_prompt = SYSTEM_PROMPT
+        if nearest_airport:
+            city_str = nearest_city or nearest_airport
+            current_system_prompt += f"\n\nNOTE: The user's current nearest airport is {city_str} ({nearest_airport}). If they do not specify an origin city in their request, you MUST use {nearest_airport} (or {city_str}) as the starting location."
+
+        messages = [SystemMessage(content=current_system_prompt)]
         if history:
+            # Keep only the last 2 messages to heavily save tokens
+            history = history[-2:]
             for msg in history:
                 role = msg.get("role")
                 text = msg.get("text", "")

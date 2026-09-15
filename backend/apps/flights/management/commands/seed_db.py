@@ -129,6 +129,7 @@ class Command(BaseCommand):
             ("Germany", "DE"), ("France", "FR"), ("Canada", "CA"), ("Australia", "AU"),
             ("Qatar", "QA"), ("Turkey", "TR"), ("Thailand", "TH"), ("Malaysia", "MY"),
             ("South Korea", "KR"), ("Netherlands", "NL"), ("Switzerland", "CH"),
+            ("Azerbaijan", "AZ"),
         ] 
         countries_dict = {}
         for name, iso in countries_data:
@@ -159,6 +160,10 @@ class Command(BaseCommand):
             ("TRV", "Trivandrum International Airport", "Thiruvananthapuram", "Asia/Kolkata", Decimal("8.482100"), Decimal("76.919900"), "IN", ["T1", "T2"]),
             ("CCJ", "Calicut International Airport", "Kozhikode", "Asia/Kolkata", Decimal("11.136800"), Decimal("75.955300"), "IN", ["T1"]),
             ("CNN", "Kannur International Airport", "Kannur", "Asia/Kolkata", Decimal("11.918700"), Decimal("75.547200"), "IN", ["T1"]),
+            # Custom Airports
+            ("GYD", "Heydar Aliyev International Airport", "Baku", "Asia/Baku", Decimal("40.4675"), Decimal("50.046667"), "AZ", ["1", "2"]),
+            ("NGO", "Chubu Centrair International Airport", "Nagoya", "Asia/Tokyo", Decimal("34.858333"), Decimal("136.805278"), "JP", ["1", "2"]),
+            ("EWR", "Newark Liberty International Airport", "New York", "America/New_York", Decimal("40.6925"), Decimal("-74.168611"), "US", ["A", "B", "C"]),
         ]
         airports_dict = {}
         for iata, name, city, tz, lat, lon, country_iso, term in airports_data:
@@ -502,6 +507,18 @@ class Command(BaseCommand):
             ("AI691", "AI", "TRV", "DXB", 4, 20, "VT-ALN", Decimal("16500.00"), time(2, 0)),
             ("EK531", "EK", "DXB", "TRV", 4, 25, "A6-EEO", Decimal("18500.00"), time(10, 15)),
             ("AI693", "AI", "CCJ", "DXB", 4, 30, "VT-ALN", Decimal("17000.00"), time(4, 0)),
+            # Custom Routes from DEL
+            ("AI801", "AI", "DEL", "GYD", 4, 30, "VT-ALN", Decimal("22000.00"), time(10, 0)),
+            ("AI803", "AI", "DEL", "NGO", 8, 15, "VT-ALN", Decimal("45000.00"), time(22, 30)),
+            ("AI805", "AI", "DEL", "EWR", 15, 0, "VT-ALN", Decimal("78000.00"), time(2, 15)),
+            ("QR501", "QR", "DEL", "DOH", 4, 15, "A7-BBA", Decimal("18000.00"), time(11, 0)),
+            ("TK701", "TK", "DEL", "IST", 7, 0, "TC-JNA", Decimal("35000.00"), time(6, 45)),
+            # Custom Routes from COK
+            ("AI807", "AI", "COK", "GYD", 5, 45, "VT-ALN", Decimal("26000.00"), time(9, 30)),
+            ("AI809", "AI", "COK", "NGO", 9, 30, "VT-ALN", Decimal("48000.00"), time(21, 0)),
+            ("AI811", "AI", "COK", "EWR", 16, 30, "VT-ALN", Decimal("82000.00"), time(1, 45)),
+            ("QR503", "QR", "COK", "DOH", 4, 45, "A7-BBA", Decimal("20000.00"), time(10, 30)),
+            ("TK703", "TK", "COK", "IST", 8, 15, "TC-JNA", Decimal("38000.00"), time(5, 45)),
         ]
 
         for fno, al_code, dep_code, arr_code, hrs, mins, ac_reg, base_fare, dep_t in other_route_templates:

@@ -19,13 +19,31 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
  * @param {Function} onUpdate - Callback for streaming updates.
  * @returns {Promise<{action: string, reply_message: string, redirect_params?: object}>}
  */
-export async function sendAgentMessage(message, history = [], onUpdate = null) {
+/**
+ * Sends a user message to the LangGraph travel agent.
+ *
+ * @param {string} message - The user's natural language query.
+ * @param {Array} history - Previous message history.
+ * @param {Function} onUpdate - Callback for streaming updates.
+ * @param {string|null} nearestAirport - Nearest airport code.
+ * @param {string|null} nearestCity - Nearest city name.
+ * @param {AbortSignal|null} signal - Optional AbortSignal to cancel the request.
+ * @returns {Promise<{action: string, reply_message: string, redirect_params?: object}>}
+ */
+export async function sendAgentMessage(message, history = [], onUpdate = null, nearestAirport = null, nearestCity = null, signal = null) {
+  const body = { message, history };
+  if (nearestAirport) {
+    body.nearest_airport = nearestAirport;
+    body.nearest_city = nearestCity;
+  }
+
   const response = await fetch(`${API_BASE}/flights/agent/chat/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -36,27 +54,35 @@ export async function sendAgentMessage(message, history = [], onUpdate = null) {
   const decoder = new TextDecoder();
   let finalData = null;
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
-    
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.type === 'update' && onUpdate) {
-            onUpdate(data.step);
-          } else if (data.type === 'final') {
-            finalData = data.data;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'update' && onUpdate) {
+              onUpdate(data.step);
+            } else if (data.type === 'final') {
+              finalData = data.data;
+            }
+          } catch (e) {
+            console.error("Error parsing stream chunk:", e);
           }
-        } catch (e) {
-          console.error("Error parsing stream chunk:", e);
         }
       }
     }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      reader.cancel();
+      throw err; // re-throw so caller can handle it
+    }
+    throw err;
   }
 
   return finalData || { action: "ERROR", reply_message: "Stream ended without final data." };

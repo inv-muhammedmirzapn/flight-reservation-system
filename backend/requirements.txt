@@ -17,6 +17,8 @@ reportlab
 langgraph
 langchain
 langchain-google-genai
+google-genai
 langchain-community
 groq==0.37.1
 langchain-groq==1.1.3
+tavily-python

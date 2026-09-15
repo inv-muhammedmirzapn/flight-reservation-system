@@ -1131,6 +1131,8 @@ class AgentChatView(APIView):
     def post(self, request, *args, **kwargs):
         user_message = request.data.get("message", "").strip()
         history = request.data.get("history", [])
+        nearest_airport = request.data.get("nearest_airport")
+        nearest_city = request.data.get("nearest_city")
 
         if not user_message:
             return Response(
@@ -1144,7 +1146,7 @@ class AgentChatView(APIView):
             from django.http import StreamingHttpResponse
 
             def event_stream():
-                for update in run_travel_agent_stream(user_message, history):
+                for update in run_travel_agent_stream(user_message, history, nearest_airport, nearest_city):
                     yield f"data: {json.dumps(update)}\n\n"
 
             return StreamingHttpResponse(event_stream(), content_type="text/event-stream")

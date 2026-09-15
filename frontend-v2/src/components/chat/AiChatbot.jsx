@@ -126,7 +126,7 @@ const SUGGESTIONS = [
 const DEFAULT_MESSAGE = {
   id: 1,
   role: "bot",
-  text: "Hey! I'm your AI travel assistant. Tell me about an event you want to attend and I'll find you the best flights!",
+  text: "Hey! I'm Nova AI, your intelligent travel assistant ✈️ Tell me about an event you want to attend and I'll find you the best flights!",
 };
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -149,13 +149,38 @@ export default function AiChatbot() {
   const [hasNewMessage, setHasNewMessage] = useState(false);
 
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const widgetRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const controls = useAnimation();
+
+  // Click outside to close
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, loadingSteps]);
+
+  // Re-scroll when animated content (loading steps) expands in height
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Persist messages to localStorage
   useEffect(() => {
@@ -188,6 +213,10 @@ export default function AiChatbot() {
     setIsLoading(true);
     setLoadingSteps(["Initializing AI travel agent..."]);
 
+    // Create a new AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     // Bubble pulse animation
     controls.start({
       scale: [1, 1.15, 1],
@@ -195,25 +224,24 @@ export default function AiChatbot() {
     });
 
     try {
-      // Pass existing messages (excluding the new one just added) as history
       const history = messages.map((m) => ({ role: m.role, text: m.text }));
+      const nearestAirport = localStorage.getItem("user_nearest_airport");
+      const nearestCity = localStorage.getItem("user_nearest_city");
+
       const result = await sendAgentMessage(trimmed, history, (step) => {
         setLoadingSteps(prev => {
-          if (prev[prev.length - 1] !== step) {
-            return [...prev, step];
-          }
+          if (prev[prev.length - 1] !== step) return [...prev, step];
           return prev;
         });
-      });
+      }, nearestAirport, nearestCity, controller.signal);
 
       setIsLoading(false);
       setLoadingSteps([]);
+      abortControllerRef.current = null;
 
       if (result.action === "REDIRECT" && result.redirect_params) {
-        // Show particles!
         setShowParticles(true);
         setTimeout(() => setShowParticles(false), 1200);
-
         addMessage("bot", result.reply_message, {
           isRedirect: true,
           redirectParams: result.redirect_params,
@@ -224,7 +252,19 @@ export default function AiChatbot() {
       }
     } catch (err) {
       setIsLoading(false);
-      addMessage("bot", `Oops! Something went wrong: ${err.message}. Please try again.`);
+      setLoadingSteps([]);
+      abortControllerRef.current = null;
+      if (err.name === "AbortError") {
+        addMessage("bot", "Stopped. Let me know if you'd like to try a different search.");
+      } else {
+        addMessage("bot", `Oops! Something went wrong: ${err.message}. Please try again.`);
+      }
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -291,18 +331,35 @@ export default function AiChatbot() {
 
         /* Header */
         .ag-header {
-          padding: 16px 18px 13px;
-          background: white;
-          border-bottom: 1px solid rgba(0,0,0,0.06);
-          display: flex; align-items: center; gap: 11px; flex-shrink: 0;
+          padding: 16px 18px 14px;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2a1a 100%);
+          border-bottom: 3px solid #ffd700;
+          display: flex; align-items: center; gap: 13px; flex-shrink: 0;
+          position: relative;
+        }
+        .ag-header::after {
+          content: '';
+          position: absolute;
+          bottom: -3px; left: 0; right: 0; height: 3px;
+          background: linear-gradient(90deg, #ffd700, #facc15, #fbbf24, #ffd700);
+          background-size: 200% 100%;
+          animation: ag-shimmer 2.5s linear infinite;
+        }
+        @keyframes ag-shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
         .ag-header-icon {
-          width: 40px; height: 40px; border-radius: 12px;
-          display: flex; align-items: center; justify-content: center;
-          background: transparent; padding: 2px;
+          width: 48px; height: 48px; border-radius: 14px;
+          overflow: hidden; flex-shrink: 0;
+          box-shadow: 0 4px 14px rgba(255,215,0,0.35);
         }
-        .ag-header-title { font-size: 14px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; }
-        .ag-header-sub { font-size: 10.5px; color: #64748b; margin-top: 1px; font-weight: 500; }
+        .ag-header-icon img {
+          width: 100%; height: 100%; object-fit: cover; display: block;
+          border-radius: 14px;
+        }
+        .ag-header-title { font-size: 14.5px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; }
+        .ag-header-sub { font-size: 10.5px; color: rgba(255,255,255,0.55); margin-top: 2px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
         .ag-status-dot {
           width: 6px; height: 6px; background: #22c55e; border-radius: 50%;
           display: inline-block; margin-right: 5px;
@@ -312,17 +369,32 @@ export default function AiChatbot() {
         @keyframes ag-blink {
           0%, 100% { opacity: 1; } 50% { opacity: 0.35; }
         }
+        .ag-clear-btn {
+          display: flex; align-items: center; gap: 5px;
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.14);
+          color: rgba(255,255,255,0.55);
+          font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+          padding: 5px 10px; border-radius: 20px;
+          cursor: pointer; transition: all 0.2s; font-family: Inter, sans-serif;
+          margin-right: 6px;
+        }
+        .ag-clear-btn:hover {
+          background: rgba(255,215,0,0.12);
+          border-color: rgba(255,215,0,0.45);
+          color: #ffd700;
+        }
         .ag-close-btn {
-          margin-left: auto; background: rgba(0,0,0,0.04); border: none;
-          color: #64748b; width: 30px; height: 30px; border-radius: 8px;
+          margin-left: auto; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.7); width: 30px; height: 30px; border-radius: 8px;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           font-size: 15px; transition: all 0.2s;
         }
-        .ag-close-btn:hover { background: rgba(0,0,0,0.08); color: #0f172a; }
+        .ag-close-btn:hover { background: rgba(255,215,0,0.15); border-color: rgba(255,215,0,0.4); color: #ffd700; }
 
         /* Messages area */
         .ag-messages {
-          flex: 1; overflow-y: auto; padding: 14px; display: flex;
+          flex: 1; overflow-y: auto; padding: 14px; padding-bottom: 6px; display: flex;
           flex-direction: column; gap: 10px; scrollbar-width: thin;
           scrollbar-color: rgba(0,0,0,0.1) transparent;
           background: rgba(248,250,252,0.8);
@@ -437,6 +509,21 @@ export default function AiChatbot() {
         .ag-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; background: #e2e8f0; }
         .ag-send-btn svg { width: 16px; height: 16px; color: #0f172a; stroke-width: 2.5px; }
 
+        .ag-stop-btn {
+          width: 36px; height: 36px; border-radius: 14px; border: none; cursor: pointer;
+          background: #ef4444;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 0.2s; flex-shrink: 0;
+          animation: ag-stop-pulse 1.4s ease-in-out infinite;
+          box-shadow: 0 0 0 0 rgba(239,68,68,0.4);
+        }
+        .ag-stop-btn:hover { background: #dc2626; transform: scale(1.05); }
+        @keyframes ag-stop-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+          70% { box-shadow: 0 0 0 7px rgba(239,68,68,0); }
+          100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+
         /* Particles */
         .ag-particle-container {
           position: absolute; bottom: 90px; right: 31px;
@@ -523,7 +610,7 @@ export default function AiChatbot() {
       `}</style>
 
       {/* ── Widget Container ──────────────────────────────────────── */}
-      <div className="ag-widget">
+      <div className="ag-widget" ref={widgetRef}>
 
         {/* Particle burst */}
         <ParticleBurst active={showParticles} />
@@ -547,27 +634,28 @@ export default function AiChatbot() {
               {/* Header */}
               <div className="ag-header">
                 <div className="ag-header-icon">
-                  <img src="/ai-logo.jpg" alt="AI" style={{width: '100%', height: '100%', borderRadius: '10px'}} />
+                  <img src="/ai-logo.jpg" alt="Nova AI" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div className="ag-header-title">AI Travel Assistant</div>
+                  <div className="ag-header-title">Nova AI</div>
                   <div className="ag-header-sub">
-                    <span className="ag-status-dot" />
-                    Powered by LangGraph + Groq
+                    <span style={{ color: '#ffd700', fontWeight: '700', fontSize: '10.5px' }}>
+                      Intelligent Flight Companion
+                    </span>
                   </div>
                 </div>
-                <button 
+                <button
+                  className="ag-clear-btn"
                   onClick={() => setMessages([DEFAULT_MESSAGE])}
-                  title="Clear chat"
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', marginRight: '5px' }}
+                  title="Clear chat history"
                 >
-                  clear
+                  Clear
                 </button>
                 <button className="ag-close-btn" onClick={() => setIsOpen(false)}>✕</button>
               </div>
 
               {/* Messages */}
-              <div className="ag-messages">
+              <div className="ag-messages" ref={messagesContainerRef}>
                 <AnimatePresence initial={false}>
                   {messages.map((msg) => (
                     <motion.div
@@ -708,7 +796,7 @@ export default function AiChatbot() {
                     <AgentWorkingIndicator steps={loadingSteps} key="working" />
                   )}
                 </AnimatePresence>
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} style={{ height: '12px', flexShrink: 0 }} />
               </div>
 
               {/* Suggestion chips (only shown before any user message) */}
@@ -744,18 +832,43 @@ export default function AiChatbot() {
                     onKeyDown={handleKeyDown}
                     disabled={isLoading}
                   />
-                  <motion.button
-                    className="ag-send-btn"
-                    id="ag-send-btn"
-                    onClick={() => handleSend()}
-                    disabled={!input.trim() || isLoading}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                  </motion.button>
+                  <AnimatePresence mode="wait">
+                    {isLoading ? (
+                      <motion.button
+                        key="stop-btn"
+                        className="ag-stop-btn"
+                        id="ag-stop-btn"
+                        onClick={handleStop}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        title="Stop agent"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                        </svg>
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        key="send-btn"
+                        className="ag-send-btn"
+                        id="ag-send-btn"
+                        onClick={() => handleSend()}
+                        disabled={!input.trim()}
+                        whileTap={{ scale: 0.9 }}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.div>
@@ -770,7 +883,7 @@ export default function AiChatbot() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 2, duration: 0.6, repeat: Infinity, repeatType: "reverse", repeatDelay: 4 }}
           >
-            Plan your next trip with AI
+            Plan your next trip with Nova AI
           </motion.div>
         )}
 
