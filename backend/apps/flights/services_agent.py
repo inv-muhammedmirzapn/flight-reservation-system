@@ -41,6 +41,7 @@ class AgentState(TypedDict):
     nearest_airport_iata: Optional[str]
     nearest_airport_name: Optional[str]
     suggested_travel_date: Optional[str]
+    cabin_class: Optional[str]
     action: Optional[str]              # "REDIRECT" | "ASK" | "ERROR" | "BOOKING_INFO"
     reply_message: Optional[str]
     error: Optional[str]
@@ -181,17 +182,26 @@ def find_nearest_airport_to_city(city: str, country: str) -> str:
     })
 
 @tool
-def search_upcoming_flights(source_iata: str, destination_iata: str, travel_date: Optional[str] = None) -> str:
+def search_upcoming_flights(
+    source_iata: str,
+    destination_iata: str,
+    travel_date: Optional[str] = None,
+    sort_by: Optional[str] = "price",
+    cabin_class: Optional[str] = None,
+) -> str:
     """
     Searches the application database for actual available upcoming flights between two airports.
     Args:
         source_iata: The IATA code of the departure airport.
         destination_iata: The IATA code of the destination airport.
         travel_date: Optional travel date (YYYY-MM-DD). If omitted, returns upcoming flights from today.
+        sort_by: Sorting preference: 'price' for cheapest flights first (default), or 'departure_time' for earliest departure.
+        cabin_class: Optional cabin class ('ECONOMY', 'BUSINESS', or 'FIRST'). If omitted, searches all cabins.
     """
     try:
         from .models import FlightInstance
         from django.utils import timezone
+        from django.db.models import Min, Q
         
         qs = FlightInstance.objects.filter(
             flight__legs__departure_airport__iata_code__iexact=source_iata
@@ -207,27 +217,51 @@ def search_upcoming_flights(source_iata: str, destination_iata: str, travel_date
                 parsed_date = datetime.strptime(travel_date, "%Y-%m-%d").date()
                 if parsed_date < timezone.now().date():
                     return json.dumps({"note": f"The travel date {travel_date} is in the past. Tell the user that the event has already passed, and no flights can be booked."})
+                qs = qs.filter(date=travel_date)
+                if parsed_date == timezone.now().date():
+                    qs = qs.filter(scheduled_departure__gte=timezone.now())
             except ValueError:
-                pass
-            qs = qs.filter(date=travel_date)
-            # Also ensure we only return flights that haven't departed yet even if it's today
-            qs = qs.filter(scheduled_departure__gte=timezone.now())
+                qs = qs.filter(date=travel_date)
         else:
             qs = qs.filter(scheduled_departure__gte=timezone.now())
             
-        qs = qs.order_by("scheduled_departure")[:2]
+        clean_cabin = cabin_class.strip().upper() if cabin_class else None
+        if clean_cabin and clean_cabin in ["ECONOMY", "BUSINESS", "FIRST"]:
+            qs = qs.filter(fares__cabin_class__iexact=clean_cabin)
+            qs = qs.annotate(min_fare=Min("fares__price", filter=Q(fares__cabin_class__iexact=clean_cabin)))
+        else:
+            clean_cabin = None
+            qs = qs.annotate(min_fare=Min("fares__price"))
+
+        if sort_by == "departure_time":
+            qs = qs.order_by("scheduled_departure")[:4]
+        else:
+            qs = qs.order_by("min_fare", "scheduled_departure")[:4]
         
         if not qs.exists():
-            return json.dumps({"note": f"No available flights found from {source_iata} to {destination_iata}. Reply to the user that no flights are available from their source airport, and ask if they want to mention any other departure airports (like Delhi, for example)."})
+            cabin_msg = f" in {clean_cabin.capitalize()} class" if clean_cabin else ""
+            return json.dumps({"note": f"No available flights found from {source_iata} to {destination_iata}{cabin_msg}. Reply to the user that no flights are available from their source airport, and ask if they want to mention any other departure airports (like Delhi, for example)."})
             
         results = []
         for fi in qs:
-            fares = fi.fares.all()
-            min_fare = min([f.price for f in fares]) if fares else 0
+            if clean_cabin:
+                fares = fi.fares.filter(cabin_class__iexact=clean_cabin)
+            else:
+                fares = fi.fares.all()
+
+            if fares.exists():
+                lowest_fare = min(fares, key=lambda f: f.price)
+                min_fare = lowest_fare.price
+                resolved_cabin = lowest_fare.cabin_class
+            else:
+                min_fare = 0
+                resolved_cabin = clean_cabin or "ECONOMY"
             
-            # get the source iata from the first leg
+            # get the source and destination iata from the legs
             first_leg = fi.flight.legs.order_by('leg_order').first()
-            source_iata = first_leg.departure_airport.iata_code if first_leg else ""
+            actual_source = first_leg.departure_airport.iata_code if first_leg else source_iata
+            last_leg = fi.flight.legs.order_by('leg_order').last()
+            actual_dest = last_leg.arrival_airport.iata_code if last_leg else destination_iata
             
             stops = max(0, fi.flight.legs.count() - 1)
             if fi.scheduled_arrival and fi.scheduled_departure:
@@ -250,8 +284,9 @@ def search_upcoming_flights(source_iata: str, destination_iata: str, travel_date
                 "duration": duration_str,
                 "stops": stops,
                 "price": float(min_fare),
-                "source": source_iata,
-                "destination": destination_iata,
+                "cabin_class": resolved_cabin.capitalize(),
+                "source": actual_source,
+                "destination": actual_dest,
                 "airline": fi.flight.airline.airline_name,
             })
         return json.dumps({"flights": results})
@@ -499,6 +534,8 @@ You can help users with:
    - Event: call search_event_details, then find_nearest_airport_to_city, then search_upcoming_flights.
    - Cities: call find_nearest_airport_to_city, then search_upcoming_flights.
    - CRITICAL: If a user mentions ANY event (e.g., "next F1 race"), NEVER ask for clarification about date or location. IMMEDIATELY call search_event_details.
+   - search_upcoming_flights automatically sorts flights by price ascending (cheapest first). If the user asks for the cheapest flight, always recommend the flight with the lowest price among the results.
+   - Cabin Class: If the user mentions a cabin class (such as 'business class', 'first class', or 'economy'), pass cabin_class to search_upcoming_flights ('BUSINESS', 'FIRST', or 'ECONOMY').
 2. Managing Bookings & Checking Status:
    - When a user asks about their bookings or trips ("my bookings", "show my flights", "what's my flight status"), call get_user_recent_bookings.
    - When a user provides a booking reference or PNR ("check booking 5f3a", "status of #123"), call get_booking_by_pnr.
@@ -512,7 +549,8 @@ You can help users with:
   "event_name": "<name or null>", "event_date": "<YYYY-MM-DD or null>", "event_city": "<city or null>", "event_country": "<country or null>",
   "airport_iata": "<dest IATA or null>", "airport_name": "<dest name or null>",
   "suggested_travel_date": "<YYYY-MM-DD or null>",
-  "flight_options": [ { "id": "<flight id>", "flight_no": "...", "date": "...", "time": "...", "arrival_time": "...", "duration": "...", "stops": 0, "price": 0.0, "source": "...", "destination": "...", "airline": "..." } ],
+  "cabin_class": "<Economy | Business | First or null>",
+  "flight_options": [ { "id": "<flight id>", "flight_no": "...", "date": "...", "time": "...", "arrival_time": "...", "duration": "...", "stops": 0, "price": 0.0, "cabin_class": "...", "source": "...", "destination": "...", "airline": "..." } ],
   "booking_cards": [ { "id": "<booking UUID>", "pnr": "<PNR>", "flight_no": "...", "airline": "...", "route": "...", "travel_date": "...", "departure_time": "...", "status": "CONFIRMED/CANCELLED", "cabin_class": "...", "seat_numbers": ["12A"], "total_price": 0.0, "refund_type": "...", "cancel_url": "...", "detail_url": "..." } ],
   "reply_message": "<Friendly, helpful response>"
 }
@@ -621,6 +659,7 @@ def parse_response_node(state: AgentState) -> AgentState:
             "nearest_airport_iata": parsed.get("airport_iata"),
             "nearest_airport_name": parsed.get("airport_name"),
             "suggested_travel_date": parsed.get("suggested_travel_date"),
+            "cabin_class": parsed.get("cabin_class"),
             "flight_options": parsed.get("flight_options", []),
             "booking_cards": parsed.get("booking_cards", []),
             "reply_message": parsed.get("reply_message", "I found some flights for you!"),
@@ -743,6 +782,7 @@ def run_travel_agent(user_message: str, history: list = None) -> dict:
             "nearest_airport_iata": None,
             "nearest_airport_name": None,
             "suggested_travel_date": None,
+            "cabin_class": None,
             "action": None,
             "reply_message": None,
             "error": None,
@@ -753,12 +793,14 @@ def run_travel_agent(user_message: str, history: list = None) -> dict:
         result = {
             "action": final_state.get("action", "ASK"),
             "reply_message": final_state.get("reply_message", "How can I help you?"),
+            "cabin_class": final_state.get("cabin_class"),
         }
 
         if final_state.get("action") == "REDIRECT":
             result["redirect_params"] = {
                 "destination": final_state.get("nearest_airport_iata", ""),
                 "departure_date": final_state.get("suggested_travel_date", ""),
+                "cabin_class": final_state.get("cabin_class") or "Economy",
                 "event_name": final_state.get("event_name", ""),
                 "event_date": final_state.get("event_date", ""),
                 "event_city": final_state.get("event_city", ""),
@@ -824,6 +866,7 @@ def run_travel_agent_stream(
             "nearest_airport_iata": None,
             "nearest_airport_name": None,
             "suggested_travel_date": None,
+            "cabin_class": None,
             "action": None,
             "reply_message": None,
             "error": None,
@@ -872,12 +915,14 @@ def run_travel_agent_stream(
             "reply_message": final_state.get("reply_message", "How can I help you?"),
             "booking_cards": final_state.get("booking_cards", []),
             "flight_options": final_state.get("flight_options", []),
+            "cabin_class": final_state.get("cabin_class"),
         }
 
         if final_state.get("action") == "REDIRECT":
             result["redirect_params"] = {
                 "destination": final_state.get("nearest_airport_iata", ""),
                 "departure_date": final_state.get("suggested_travel_date", ""),
+                "cabin_class": final_state.get("cabin_class") or "Economy",
                 "event_name": final_state.get("event_name", ""),
                 "event_date": final_state.get("event_date", ""),
                 "event_city": final_state.get("event_city", ""),

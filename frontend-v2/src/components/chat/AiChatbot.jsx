@@ -765,7 +765,13 @@ export default function AiChatbot() {
           transition: all 0.2s;
         }
         .ag-flight-card:hover { border-color: #ffd700; background: white; box-shadow: 0 4px 12px rgba(15,23,42,0.1); }
-        .ag-flight-airline { font-size: 13px; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .ag-flight-airline { font-size: 13px; color: #0f172a; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .ag-cabin-pill {
+          font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+          padding: 2px 6px; border-radius: 4px; background: rgba(15,23,42,0.06); color: #475569;
+        }
+        .ag-cabin-pill--business { background: rgba(147, 51, 234, 0.12); color: #7e22ce; }
+        .ag-cabin-pill--first { background: rgba(217, 119, 6, 0.14); color: #b45309; }
         
         .ag-flight-route { display: flex; flex-direction: column; position: relative; padding-left: 16px; margin: 4px 0; }
         .ag-flight-route-line { position: absolute; left: 3px; top: 8px; bottom: 8px; width: 2px; border-left: 2px dotted #cbd5e1; }
@@ -922,6 +928,7 @@ export default function AiChatbot() {
                               const params = new URLSearchParams();
                               if (msg.redirectParams.destination) params.set("to", msg.redirectParams.destination);
                               if (msg.redirectParams.departure_date) params.set("depDate", msg.redirectParams.departure_date);
+                              if (msg.redirectParams.cabin_class) params.set("cabinClass", msg.redirectParams.cabin_class);
                               navigate(`/flights?${params.toString()}`);
                             }}
                             initial={{ opacity: 0, y: 8 }}
@@ -934,6 +941,7 @@ export default function AiChatbot() {
                             <div className="ag-redirect-card-sub">
                               {msg.redirectParams.airport_name || msg.redirectParams.destination}
                               {msg.redirectParams.departure_date && ` • ${msg.redirectParams.departure_date}`}
+                              {msg.redirectParams.cabin_class && ` • ${msg.redirectParams.cabin_class}`}
                             </div>
                           </motion.div>
                         )}
@@ -953,7 +961,7 @@ export default function AiChatbot() {
                                   {msg.flightOptions[0].source} → {msg.flightOptions[0].destination}
                                 </div>
                                 <div className="ag-flight-options-title-sub">
-                                  {msg.flightOptions[0].date} | 1 Adult
+                                  {msg.flightOptions[0].date} | {msg.flightOptions[0].cabin_class || msg.redirectParams?.cabin_class || "Economy"} | 1 Adult
                                 </div>
                               </div>
                               <div
@@ -963,6 +971,8 @@ export default function AiChatbot() {
                                   params.set("from", msg.flightOptions[0].source);
                                   params.set("to", msg.flightOptions[0].destination);
                                   params.set("depDate", msg.flightOptions[0].date);
+                                  const cabin = msg.flightOptions[0].cabin_class || msg.redirectParams?.cabin_class || "Economy";
+                                  params.set("cabinClass", cabin);
                                   navigate(`/flights?${params.toString()}`);
                                 }}
                               >
@@ -984,6 +994,8 @@ export default function AiChatbot() {
                                       if (flight.source) params.set("from", flight.source);
                                       if (flight.destination) params.set("to", flight.destination);
                                       if (flight.date) params.set("depDate", flight.date);
+                                      const cabin = flight.cabin_class || msg.redirectParams?.cabin_class || "Economy";
+                                      params.set("cabinClass", cabin);
                                       navigate(`/flights?${params.toString()}`);
                                     }
                                   }}
@@ -991,7 +1003,12 @@ export default function AiChatbot() {
                                   whileTap={{ scale: 0.98 }}
                                 >
                                   <div className="ag-flight-airline">
-                                    {flight.airline}
+                                    <span>{flight.airline}</span>
+                                    {flight.cabin_class && (
+                                      <span className={`ag-cabin-pill ag-cabin-pill--${flight.cabin_class.toLowerCase()}`}>
+                                        {flight.cabin_class}
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div className="ag-flight-route">
