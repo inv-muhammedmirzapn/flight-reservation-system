@@ -14,7 +14,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import { sendAgentMessage } from "@/services/agentService";
+
+function formatMarkdownText(text) {
+  if (!text) return "";
+  // 1. Convert inline dashed bullets (e.g. ": - **", ". - **", " - **") into proper newlined bullets
+  let res = text.replace(/([:.]|[a-zA-Z0-9])\s+-\s+\*\*/g, "$1\n- **");
+  res = res.replace(/([:.]|[a-zA-Z0-9])\s+-\s+([A-Z])/g, "$1\n- $2");
+  // 2. If a sentence after a bullet list starts without a bullet, e.g., ". If you have...", give it a paragraph break
+  res = res.replace(/(\.)\s+(If you have|Please let me know|Feel free to|Let me know)\b/gi, "$1\n\n$2");
+  return res;
+}
 
 // ─── Particle Burst Component ────────────────────────────────────────────────
 function ParticleBurst({ active }) {
@@ -626,6 +637,22 @@ export default function AiChatbot() {
           color: #0f172a;
         }
 
+        /* Markdown formatting inside bubbles */
+        .ag-bubble p { margin: 0 0 8px 0; }
+        .ag-bubble p:last-child { margin-bottom: 0; }
+        .ag-bubble strong { font-weight: 700; color: #0f172a; }
+        .ag-bubble--user strong { color: #ffffff; }
+        .ag-bubble ul, .ag-bubble ol { margin: 6px 0 8px 0; padding-left: 18px; }
+        .ag-bubble li { margin-bottom: 4px; line-height: 1.5; }
+        .ag-bubble li:last-child { margin-bottom: 0; }
+        .ag-bubble code {
+          background: rgba(15,23,42,0.06); padding: 2px 5px; border-radius: 4px;
+          font-size: 12px; font-family: monospace;
+        }
+        .ag-bubble--user code {
+          background: rgba(255,255,255,0.2); color: #ffffff;
+        }
+
         /* Redirect card inside bubble */
         .ag-redirect-card {
           margin-top: 10px; padding: 10px 14px; border-radius: 8px;
@@ -740,13 +767,27 @@ export default function AiChatbot() {
           margin-top: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .ag-flight-options-header {
-          padding: 12px 14px; display: flex; justify-content: space-between; align-items: flex-start;
-          border-bottom: 1px solid rgba(15,23,42,0.06);
+          padding: 11px 13px; display: flex; justify-content: space-between; align-items: center;
+          gap: 10px; border-bottom: 1px solid rgba(15,23,42,0.06); background: #ffffff;
         }
-        .ag-flight-options-title-main { font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px; }
-        .ag-flight-options-title-sub { font-size: 11.5px; color: #64748b; font-weight: 500; margin-top: 4px; }
-        .ag-flight-options-view-all { font-size: 12px; color: #ffd700; background: #0f172a; padding: 4px 8px; border-radius: 6px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 2px; transition: opacity 0.2s; }
-        .ag-flight-options-view-all:hover { opacity: 0.9; }
+        .ag-flight-options-header-left { flex: 1; min-width: 0; }
+        .ag-flight-options-title-main { font-size: 13.5px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px; }
+        .ag-flight-options-title-sub {
+          font-size: 11px; color: #64748b; font-weight: 500; margin-top: 3px;
+          display: flex; align-items: center; gap: 4px; white-space: nowrap;
+          overflow: hidden; text-overflow: ellipsis;
+        }
+        .ag-bullet-dot { color: #cbd5e1; font-size: 9px; }
+        .ag-flight-options-view-all {
+          font-size: 11.5px; color: #ffd700; background: #0f172a; border: none;
+          padding: 6px 12px; border-radius: 18px; font-weight: 700; cursor: pointer;
+          display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+          flex-shrink: 0; line-height: 1; box-shadow: 0 2px 6px rgba(15,23,42,0.14);
+          transition: all 0.2s ease;
+        }
+        .ag-flight-options-view-all:hover {
+          background: #1e293b; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(15,23,42,0.22);
+        }
         
         .ag-flight-options {
           display: flex; gap: 12px; overflow-x: auto; padding: 14px; padding-bottom: 20px;
@@ -918,10 +959,10 @@ export default function AiChatbot() {
                       )}
 
                       <div className={`ag-bubble ag-bubble--${msg.role} ${msg.isRedirect ? "ag-bubble--redirect" : ""}`}>
-                        {msg.text}
+                        <ReactMarkdown>{formatMarkdownText(msg.text)}</ReactMarkdown>
 
-                        {/* Redirect card */}
-                        {msg.isRedirect && msg.redirectParams && (
+                        {/* Redirect card - only shown when there are NO flight options cards and destination is valid */}
+                        {msg.isRedirect && msg.redirectParams && (!msg.flightOptions || msg.flightOptions.length === 0) && (msg.redirectParams.airport_name || msg.redirectParams.destination) && (
                           <motion.div
                             className="ag-redirect-card"
                             onClick={() => {
@@ -955,16 +996,21 @@ export default function AiChatbot() {
                             transition={{ delay: 0.4 }}
                           >
                             <div className="ag-flight-options-header">
-                              <div>
+                              <div className="ag-flight-options-header-left">
                                 <div className="ag-flight-options-title-main">
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L2.6 8l7.4 3.1-3 3L4.5 14c-.4 0-.8.3-1 .6L2.6 16l4.6 1.4 1.4 4.6 1.4-1c.3-.2.6-.6.6-1l-.1-2.5 3-3 3.1 7.4c.1.4.5.6.8.5l1.2-1.1c.4-.2.7-.6.6-1.1z" /></svg>
-                                  {msg.flightOptions[0].source} → {msg.flightOptions[0].destination}
+                                  <span>{msg.flightOptions[0].source} → {msg.flightOptions[0].destination}</span>
                                 </div>
                                 <div className="ag-flight-options-title-sub">
-                                  {msg.flightOptions[0].date} | {msg.flightOptions[0].cabin_class || msg.redirectParams?.cabin_class || "Economy"} | 1 Adult
+                                  <span>{msg.flightOptions[0].date}</span>
+                                  <span className="ag-bullet-dot">•</span>
+                                  <span>{msg.flightOptions[0].cabin_class || msg.redirectParams?.cabin_class || "Economy"}</span>
+                                  <span className="ag-bullet-dot">•</span>
+                                  <span>1 Adult</span>
                                 </div>
                               </div>
-                              <div
+                              <button
+                                type="button"
                                 className="ag-flight-options-view-all"
                                 onClick={() => {
                                   const params = new URLSearchParams();
@@ -976,9 +1022,9 @@ export default function AiChatbot() {
                                   navigate(`/flights?${params.toString()}`);
                                 }}
                               >
-                                View all
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                              </div>
+                                <span>View all</span>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                              </button>
                             </div>
 
                             <div className="ag-flight-options">
