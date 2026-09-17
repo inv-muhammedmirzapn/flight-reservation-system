@@ -42,6 +42,7 @@ export async function sendAgentMessage(message, history = [], onUpdate = null, n
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(body),
     signal,
   });

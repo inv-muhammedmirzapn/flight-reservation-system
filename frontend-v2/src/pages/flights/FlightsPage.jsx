@@ -548,7 +548,7 @@ export default function FlightsPage() {
         <div className="flex items-center justify-between mb-6 px-1">
           <h2 className="text-xs font-medium text-slate-900 ml-2">
             {!loading && !showNoDirectModal
-              && `Found ${flights.length} flights from ${from} to ${to}`}
+              && `Found ${flights.length} ${flights.length === 1 ? "flight" : "flights"} from ${from} to ${to}`}
           </h2>
           {!loading && !error && flights.length >= 2 && (
             <button
@@ -605,11 +605,14 @@ export default function FlightsPage() {
                 }
               };
 
+              // Only show comparative optimization badges (Cheapest, Fastest, Min Distance) when more than 1 flight is available
+              const hasMultipleFlights = flights.length > 1;
+
               flights.forEach((flight) => {
                 const flightNo = flight.flight_number;
                 const stops = Array.isArray(flight.stops) ? flight.stops.length : (typeof flight.stops === "number" ? flight.stops : 0);
                 
-                if (apiBadges) {
+                if (hasMultipleFlights && apiBadges) {
                   if (apiBadges.cheapest_flight_no === flightNo) addBadge(flight.id, "Cheapest");
                   if (apiBadges.fastest_flight_no === flightNo) addBadge(flight.id, "Fastest");
                   

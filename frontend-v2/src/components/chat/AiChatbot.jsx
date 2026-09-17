@@ -54,6 +54,172 @@ function ParticleBurst({ active }) {
   );
 }
 
+// ─── Status Step Sanitizer (Defense-in-depth) ──────────────────────────────────
+function formatWorkingStep(step) {
+  if (!step || typeof step !== "string") return "Working on your request...";
+  const lower = step.toLowerCase();
+
+  if (lower.includes("find_nearest_airport") || (lower.includes("airport") && lower.includes("tool"))) {
+    return "Locating nearest international airports...";
+  }
+  if (lower.includes("airport") && (lower.includes("result") || lower.includes("found") || lower.includes("identified") || lower.includes("database"))) {
+    return "Airport options identified...";
+  }
+  if (lower.includes("search_upcoming_flights") || (lower.includes("flight") && lower.includes("tool"))) {
+    return "Searching available flights & live fares...";
+  }
+  if (lower.includes("flight") && (lower.includes("result") || lower.includes("found") || lower.includes("database") || lower.includes("review"))) {
+    return "Reviewing flight schedules...";
+  }
+  if (lower.includes("search_event") || (lower.includes("event") && lower.includes("tool"))) {
+    return "Looking up event schedule & venue...";
+  }
+  if (lower.includes("event") && (lower.includes("result") || lower.includes("found") || lower.includes("confirmed"))) {
+    return "Event information confirmed...";
+  }
+  // Booking & cancellation tool steps
+  if (lower.includes("get_user_recent_bookings") || lower.includes("reservation history")) {
+    return "Retrieving your reservation history...";
+  }
+  if (lower.includes("get_booking_by_pnr") || lower.includes("reservation details")) {
+    return "Looking up reservation details...";
+  }
+  if (lower.includes("check_cancellation_policy") || lower.includes("cancellation") || lower.includes("refund polic")) {
+    return "Checking cancellation & refund policies...";
+  }
+  if (lower.includes("booking") && (lower.includes("result") || lower.includes("loaded") || lower.includes("verified"))) {
+    return "Reservation details verified...";
+  }
+  if (lower.includes("tool:") || lower.includes("using tool")) {
+    return "Finding the best travel options...";
+  }
+  if (lower.includes("database results") || lower.includes("processing database")) {
+    return "Comparing travel options...";
+  }
+  if (lower.includes("thinking")) {
+    return "Preparing your recommendations...";
+  }
+  return step;
+}
+
+// ─── Booking Card Component ──────────────────────────────────────────────────
+function BookingCard({ booking, showCancelAction, navigate }) {
+  const statusColors = {
+    CONFIRMED: { bg: "#ecfdf5", text: "#059669", border: "#a7f3d0" },
+    CANCELLED: { bg: "#fef2f2", text: "#dc2626", border: "#fecaca" },
+    WAITLIST: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
+  };
+  const refundColors = {
+    REFUNDABLE: { bg: "#ecfdf5", text: "#059669" },
+    PARTIAL: { bg: "#fffbeb", text: "#d97706" },
+    NON_REFUNDABLE: { bg: "#fef2f2", text: "#dc2626" },
+  };
+  const sc = statusColors[booking.status] || statusColors.CONFIRMED;
+  const rc = refundColors[booking.refund_type] || refundColors.NON_REFUNDABLE;
+  const refundLabel = booking.refund_type === "PARTIAL" ? "Partial Refund" : booking.refund_type === "REFUNDABLE" ? "Refundable" : "Non-Refundable";
+
+  return (
+    <motion.div
+      className={`ag-booking-card ${!showCancelAction ? 'ag-booking-card-clickable' : ''}`}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      onClick={!showCancelAction ? () => navigate(booking.detail_url || `/my-bookings/ticket/${booking.id}`) : undefined}
+      style={!showCancelAction ? { cursor: 'pointer' } : undefined}
+    >
+      {/* Header */}
+      <div className="ag-booking-card-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L2.6 8l7.4 3.1-3 3L4.5 14c-.4 0-.8.3-1 .6L2.6 16l4.6 1.4 1.4 4.6 1.4-1c.3-.2.6-.6.6-1l-.1-2.5 3-3 3.1 7.4c.1.4.5.6.8.5l1.2-1.1c.4-.2.7-.6.6-1.1z" /></svg>
+          <span style={{ fontSize: "13px", fontWeight: "800", color: "#0f172a" }}>{booking.flight_no}</span>
+          <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "500" }}>{booking.airline}</span>
+        </div>
+        <div style={{
+          fontSize: "10px", fontWeight: "700", textTransform: "uppercase",
+          padding: "3px 8px", borderRadius: "6px", letterSpacing: "0.4px",
+          background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`
+        }}>
+          {booking.status}
+        </div>
+      </div>
+
+      {/* Route */}
+      <div style={{ fontSize: "13px", color: "#334155", fontWeight: "600" }}>
+        {booking.route || `${booking.origin_iata} → ${booking.destination_iata}`}
+      </div>
+
+      {/* Details row */}
+      <div className="ag-booking-card-details">
+        <div className="ag-booking-detail-item">
+          <span className="ag-booking-detail-label">Travel Date</span>
+          <span className="ag-booking-detail-value">{booking.travel_date}</span>
+        </div>
+        <div className="ag-booking-detail-item">
+          <span className="ag-booking-detail-label">Departure</span>
+          <span className="ag-booking-detail-value">{booking.departure_time || "—"}</span>
+        </div>
+        <div className="ag-booking-detail-item">
+          <span className="ag-booking-detail-label">Class</span>
+          <span className="ag-booking-detail-value">{booking.cabin_class}</span>
+        </div>
+        {booking.seat_numbers && booking.seat_numbers.length > 0 && (
+          <div className="ag-booking-detail-item">
+            <span className="ag-booking-detail-label">Seats</span>
+            <span className="ag-booking-detail-value">{booking.seat_numbers.join(", ")}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Price & refund badge */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+        <span style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>₹{booking.total_price}</span>
+        <span style={{
+          fontSize: "10px", fontWeight: "600", padding: "2px 7px", borderRadius: "4px",
+          background: rc.bg, color: rc.text
+        }}>
+          {refundLabel}
+        </span>
+      </div>
+
+      {/* Cancellation details (only when cancel context) */}
+      {showCancelAction && booking.cancellation_fee !== undefined && (
+        <div style={{
+          marginTop: "6px", padding: "8px 10px", borderRadius: "8px",
+          background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11.5px", color: "#92400e"
+        }}>
+          <div style={{ fontWeight: "700", marginBottom: "3px" }}>Cancellation Summary</div>
+          <div>Fee: ₹{booking.cancellation_fee} · Estimated Refund: ₹{booking.estimated_refund}</div>
+          {booking.policy_explanation && <div style={{ marginTop: "2px", opacity: 0.85 }}>{booking.policy_explanation}</div>}
+        </div>
+      )}
+
+      {/* Cancel action - only shown in cancel context */}
+      {showCancelAction && booking.status === "CONFIRMED" && (
+        <div className="ag-booking-card-actions">
+          <button
+            className="ag-booking-action-btn ag-booking-action-cancel"
+            onClick={(e) => { e.stopPropagation(); navigate(booking.cancel_url || `/my-bookings/cancel/${booking.id}`); }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></svg>
+            Proceed to Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Clickable hint for non-cancel cards */}
+      {!showCancelAction && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px",
+          marginTop: "2px", fontSize: "10.5px", color: "#94a3b8", fontWeight: "500"
+        }}>
+          Tap to view details
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ─── Agent Working Indicator ───────────────────────────────────────────────────
 function AgentWorkingIndicator({ steps }) {
   return (
@@ -64,7 +230,7 @@ function AgentWorkingIndicator({ steps }) {
       exit={{ opacity: 0, y: -5 }}
     >
       <div className="ag-avatar">
-        <img src="/ai-logo.jpg" alt="AI" style={{width: '100%', height: '100%', borderRadius: '50%'}} />
+        <img src="/ai-logo.jpg" alt="AI" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
       </div>
       <div className="ag-bubble ag-bubble--bot" style={{ minWidth: '220px', padding: '12px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -79,11 +245,12 @@ function AgentWorkingIndicator({ steps }) {
           </motion.div>
           <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Working on your request...</span>
         </div>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <AnimatePresence>
             {steps.map((step, idx) => {
               const isLast = idx === steps.length - 1;
+              const displayText = formatWorkingStep(step);
               return (
                 <motion.div
                   key={idx}
@@ -92,18 +259,18 @@ function AgentWorkingIndicator({ steps }) {
                   transition={{ duration: 0.3 }}
                   style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}
                 >
-                  <div style={{ 
-                    marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', 
+                  <div style={{
+                    marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%',
                     backgroundColor: isLast ? '#3b82f6' : '#cbd5e1', flexShrink: 0,
                     boxShadow: isLast ? '0 0 4px rgba(59,130,246,0.6)' : 'none'
                   }} />
-                  <span style={{ 
-                    fontSize: '11.5px', 
+                  <span style={{
+                    fontSize: '11.5px',
                     color: isLast ? '#334155' : '#94a3b8',
                     fontWeight: isLast ? '500' : '400',
                     lineHeight: '1.4'
                   }}>
-                    {step}
+                    {displayText}
                   </span>
                 </motion.div>
               );
@@ -117,16 +284,16 @@ function AgentWorkingIndicator({ steps }) {
 
 // ─── Suggestion Chips ────────────────────────────────────────────────────────
 const SUGGESTIONS = [
-  "Find me flights to New York for this weekend",
-  "Take me to the upcoming tech conference in Dubai",
-  "I want to visit Tokyo next week",
+  "Find me flights to New York",
+  "What is the status of my bookings?",
   "Show me upcoming flights to Paris",
+  "What is your cancellation & refund policy?",
 ];
 
 const DEFAULT_MESSAGE = {
   id: 1,
   role: "bot",
-  text: "Hey! I'm Nova AI, your intelligent travel assistant ✈️ Tell me about an event you want to attend and I'll find you the best flights!",
+  text: "Hey! I'm Nova AI, your intelligent travel assistant ✈️ I can help you find flights, check your booking status, and assist with cancellations. How can I help?",
 };
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -137,7 +304,7 @@ export default function AiChatbot() {
     try {
       const saved = localStorage.getItem("ai_chat_messages");
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) { }
     return [DEFAULT_MESSAGE];
   });
   const [input, setInput] = useState("");
@@ -211,7 +378,7 @@ export default function AiChatbot() {
     setInput("");
     addMessage("user", trimmed);
     setIsLoading(true);
-    setLoadingSteps(["Initializing AI travel agent..."]);
+    setLoadingSteps(["Initializing travel assistant..."]);
 
     // Create a new AbortController for this request
     const controller = new AbortController();
@@ -229,8 +396,9 @@ export default function AiChatbot() {
       const nearestCity = localStorage.getItem("user_nearest_city");
 
       const result = await sendAgentMessage(trimmed, history, (step) => {
+        const safeStep = formatWorkingStep(step);
         setLoadingSteps(prev => {
-          if (prev[prev.length - 1] !== step) return [...prev, step];
+          if (prev[prev.length - 1] !== safeStep) return [...prev, safeStep];
           return prev;
         });
       }, nearestAirport, nearestCity, controller.signal);
@@ -245,10 +413,30 @@ export default function AiChatbot() {
         addMessage("bot", result.reply_message, {
           isRedirect: true,
           redirectParams: result.redirect_params,
-          flightOptions: result.redirect_params?.flight_options || [],
+          flightOptions: result.redirect_params?.flight_options || result.flight_options || [],
+        });
+      } else if (result.booking_cards && result.booking_cards.length > 0) {
+        // Determine if user asked about cancellation
+        const lowerInput = trimmed.toLowerCase();
+        const isCancelContext = lowerInput.includes("cancel") || lowerInput.includes("refund") || lowerInput.includes("cancellation");
+        addMessage("bot", result.reply_message || "Here are your booking details:", {
+          bookingCards: result.booking_cards,
+          showCancelAction: isCancelContext,
         });
       } else {
-        addMessage("bot", result.reply_message || "How can I help you?");
+        // Check if there are flight options even without REDIRECT action
+        const flightOpts = result.flight_options || result.redirect_params?.flight_options || [];
+        if (flightOpts.length > 0) {
+          setShowParticles(true);
+          setTimeout(() => setShowParticles(false), 1200);
+          addMessage("bot", result.reply_message, {
+            isRedirect: true,
+            redirectParams: result.redirect_params || {},
+            flightOptions: flightOpts,
+          });
+        } else {
+          addMessage("bot", result.reply_message || "How can I help you?");
+        }
       }
     } catch (err) {
       setIsLoading(false);
@@ -257,7 +445,7 @@ export default function AiChatbot() {
       if (err.name === "AbortError") {
         addMessage("bot", "Stopped. Let me know if you'd like to try a different search.");
       } else {
-        addMessage("bot", `Oops! Something went wrong: ${err.message}. Please try again.`);
+        addMessage("bot", "Oops! We encountered an issue while searching. Please try again in a moment.");
       }
     }
   };
@@ -597,6 +785,51 @@ export default function AiChatbot() {
           font-size: 12.5px; color: #0f172a; font-weight: 800;
         }
         
+        /* Booking Cards */
+        .ag-booking-cards-wrapper {
+          display: flex; flex-direction: column; gap: 10px; margin-top: 12px;
+        }
+        .ag-booking-card {
+          background: white; border: 1px solid rgba(15,23,42,0.08); border-radius: 12px;
+          padding: 14px; display: flex; flex-direction: column; gap: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.2s;
+        }
+        .ag-booking-card:hover {
+          border-color: rgba(15,23,42,0.15); box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+        }
+        .ag-booking-card-clickable:hover {
+          border-color: #ffd700; box-shadow: 0 4px 14px rgba(255,215,0,0.15);
+          transform: translateY(-1px);
+        }
+        .ag-booking-card-header {
+          display: flex; justify-content: space-between; align-items: center;
+        }
+        .ag-booking-card-details {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px;
+          padding: 8px 0; border-top: 1px solid rgba(15,23,42,0.05);
+          border-bottom: 1px solid rgba(15,23,42,0.05);
+        }
+        .ag-booking-detail-item { display: flex; flex-direction: column; gap: 1px; }
+        .ag-booking-detail-label { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+        .ag-booking-detail-value { font-size: 12px; color: #1e293b; font-weight: 600; }
+        .ag-booking-card-actions {
+          display: flex; gap: 8px; margin-top: 4px;
+        }
+        .ag-booking-action-btn {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+          padding: 8px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700;
+          border: none; cursor: pointer; transition: all 0.2s;
+          font-family: Inter, sans-serif; letter-spacing: 0.2px;
+        }
+        .ag-booking-action-view {
+          background: #0f172a; color: #ffd700;
+        }
+        .ag-booking-action-view:hover { opacity: 0.9; }
+        .ag-booking-action-cancel {
+          background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+        }
+        .ag-booking-action-cancel:hover { background: #fee2e2; }
+
         /* Floating Quote */
         .ag-floating-quote {
           position: absolute; bottom: 78px; right: 0;
@@ -667,13 +900,13 @@ export default function AiChatbot() {
                     >
                       {msg.role === "bot" && (
                         <div className="ag-avatar">
-                          <img src="/ai-logo.jpg" alt="AI" style={{width: '100%', height: '100%', borderRadius: '50%'}} />
+                          <img src="/ai-logo.jpg" alt="AI" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
                         </div>
                       )}
                       {msg.role === "user" && (
                         <div className="ag-avatar ag-avatar--user">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                           </svg>
                         </div>
                       )}
@@ -685,11 +918,11 @@ export default function AiChatbot() {
                         {msg.isRedirect && msg.redirectParams && (
                           <motion.div
                             className="ag-redirect-card"
-                             onClick={() => {
-                               const params = new URLSearchParams();
-                               if (msg.redirectParams.destination) params.set("to", msg.redirectParams.destination);
-                               if (msg.redirectParams.departure_date) params.set("depDate", msg.redirectParams.departure_date);
-                               navigate(`/flights?${params.toString()}`);
+                            onClick={() => {
+                              const params = new URLSearchParams();
+                              if (msg.redirectParams.destination) params.set("to", msg.redirectParams.destination);
+                              if (msg.redirectParams.departure_date) params.set("depDate", msg.redirectParams.departure_date);
+                              navigate(`/flights?${params.toString()}`);
                             }}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -704,7 +937,7 @@ export default function AiChatbot() {
                             </div>
                           </motion.div>
                         )}
-                        
+
                         {/* Flight Options */}
                         {msg.flightOptions && msg.flightOptions.length > 0 && (
                           <motion.div
@@ -716,14 +949,14 @@ export default function AiChatbot() {
                             <div className="ag-flight-options-header">
                               <div>
                                 <div className="ag-flight-options-title-main">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L2.6 8l7.4 3.1-3 3L4.5 14c-.4 0-.8.3-1 .6L2.6 16l4.6 1.4 1.4 4.6 1.4-1c.3-.2.6-.6.6-1l-.1-2.5 3-3 3.1 7.4c.1.4.5.6.8.5l1.2-1.1c.4-.2.7-.6.6-1.1z"/></svg>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L2.6 8l7.4 3.1-3 3L4.5 14c-.4 0-.8.3-1 .6L2.6 16l4.6 1.4 1.4 4.6 1.4-1c.3-.2.6-.6.6-1l-.1-2.5 3-3 3.1 7.4c.1.4.5.6.8.5l1.2-1.1c.4-.2.7-.6.6-1.1z" /></svg>
                                   {msg.flightOptions[0].source} → {msg.flightOptions[0].destination}
                                 </div>
                                 <div className="ag-flight-options-title-sub">
                                   {msg.flightOptions[0].date} | 1 Adult
                                 </div>
                               </div>
-                              <div 
+                              <div
                                 className="ag-flight-options-view-all"
                                 onClick={() => {
                                   const params = new URLSearchParams();
@@ -734,7 +967,7 @@ export default function AiChatbot() {
                                 }}
                               >
                                 View all
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                               </div>
                             </div>
 
@@ -760,7 +993,7 @@ export default function AiChatbot() {
                                   <div className="ag-flight-airline">
                                     {flight.airline}
                                   </div>
-                                  
+
                                   <div className="ag-flight-route">
                                     <div className="ag-flight-route-line" />
                                     <div className="ag-flight-route-dot top" />
@@ -780,11 +1013,30 @@ export default function AiChatbot() {
 
                                   <div className="ag-flight-price-btn">
                                     <span>Starting at ₹{flight.price}/adult</span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                                   </div>
                                 </motion.div>
                               ))}
                             </div>
+                          </motion.div>
+                        )}
+
+                        {/* Booking Cards */}
+                        {msg.bookingCards && msg.bookingCards.length > 0 && (
+                          <motion.div
+                            className="ag-booking-cards-wrapper"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            {msg.bookingCards.map((booking, bIdx) => (
+                              <BookingCard
+                                key={booking.id || bIdx}
+                                booking={booking}
+                                showCancelAction={!!msg.showCancelAction}
+                                navigate={navigate}
+                              />
+                            ))}
                           </motion.div>
                         )}
                       </div>
@@ -826,7 +1078,7 @@ export default function AiChatbot() {
                     ref={inputRef}
                     id="ag-chat-input"
                     className="ag-input"
-                    placeholder="Tell me an event you want to attend…"
+                    placeholder="Ask about flights, bookings, or events…"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -896,7 +1148,7 @@ export default function AiChatbot() {
         >
           <div className="ag-bubble-ring" />
           {hasNewMessage && !isOpen && <div className="ag-new-badge" />}
-          
+
           <AnimatePresence mode="wait">
             {isOpen ? (
               <motion.svg

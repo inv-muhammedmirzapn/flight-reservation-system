@@ -350,6 +350,8 @@ class FlightListCreateView(APIView):
                         route = result.get("route", [])
                         return route[0]["flight_no"] if route else None
 
+                    has_multiple_flights = direct_count > 1 and len(active_flight_numbers) > 1
+
                     route_optimization = {
                         "has_direct_flights": True,
                         "badges": {
@@ -357,7 +359,7 @@ class FlightListCreateView(APIView):
                             "fastest_flight_no": first_flight_no(fastest) if "error" not in fastest else None,
                             "min_stops_flight_no": first_flight_no(min_stops) if "error" not in min_stops else None,
                             "shortest_distance_flight_no": first_flight_no(shortest) if "error" not in shortest else None,
-                        },
+                        } if has_multiple_flights else {},
                         "summary": {
                             "cheapest_price": cheapest.get("total_price") if "error" not in cheapest else None,
                             "fastest_duration_minutes": fastest.get("total_duration_minutes") if "error" not in fastest else None,
@@ -1146,7 +1148,7 @@ class AgentChatView(APIView):
             from django.http import StreamingHttpResponse
 
             def event_stream():
-                for update in run_travel_agent_stream(user_message, history, nearest_airport, nearest_city):
+                for update in run_travel_agent_stream(user_message, history, nearest_airport, nearest_city, user=request.user):
                     yield f"data: {json.dumps(update)}\n\n"
 
             return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
