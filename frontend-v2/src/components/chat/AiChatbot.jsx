@@ -241,7 +241,7 @@ function AgentWorkingIndicator({ steps }) {
       exit={{ opacity: 0, y: -5 }}
     >
       <div className="ag-avatar">
-        <img src="/ai-logo.jpg" alt="AI" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+        <img src="/robot-avatar.jpg" alt="Aero AI" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
       </div>
       <div className="ag-bubble ag-bubble--bot" style={{ minWidth: '220px', padding: '12px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -304,7 +304,7 @@ const SUGGESTIONS = [
 const DEFAULT_MESSAGE = {
   id: 1,
   role: "bot",
-  text: "Hey! I'm Nova AI, your intelligent travel assistant ✈️ I can help you find flights, check your booking status, and assist with cancellations. How can I help?",
+  text: "Hey! I'm Aero, your intelligent flight assistant ✈️ I can help you find flights, check your booking status, and assist with cancellations. How can I help?",
 };
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -314,7 +314,14 @@ export default function AiChatbot() {
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem("ai_chat_messages");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((m) =>
+            m.id === 1 && m.text.includes("Nova") ? DEFAULT_MESSAGE : m
+          );
+        }
+      }
     } catch (e) { }
     return [DEFAULT_MESSAGE];
   });
@@ -531,7 +538,7 @@ export default function AiChatbot() {
         /* Header */
         .ag-header {
           padding: 16px 18px 14px;
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2a1a 100%);
+          background: linear-gradient(135deg, #081426 0%, #0f2347 50%, #173567 100%);
           border-bottom: 3px solid #ffd700;
           display: flex; align-items: center; gap: 13px; flex-shrink: 0;
           position: relative;
@@ -549,20 +556,22 @@ export default function AiChatbot() {
           100% { background-position: -200% 0; }
         }
         .ag-header-icon {
-          width: 48px; height: 48px; border-radius: 14px;
+          width: 48px; height: 48px; border-radius: 15px;
           overflow: hidden; flex-shrink: 0;
-          box-shadow: 0 4px 14px rgba(255,215,0,0.35);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 10px rgba(255,215,0,0.35);
+          border: 2px solid rgba(255, 215, 0, 0.5);
+          background: #ffffff;
         }
         .ag-header-icon img {
           width: 100%; height: 100%; object-fit: cover; display: block;
-          border-radius: 14px;
+          border-radius: 13px;
         }
-        .ag-header-title { font-size: 14.5px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; }
-        .ag-header-sub { font-size: 10.5px; color: rgba(255,255,255,0.55); margin-top: 2px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+        .ag-header-title { font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; }
+        .ag-header-sub { font-size: 11px; color: #facc15; margin-top: 2px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
         .ag-status-dot {
-          width: 6px; height: 6px; background: #22c55e; border-radius: 50%;
+          width: 7px; height: 7px; background: #22c55e; border-radius: 50%;
           display: inline-block; margin-right: 5px;
-          box-shadow: 0 0 5px rgba(34,197,94,0.6);
+          box-shadow: 0 0 8px rgba(34,197,94,0.8);
           animation: ag-blink 2s ease-in-out infinite;
         }
         @keyframes ag-blink {
@@ -570,26 +579,29 @@ export default function AiChatbot() {
         }
         .ag-clear-btn {
           display: flex; align-items: center; gap: 5px;
-          background: rgba(255,255,255,0.07);
-          border: 1px solid rgba(255,255,255,0.14);
-          color: rgba(255,255,255,0.55);
+          background: rgba(255,255,255,0.09);
+          border: 1px solid rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.85);
           font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
-          padding: 5px 10px; border-radius: 20px;
-          cursor: pointer; transition: all 0.2s; font-family: Inter, sans-serif;
+          padding: 5px 12px; border-radius: 20px;
+          cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-family: Inter, sans-serif;
           margin-right: 6px;
+          backdrop-filter: blur(8px);
         }
         .ag-clear-btn:hover {
-          background: rgba(255,215,0,0.12);
-          border-color: rgba(255,215,0,0.45);
+          background: rgba(255,215,0,0.2);
+          border-color: #ffd700;
           color: #ffd700;
+          transform: translateY(-1px);
         }
         .ag-close-btn {
-          margin-left: auto; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
-          color: rgba(255,255,255,0.7); width: 30px; height: 30px; border-radius: 8px;
+          margin-left: auto; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.85); width: 32px; height: 32px; border-radius: 10px;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
-          font-size: 15px; transition: all 0.2s;
+          font-size: 14px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          backdrop-filter: blur(8px);
         }
-        .ag-close-btn:hover { background: rgba(255,215,0,0.15); border-color: rgba(255,215,0,0.4); color: #ffd700; }
+        .ag-close-btn:hover { background: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.5); color: #fca5a5; transform: scale(1.05); }
 
         /* Messages area */
         .ag-messages {
@@ -914,14 +926,13 @@ export default function AiChatbot() {
               {/* Header */}
               <div className="ag-header">
                 <div className="ag-header-icon">
-                  <img src="/ai-logo.jpg" alt="Nova AI" />
+                  <img src="/robot-avatar.jpg" alt="Aero AI" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div className="ag-header-title">Nova AI</div>
+                  <div className="ag-header-title">Aero AI</div>
                   <div className="ag-header-sub">
-                    <span style={{ color: '#ffd700', fontWeight: '700', fontSize: '10.5px' }}>
-                      Intelligent Flight Companion
-                    </span>
+                    <span className="ag-status-dot" />
+                    <span>Intelligent Flight Companion</span>
                   </div>
                 </div>
                 <button
@@ -947,7 +958,7 @@ export default function AiChatbot() {
                     >
                       {msg.role === "bot" && (
                         <div className="ag-avatar">
-                          <img src="/ai-logo.jpg" alt="AI" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                          <img src="/robot-avatar.jpg" alt="Aero" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
                         </div>
                       )}
                       {msg.role === "user" && (
@@ -1198,7 +1209,7 @@ export default function AiChatbot() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 2, duration: 0.6, repeat: Infinity, repeatType: "reverse", repeatDelay: 4 }}
           >
-            Plan your next trip with Nova AI
+            Plan your next trip with Aero AI
           </motion.div>
         )}
 
@@ -1228,8 +1239,8 @@ export default function AiChatbot() {
             ) : (
               <motion.img
                 key="open"
-                src="/ai-logo.jpg"
-                alt="AI"
+                src="/robot-avatar.jpg"
+                alt="Aero AI"
                 style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
