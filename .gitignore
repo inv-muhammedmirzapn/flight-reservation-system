@@ -59,6 +59,3 @@ htmlcov/
 coverage.xml
 *.lcov
 lcov.info
-
-# SonarLint local settings
-.sonarlint/
