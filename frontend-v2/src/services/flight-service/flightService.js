@@ -112,17 +112,18 @@ export const flightsAPI = {
     });
   },
 
-  bulkImport: async (flightsData) => {
-    return fetchWithAuth('/flights/v2/bulk-upload/', {
+  bulkImport: async (flightsData, entity = 'flight_routes') => {
+    return fetchWithAuth('/bulk-upload/import/', {
       method: 'POST',
-      body: JSON.stringify(flightsData),
+      body: JSON.stringify({ entity, data: flightsData }),
     });
   },
 
-  bulkImportCsv: async (file) => {
+  bulkImportCsv: async (file, entity = 'flight_routes') => {
     const formData = new FormData();
+    formData.append('entity', entity);
     formData.append('file', file);
-    return fetchWithAuth('/flights/v2/bulk-upload/', {
+    return fetchWithAuth('/bulk-upload/import/', {
       method: 'POST',
       body: formData,
     });

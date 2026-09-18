@@ -31,9 +31,13 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema, inline_serializer
 
+from django.http import StreamingHttpResponse
 from apps.flights.permissions import IsAdminOrSuperuser
 from .repositories import ENTITY_IMPORTERS
-from .services import import_single_entity, import_from_zip
+from .services import (
+    import_single_entity, import_from_zip,
+    stream_import_from_zip, stream_import_single_entity
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,7 @@ class BulkImportView(APIView):
     Multipart form fields:
       - entity  (string): one of ENTITY_IMPORTERS keys, or "all"
       - file    (file):   .csv / .xls / .xlsx  — or .zip when entity is "all"
+    Supports ?stream=true for real-time Server-Sent Events progress updates.
     """
     permission_classes = [IsAdminOrSuperuser]
     parser_classes = [MultiPartParser, FormParser]
@@ -80,12 +85,23 @@ class BulkImportView(APIView):
         if not uploaded_file:
             raise ValidationError({"detail": "No file uploaded."})
 
+        is_stream = (
+            request.GET.get("stream") == "true"
+            or request.data.get("stream") == "true"
+            or "text/event-stream" in request.headers.get("Accept", "")
+        )
+
         # ── ZIP / all-tables import ───────────────────────────────────────────
         if entity == "all":
             if not uploaded_file.name.lower().endswith(".zip"):
                 raise ValidationError(
                     {"detail": "To import all tables, please upload a single .zip file "
                                "containing your CSV/Excel files."}
+                )
+            if is_stream:
+                return StreamingHttpResponse(
+                    stream_import_from_zip(uploaded_file),
+                    content_type="text/event-stream"
                 )
             try:
                 report = import_from_zip(uploaded_file)
@@ -97,6 +113,11 @@ class BulkImportView(APIView):
                 raise ValidationError({"detail": f"Failed to parse ZIP archive: {exc}"})
 
         # ── Single-entity import ──────────────────────────────────────────────
+        if is_stream:
+            return StreamingHttpResponse(
+                stream_import_single_entity(entity, uploaded_file),
+                content_type="text/event-stream"
+            )
         try:
             report = import_single_entity(entity, uploaded_file)
             return Response(report, status=status.HTTP_200_OK)

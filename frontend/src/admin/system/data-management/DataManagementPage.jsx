@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { Upload, FileArchive, FileSpreadsheet, FileText } from "lucide-react";
 import { fetchWithAuth, extractErrorMessage } from "@/services/apiClient";
 import '@/admin/_core/styles/admin.css';
 
@@ -128,17 +129,23 @@ function DropZone({ file, onFile, disabled, isZip }) {
         disabled={disabled}
       />
       {file ? (
-        <>
-          <span className="text-4xl mb-2.5 block">📄</span>
+        <div className="flex flex-col items-center">
+          {file.name.toLowerCase().endsWith(".zip") ? (
+            <FileArchive className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          ) : file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls") ? (
+            <FileSpreadsheet className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          ) : (
+            <FileText className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          )}
           <p className="font-bold text-status-green text-sm mb-1">{file.name}</p>
           <p className="text-[11px] text-status-gray">{(file.size / 1024).toFixed(1)} KB — click to change</p>
-        </>
+        </div>
       ) : (
-        <>
-          <span className="text-3xl mb-2.5 opacity-35 block">☁️</span>
+        <div className="flex flex-col items-center">
+          <Upload className="w-9 h-9 text-[#9ca3af] mb-2.5 stroke-[1.5]" />
           <p className="font-bold text-[#374151] text-sm mb-1">Drop file here or click to browse</p>
           <p className="text-[11px] text-[#9ca3af]">{isZip ? ".zip archive" : ".csv  ·  .xls  ·  .xlsx"}</p>
-        </>
+        </div>
       )}
     </div>
   );

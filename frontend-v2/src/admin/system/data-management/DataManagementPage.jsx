@@ -1,21 +1,102 @@
 import { useState, useRef, useCallback } from "react";
-import { fetchWithAuth } from "@/services/apiClient";
+import { Upload, FileArchive, FileSpreadsheet, FileText } from "lucide-react";
+import { fetchWithAuth, API_BASE_URL } from "@/services/apiClient";
 import '@/admin/_core/styles/admin.css';
 import { parseApiError } from '@/utils/errorUtils';
 
 // ── Entity definitions ────────────────────────────────────────────────────────
 // Operational / master data entities
 const ENTITIES = [
-  { id: "airlines", label: "Airlines", cols: ["iata_airline_code", "airline_name"], example: ["AI", "Air India"] },
-  { id: "airports", label: "Airports", cols: ["iata_code", "airport_name", "city", "country_iso", "timezone", "latitude", "longitude"], example: ["DEL", "Indira Gandhi Intl", "New Delhi", "IN", "Asia/Kolkata", "28.5665", "77.1031"] },
-  { id: "aircraft_models", label: "Aircraft Models", cols: ["manufacturer", "model_name"], example: ["Boeing", "737-800"] },
-  { id: "aircraft", label: "Aircraft", cols: ["registration", "airline_code", "manufacturer", "model_name", "economy_capacity", "business_capacity", "first_class_capacity", "economy_layout", "business_layout", "first_class_layout"], example: ["VT-ANL", "AI", "Boeing", "737-800", "160", "20", "8", "3-3", "2-2", "2-2"] },
-  { id: "flight_routes", label: "Flight Routes", cols: ["flight_no", "airline_code", "baggage_weight_allowed_per_person", "handbag_weight_allowed_per_person", "max_extra_baggage_kg_per_person", "extra_baggage_price_per_kg", "extra_baggage_currency"], example: ["AI202", "AI", "25", "7", "20", "500", "INR"] },
-  { id: "flight_instances", label: "Flight Instances", cols: ["flight_no", "date", "aircraft_registration", "status", "scheduled_departure", "scheduled_arrival"], example: ["AI202", "2025-08-01", "VT-ANL", "SCHEDULED", "2025-08-01 06:00", "2025-08-01 09:00"] },
-  { id: "flight_legs", label: "Flight Legs", cols: ["flight_no", "leg_order", "departure_airport", "arrival_airport", "scheduled_departure", "scheduled_arrival"], example: ["AI202", "1", "DEL", "BOM", "2025-08-01 06:00", "2025-08-01 09:00"] },
-  { id: "food_items", label: "Food Items", cols: ["airline_code", "name", "price", "currency", "is_veg", "is_halal", "is_vegan"], example: ["AI", "Veg Biryani", "250", "INR", "true", "false", "false"] },
-  { id: "flight_meals", label: "Flight Meals", cols: ["flight_no", "date", "meal_name", "price"], example: ["AI202", "2025-08-01", "Breakfast", "0"] },
-  { id: "fares", label: "Fares", cols: ["flight_no", "date", "fare_code", "cabin_class", "price", "currency", "available_seats", "refund_type", "change_fee", "meal_included"], example: ["AI202", "2025-08-01", "ECO-SAVE", "ECONOMY", "4500", "INR", "80", "NON_REFUNDABLE", "500", "false"] },
+  {
+    id: "airlines",
+    label: "Airlines",
+    cols: ["iata_airline_code", "airline_name", "logo"],
+    requiredCols: ["iata_airline_code", "airline_name"],
+  },
+  {
+    id: "countries",
+    label: "Countries",
+    cols: ["iso_code", "name"],
+    requiredCols: ["iso_code", "name"],
+  },
+  {
+    id: "airports",
+    label: "Airports",
+    cols: ["iata_code", "airport_name", "city", "country_iso", "timezone", "latitude", "longitude"],
+    requiredCols: ["iata_code", "airport_name", "city", "country_iso"],
+  },
+  {
+    id: "aircraft_models",
+    label: "Aircraft Models",
+    cols: ["manufacturer", "model_name"],
+    requiredCols: ["manufacturer", "model_name"],
+  },
+  {
+    id: "aircraft",
+    label: "Aircraft",
+    cols: ["registration", "airline_code", "manufacturer", "model_name", "economy_capacity", "business_capacity", "first_class_capacity", "economy_layout", "business_layout", "first_class_layout"],
+    requiredCols: ["registration", "airline_code", "manufacturer", "model_name"],
+  },
+  {
+    id: "flight_routes",
+    label: "Flight Routes",
+    cols: ["flight_no", "airline_code", "operates_on_days", "valid_from", "valid_until", "scheduled_departure_time", "scheduled_arrival_time", "aircraft_registration", "baggage_weight_allowed_per_person", "handbag_weight_allowed_per_person", "extra_baggage_price_per_kg", "extra_baggage_currency"],
+    requiredCols: ["flight_no", "airline_code"],
+  },
+  {
+    id: "flight_legs",
+    label: "Flight Legs",
+    cols: ["flight_no", "leg_order", "departure_airport", "arrival_airport", "scheduled_departure_time", "scheduled_arrival_time", "flight_duration_minutes", "layover_duration_minutes", "departure_terminal", "arrival_terminal"],
+    requiredCols: ["flight_no", "leg_order", "departure_airport", "arrival_airport"],
+  },
+  {
+    id: "route_fare_classes",
+    label: "Route Fare Classes",
+    cols: ["flight_no", "cabin_class", "fare_code", "base_price", "currency", "refund_type", "change_fee", "meal_included", "baggage_weight_allowed_kg"],
+    requiredCols: ["flight_no", "cabin_class", "fare_code", "base_price"],
+  },
+  {
+    id: "flight_instances",
+    label: "Flight Instances",
+    cols: ["flight_no", "date", "aircraft_registration", "scheduled_departure", "scheduled_arrival", "status", "departure_terminal", "arrival_terminal", "boarding_gate", "delay_minutes"],
+    requiredCols: ["flight_no", "date", "scheduled_departure", "scheduled_arrival"],
+  },
+  {
+    id: "fares",
+    label: "Fares",
+    cols: ["flight_no", "date", "fare_code", "cabin_class", "price", "currency", "available_seats", "refund_type", "change_fee", "meal_included", "baggage_allowance", "handbag_allowance", "baggage_pieces_allowance"],
+    requiredCols: ["flight_no", "date", "fare_code", "cabin_class", "price"],
+  },
+  {
+    id: "seats",
+    label: "Seats",
+    cols: ["flight_no", "date", "seat_number", "seat_class", "position", "status", "exit_row", "extra_legroom", "seat_fee", "currency"],
+    requiredCols: ["flight_no", "date", "seat_number", "seat_class"],
+  },
+  {
+    id: "food_items",
+    label: "Food Items",
+    cols: ["airline_code", "name", "price", "currency", "is_veg", "is_halal", "is_vegan"],
+    requiredCols: ["airline_code", "name"],
+  },
+  {
+    id: "flight_meals",
+    label: "Flight Meals",
+    cols: ["airline_code", "cabin_class", "meal_name", "price"],
+    requiredCols: ["airline_code", "cabin_class", "meal_name"],
+  },
+  {
+    id: "flight_meal_items",
+    label: "Flight Meal Items",
+    cols: ["airline_code", "cabin_class", "meal_name", "food_item_name", "quantity"],
+    requiredCols: ["airline_code", "cabin_class", "meal_name", "food_item_name"],
+  },
+  {
+    id: "holiday_events",
+    label: "Holiday Events (Dynamic Pricing)",
+    cols: ["name", "start_date", "end_date", "surge_multiplier", "is_global", "applicable_countries", "is_active", "description"],
+    requiredCols: ["name", "start_date", "end_date"],
+  },
 ];
 
 // User / account data entity (separate group)
@@ -24,7 +105,13 @@ const USER_ENTITIES = [
     id: "users",
     label: "Users",
     cols: ["email", "username", "first_name", "last_name", "password", "role", "phone_number", "date_of_birth", "gender", "country", "state", "city"],
-    example: ["john@example.com", "johndoe", "John", "Doe", "Secret123", "CUSTOMER", "+919876543210", "1990-01-15", "MALE", "India", "Kerala", "Kochi"],
+    requiredCols: ["email"],
+  },
+  {
+    id: "bookings",
+    label: "Bookings",
+    cols: ["user_email", "flight_no", "date", "cabin_class", "seat_count", "total_price", "status", "passenger_name", "passenger_age", "passenger_gender", "seat_number"],
+    requiredCols: ["user_email", "flight_no", "date"],
   },
 ];
 
@@ -160,17 +247,23 @@ function DropZone({ file, onFile, disabled, isZip }) {
         disabled={disabled}
       />
       {file ? (
-        <>
-          <span className="text-4xl mb-2.5 block">📄</span>
+        <div className="flex flex-col items-center">
+          {file.name.toLowerCase().endsWith(".zip") ? (
+            <FileArchive className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          ) : file.name.toLowerCase().endsWith(".csv") || file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls") ? (
+            <FileSpreadsheet className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          ) : (
+            <FileText className="w-10 h-10 text-status-green mb-2.5 stroke-[1.5]" />
+          )}
           <p className="font-bold text-status-green text-sm mb-1">{file.name}</p>
           <p className="text-[11px] text-status-gray">{(file.size / 1024).toFixed(1)} KB — click to change</p>
-        </>
+        </div>
       ) : (
-        <>
-          <span className="text-3xl mb-2.5 opacity-35 block">☁️</span>
+        <div className="flex flex-col items-center">
+          <Upload className="w-9 h-9 text-[#9ca3af] mb-2.5 stroke-[1.5]" />
           <p className="font-bold text-[#374151] text-sm mb-1">Drop file here or click to browse</p>
           <p className="text-[11px] text-[#9ca3af]">{isZip ? ".zip archive" : ".csv  ·  .xls  ·  .xlsx"}</p>
-        </>
+        </div>
       )}
     </div>
   );
@@ -315,6 +408,7 @@ export default function BulkImportPage() {
   const [loading, setLoading] = useState(false);
   const [reports, setReports] = useState(null);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(null);
 
   const allEntityDefs = [...ENTITIES, ...USER_ENTITIES];
   const ent = allEntityDefs.find(e => e.id === entity);
@@ -325,17 +419,132 @@ export default function BulkImportPage() {
     if (!canSubmit) return;
     setLoading(true);
     setError("");
+    setProgress({
+      percent: 5,
+      message: "Uploading and preparing data...",
+      step: 0,
+      totalSteps: isAll ? 15 : 1,
+      completedEntities: []
+    });
+
     const formData = new FormData();
     formData.append("entity", entity);
     formData.append("file", file);
+
     try {
-      const data = await fetchWithAuth("/bulk-upload/import/", { method: "POST", body: formData });
-      setReports(data.reports ?? [data]);
-      setFile(null);
+      const token = localStorage.getItem('access_token');
+      const headers = {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      };
+      const response = await fetch(`${API_BASE_URL}/bulk-upload/import/?stream=true`, {
+        method: "POST",
+        body: formData,
+        headers,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        let errDetail = "Upload failed.";
+        try {
+          const errData = await response.json();
+          errDetail = parseApiError(errData, errDetail);
+        } catch (_) {
+          const errText = await response.text();
+          if (errText) errDetail = errText;
+        }
+        throw new Error(errDetail);
+      }
+
+      // Check if response is streamable
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream") && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let completedList = [];
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();
+
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const jsonStr = trimmed.replace(/^data:\s*/, "");
+            try {
+              const data = JSON.parse(jsonStr);
+
+              if (data.type === "start") {
+                setProgress(prev => ({
+                  ...prev,
+                  percent: data.percent || 5,
+                  totalSteps: data.total_steps,
+                  message: data.message || "Starting import...",
+                }));
+              } else if (data.type === "progress") {
+                setProgress(prev => ({
+                  ...prev,
+                  percent: data.percent,
+                  step: data.step,
+                  totalSteps: data.total_steps,
+                  activeEntity: data.entity,
+                  activeLabel: data.label,
+                  message: data.message,
+                }));
+              } else if (data.type === "entity_done") {
+                completedList = [
+                  ...completedList,
+                  {
+                    entity: data.entity,
+                    label: data.label,
+                    created: data.created,
+                    failed: data.failed,
+                  }
+                ];
+                setProgress(prev => ({
+                  ...prev,
+                  percent: data.percent,
+                  step: data.step,
+                  totalSteps: data.total_steps,
+                  activeEntity: null,
+                  activeLabel: null,
+                  completedEntities: completedList,
+                  totalCreated: data.total_created,
+                  message: data.message,
+                }));
+              } else if (data.type === "done") {
+                setProgress(prev => ({
+                  ...prev,
+                  percent: 100,
+                  message: "Import complete!",
+                }));
+                setReports(data.reports ?? [data.report]);
+                setFile(null);
+              } else if (data.type === "error") {
+                throw new Error(data.detail || "An error occurred during import.");
+              }
+            } catch (e) {
+              if (e.message && !e.message.includes("JSON")) {
+                throw e;
+              }
+            }
+          }
+        }
+      } else {
+        // Standard JSON response fallback
+        const data = await response.json();
+        setReports(data.reports ?? [data]);
+        setFile(null);
+      }
     } catch (err) {
       setError(parseApiError(err, "An unexpected error occurred."));
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -362,17 +571,43 @@ export default function BulkImportPage() {
             />
           </div>
 
-          {/* Required columns hint */}
+          {/* Columns & template hint */}
           {ent && (
-            <div className="mb-5 bg-admin-accent-dark/[0.03] py-2.5 px-3.5 rounded-admin-sm border border-admin-accent-dark/[0.1] flex items-center gap-3 flex-wrap">
-              <span className="text-[10px] font-bold text-[#888] uppercase tracking-[0.07em] whitespace-nowrap">Required Columns:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {ent.cols.map(c => (
-                  <code key={c} className="text-[11px] bg-admin-accent-dark/[0.08] py-[3px] px-2 rounded-full text-admin-accent-dark font-semibold">
-                    {c}
-                  </code>
-                ))}
+            <div className="mb-5 bg-admin-accent-dark/[0.03] p-3.5 rounded-admin-sm border border-admin-accent-dark/[0.1] flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-[#666] uppercase tracking-[0.07em]">
+                  Expected Columns
+                </span>
               </div>
+
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {ent.cols.map(c => {
+                  const isReq = ent.requiredCols?.includes(c);
+                  return (
+                    <code
+                      key={c}
+                      className={`text-[11px] py-[3px] px-2 rounded-full font-semibold transition-all ${
+                        isReq
+                          ? 'bg-admin-accent-dark/[0.12] text-admin-accent-dark border border-admin-accent-dark/20'
+                          : 'bg-black/[0.04] text-[#6b7280] border border-black/[0.06]'
+                      }`}
+                      title={isReq ? "Required field" : "Optional field"}
+                    >
+                      {c}{isReq ? " *" : ""}
+                    </code>
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-[#888]">
+                <span className="font-semibold text-admin-accent-dark">* Required</span> · Others are optional / have defaults
+              </div>
+            </div>
+          )}
+
+          {isAll && (
+            <div className="mb-5 bg-admin-accent-dark/[0.03] p-3.5 rounded-admin-sm border border-admin-accent-dark/[0.1] text-xs text-[#555]">
+              <span className="font-bold text-admin-ink block mb-1">ZIP Archive Instructions</span>
+              Include CSV or Excel files inside your .zip named after each entity, e.g. <code className="font-semibold text-admin-accent-dark">airlines.csv</code>, <code className="font-semibold text-admin-accent-dark">airports.csv</code>, <code className="font-semibold text-admin-accent-dark">flight_routes.csv</code>, <code className="font-semibold text-admin-accent-dark">route_fare_classes.csv</code>, <code className="font-semibold text-admin-accent-dark">flight_instances.csv</code>, etc. Files will be imported automatically in dependency order.
             </div>
           )}
 
@@ -394,6 +629,45 @@ export default function BulkImportPage() {
             </div>
           )}
 
+          {/* Progress Bar & Live Status */}
+          {loading && progress && (
+            <div className="mb-5 p-4 bg-admin-accent-dark/[0.04] border border-admin-accent-dark/20 rounded-admin-md transition-all duration-300">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-admin-accent-dark animate-pulse" />
+                  <span className="text-xs font-bold text-admin-ink">
+                    {progress.activeLabel ? `Importing ${progress.activeLabel}` : "Importing Data..."}
+                  </span>
+                </div>
+                <span className="text-xs font-black text-admin-accent-dark tabular-nums">
+                  {progress.percent}%
+                </span>
+              </div>
+
+              {/* Animated Progress Bar Track */}
+              <div className="w-full bg-black/[0.08] rounded-full h-3 overflow-hidden mb-2.5 p-[1px]">
+                <div
+                  className="bg-gradient-to-r from-[#ffd700] via-[#f59e0b] to-[#d97706] h-full rounded-full transition-all duration-300 ease-out shadow-sm relative overflow-hidden"
+                  style={{ width: `${Math.max(4, Math.min(100, progress.percent))}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Status Message and Counters */}
+              <div className="flex items-center justify-between text-[11px] text-[#666]">
+                <span className="truncate mr-2 font-medium">
+                  {progress.message || (progress.step && progress.totalSteps ? `Table ${progress.step} of ${progress.totalSteps}` : "Processing...")}
+                </span>
+                {progress.totalCreated !== undefined && (
+                  <span className="whitespace-nowrap font-semibold text-admin-ink tabular-nums">
+                    ✓ {progress.totalCreated} created
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Submit */}
           <button
             id="bulk-import-submit"
@@ -404,7 +678,7 @@ export default function BulkImportPage() {
             {loading ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-black/20 border-t-black rounded-full inline-block animate-spin mr-2" />
-                Importing…
+                <span>{progress?.percent ? `Importing… ${progress.percent}%` : "Importing…"}</span>
               </>
             ) : "Run Import"}
           </button>
